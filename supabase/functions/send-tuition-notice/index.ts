@@ -198,12 +198,9 @@ Deno.serve(async (req) => {
       const notice = config.notice
 
       const variables: Record<string, string> = {
-        "#{청구년월}": billingMonth,
         "#{청구기간}": periodDisplay,
         "#{학생이름}": studentName,
         // (v2.8.0) 템플릿이 학생 합산 모양으로 바뀌어 한 장이면 수강내역 한 줄(_shared/noticeQueue.ts prepareTuition과 같다).
-        "#{수강내역}": `• ${className}: ${amountDisplay}`,
-        "#{청구금액}": amountDisplay,
         "#{안내멘트}": notice,
         // (v2.8.0 구역) 수강료 청구 안내 [수강 내역]. 큐 경로(prepareTuition)와 같은 모양.
         "#{수강목록}": alimtalkVar(tuitionPage, "수강목록", `🏛 ${className || "-"}  ${amountDisplay}\n🧾 합계  ${amountDisplay}`),

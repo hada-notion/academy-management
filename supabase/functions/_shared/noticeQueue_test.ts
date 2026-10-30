@@ -100,7 +100,7 @@ Deno.test("v2.6.24 교재비 안내문: 안내문 전송 상태, 일괄전송 �
 	const { calls, restore } = fake(cart)
 	try {
 		await processNoticeQueueItem({ kind: "textbook", pageId: "cart-1" })
-		eq(calls.sent[0].vars, { "#{학생이름}": "조하은", "#{클래스}": "중1 B", "#{교재내역}": "📚 교재 내역\n쎈 1권", "#{교재비안내}": "쎈 1권", "#{교재목록}": "쎈 1권", "#{안내멘트}": "안내" })
+		eq(calls.sent[0].vars, { "#{학생이름}": "조하은", "#{클래스}": "중1 B", "#{교재목록}": "쎈 1권", "#{안내멘트}": "안내" })
 		eq(calls.logs[0].textbookCartId, "cart-1")
 		eq(calls.patches[0]["안내문 전송 상태"].select.name, "✅ 완료")
 		eq("일괄전송 선택" in calls.patches[0], false)
@@ -121,8 +121,7 @@ Deno.test("v2.8.0 수강료: 같은 달 수강료를 한 통으로(수강료안�
 	try {
 		await processNoticeQueueItem({ kind: "tuition", pageId: "t-math" })
 		eq(calls.sent.length, 1)
-		eq([calls.sent[0].vars["#{청구년월}"], calls.sent[0].vars["#{청구금액}"], calls.sent[0].vars["#{수강내역}"].split("\n").length, calls.sent[0].vars["#{안내멘트}"]], ["26년 11월", "470,000원", 3, "안내"])
-		eq(calls.sent[0].vars["#{수강정보}"], "📚 수강 내역\n• 수학반 150,000원\n• 영어반 200,000원\n• 국어반 120,000원")
+		eq(calls.sent[0].vars["#{안내멘트}"], "안내")
 		// (v2.8.0 구역) 수강목록(알림톡) 수식이 없으면 이 장 하나로 "🏛 반  금액" + 합계.
 		eq(calls.sent[0].vars["#{수강목록}"].split("\n").pop(), "🧾 합계  470,000원")
 		eq(calls.patched.map((p) => [p.id, p.props["안내문 전송 상태"].select.name]), [["t-math", "✅ 완료"], ["t-eng", "✅ 완료"], ["t-kor", "✅ 완료"]])

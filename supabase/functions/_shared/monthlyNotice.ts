@@ -488,14 +488,8 @@ export async function buildLetterNotice(letter: any): Promise<{ registrationId: 
 			"#{학생이름}": f("학생이름", studentName),
 			"#{클래스}": f("클래스", classNamesOf(regs).join(" · ")),
 			// 옛 (일정안내) 수식은 ": 반" 모양이라 읽지 않는다. 둘 이상이면 "• 반" 목록.
-			"#{클래스목록}": alimtalkVar(fresh, "클래스목록", classListText(classNamesOf(regs))),
 			// (10/29 다시 신청한 본문) 머리줄 "🏛 클래스"까지 담는 블록. 값이 공백으로 시작하지 않게.
-			"#{클래스정보}": alimtalkVar(fresh, "클래스정보", classInfoBlock(classNamesOf(regs))),
 			"#{안내월}": f("안내월", monthLabel(month)),
-			"#{일정목록}": alimtalkVar(fresh, "일정목록", letterScheduleBlock({ 휴원: rest, 학원: academy, 학사: school, note })),
-			"#{휴원일정}": rest,
-			"#{학원일정}": academy,
-			"#{학사일정}": school,
 			// (v2.8.0 구역) 월간 일정 안내 [일정 안내]의 세 작은 구역 목록. 날짜가 들어가 서버가 서울 날짜로 만든다.
 			"#{휴원목록}": sectionListText(lines, "휴원"),
 			"#{학원목록}": sectionListText(lines, "학원"),

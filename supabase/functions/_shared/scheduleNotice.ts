@@ -270,10 +270,6 @@ export async function processScheduleEventItem(p: EventPayload): Promise<void> {
 		// 일시는 수식을 읽지 않는다(API의 수식 날짜는 UTC라 시각이 9시간 어긋남). 서버가 서울 시각으로.
 		const time = eventTimeText(ev)
 		const vars = {
-			"#{일정구분}": alimtalkVar(ev, "일정구분", eventLabel(ev), "일정구분(일정안내)"),
-			"#{일정명}": alimtalkVar(ev, "일정명", textOf(ev.properties?.["이름"]?.title).trim() || `${eventLabel(ev)} 일정`, "일정명(일정안내)"),
-			"#{일정정보}": eventInfoBlock({ time, note }),
-			"#{일정일시}": time,
 			"#{전달사항}": note,
 			// (v2.8.0 구역) 상담 일정 안내 [상담 정보]: 📌 일정 + 📅 일시. 일시는 서버가 서울 시각으로.
 			"#{일정내역}": `📌 일정  ${textOf(ev.properties?.["이름"]?.title).trim() || "상담"}\n📅 일시  ${time}`,

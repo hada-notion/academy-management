@@ -189,10 +189,8 @@ Deno.serve(async (req) => {
         const variables: Record<string, string> = {
           "#{학생이름}": studentName,
           "#{클래스}": className,
-          "#{교재비안내}": textbookNotice,
           "#{안내멘트}": config.notice,
           // (v2.8.0 통일안) 큐 경로(_shared/noticeQueue.ts)와 같은 새 템플릿 변수. 보낼 때 템플릿에 있는 것만 남는다.
-          "#{교재내역}": alimtalkVar(cartPage, "교재내역", textbookBlock(textbookNotice)),
           // (v2.8.0 구역) 교재비 청구 안내 [교재 내역]. 큐 경로와 같은 모양.
           "#{교재목록}": alimtalkVar(cartPage, "교재목록", textbookListBlock(textbookNotice)),
         }

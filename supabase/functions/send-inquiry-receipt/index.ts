@@ -319,11 +319,8 @@ async function processStudent(studentId: string, webhookPage: any | null, resend
 
     const variables: Record<string, string> = {
       "#{학생이름}": snapshot.studentName,
-      "#{학교}": snapshot.school || "미입력",
-      "#{학년}": snapshot.grade || "미입력",
       "#{학부모연락처}": snapshot.recipientPhone,
       // (v2.8.0 통일안) 새 템플릿: 👤 학생(항상) + 적은 경우만 🏫 학교·🎓 학년.
-      "#{접수내용}": snapshot.inquiryBlock || inquiryBlock({ studentName: snapshot.studentName, school: snapshot.school, grade: snapshot.grade }),
       // (10/29 다시 신청한 본문) 머리줄 "📋 접수 내용"부터 담는 블록(솔라피가 값 맨 앞 공백을 지우므로).
       "#{접수정보}": snapshot.inquiryInfo || inquiryInfoBlock({ studentName: snapshot.studentName, school: snapshot.school, grade: snapshot.grade }),
     }

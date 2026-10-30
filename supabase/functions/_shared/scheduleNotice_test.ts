@@ -86,7 +86,7 @@ Deno.test("v2.8.0 일정 안내(한 건): 연결된 학생·반의 수강 중 �
 	const c = mock(pages, { regs: [reg("r1", "s1", "김하윤"), reg("r2", "s2", "박지민")] })
 	await m.processScheduleEventItem({ eventId: "e1" })
 	eq(c.enq.map((e) => e.payload.regId), ["r1", "r2"])
-	eq(c.enq[0].payload.vars, { "#{일정구분}": "상담", "#{일정명}": "2학기 상담", "#{일정정보}": "📅 일시  26.11.03(화)\n\n📝 전달사항\n선생님 사정", "#{일정일시}": "26.11.03(화)", "#{전달사항}": "선생님 사정", "#{일정내역}": "📌 일정  2학기 상담\n📅 일시  26.11.03(화)" })
+	eq(c.enq[0].payload.vars, { "#{전달사항}": "선생님 사정", "#{일정내역}": "📌 일정  2학기 상담\n📅 일시  26.11.03(화)" })
 	// (v2.8.0 구역) 상담이 아닌 일정(휴강·휴원·학원 일정)은 보내지 않고 수업 안내·월간 일정 안내로 안내한다.
 	const cx = mock({ ...pages, e1: ev("e1", { name: "휴강", start: "2026-11-03", stu: ["s1"], label: "휴강" }) })
 	await m.processScheduleEventItem({ eventId: "e1" })
@@ -102,7 +102,7 @@ Deno.test("v2.8.0 일정 안내(한 건): 연결된 학생·반의 수강 중 �
 	withF.properties["전달사항(일정안내)"] = { type: "formula", formula: { type: "string", string: "수식 메모" } }
 	const cf = mock({ e1: withF }, { regs: [reg("r1", "s1", "김하윤")] })
 	await m.processScheduleEventItem({ eventId: "e1" })
-	eq([cf.enq[0].payload.vars["#{일정일시}"], cf.enq[0].payload.vars["#{전달사항}"]], ["26.11.03(화)", "수식 메모"])
+	eq([cf.enq[0].payload.vars["#{일정내역}"], cf.enq[0].payload.vars["#{전달사항}"]], ["📌 일정  휴강\n📅 일시  26.11.03(화)", "수식 메모"])
 	const c3 = mock({ e1: ev("e1", { start: "2026-11-03" }) })
 	await m.processScheduleEventItem({ eventId: "e1" })
 	eq(c3.marks[1].includes("학생이나 클래스를 연결"), true)
