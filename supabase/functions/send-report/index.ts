@@ -62,7 +62,7 @@ import {
 import { refreshStudentReport } from "../_shared/dailyReportRefresh.ts"
 import { runInBackground, respondAccepted } from "../_shared/backgroundTask.ts"
 import { enqueueSync, wakeSyncQueueWorker } from "../_shared/syncQueue.ts"
-import { alimtalkVar, reportConfigChain, reportSectionVars, reportStatusBlock } from "../_shared/noticeBlocks.ts"
+import { alimtalkVar, reportConfigChain, reportSectionVars } from "../_shared/noticeBlocks.ts"
 import { fitVariablesToTemplate } from "../_shared/templateFit.ts"
 
 

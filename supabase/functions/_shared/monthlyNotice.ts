@@ -16,9 +16,9 @@ import { enqueueSync } from "./syncQueue.ts"
 import { markDone, markError, markRunning, type StatusSpec } from "./statusTracking.ts"
 import { isParentPublicEvent } from "./scheduleVisibility.ts"
 import { inPeriodRegistration, resolveBatchDataSourceId, seoulDay, studentNameOf } from "./classReportPlan.ts"
-import { eventLine, inMonth, isAcademyWide, monthFilter, monthLabel, nextMonthKey, type Section, sectionListText, sectionOf, sectionText } from "./scheduleNotice.ts"
+import { eventLine, inMonth, isAcademyWide, monthFilter, monthLabel, nextMonthKey, type Section, sectionListText, sectionOf } from "./scheduleNotice.ts"
 import { noteText } from "./lessonNotice.ts"
-import { alimtalkVar, BULLET, classInfoBlock, classListBlock, letterScheduleBlock, NO_NOTE } from "./noticeBlocks.ts"
+import { alimtalkVar, BULLET, NO_NOTE } from "./noticeBlocks.ts"
 
 export const KIND_MONTHLY = "가정통신문"
 // (10/28) 수강료 생성은 보고서처럼 반 발송함(구분 "수강료", 반 × 달)을 만든다.
@@ -425,8 +425,6 @@ export class LetterBlocked extends Error {}
 
 // 같은 학생의 그 달 반 이름(이름순, 같은 이름은 한 번). #{클래스}에 쓴다.
 const classNamesOf = (regs: any[]) => Array.from(new Set(regs.map(classNameOfReg).filter(Boolean))).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
-// (v2.8.0 통일안) 템플릿 "🏛 클래스#{클래스목록}"용: 반 하나면 "  영어반"(두 칸), 둘 이상이면 줄을 바꿔 "· 반" 목록.
-export const classListText = classListBlock
 
 // (10/29 사용자) 전달사항: 같은 달 반마다 가정통신문 발송함의 '가정통신문 전달사항'(반 이름순). 가정통신문은 반 공지라
 // 학생 개인 메모는 넣지 않는다(개별 전달은 따로 메시지로). 하나뿐이면 문장만, 둘 이상이면 반마다 "🏛 반 이름" 줄 아래 "  • 문구".
@@ -474,10 +472,8 @@ export async function buildLetterNotice(letter: any): Promise<{ registrationId: 
 	const lines = await studentMonthEvents(studentId, month, regs, unlinked)
 	const fresh: any = await deps.getPage(String(letter.id)).catch(() => letter)
 	// 변수 값: "변수(알림톡)" 수식 → 옛 "(일정안내)" 수식 → 서버 계산(_shared/noticeBlocks.ts alimtalkVar).
-	// (v2.8.0 통일안) 새 템플릿의 #{클래스목록}·#{일정목록}과 옛 템플릿의 구역별 변수를 함께 만든다(보낼 때 템플릿에 있는 것만 남음).
 	const f = (name: string, fallback: string) => alimtalkVar(fresh, name, fallback, `${name}(일정안내)`)
 	const studentName = studentNameOf(reg)
-	const rest = f("휴원일정", sectionText(lines, "휴원")), academy = f("학원일정", sectionText(lines, "학원")), school = f("학사일정", sectionText(lines, "학교"))
 	const note = f("전달사항", await letterNote(fresh, regs))
 	if (!lines.length && (!note.trim() || note.trim() === NO_NOTE)) throw new LetterBlocked(`${monthLabel(month)} 학부모 공개 일정과 전달사항이 없어 보내지 않았습니다. 일정이나 발송함 가정통신문 전달사항을 넣은 뒤 [안내문 전송]을 누르세요.`)
 	return {

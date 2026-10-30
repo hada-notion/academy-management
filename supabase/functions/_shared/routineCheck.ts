@@ -119,29 +119,6 @@ export async function processRoutineChecksQueueItem(payload: RoutineChecksPayloa
 	}
 }
 
-// ---------- 일일 보고서 알림톡 ----------
-// 출석 한 장의 루틴 체크 → [{ name, done }](루틴 순서대로). 칸이 없거나 읽기에 실패하면 빈 목록(보고서는 루틴 없이 나간다).
-export async function routineItemsForAttendance(attendance: any, deps: { getPage: typeof getPage; fullRelationIds: typeof fullRelationIds } = { getPage, fullRelationIds }): Promise<{ name: string; done: boolean }[]> {
-	try {
-		if (!attendance?.properties?.[P_ATTENDANCE_CHECKS]) return []
-		const checks = (await Promise.all((await deps.fullRelationIds(attendance, P_ATTENDANCE_CHECKS)).map((id) => deps.getPage(id).catch(() => null)))).filter((p: any) => !gone(p))
-		const routineCache = new Map<string, any>()
-		const rows: { name: string; done: boolean; order: number }[] = []
-		for (const c of checks) {
-			const rid = relIds(c.properties?.[P_CHECK.routine])[0]
-			if (!rid) continue
-			if (!routineCache.has(rid)) routineCache.set(rid, await deps.getPage(rid).catch(() => null))
-			const r = routineCache.get(rid)
-			if (gone(r)) continue
-			rows.push({ name: plain(r.properties?.[P_ROUTINE.title]), done: c.properties?.[P_CHECK.done]?.checkbox === true, order: r.properties?.[P_ROUTINE.order]?.number ?? 999 })
-		}
-		return rows.filter((x) => x.name).sort((a, b) => a.order - b.order || a.name.localeCompare(b.name)).map(({ name, done }) => ({ name, done }))
-	} catch (err) {
-		console.warn("[routine] 일일 보고서 루틴 읽기 건너뜀:", (err as Error).message)
-		return []
-	}
-}
-
 // ---------- 리포트 ----------
 export type RoutineRow = { name: string; date: string; done: boolean }
 

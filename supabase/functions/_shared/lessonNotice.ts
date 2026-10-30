@@ -29,7 +29,7 @@ import {
 } from "./adminShared.ts"
 import { getFormulaText, normalizePhone, resolveAlimtalkRecipients } from "./alimtalkShared.ts"
 import { relIds } from "./notionClient.ts"
-import { alimtalkVar, dateOnly, lessonInfoBlock } from "./noticeBlocks.ts"
+import { alimtalkVar, dateOnly } from "./noticeBlocks.ts"
 import { fitVariablesToTemplate } from "./templateFit.ts"
 import { sessionKind } from "./sessionKind.ts"
 

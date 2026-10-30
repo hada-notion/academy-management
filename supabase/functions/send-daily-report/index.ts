@@ -35,8 +35,7 @@ import { refreshDailyReportForSend } from "../_shared/dailyReportRefresh.ts"
 import { enqueueSync, wakeSyncQueueWorker } from "../_shared/syncQueue.ts"
 import { extractPageId } from "../_shared/notionClient.ts"
 import { formatClassTime } from "../_shared/lessonNotice.ts"
-import { alimtalkVar, arrivalBlock, dailyConfigCategory, dailySectionVars, dateOnly, fitDailyLength, studyContentOrDefault, studyWithRoutines } from "../_shared/noticeBlocks.ts"
-import { routineItemsForAttendance } from "../_shared/routineCheck.ts"
+import { alimtalkVar, arrivalBlock, dailyConfigCategory, dailySectionVars, dateOnly, fitDailyLength } from "../_shared/noticeBlocks.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

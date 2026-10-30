@@ -40,7 +40,7 @@ import {
 } from "./alimtalkShared.ts"
 import { refreshStudentReport } from "./dailyReportRefresh.ts"
 import { buildLetterNotice, LetterBlocked } from "./monthlyNotice.ts"
-import { alimtalkVar, BULLET, reportStatusBlock, textbookBlock, tuitionInfoBlock, reportConfigChain, reportSectionVars, textbookListBlock } from "./noticeBlocks.ts"
+import { alimtalkVar, BULLET, reportConfigChain, reportSectionVars, textbookListBlock } from "./noticeBlocks.ts"
 import { fitVariablesToTemplate } from "./templateFit.ts"
 
 export type NoticeKind = "report" | "tuition" | "textbook" | "letter"

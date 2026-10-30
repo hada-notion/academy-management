@@ -24,8 +24,7 @@ import {
 import { getFormulaText, sendDailyReportAlimtalk, appendSendLog } from "./alimtalkShared.ts"
 import { refreshDailyReportForSend } from "./dailyReportRefresh.ts"
 import { formatClassTime } from "./lessonNotice.ts"
-import { alimtalkVar, arrivalBlock, dailyConfigCategory, dailySectionVars, dateOnly, fitDailyLength, studyContentOrDefault, studyWithRoutines } from "./noticeBlocks.ts"
-import { routineItemsForAttendance } from "./routineCheck.ts"
+import { alimtalkVar, arrivalBlock, dailyConfigCategory, dailySectionVars, dateOnly, fitDailyLength } from "./noticeBlocks.ts"
 import { relIds } from "./notionClient.ts"
 import { cleanupExpiredReportPageCache } from "./persistentReportPageCache.ts"
 
@@ -74,7 +73,7 @@ async function finish(attendanceId: string, status: "✅ 완료" | "⚠️ 오�
 }
 
 // 테스트에서 무거운 리포트 최신화와 실제 발송을 바꿔 끼울 수 있게 한다.
-export const dailyReportDeps = { refresh: refreshDailyReportForSend, send: sendDailyReportAlimtalk, routines: (page: any) => routineItemsForAttendance(page) }
+export const dailyReportDeps = { refresh: refreshDailyReportForSend, send: sendDailyReportAlimtalk }
 
 export async function processDailyReportQueueItem(payload: { attendanceId: string; clickerUserId?: string | null }): Promise<void> {
   const attendanceId = payload.attendanceId

@@ -50,7 +50,7 @@ import {
   withSendingLock,
 } from "../_shared/alimtalkShared.ts"
 import { runInBackground, respondAccepted } from "../_shared/backgroundTask.ts"
-import { alimtalkVar, textbookBlock, textbookListBlock } from "../_shared/noticeBlocks.ts"
+import { alimtalkVar, textbookListBlock } from "../_shared/noticeBlocks.ts"
 import { fitVariablesToTemplate } from "../_shared/templateFit.ts"
 import { enqueueSync, wakeSyncQueueWorker } from "../_shared/syncQueue.ts"
 
