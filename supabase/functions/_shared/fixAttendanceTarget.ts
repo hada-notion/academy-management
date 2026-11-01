@@ -82,7 +82,7 @@ function addDays(dateStr: string, days: number): string {
 
 // ---- 학습활동(학원) DB: 대기 중인 과제 마감 백필 ----
 // (v2.6.12) 수업추가(generate-classes)와 같은 방식으로 맞춘다: 새 출석(또는 연결한 출석)의 "과제마감 백필 대상"에
-// 그 학생의 대기 과제를 넣고 "⏳ 대기열"로 두면 backfill-assignment-deadlines 큐가 "자동 마감 기준"을 지키며 연결한다.
+// 그 학생의 대기 과제를 넣고 "⏳ 대기열"로 두면 backfill-assignment-deadlines 큐가 빈 마감만 연결한다(이미 있는 마감은 보존).
 // 예전 linkPendingAssignmentDeadlines는 학생마다 활동·출석을 하나씩 읽어 바로 연결했고, 자동 마감 기준을 보지 않았다.
 const PROP_ATTENDANCE_BACKFILL_TARGET = "과제마감 백필 대상"
 const PROP_ATTENDANCE_BACKFILL_STATUS = "과제마감 백필 상태"

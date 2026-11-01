@@ -1,6 +1,5 @@
 // Assignment deadline policy: own registration + nearest later attendance, not weekday timetable.
-// The marker records the last system-written relation. A different/cleared value is a manual override.
-export const AUTO_DEADLINE_PROP = "자동 마감 기준"
+// (v2.8.0) 자동 처리는 빈 마감만 채운다. 이미 있는 마감은 출처와 무관하게 보존하고, 조정은 [과제 마감일 조정] 버튼이나 직접 수정으로 한다.
 export type DeadlineIO = {
   getPage: (id: string) => Promise<any>
   query: (db: string, body: Record<string, unknown>) => Promise<any>
@@ -15,8 +14,7 @@ function key(id: string) { return id.replace(/-/g, "").toLowerCase() }
 function same(a: string[], b: string[]) { return a.length === b.length && a.every((id, i) => key(id) === key(b[i])) }
 function live(page: any) { return page && !page.archived && !page.in_trash && !page.properties?.["삭제 체크"]?.checkbox }
 export function automaticDeadlineAllowed(page: any): boolean {
-  const current = ids(page, "과제 마감"), marker = ids(page, AUTO_DEADLINE_PROP)
-  return (current.length === 0 && marker.length === 0) || (marker.length === 1 && same(current, marker))
+  return ids(page, "과제 마감").length === 0
 }
 export async function queryEveryPage(io: DeadlineIO, db: string, body: Record<string, unknown>): Promise<any[]> {
   const rows: any[] = []; let cursor: string | undefined
@@ -50,13 +48,13 @@ export async function findNextDeadline(io: DeadlineIO, registrationId: string, a
   } while (cursor)
   return null
 }
-// One narrow query per registration. Notion filters out completed and non-automatic existing deadlines.
+// One narrow query per registration. Notion filters out completed tasks and tasks that already have a deadline.
 export async function pendingDeadlineActivities(io: DeadlineIO, registrationId: string): Promise<string[]> {
   const rows = await queryEveryPage(io, io.activityDb, { filter: { and: [
     { property: "등록", relation: { contains: registrationId } },
     { property: "과제상태", select: { equals: "🔴 미제출" } },
     { property: "삭제 체크", checkbox: { equals: false } },
-    { or: [ { property: "과제 마감", relation: { is_empty: true } }, { property: AUTO_DEADLINE_PROP, relation: { is_not_empty: true } } ] },
+    { property: "과제 마감", relation: { is_empty: true } },
   ] } })
   return rows.filter(p => live(p) && same(ids(p, "등록"), [registrationId]) && automaticDeadlineAllowed(p)).map(p => p.id)
 }
@@ -70,17 +68,15 @@ export async function reconcileDeadline(io: DeadlineIO, activityId: string, trig
   const triggerTime = trigger?.properties?.["수업일시"]?.date?.start
   if (!live(trigger) || !live(source) || !live(record) || record.properties?.["구분"]?.select?.name !== "과제" ||
     !same(ids(trigger, "등록"), owners) || !same(ids(source, "등록"), owners) || !after || !triggerTime || Date.parse(triggerTime) <= Date.parse(after)) return "invalid_source"
-  // Read the activity again before writing: preserve manual edits and changed ownership since queuing.
+  // Read the activity again before writing: a deadline set by the button or by hand since queuing wins.
   const fresh = await io.getPage(activityId)
   if (!live(fresh) || fresh.properties?.["과제상태"]?.select?.name !== "🔴 미제출" || !automaticDeadlineAllowed(fresh) ||
     !same(ids(fresh, "등록"), owners) || !same(ids(fresh, "출석"), sources) || !same(ids(fresh, "학습기록"), records) ||
-    !same(ids(fresh, "과제 마감"), ids(activity, "과제 마감")) || !same(ids(fresh, AUTO_DEADLINE_PROP), ids(activity, AUTO_DEADLINE_PROP))) return "changed"
+    !same(ids(fresh, "과제 마감"), ids(activity, "과제 마감"))) return "changed"
   const nextId = await findNextDeadline(io, owners[0], after)
   if (!nextId) return "no_next_attendance"
-  if (same(ids(fresh, "과제 마감"), [nextId]) && same(ids(fresh, AUTO_DEADLINE_PROP), [nextId])) return "unchanged"
   await io.update(activityId, {
     "과제 마감": { relation: [{ id: nextId }] },
-    [AUTO_DEADLINE_PROP]: { relation: [{ id: nextId }] },
     "학습정보 수정일": { date: { start: new Date().toISOString() } },
   })
   return "updated"
@@ -95,7 +91,7 @@ export async function pendingDeadlinesForRegistrations(io: DeadlineIO, registrat
       { or: chunk.map((id) => ({ property: "등록", relation: { contains: id } })) },
       { property: "과제상태", select: { equals: "🔴 미제출" } },
       { property: "삭제 체크", checkbox: { equals: false } },
-      { or: [ { property: "과제 마감", relation: { is_empty: true } }, { property: AUTO_DEADLINE_PROP, relation: { is_not_empty: true } } ] },
+      { property: "과제 마감", relation: { is_empty: true } },
     ] } })
     for (const p of rows) {
       const owner = ids(p, "등록")

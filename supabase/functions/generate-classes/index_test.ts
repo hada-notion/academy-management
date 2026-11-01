@@ -11,7 +11,7 @@ function mock(){
  const tasks:Promise<unknown>[]=[]; const pages:any={menu:{id:"menu",properties:{"상태":{select:{name:"⚪ 대기"}}}},class:{id:"class",properties:{"클래스명":{title:[{plain_text:"Mock Class"}]},"담당강사":rel("teacher")}}}
  const timetables=[{id:"fri",day:"금",date:"2026-10-09"},{id:"wed",day:"수",date:"2026-10-07"},{id:"mon",day:"월",date:"2026-10-05"}].map(t=>{const p={id:t.id,properties:{"클래스":rel("class"),"요일":{select:{name:t.day}},"등원시간(HH:mm)":txt("20:00"),"하원시간(HH:mm)":txt("21:00"),"상태":{select:{name:"⚪ 대기"}}}};pages[t.id]=p;pages["old-"+t.id]={id:"old-"+t.id,db:"sessions",properties:{"시간표":rel(t.id),"수업일시":{date:{start:t.date+"T20:00:00+09:00"}},"학습기록":rel("record")}};return p})
  pages.record={id:"record",properties:{"구분":{select:{name:"과제"}},"등록":{relation:[{id:"a"},{id:"b"}]}}}
- for(const id of ["a","b"]){pages["source-"+id]={id:"source-"+id,db:"attendance",properties:{"등록":rel(id),"수업일시":{date:{start:"2026-10-09T20:00:00+09:00"}},"수업":rel("old-fri")}};pages["task-"+id]={id:"task-"+id,db:"activities",properties:{"등록":rel(id),"출석":rel("source-"+id),"학습기록":rel("record"),"과제상태":{select:{name:"🔴 미제출"}},"과제 마감":rel(),"자동 마감 기준":rel()}}}
+ for(const id of ["a","b"]){pages["source-"+id]={id:"source-"+id,db:"attendance",properties:{"등록":rel(id),"수업일시":{date:{start:"2026-10-09T20:00:00+09:00"}},"수업":rel("old-fri")}};pages["task-"+id]={id:"task-"+id,db:"activities",properties:{"등록":rel(id),"출석":rel("source-"+id),"학습기록":rel("record"),"과제상태":{select:{name:"🔴 미제출"}},"과제 마감":rel()}}}
  const created:any[]=[],calls:any[]=[]
  const result=(results:any[])=>new Response(JSON.stringify({results,has_more:false}),{status:200})
  const fetch=async(input:any,init:any={})=>{

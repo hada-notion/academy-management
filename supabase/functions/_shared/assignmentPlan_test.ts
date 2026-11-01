@@ -27,7 +27,7 @@ Deno.test("v2.6.22 학습활동 계획: 수식 값을 읽고, 과제만 마감�
 	assertEquals(planFromText('{"v":1,"c":"과제","s":"' + S + '","items":[{"a":"' + A1), null)
 })
 
-Deno.test("v2.6.22 학습활동 속성: 과제는 미제출·마감·자동 마감 기준, 평가는 마감 없음", () => {
+Deno.test("학습활동 속성: 과제는 미제출·마감(자동 마감 기준은 쓰지 않음), 평가는 마감 없음", () => {
 	const plan = planFromText(planJson("과제", [{ a: A1, r: R1, d: D1, t: "[과제] 한지민 10.02(금)" }]))!
 	const props: any = activityProps(REC, plan, plan.items[0])
 	assertEquals(props["학습활동"].title[0].text.content, "[과제] 한지민 10.02(금)")
@@ -35,7 +35,7 @@ Deno.test("v2.6.22 학습활동 속성: 과제는 미제출·마감·자동 마�
 	assertEquals(props["수업"].relation[0].id, S)
 	assertEquals(props["과제상태"].select.name, "🔴 미제출")
 	assertEquals(props["과제 마감"].relation[0].id, D1)
-	assertEquals(props["자동 마감 기준"].relation[0].id, D1)
+	assertEquals("자동 마감 기준" in props, false)
 	const ev = planFromText(planJson("평가", [{ a: A1, r: R1, t: "[평가] 한지민" }]))!
 	const evProps: any = activityProps(REC, ev, ev.items[0])
 	assertEquals("과제상태" in evProps || "과제 마감" in evProps, false)

@@ -17,8 +17,8 @@
 // 맞춰 이 죽은 경로를 제거했다 -- 이제 timetableId도 mode=bulk도 없는 호출은 400 에러로 응답한다.
 //
 // Deadline backfill uses each activity's registration, not the first record registration.
-// Candidates include unset/automatic unsubmitted deadlines across weekday timetables.
-// The independent worker rechecks the nearest later attendance and protects manual overrides.
+// Candidates are unsubmitted tasks with an empty deadline, across weekday timetables.
+// The independent worker rechecks the nearest later attendance and never overwrites an existing deadline.
 // Bulk self-calls carry a date/start-time ordered plan; each step still creates one session.
 
 import {

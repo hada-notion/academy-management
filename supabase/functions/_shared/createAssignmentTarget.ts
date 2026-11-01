@@ -36,7 +36,7 @@ import {
 } from "./constants.ts"
 // (2026-09-21, 이식성 리팩토링) 위 4개도 constants.ts로 이동함 — 그 파일 상단 주석 참고.
 import { markRunning, markDone, markError, type StatusSpec } from "./statusTracking.ts"
-import { AUTO_DEADLINE_PROP, findNextDeadline } from "./assignmentDeadline.ts"
+import { findNextDeadline } from "./assignmentDeadline.ts"
 // (2026-09-22, 처리 상태 관리 리팩토링 Phase 3) "출제 처리중"(checkbox)을 활동 생성 상태(select)+활동 생성
 // 처리 시작 시각(date)으로 전환. 마스터플랜 표에는 이 항목이 "학습활동 DB 출제 처리중"으로 적혀
 // 있었지만, 실제로 "학습활동 생성" 버튼과 이 상태 속성은 학습기록(학원) DB에 있다(학습활동 DB는 출제 결과로
@@ -224,7 +224,6 @@ export async function finishCreateAssignment(
 				createProps[PROP_ACTIVITY_ASSIGNMENT_STATUS] = { select: { name: ASSIGNMENT_STATUS_NOT_SUBMITTED } }
 				if (deadlineAttendanceId) {
 					createProps[PROP_ACTIVITY_DEADLINE] = { relation: [{ id: deadlineAttendanceId }] }
-					createProps[AUTO_DEADLINE_PROP] = { relation: [{ id: deadlineAttendanceId }] }
 				}
 			}
 
