@@ -15,7 +15,6 @@
 import { createPage, getPage, mapWithConcurrency, queryAllPages, relIds, updatePageProperties } from "./notionClient.ts"
 import { DS_STUDY_ACTIVITY } from "./constants.ts"
 import { markDone, markError } from "./statusTracking.ts"
-import { AUTO_DEADLINE_PROP } from "./assignmentDeadline.ts"
 import { linkRecordToBatchReports } from "./evaluationPlan.ts"
 import {
 	ASSIGNMENT_GEN_STATUS_SPEC,
@@ -79,10 +78,7 @@ export function activityProps(recordId: string, plan: AssignmentPlan, item: Assi
 	if (plan.session) props["수업"] = { relation: [{ id: plan.session }] }
 	if (plan.category === CATEGORY_ASSIGNMENT) {
 		props["과제상태"] = { select: { name: "🔴 미제출" } }
-		if (item.due) {
-			props["과제 마감"] = { relation: [{ id: item.due }] }
-			props[AUTO_DEADLINE_PROP] = { relation: [{ id: item.due }] }
-		}
+		if (item.due) props["과제 마감"] = { relation: [{ id: item.due }] }
 	}
 	return props
 }
