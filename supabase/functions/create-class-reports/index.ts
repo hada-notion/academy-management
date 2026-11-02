@@ -8,11 +8,9 @@
 // 그대로 큐에 담는다. 본문에 없으면 잠금 확인 때 읽은 클래스 페이지 값을 쓴다. 값이 틀리면 만들지 않고 ⚠️ 오류와
 // '마지막 오류'에 고칠 곳을 남긴다. x-admin-key(웹훅 키) 필요.
 //
-// (v2.8.0) 경로 /evaluations: 알림톡 발송함 [평가 생성]. 본문의 발송함 수식 '평가 계획'(체크한 진도교재마다 평가 1개)을
-// 큐에 넣는다. 처리는 _shared/evaluationPlan.ts. 상태는 발송함 '평가 생성 상태'.
-//
 // (10/31) 진도 평가 생성 경로(/progress-evaluation·/unit-evaluation·/final-evaluation)는 없앴다. 평가는 수업 기록에서만 만들고
 // 교재를 끝낸 표시는 [수료](/completion)가 한다. 예전 경로로 오면 아무것도 바꾸지 않고 410으로 답한다.
+// (11/02) 발송함 [평가 생성](/evaluations)도 버튼이 없어져 같이 없앴다(같은 410).
 //
 // (v2.8.0 루틴, 항목 18) 경로 /routine-checks: 수업 [루틴 체크 생성]. 이 수업 반의 루틴 × 출석으로 루틴 체크 행을 만든다.
 // 처리는 _shared/routineCheck.ts. 상태는 수업 '루틴 체크 상태'.
@@ -26,7 +24,6 @@ import { respondAccepted } from "../_shared/backgroundTask.ts"
 import { enqueueSync, wakeSyncQueueWorker } from "../_shared/syncQueue.ts"
 import { isRunning, markError, markQueued } from "../_shared/statusTracking.ts"
 import { CLASS_REPORT_GEN_STATUS_SPEC, TARGET_CLASS_REPORTS, reportRequestFromProps, type ClassReportsPayload } from "../_shared/classReportPlan.ts"
-import { BATCH_EVAL_STATUS_SPEC, EVAL_PLAN_PROP, TARGET_BATCH_EVALUATIONS, evalPlanText } from "../_shared/evaluationPlan.ts"
 import { ROUTINE_STATUS_SPEC, TARGET_ROUTINE_CHECKS } from "../_shared/routineCheck.ts"
 import { COMPLETION_STATUS_SPEC, TARGET_COMPLETION } from "../_shared/completionReport.ts"
 
@@ -43,7 +40,7 @@ Deno.serve(async (req: Request) => {
 	if (!adminKey || !await authorizeKey(req, adminKey, currentAdminKey)) return json({ error: "unauthorized" }, 401)
 
 	const route = new URL(req.url).pathname.split("/").pop()
-	if (route === "evaluations") return await queueEvaluations(body)
+	if (route === "evaluations") return json({ ok: false, error: "발송함 평가 생성은 없어진 기능입니다. 평가는 수업에서 학습기록으로 만들어 주세요." }, 410)
 	if (route === "final-evaluation" || route === "unit-evaluation" || route === "progress-evaluation") return json({ ok: false, error: "진도 평가 생성은 없어진 기능입니다. 교재를 마치면 [수료]를 눌러 주세요." }, 410)
 	if (route === "routine-checks") return await queueRoutineChecks(body)
 	if (route === "completion") return await queueCompletion(body)
@@ -107,25 +104,6 @@ async function queueRoutineChecks(body: Record<string, unknown>): Promise<Respon
 	} catch (err) {
 		console.error("[create-class-reports/routine-checks] ERROR:", (err as Error).message)
 		await markError(sessionId, ROUTINE_STATUS_SPEC, (err as Error).message).catch(() => {})
-		return json({ ok: false, error: (err as Error).message }, 500)
-	}
-}
-
-// 발송함 [평가 생성]: 잠금 확인 → ⏳ 대기열 → 큐. 계획 검사·발송함 구분 확인은 큐가 한다(발송함을 이미 읽으므로).
-async function queueEvaluations(body: Record<string, unknown>): Promise<Response> {
-	const batchId = extractPageId(body)
-	if (!batchId) return json({ error: "pageId를 찾을 수 없음" }, 400)
-	try {
-		const page = await getPage(batchId)
-		if (isRunning(page, BATCH_EVAL_STATUS_SPEC)) return json({ ok: true, message: "already_processing", batchId })
-		const plan = evalPlanText((body.data as Record<string, any> | undefined)?.properties?.[EVAL_PLAN_PROP]) || null
-		await markQueued(batchId, BATCH_EVAL_STATUS_SPEC)
-		await enqueueSync(TARGET_BATCH_EVALUATIONS, { batchId, plan })
-		wakeSyncQueueWorker()
-		return respondAccepted({ batchId, queued: true, plan: !!plan })
-	} catch (err) {
-		console.error("[create-class-reports/evaluations] ERROR:", (err as Error).message)
-		await markError(batchId, BATCH_EVAL_STATUS_SPEC, (err as Error).message).catch(() => {})
 		return json({ ok: false, error: (err as Error).message }, 500)
 	}
 }

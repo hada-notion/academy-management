@@ -6,7 +6,7 @@
 //   {"v":1,"c":"과제","s":"수업","items":[{"a":"출석","r":"등록","d":"다음 출석(과제만)","t":"[과제] 학생 MM.DD(요일)"}]}
 // 서버가 학생마다 하던 출석 읽기·등록 읽기(이름)·다음 출석 찾기가 없어지고, 학습활동 만들기만 남는다.
 // 원칙: 학습활동은 출석 기준(학생 한 명·출석 한 건). 과제 마감도 그 학생 등록의 다음 출석이다.
-// (v2.8.0) 예외: 출석 없이 만든 평가(클래스 [평가 생성], 평가 전용 반)는 "a"가 비어 있고 등록만 있다.
+// (v2.8.0) 예외: 출석 없이 만든 평가(예전 평가 전용 반)는 "a"가 비어 있고 등록만 있다.
 //   그런 학습활동은 출석 없이 만들고, 리포트는 학습기록 '평가 기간'으로 날짜를 잡는다.
 //   출석·수업으로 만든 평가는 학습기록 '평가 구분'이 비어 있으면 '일일 평가'로 채운다.
 //
@@ -15,7 +15,6 @@
 import { createPage, getPage, mapWithConcurrency, queryAllPages, relIds, updatePageProperties } from "./notionClient.ts"
 import { DS_STUDY_ACTIVITY } from "./constants.ts"
 import { markDone, markError } from "./statusTracking.ts"
-import { linkRecordToBatchReports } from "./evaluationPlan.ts"
 import {
 	ASSIGNMENT_GEN_STATUS_SPEC,
 	CATEGORY_ASSIGNMENT,
@@ -92,8 +91,6 @@ export const assignmentPlanDeps = {
 	markDone: (id: string) => markDone(id, ASSIGNMENT_GEN_STATUS_SPEC),
 	markError: (id: string, message: string) => markError(id, ASSIGNMENT_GEN_STATUS_SPEC, message),
 	legacy: finishCreateAssignment,
-	// (v2.8.0) 발송함 [평가 생성]로 만든 출석 없는 평가 → 학생별 학습활동을 그 발송함 보고서에 붙인다(_shared/evaluationPlan.ts).
-	linkBatch: (recordId: string) => linkRecordToBatchReports(recordId),
 }
 
 const key = (id: string) => id.replace(/-/g, "").toLowerCase()
@@ -162,8 +159,6 @@ export async function processAssignmentQueueItem(payload: { recordId: string; pl
 		if (plan.category === CATEGORY_EVALUATION && plan.items.some((it) => it.att)) {
 			await fillDailyEvalType(recordId, await deps.getPage(recordId).catch(() => null))
 		}
-		// 출석 없는 평가만 발송함에 연결돼 있을 수 있다(일일 학습활동 생성에는 호출이 늘지 않는다).
-		if (plan.category === CATEGORY_EVALUATION && plan.items.some((it) => !it.att)) await deps.linkBatch(recordId)
 		await deps.markDone(recordId)
 		console.log(`[create-assignment] ${recordId} ${plan.category}: 만듦 ${todo.length}, 이미 있음 ${plan.items.length - todo.length}`)
 	} catch (err) {
