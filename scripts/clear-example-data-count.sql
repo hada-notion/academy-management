@@ -4,7 +4,7 @@ declare t text; n bigint;
 begin
   foreach t in array array[
     'cr_sessions', 'cr_attendance', 'cr_records', 'cr_activities',
-    'report_cache', 'attendance_records', 'kiosk_today', 'sync_queue', 'legal_document_numbers'
+    'report_cache', 'attendance_records', 'kiosk_today', 'sync_queue', 'legal_document_numbers', 'lib_books', 'lib_units'
   ] loop
     if to_regclass('public.' || t) is not null then
       execute format('select count(*) from public.%I', t) into n;

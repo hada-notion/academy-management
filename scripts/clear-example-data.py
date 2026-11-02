@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """새 학원 Notion에서 원본 예시 데이터를 비운다(배포 담당자·운영 AI 전용).
 
-원본 템플릿을 새 학원 워크스페이스에 복제한 직후, 키·웹훅을 넣기 전에 한 번 실행한다.
-"비울 DB" 목록(CLEAR_DBS)에 이름이 있는 DB의 페이지만 휴지통으로 보낸다. 목록에 없는 DB
-(메뉴·웹페이지·알림톡 설정·과목·학년·교시·라이브러리·단원목록, 매뉴얼 페이지)는 건드리지 않는다.
+원본 템플릿을 새 학원 워크스페이스에 복제하고 Notion 통합을 연결한 직후, 다른 설정보다 먼저 한 번 실행한다.
+"비울 DB" 목록(CLEAR_DBS)에 이름이 있는 DB의 페이지만 휴지통으로 보낸다. 남기는 것은 알림톡 설정·과목과,
+시스템이 쓰는 메뉴·웹페이지·학년(과목이 학년에 연결됨)뿐이다. 매뉴얼 페이지와 목록에 없는 DB는 건드리지 않는다.
 휴지통으로 보내므로 Notion 휴지통에서 되살릴 수 있다.
 
 - 그 학원 Notion 통합(integration) 토큰을 환경변수 NOTION_TOKEN에 넣고 실행한다.
@@ -13,10 +13,12 @@
   이름이 이 토큰의 워크스페이스 이름과 정확히 같아야 한다(원본에서 잘못 돌리는 일을 막음).
 - 원본 워크스페이스 이름을 환경변수 HADA_SOURCE_WORKSPACE에 넣어 두면 그 워크스페이스에서는
   --apply를 거부한다(원본 지원 PC용 안전장치, 값은 커밋하지 않는다).
+- --keep "<DB 이름>"(여러 번 가능)으로 그 DB를 이번만 남긴다. 원본 리허설은 --keep "업데이트(학원) DB".
 
 사용법:
   python -I scripts/clear-example-data.py
   python -I scripts/clear-example-data.py --apply --confirm-workspace "OO학원"
+  python -I scripts/clear-example-data.py --keep "업데이트(학원) DB"
 """
 import argparse
 import json
@@ -31,6 +33,7 @@ VERSION = "2025-09-03"
 
 # 비울 DB. 하위 데이터부터 지운다(앞에 있는 DB부터). 이름은 Notion DB 제목 그대로.
 CLEAR_DBS = [
+    "루틴 체크(학원) DB",
     "학습활동(학원) DB",
     "학습기록(학원) DB",
     "출석(학원) DB",
@@ -43,6 +46,7 @@ CLEAR_DBS = [
     "교재결제(학원) DB",
     "교재배부(학원) DB",
     "교재비(학원) DB",
+    "가정통신문(학원) DB",
     "알림톡 발송함(학원) DB",
     "자동화 로그(학원) DB",
     "성적(학원) DB",
@@ -51,12 +55,16 @@ CLEAR_DBS = [
     "일정(학원) DB",
     "시간표(학원) DB",
     "등록(학원) DB",
+    "루틴(학원) DB",
     "클래스(학원) DB",
     "학생(학원) DB",
     "학교(학원) DB",
     "근무(학원) DB",
     "강사(학원) DB",
     "자료(학원) DB",
+    "단원목록(학원) DB",
+    "라이브러리(학원) DB",
+    "교시(학원) DB",
     "업데이트(학원) DB",
     "패치·이슈 관리 DB",  # 업데이트(학원) DB의 옛 이름
 ]
@@ -68,9 +76,6 @@ KEEP_DBS = [
     "알림톡 설정(학원) DB",
     "과목(학원) DB",
     "학년(학원) DB",
-    "교시(학원) DB",
-    "라이브러리(학원) DB",
-    "단원목록(학원) DB",
 ]
 
 
@@ -140,7 +145,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--apply", action="store_true", help="실제로 휴지통으로 보낸다(없으면 확인만)")
     parser.add_argument("--confirm-workspace", default="", help="--apply 때 필수: 이 토큰의 워크스페이스 이름")
+    parser.add_argument("--keep", action="append", default=[], help="이번만 남길 비울 DB 이름(여러 번 가능)")
     args = parser.parse_args()
+    bad = [n for n in args.keep if n not in CLEAR_DBS]
+    if bad:
+        raise SystemExit("--keep에 비울 DB 목록에 없는 이름이 있습니다: " + ", ".join(bad))
+    clear_dbs = [n for n in CLEAR_DBS if n not in args.keep]
+    keep_dbs = KEEP_DBS + args.keep
 
     token = os.environ.get("NOTION_TOKEN", "")
     if not token:
@@ -162,18 +173,18 @@ def main():
         by_name.setdefault(name, []).append(ds_id)
 
     unknown = sorted(n for n in by_name if n not in CLEAR_DBS and n not in KEEP_DBS)
-    missing = [n for n in CLEAR_DBS[:-1] if n not in by_name]  # 옛 이름은 없어도 된다
+    missing = [n for n in clear_dbs if n != CLEAR_DBS[-1] and n not in by_name]  # 옛 이름은 없어도 된다
 
     plan, total = [], 0
     print("\n[비울 DB]")
-    for name in CLEAR_DBS:
+    for name in clear_dbs:
         for ds_id in by_name.get(name, []):
             ids = page_ids(token, ds_id)
             plan.append((name, ds_id, ids))
             total += len(ids)
             print(f"  {name}: {len(ids)}건")
     print(f"  합계: {total}건")
-    print("\n[남기는 DB] " + ", ".join(n for n in KEEP_DBS if n in by_name))
+    print("\n[남기는 DB] " + ", ".join(n for n in keep_dbs if n in by_name))
     if missing:
         print("\n[찾지 못한 비울 DB] " + ", ".join(missing) + "  (통합에 공유됐는지 확인)")
     if unknown:
