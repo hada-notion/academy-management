@@ -472,7 +472,8 @@ export async function buildLetterNotice(letter: any): Promise<{ registrationId: 
 	const lines = await studentMonthEvents(studentId, month, regs, unlinked)
 	const fresh: any = await deps.getPage(String(letter.id)).catch(() => letter)
 	// 변수 값: "변수(알림톡)" 수식 → 옛 "(일정안내)" 수식 → 서버 계산(_shared/noticeBlocks.ts alimtalkVar).
-	const f = (name: string, fallback: string) => alimtalkVar(fresh, name, fallback, `${name}(일정안내)`)
+	// (11/2) 가정통신문 (일정안내) 수식은 (알림톡)으로 이름을 바꿨다. 예전 이름은 읽지 않는다.
+	const f = (name: string, fallback: string) => alimtalkVar(fresh, name, fallback)
 	const studentName = studentNameOf(reg)
 	const note = f("전달사항", await letterNote(fresh, regs))
 	if (!lines.length && (!note.trim() || note.trim() === NO_NOTE)) throw new LetterBlocked(`${monthLabel(month)} 학부모 공개 일정과 전달사항이 없어 보내지 않았습니다. 일정이나 발송함 가정통신문 전달사항을 넣은 뒤 [안내문 전송]을 누르세요.`)
