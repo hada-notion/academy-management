@@ -428,7 +428,8 @@ const classNamesOf = (regs: any[]) => Array.from(new Set(regs.map(classNameOfReg
 export const classListText = classListBlock
 
 // (10/29 사용자) 전달사항: 같은 달 반마다 가정통신문 발송함의 '가정통신문 전달사항'(반 이름순). 가정통신문은 반 공지라
-// 학생 개인 메모는 넣지 않는다(개별 전달은 따로 메시지로). 하나뿐이면 문장만, 둘 이상이면 "  • (반 이름) …" 줄. 모두 비면 없음. 문구마다 50자까지.
+// 학생 개인 메모는 넣지 않는다(개별 전달은 따로 메시지로). 하나뿐이면 문장만, 둘 이상이면 반마다 "🏛 반 이름" 줄 아래 "  • 문구".
+// (11/2 사용자) 예전 "  • (반 이름) …"은 솔라피가 첫 줄 앞 공백을 지워 들여쓰기가 어긋났다. 반 이름 줄이 이모지로 시작하면 맞는다. 모두 비면 없음. 문구마다 50자까지.
 export async function letterNote(letter: any, regs: any[]): Promise<string> {
 	const className = new Map(regs.map((r: any) => [key(r.id), classNameOfReg(r)]))
 	const sibs = await Promise.all(relIds(letter?.properties?.[PROP_LETTER_SIBLINGS]).map((id) => monthlyDeps.getPage(id).catch(() => null)))
@@ -446,7 +447,7 @@ export async function letterNote(letter: any, regs: any[]): Promise<string> {
 	perClass.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
 	if (!perClass.length) return noteText("")
 	if (perClass.length === 1) return perClass[0][1]
-	return perClass.map(([name, text]) => `${BULLET}(${name}) ${text}`).join("\n")
+	return perClass.map(([name, text]) => `🏛 ${name}\n${BULLET}${text}`).join("\n")
 }
 
 // 월간 일정 안내 한 통의 변수. 보내기 직전에 '학원 일정'을 다시 넣고 페이지를 다시 읽어 (일정안내) 수식 값을 먼저 쓴다.
