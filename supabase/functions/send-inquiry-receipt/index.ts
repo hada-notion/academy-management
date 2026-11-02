@@ -17,7 +17,7 @@ import {
 } from "../_shared/adminShared.ts"
 import { normalizePhone } from "../_shared/alimtalkShared.ts"
 import { pickProp } from "../_shared/notionClient.ts"
-import { alimtalkVar, inquiryBlock, inquiryInfoBlock } from "../_shared/noticeBlocks.ts"
+import { alimtalkVar, inquiryInfoBlock } from "../_shared/noticeBlocks.ts"
 import { fitVariablesToTemplate } from "../_shared/templateFit.ts"
 import { runInBackground, respondAccepted } from "../_shared/backgroundTask.ts"
 
@@ -50,8 +50,6 @@ type StudentSnapshot = {
   school: string
   grade: string
   status: string
-  // (v2.8.0 통일안) 학생 페이지의 "접수내용(알림톡)" 수식 값(없으면 빈 값 → 서버가 만든다).
-  inquiryBlock?: string
   // (10/29) "접수정보(알림톡)" 수식 값(없으면 서버가 만든다).
   inquiryInfo?: string
 }
@@ -139,7 +137,6 @@ function snapshotFromPage(page: any): StudentSnapshot {
     school: formulaText(page, "학교(설문)") || richText(page, "학교(설문)"),
     grade: formulaText(page, "학년(설문)") || richText(page, "학년(설문)"),
     status: selectText(page, STATUS_PROP),
-    inquiryBlock: formulaText(page, "접수내용(알림톡)"),
     inquiryInfo: alimtalkVar(page, "접수정보", ""),
   }
 }
@@ -319,11 +316,8 @@ async function processStudent(studentId: string, webhookPage: any | null, resend
 
     const variables: Record<string, string> = {
       "#{학생이름}": snapshot.studentName,
-      "#{학교}": snapshot.school || "미입력",
-      "#{학년}": snapshot.grade || "미입력",
       "#{학부모연락처}": snapshot.recipientPhone,
       // (v2.8.0 통일안) 새 템플릿: 👤 학생(항상) + 적은 경우만 🏫 학교·🎓 학년.
-      "#{접수내용}": snapshot.inquiryBlock || inquiryBlock({ studentName: snapshot.studentName, school: snapshot.school, grade: snapshot.grade }),
       // (10/29 다시 신청한 본문) 머리줄 "📋 접수 내용"부터 담는 블록(솔라피가 값 맨 앞 공백을 지우므로).
       "#{접수정보}": snapshot.inquiryInfo || inquiryInfoBlock({ studentName: snapshot.studentName, school: snapshot.school, grade: snapshot.grade }),
     }

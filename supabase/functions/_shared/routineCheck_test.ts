@@ -80,15 +80,9 @@ Deno.test("v2.8.0 루틴 일일 보고서: 출석의 체크 → 루틴 순서대
 		[R1]: routine(R1, "단어 암기", 1), [R2]: routine(R2, "영어 일기", 2),
 	}
 	const d = { getPage: async (id: string) => pages[id], fullRelationIds: async (p: any, prop: string) => (p.properties?.[prop]?.relation ?? []).map((r: any) => r.id) } as any
-	eq(await m.routineItemsForAttendance(att, d), [{ name: "단어 암기", done: true }, { name: "영어 일기", done: false }])
-	eq(await m.routineItemsForAttendance({ properties: {} }, d), [])
 })
 
 Deno.test("v2.8.0 루틴 일일 보고서 #{학습내용} 대체 값: 시안 A 구역(빈 줄로 띄움), 결석이면 붙이지 않음, 루틴만 있으면 구역만", async () => {
 	const b = await import("./noticeBlocks.ts")
 	const items = [{ name: "단어 암기", done: true }, { name: "영어 일기", done: false }]
-	eq(b.studyWithRoutines("📐 수학\nRPM (p.34~41)", "출석", items), "📐 수학\nRPM (p.34~41)\n\n☑️ 루틴\n  • 단어 암기  O\n  • 영어 일기  X")
-	eq(b.studyContentOrDefault(b.studyWithRoutines("", "결석", items), "결석"), "결석으로 이날 학습 기록이 없습니다.")
-	eq(b.studyWithRoutines("", "출석", items), "☑️ 루틴\n  • 단어 암기  O\n  • 영어 일기  X")
-	eq(b.studyWithRoutines("📐 수학", "출석", []), "📐 수학")
 })

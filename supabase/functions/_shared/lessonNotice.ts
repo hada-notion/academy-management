@@ -29,7 +29,7 @@ import {
 } from "./adminShared.ts"
 import { getFormulaText, normalizePhone, resolveAlimtalkRecipients } from "./alimtalkShared.ts"
 import { relIds } from "./notionClient.ts"
-import { alimtalkVar, dateOnly, lessonInfoBlock } from "./noticeBlocks.ts"
+import { alimtalkVar, dateOnly } from "./noticeBlocks.ts"
 import { fitVariablesToTemplate } from "./templateFit.ts"
 import { sessionKind } from "./sessionKind.ts"
 
@@ -104,11 +104,8 @@ export function planLessonNotice(attendance: any, session: any | null, makeupOfI
     // (v2.8.0 구역, 10/30 사용자) 보강 수업과 그 밖의 수업(시간 변경·공휴일 정상 수업 등)을 템플릿으로 나눈다.
     configCategory: makeup ? "보강 수업 안내" : sk === "휴강" ? "휴강 안내" : "수업 일정 안내",
     variables: {
-      "#{수업구분}": alimtalkVar(attendance, "수업구분", label, "수업구분(수업안내)"),
       "#{학생이름}": alimtalkVar(attendance, "학생이름", getFormulaText(attendance, "학생이름(보고서)")),
       "#{클래스}": alimtalkVar(attendance, "클래스", getFormulaText(attendance, "클래스(보고서)")),
-      "#{수업정보}": lessonInfoBlock({ classTime, makeupOf: makeupOfIso ? dateOnly(formatClassTime(makeupOfIso)) : undefined, note }),
-      "#{수업일시}": classTime,
       "#{전달사항}": note,
       // (v2.8.0 구역) [보강 정보]/[휴강 정보]/[수업 정보] 구역: 보강이면 📅 기존 + 🔁 일시, 아니면 📅 일시. 날짜는 서버가 서울 시각으로 만든다.
       // (10/31) 🔁는 다시 하는 수업(보강 일시)에, 결석한 날은 📅 기존.

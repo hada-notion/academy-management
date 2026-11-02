@@ -24,8 +24,7 @@ import {
 import { getFormulaText, sendDailyReportAlimtalk, appendSendLog } from "./alimtalkShared.ts"
 import { refreshDailyReportForSend } from "./dailyReportRefresh.ts"
 import { formatClassTime } from "./lessonNotice.ts"
-import { alimtalkVar, arrivalBlock, dailyConfigCategory, dailySectionVars, dateOnly, fitDailyLength, studyContentOrDefault, studyWithRoutines } from "./noticeBlocks.ts"
-import { routineItemsForAttendance } from "./routineCheck.ts"
+import { alimtalkVar, arrivalBlock, dailyConfigCategory, dailySectionVars, dateOnly, fitDailyLength } from "./noticeBlocks.ts"
 import { relIds } from "./notionClient.ts"
 import { cleanupExpiredReportPageCache } from "./persistentReportPageCache.ts"
 
@@ -74,7 +73,7 @@ async function finish(attendanceId: string, status: "✅ 완료" | "⚠️ 오�
 }
 
 // 테스트에서 무거운 리포트 최신화와 실제 발송을 바꿔 끼울 수 있게 한다.
-export const dailyReportDeps = { refresh: refreshDailyReportForSend, send: sendDailyReportAlimtalk, routines: (page: any) => routineItemsForAttendance(page) }
+export const dailyReportDeps = { refresh: refreshDailyReportForSend, send: sendDailyReportAlimtalk }
 
 export async function processDailyReportQueueItem(payload: { attendanceId: string; clickerUserId?: string | null }): Promise<void> {
   const attendanceId = payload.attendanceId
@@ -105,10 +104,7 @@ export async function processDailyReportQueueItem(payload: { attendanceId: strin
     "#{학생이름}": alimtalkVar(page, "학생이름", v.studentName),
     "#{클래스}": alimtalkVar(page, "클래스", v.className),
     "#{등원정보}": arrival,
-    "#{수업일}": v.classDate,
-    "#{출석상태}": v.attendanceStatus,
     // (v2.8.0 루틴) 루틴 구역(☑️ 루틴)은 출석 '학습내용(알림톡)' 수식이 만든다. 수식이 없거나 비었을 때만 서버가 같은 모양으로.
-    "#{학습내용}": studyContentOrDefault(alimtalkVar(page, "학습내용", getFormulaText(page, "학습내용(알림톡)") ? "" : studyWithRoutines(v.studyContent, v.attendanceStatus, await dailyReportDeps.routines(page))), v.attendanceStatus),
     // (v2.8.0 구역) 일일 학습·활동 보고서의 구역 변수. 출석 (알림톡) 수식을 따른다.
     ...dailySectionVars(page, v.attendanceStatus),
     "#{페이지ID}": REPORT_PATH + "?token=" + access_token,

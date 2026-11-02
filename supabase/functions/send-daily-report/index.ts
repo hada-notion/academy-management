@@ -35,8 +35,7 @@ import { refreshDailyReportForSend } from "../_shared/dailyReportRefresh.ts"
 import { enqueueSync, wakeSyncQueueWorker } from "../_shared/syncQueue.ts"
 import { extractPageId } from "../_shared/notionClient.ts"
 import { formatClassTime } from "../_shared/lessonNotice.ts"
-import { alimtalkVar, arrivalBlock, dailyConfigCategory, dailySectionVars, dateOnly, fitDailyLength, studyContentOrDefault, studyWithRoutines } from "../_shared/noticeBlocks.ts"
-import { routineItemsForAttendance } from "../_shared/routineCheck.ts"
+import { alimtalkVar, arrivalBlock, dailyConfigCategory, dailySectionVars, dateOnly, fitDailyLength } from "../_shared/noticeBlocks.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -131,10 +130,7 @@ Deno.serve(async (req) => {
         "#{학생이름}": alimtalkVar(attendancePage, "학생이름", studentName),
         "#{클래스}": alimtalkVar(attendancePage, "클래스", className),
         "#{등원정보}": arrival,
-        "#{수업일}": classDate,
-        "#{출석상태}": attendanceStatus,
         // (v2.8.0 루틴) 루틴 구역은 '학습내용(알림톡)' 수식이 만든다. 수식이 없거나 비었을 때만 서버가 같은 모양으로.
-        "#{학습내용}": studyContentOrDefault(alimtalkVar(attendancePage, "학습내용", getFormulaText(attendancePage, "학습내용(알림톡)") ? "" : studyWithRoutines(studyContent, attendanceStatus, await routineItemsForAttendance(attendancePage))), attendanceStatus),
         // (v2.8.0 구역) 일일 학습·활동 보고서의 구역 변수. 출석 (알림톡) 수식을 따른다.
         ...dailySectionVars(attendancePage, attendanceStatus),
         "#{페이지ID}": tokenQueryString,

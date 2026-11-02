@@ -28,40 +28,33 @@ Deno.test("v2.8.0 수업 안내: 같은 시각 비교(표기 차이 무시)", ()
 Deno.test("v2.8.0 수업 안내: 보강이면 수업구분 보강 수업, 일반은 정규 수업, 전달사항은 메모 또는 없음, 날짜 26.10.30(금) 17:00", () => {
 	const p1: any = m.planLessonNotice(att(), ses(true))
 	eq(p1.kind, "수업 안내")
-	eq(p1.variables, { "#{수업구분}": "보강 수업", "#{학생이름}": "김하윤", "#{클래스}": "고1 A", "#{수업정보}": "📅 일시  26.10.30(금) 17:00", "#{수업일시}": "26.10.30(금) 17:00", "#{전달사항}": "없음", "#{수업일정}": "📅 일시  26.10.30(금) 17:00" })
+	eq(p1.variables, { "#{학생이름}": "김하윤", "#{클래스}": "고1 A", "#{전달사항}": "없음", "#{수업일정}": "📅 일시  26.10.30(금) 17:00" })
 	// (v2.8.0 구역) 보강 수업은 "보강 수업 안내" 행, 그 밖은 "수업 일정 안내" 행
 	eq([p1.configCategory, (m.planLessonNotice(att(), ses(false)) as any).configCategory], ["보강 수업 안내", "수업 일정 안내"])
 	// (v2.8.0 통일안) 보강 출석에 기존 결석이 있으면 📅 기존 줄 + 🔁 일시(10/31), 메모가 있으면 전달사항 구역
 	const pm: any = m.planLessonNotice(att(), ses(true, "교재를 챙겨 주세요."), "2026-10-12T08:30:00.000Z")
-	eq(pm.variables["#{수업정보}"], "📅 기존  26.10.12(월) 결석\n🔁 일시  26.10.30(금) 17:00\n\n📝 전달사항\n교재를 챙겨 주세요.")
 	eq([pm.variables["#{수업일정}"], pm.variables["#{전달사항}"]], ["📅 기존  26.10.12(월) 결석\n🔁 일시  26.10.30(금) 17:00", "교재를 챙겨 주세요."])
-	// "수업구분(알림톡)" 수식이 옛 "(수업안내)" 수식보다 먼저
-	const withNew: any = att()
-	withNew.properties["수업구분(알림톡)"] = { type: "formula", formula: { type: "string", string: "정규 수업" } }
-	withNew.properties["수업구분(수업안내)"] = { type: "formula", formula: { type: "string", string: "보강 수업" } }
-	eq((m.planLessonNotice(withNew, ses(true)) as any).variables["#{수업구분}"], "정규 수업")
 	const p2: any = m.planLessonNotice(att(), ses(false, "선거일이지만 정상 수업합니다."))
-	eq([p2.variables["#{수업구분}"], p2.variables["#{전달사항}"]], ["정규 수업", "선거일이지만 정상 수업합니다."])
+	eq(p2.variables["#{전달사항}"], "선거일이지만 정상 수업합니다.")
 	eq((m.planLessonNotice(att(), ses(false)) as any).variables["#{전달사항}"], "없음")
 	eq(m.noteText("  교재를\n 꼭  챙겨 주세요 "), "교재를 꼭 챙겨 주세요")
 	eq(m.noteText("가".repeat(60)), "가".repeat(49) + "…")
 	eq(m.noteText(null), "없음")
 	eq([m.formatClassTime("2026-11-03T19:05:00+09:00"), m.formatClassTime("2026-01-04"), m.formatClassTime("2026-10-30T23:30:00.000Z")], ["26.11.03(화) 19:05", "26.01.04(일)", "26.10.31(토) 08:30"])
-	eq((m.planLessonNotice(att(), null) as any).variables["#{수업구분}"], "정규 수업")
+	eq((m.planLessonNotice(att(), null) as any).configCategory, "수업 일정 안내")
 	// 출석의 (수업안내) 수식이 있으면 그 값을 그대로 보낸다(다른 알림톡과 같은 규칙).
 	const withF: any = att()
-	withF.properties["수업구분(수업안내)"] = { type: "formula", formula: { type: "string", string: "보강 수업" } }
 	withF.properties["전달사항(수업안내)"] = { type: "formula", formula: { type: "string", string: "수식 값" } }
 	// 일시 수식은 API가 UTC로 계산해 9시간 어긋나므로(10/27 원본 "09:00") 읽지 않는다.
 	withF.properties["수업일시(수업안내)"] = { type: "formula", formula: { type: "string", string: "26.10.30(금) 08:00" } }
 	const pf: any = m.planLessonNotice(withF, ses(false, "메모"))
-	eq([pf.variables["#{수업구분}"], pf.variables["#{전달사항}"], pf.variables["#{수업일시}"]], ["보강 수업", "수식 값", "26.10.30(금) 17:00"])
+	eq([pf.variables["#{전달사항}"], pf.variables["#{수업일정}"]], ["수식 값", "📅 일시  26.10.30(금) 17:00"])
 })
 
 Deno.test("v2.8.0 수업 안내: 받은 뒤 일시가 바뀌면 새 시간으로 수업 안내를 다시, 같으면 건너뜀, 결석·일시 없음은 안 보냄", () => {
 	const ch: any = m.planLessonNotice(att({ sent: "2026-10-29T17:00:00.000+09:00" }), ses(true))
 	eq(ch.kind, "수업 안내")
-	eq(ch.variables["#{수업일시}"], "26.10.30(금) 17:00")
+	eq(ch.variables["#{수업일정}"], "📅 일시  26.10.30(금) 17:00")
 	eq(ch.variables["#{기존일시}"], undefined)
 	eq(m.planLessonNotice(att({ sent: "2026-10-30T08:00:00.000Z" }), ses(true)), { skip: "" })
 	// 개별 [수업 안내 전송]('개별 전송' 체크)은 같은 일시로 이미 안내했어도 보낸다(10/29).
@@ -122,5 +115,5 @@ Deno.test("v2.8.0 구역: 수업 구분 휴강이면 휴강 안내 행, 선택 �
 	const k = await import("./sessionKind.ts")
 	eq([k.sessionKind({ properties: { "수업 구분": { select: { name: "휴강" } } } }), k.sessionKind({ properties: { "수업 구분": { select: { name: "보강" } } } }), k.sessionKind({ properties: { "보강": { checkbox: true } } }), k.sessionKind({ properties: {} })], ["휴강", "보강", "보강", ""])
 	const off: any = m.planLessonNotice(att(), { properties: { "수업 구분": { select: { name: "휴강" } } } })
-	eq([off.configCategory, off.variables["#{수업구분}"]], ["휴강 안내", "휴강"])
+	eq([off.configCategory, off.variables["#{수업일정}"]], ["휴강 안내", "📅 일시  26.10.30(금) 17:00"])
 })

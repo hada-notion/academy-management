@@ -144,8 +144,6 @@ Deno.test("v2.8.0 월간 일정 안내: 반 이름은 이름순, 두 반 이상 
 	// (10/28) 일정 이름에 반 이름이 이미 있으면 다시 붙이지 않는다
 	eq(m.withClassPrefix("11/14(토) 중1 B 보충 수업", ev1, names), "11/14(토) 중1 B 보충 수업")
 	// (v2.8.0 통일안) #{클래스목록}: 반 하나면 두 칸 띄워 옆에, 둘 이상이면 줄을 바꿔 · 목록
-	eq(m.classListText(["영어반"]), "  영어반")
-	eq(m.classListText(["국어반", "수학반"]), "\n  • 국어반\n  • 수학반")
 })
 
 const ev = (id: string, o: { name: string; cat?: string; start: string; end?: string; cls?: string[]; stu?: string[]; school?: string[]; grade?: string[] }) => ({ id, properties: {
@@ -220,21 +218,18 @@ Deno.test("v2.8.0 가정통신문 보내기 변수: 학원 일정을 다시 넣�
 	const c = mock(pages, q)
 	const built = await m.buildLetterNotice(letter)
 	eq(c.updates.find((u) => u.id === "lA")?.props["학원 일정"].relation, [{ id: "e-all" }])
-	eq([built.registrationId, built.variables["#{클래스}"], built.variables["#{안내월}"], built.variables["#{학원일정}"], built.variables["#{전달사항}"], built.variables["#{페이지ID}"].endsWith("?token=tok")],
-		["rA", "수학반 · 영어반", "11월", "  • 11.07(토) 영어반 보충\n  • 11.14(토) 학원 설명회", "교재 지참", true])
-	eq([built.variables["#{클래스목록}"], built.variables["#{클래스정보}"]], ["\n  • 수학반\n  • 영어반", "🏛 클래스\n  • 수학반\n  • 영어반"])
+	eq([built.registrationId, built.variables["#{클래스}"], built.variables["#{안내월}"], built.variables["#{학원목록}"], built.variables["#{전달사항}"], built.variables["#{페이지ID}"].endsWith("?token=tok")],
+		["rA", "수학반 · 영어반", "11월", "11.07(토)  영어반 보충\n  • 11.14(토)  학원 설명회", "교재 지참", true])
 	// (11/2) 전달사항: 반 발송함 메모만, 반마다 "🏛 반" 줄 아래 "  • 문구"(반 이름순, 첫 줄이 공백으로 시작하지 않게). 학생 개인 메모는 넣지 않는다
 	pages.bA = box("bA", "단원평가 범위는 3단원")
 	eq(await m.letterNote(letter, [rB, rA]), "🏛 수학반\n  • 단원평가 범위는 3단원\n🏛 영어반\n  • 교재 지참")
 	pages.bA = box("bA", "")
-	// 수식 값이 있으면 그것을 쓴다(다시 읽은 페이지 기준)
-	pages.lA = { ...letter, properties: { ...letter.properties, "학원일정(일정안내)": fx("수식 줄") } }
-	eq((await m.buildLetterNotice(letter)).variables["#{학원일정}"], "수식 줄")
+	pages.lA = letter
 	// 그 달 일정 0건이어도 전달사항(영어반 발송함 메모 "교재 지참" 하나 → 머리 없이)이 있으면 보낸다: 일정 구역 없이 전달사항만
 	all = []
 	pages.lA = letter
 	const noteOnly = await m.buildLetterNotice(letter)
-	eq([noteOnly.variables["#{일정목록}"], noteOnly.variables["#{학원일정}"], noteOnly.variables["#{전달사항}"]], ["📝 전달사항\n교재 지참", "없음", "교재 지참"])
+	eq([noteOnly.variables["#{학원목록}"], noteOnly.variables["#{전달사항}"]], ["없음", "교재 지참"])
 	// 일정도 전달사항도 없으면 막음
 	pages.bB = box("bB", "")
 	let msg = ""

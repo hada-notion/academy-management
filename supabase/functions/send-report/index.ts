@@ -62,7 +62,7 @@ import {
 import { refreshStudentReport } from "../_shared/dailyReportRefresh.ts"
 import { runInBackground, respondAccepted } from "../_shared/backgroundTask.ts"
 import { enqueueSync, wakeSyncQueueWorker } from "../_shared/syncQueue.ts"
-import { alimtalkVar, reportConfigChain, reportSectionVars, reportStatusBlock } from "../_shared/noticeBlocks.ts"
+import { alimtalkVar, reportConfigChain, reportSectionVars } from "../_shared/noticeBlocks.ts"
 import { fitVariablesToTemplate } from "../_shared/templateFit.ts"
 
 
@@ -249,14 +249,10 @@ Deno.serve(async (req) => {
           }, chain.fallback.length ? chain.fallback : undefined)
 
           const variables: Record<string, string> = {
-            "#{보고서기간}": reportPeriodLabel,
-            "#{보고서구분}": reportType,
             "#{학생이름}": studentName,
             "#{클래스}": className,
             "#{학습기간}": alimtalkVar(reportPage, "학습기간", studyPeriod),
-            "#{보고서요약}": reportSummary,
             // (v2.8.0 통일안) 큐 경로와 같은 새 템플릿 변수. 보낼 때 템플릿에 있는 것만 남는다.
-            "#{학습현황}": reportStatusBlock(reportSummary),
             // (v2.8.0 구역) 주간·월간 학습·활동 보고서의 구역 변수.
             ...reportSectionVars(reportPage),
             "#{페이지ID}": tokenQueryString,

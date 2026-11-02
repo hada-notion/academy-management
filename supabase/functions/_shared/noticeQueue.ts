@@ -40,7 +40,7 @@ import {
 } from "./alimtalkShared.ts"
 import { refreshStudentReport } from "./dailyReportRefresh.ts"
 import { buildLetterNotice, LetterBlocked } from "./monthlyNotice.ts"
-import { alimtalkVar, BULLET, reportStatusBlock, textbookBlock, tuitionInfoBlock, reportConfigChain, reportSectionVars, textbookListBlock } from "./noticeBlocks.ts"
+import { alimtalkVar, BULLET, reportConfigChain, reportSectionVars, textbookListBlock } from "./noticeBlocks.ts"
 import { fitVariablesToTemplate } from "./templateFit.ts"
 
 export type NoticeKind = "report" | "tuition" | "textbook" | "letter"
@@ -146,13 +146,9 @@ async function prepareReport(page: any): Promise<Prepared> {
 	const studentName = v("학생이름")
 	const summary = getFormulaText(page, "보고서요약(보고서)")
 	const fixed: Record<string, string> = {
-		"#{보고서기간}": v("보고서기간"),
-		"#{보고서구분}": alimtalkVar(page, "보고서구분", reportType),
 		"#{학생이름}": studentName,
 		"#{클래스}": v("클래스"),
 		"#{학습기간}": v("학습기간"),
-		"#{학습현황}": alimtalkVar(page, "학습현황", reportStatusBlock(summary)),
-		"#{보고서요약}": summary,
 		// (v2.8.0 구역) 주간·월간 학습·활동 보고서의 구역 변수.
 		...reportSectionVars(page),
 		"#{페이지ID}": REPORT_PATH + "?token=" + access_token,
@@ -185,17 +181,13 @@ function prepareTuition(page: any): Prepared {
 	const period = getDateRange(page, "청구기간")
 	const amount = getFormulaText(page, "청구금액(표시)")
 	const fixed: Record<string, string> = {
-		"#{청구년월}": tuitionVar(page, "청구년월(수강료안내)", getFormulaText(page, "청구년월(보고서)")),
 		"#{청구기간}": tuitionVar(page, "청구기간(수강료안내)", getFormulaText(page, "청구기간(표시)")),
 		"#{학생이름}": tuitionVar(page, "학생이름(수강료안내)", studentName),
-		"#{수강내역}": tuitionVar(page, "수강내역(수강료안내)", `${BULLET}${getRollupText(page, "클래스(수강료)")}  ${amount}`),
-		"#{청구금액}": tuitionVar(page, "청구금액(수강료안내)", amount),
 	}
 	// (10/29 다시 신청한 본문) 머리줄 "📚 수강 내역"까지 담는 블록(솔라피가 값 맨 앞 공백을 지우므로).
-	fixed["#{수강정보}"] = alimtalkVar(page, "수강정보", tuitionInfoBlock(fixed["#{수강내역}"]))
 	// (v2.8.0 구역, 10/30 사용자) 수강료 청구 안내 [수강 내역] 구역: 반마다 "🏛 반  금액" 한 줄 + "🧾 합계  금액".
 	// 수강료 `수강목록(알림톡)` 수식(같은 달 다른 반 포함)을 따르고, 비었을 때만 이 장 하나로 만든다.
-	fixed["#{수강목록}"] = alimtalkVar(page, "수강목록", `🏛 ${getRollupText(page, "클래스(수강료)") || "-"}  ${amount}\n🧾 합계  ${fixed["#{청구금액}"]}`)
+	fixed["#{수강목록}"] = alimtalkVar(page, "수강목록", `🏛 ${getRollupText(page, "클래스(수강료)") || "-"}  ${amount}\n🧾 합계  ${tuitionVar(page, "청구금액(수강료안내)", amount)}`)
 	return {
 		registrationId,
 		title: studentName || "수강료 안내",
@@ -228,8 +220,6 @@ function prepareTextbook(page: any): Prepared {
 	const fixed: Record<string, string> = {
 		"#{학생이름}": alimtalkVar(page, "학생이름", studentName),
 		"#{클래스}": alimtalkVar(page, "클래스", getRollupText(page, "클래스명(표시)")),
-		"#{교재내역}": alimtalkVar(page, "교재내역", textbookBlock(unpaid)),
-		"#{교재비안내}": unpaid,
 		// (v2.8.0 구역) 교재비 청구 안내 [교재 내역].
 		"#{교재목록}": alimtalkVar(page, "교재목록", textbookListBlock(unpaid)),
 	}
