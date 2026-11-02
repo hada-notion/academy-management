@@ -113,8 +113,8 @@ const sibs = (...ids: string[]) => ({ relation: ids.map((id) => ({ id })) })
 Deno.test("v2.8.0 수강료: 같은 달 수강료를 한 통으로(수강료안내 수식 사용) 보내고 같은 달 수강료 모두 ✅·성공 로그", async () => {
 	const me = tuitionPage("t-math", "⚪ 대기", {
 		"같은 달 수강료": sibs("t-eng", "t-kor"),
-		"청구년월(수강료안내)": formula("26년 11월"), "학생이름(수강료안내)": formula("테스트학생"), "청구기간(수강료안내)": formula("11/1~11/30"),
-		"수강내역(수강료안내)": formula("• 수학반 150,000원\n• 영어반 200,000원\n• 국어반 120,000원"), "청구금액(수강료안내)": formula("470,000원"),
+		"청구년월(알림톡)": formula("26년 11월"), "학생이름(알림톡)": formula("테스트학생"), "청구기간(알림톡)": formula("11/1~11/30"),
+		"수강내역(알림톡)": formula("• 수학반 150,000원\n• 영어반 200,000원\n• 국어반 120,000원"), "청구금액(알림톡)": formula("470,000원"),
 	})
 	const pages = { "t-math": me, "t-eng": tuitionPage("t-eng", ""), "t-kor": tuitionPage("t-kor", "⚪ 대기") }
 	const { calls, restore } = fake(me, { pages })

@@ -170,8 +170,8 @@ async function prepareReport(page: any): Promise<Prepared> {
 // (v2.8.0) 수강료 안내는 같은 학생의 같은 달 수강료(듣는 반마다 한 장, '같은 달 수강료')를 한 통으로 보낸다.
 // 문구는 수강료 페이지의 (수강료안내) 수식 값을 그대로 쓴다(수강 내역 줄·합계가 Notion에서 계산됨). 수식이 없거나 비면
 // 이 한 장만 담은 예전 모양으로 보낸다(운영에 수식이 아직 없을 때).
-// "청구년월(수강료안내)" 같은 옛 이름을 넘기면 "청구년월(알림톡)"을 먼저 읽는다.
-const tuitionVar = (page: any, legacy: string, fallback: string) => alimtalkVar(page, legacy.replace(/\(수강료안내\)$/, ""), fallback, legacy)
+// (11/2) 수강료 (수강료안내) 수식은 (알림톡)으로 이름을 바꿨다. "청구년월(수강료안내)"를 넘기면 "청구년월(알림톡)"만 읽는다.
+const tuitionVar = (page: any, legacy: string, fallback: string) => alimtalkVar(page, legacy.replace(/\(수강료안내\)$/, ""), fallback)
 function prepareTuition(page: any): Prepared {
 	const registrationId = getRelationFirstId(page, "등록")
 	if (!registrationId) throw new Error("이 수강료 안내에 연결된 등록이 없습니다.")
