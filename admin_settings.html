@@ -158,12 +158,15 @@
 <section class="dash-col setup-row" id="clear-card" hidden><h3 class="subhead">예시 데이터 비우기 (최초 설치 때 한 번)</h3><p class="help">복제한 템플릿에 들어 있는 원본 예시 데이터를 이 학원 Notion에서 지웁니다. 알림톡 설정·과목만 남깁니다.</p><div class="status" id="clear-summary"></div><button class="secondary wide" id="open-clear" type="button">비울 데이터 확인</button></section>
 </div>
 <div id="clear-panel" hidden>
-<div class="status warn"><strong>되돌리기 어렵습니다.</strong>Notion 휴지통으로 보내 30일 안에 되살릴 수는 있지만, 한 건씩 되살려야 합니다. 설치가 끝나 실제로 쓰기 시작한 뒤에는 누르지 않습니다. 한 번 끝나면 이 기능은 잠깁니다.</div>
+<div class="status warn" id="clear-warn"><strong>되돌리기 어렵습니다.</strong>Notion 휴지통으로 보내 30일 안에 되살릴 수는 있지만, 한 건씩 되살려야 합니다. 설치가 끝나 실제로 쓰기 시작한 뒤에는 누르지 않습니다. 한 번 끝나면 이 기능은 잠깁니다.</div>
 <p class="help" id="clear-workspace"></p>
+<div id="clear-select">
 <div class="clear-head"><h3 class="subhead">비울 DB</h3><label class="clear-all"><input type="checkbox" id="clear-all">전체 선택</label></div><p class="clear-legend"><span><b class="tag req">필수</b>예시 학생·업무 기록이라 비웁니다</span><span><b class="tag opt">선택</b>그대로 써도 되는 기준 자료라 골라서 비웁니다</span></p><div id="clear-dbs"></div>
 <p class="help" id="clear-keep"></p>
 <p class="help" id="clear-missing" hidden></p>
 <details class="clear-other help" id="clear-other" hidden><summary id="clear-other-sum"></summary><p id="clear-other-text"></p></details>
+</div>
+<div class="status" id="clear-done" hidden></div>
 <div class="clear-progress" id="clear-progress" hidden><div class="bar"><span id="clear-bar"></span></div><span class="muted" id="clear-count"></span><button class="secondary" id="clear-stop" type="button" hidden>중단</button></div>
 <form id="clear-form" class="narrow">
 <label for="clear-confirm">확인을 위해 워크스페이스 이름을 그대로 입력</label><input type="text" id="clear-confirm" autocomplete="off" spellcheck="false" maxlength="200" required>
@@ -228,6 +231,6 @@
 <noscript><p class="notice">관리자 설정을 사용하려면 JavaScript가 필요합니다.</p></noscript>
 </div>
 <script src="assets/hada-shortcuts.js?v=e1c30e10"></script>
-<script src="hada_config.js"></script><script src="admin_auth.js?v=4ffde89c"></script><script src="admin_settings.js?v=d4200bbe"></script>
+<script src="hada_config.js"></script><script src="admin_auth.js?v=4ffde89c"></script><script src="admin_settings.js?v=d298cd2e"></script>
 </body>
 </html>

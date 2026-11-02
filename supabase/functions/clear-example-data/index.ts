@@ -6,7 +6,7 @@
 //   action "stop": 진행 중이면 멈춘다(처리 중인 묶음까지만 지운다)
 // 지울 DB 목록과 잠금 규칙은 _shared/exampleClear.ts.
 import { CORS_HEADERS, requireAdminKey } from "../_shared/adminShared.ts"
-import { canStart, ClearError, readFlag, start, status, stop } from "../_shared/exampleClear.ts"
+import { canStart, ClearError, KEEP_DBS, readFlag, start, status, stop } from "../_shared/exampleClear.ts"
 
 const json = (body: unknown, code = 200) =>
   new Response(JSON.stringify(body), { status: code, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } })
@@ -20,7 +20,7 @@ Deno.serve(async (req: Request) => {
   try {
     if (body.action === "state") {
       const { value, updatedAt } = await readFlag()
-      return json({ flag: value, updatedAt, canStart: canStart(value, updatedAt) })
+      return json({ flag: value, updatedAt, canStart: canStart(value, updatedAt), keep: KEEP_DBS })
     }
     if (body.action === "status") return json(await status())
     if (body.action === "start") return json(await start(String(body.workspace ?? ""), body.dbs))
