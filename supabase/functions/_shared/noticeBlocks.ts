@@ -71,8 +71,9 @@ export function arrivalBlock(o: { classDate: string; status: string; makeupOf?: 
 	].join("\n")
 }
 
+// (11/2 시험 발송) 출석 `출석상태(보고서)` 수식은 옛 템플릿용이라 둘째 줄에 "📝 과제상태: …"가 붙는다. 첫 줄(출결)만 쓴다.
 function attendanceLabel(status: string): string {
-	const s = status.trim().replace(/^[^\p{L}\p{N}\s]+\s*/u, "")
+	const s = status.trim().split("\n")[0].trim().replace(/^[^\p{L}\p{N}\s]+\s*/u, "")
 	return s === "보강" ? "출석(보강)" : s || "-"
 }
 

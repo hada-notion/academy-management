@@ -17,6 +17,7 @@ Deno.test("v2.8.0 통일안 블록: 기존·전달사항은 있을 때만, 일�
 	eq(b.arrivalBlock({ classDate: "26.10.31(토)", status: "🟢 출석", makeupOf: "26.10.12(월)" }), "📅 기존  26.10.12(월) 결석\n🔁 수업일  26.10.31(토)\n✅ 출결  출석")
 	eq(b.arrivalBlock({ classDate: "26.10.29(목)", status: "🔵 보강" }), "📅 수업일  26.10.29(목)\n✅ 출결  출석(보강)")
 	eq(b.arrivalBlock({ classDate: "26.10.28(수)", status: "결석" }), "📅 수업일  26.10.28(수)\n✅ 출결  결석")
+	eq(b.arrivalBlock({ classDate: "26.10.28(수)", status: "🟢 출석\n📝 과제상태: 🔴 미제출" }), "📅 수업일  26.10.28(수)\n✅ 출결  출석")
 	eq(b.studyContentOrDefault("  ", "🔴 결석"), "결석으로 이날 학습 기록이 없습니다.")
 	eq(b.studyContentOrDefault("", "🟢 출석"), "이날 학습 기록이 없습니다.")
 	eq(b.studyContentOrDefault("📐 수학", "결석"), "📐 수학")
