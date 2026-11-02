@@ -223,9 +223,9 @@ Deno.test("v2.8.0 가정통신문 보내기 변수: 학원 일정을 다시 넣�
 	eq([built.registrationId, built.variables["#{클래스}"], built.variables["#{안내월}"], built.variables["#{학원일정}"], built.variables["#{전달사항}"], built.variables["#{페이지ID}"].endsWith("?token=tok")],
 		["rA", "수학반 · 영어반", "11월", "  • 11.07(토) 영어반 보충\n  • 11.14(토) 학원 설명회", "교재 지참", true])
 	eq([built.variables["#{클래스목록}"], built.variables["#{클래스정보}"]], ["\n  • 수학반\n  • 영어반", "🏛 클래스\n  • 수학반\n  • 영어반"])
-	// (10/29) 전달사항: 반 발송함 메모만 "  • (반) 문구"(반 이름순). 학생 개인 메모는 넣지 않는다
+	// (11/2) 전달사항: 반 발송함 메모만, 반마다 "🏛 반" 줄 아래 "  • 문구"(반 이름순, 첫 줄이 공백으로 시작하지 않게). 학생 개인 메모는 넣지 않는다
 	pages.bA = box("bA", "단원평가 범위는 3단원")
-	eq(await m.letterNote(letter, [rB, rA]), "  • (수학반) 단원평가 범위는 3단원\n  • (영어반) 교재 지참")
+	eq(await m.letterNote(letter, [rB, rA]), "🏛 수학반\n  • 단원평가 범위는 3단원\n🏛 영어반\n  • 교재 지참")
 	pages.bA = box("bA", "")
 	// 수식 값이 있으면 그것을 쓴다(다시 읽은 페이지 기준)
 	pages.lA = { ...letter, properties: { ...letter.properties, "학원일정(일정안내)": fx("수식 줄") } }
