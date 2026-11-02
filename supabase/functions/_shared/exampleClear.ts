@@ -78,8 +78,11 @@ export const GROUPS: { name: string; required: boolean; dbs: string[] }[] = [
 export const groupOf = (name: string) => GROUPS.find((g) => g.dbs.includes(name))
 
 const OLD_NAME = CLEAR_DBS[CLEAR_DBS.length - 1]
-// 한 큐 항목이 지우는 최대 건수. 건마다 PAUSE_MS를 쉬어 Notion 평균 초당 3회 한도 안에 두고, 워커 시간 예산(100초) 안에 끝낸다.
-const BATCH = 60
+// 한 큐 항목이 지우는 최대 건수와 시간. 건마다 PAUSE_MS를 쉬어 Notion 평균 초당 3회 한도 안에 둔다.
+// 수업처럼 관계가 많은 페이지는 휴지통으로 보내는 데 몇 초씩 걸려, 60건이면 함수 실행 시간 한도를 넘겨 끊겼다(11/2).
+// 그래서 건수를 줄이고 ITEM_BUDGET_MS가 지나면 그 자리에서 멈추고 같은 단계를 다시 넣는다.
+const BATCH = 25
+const ITEM_BUDGET_MS = 60_000
 const PAUSE_MS = 350
 // 진행 중인데 이 시간 동안 소식이 없으면 멈춘 것으로 보고 다시 시작할 수 있게 한다.
 export const STALE_MS = 20 * 60_000
@@ -320,15 +323,18 @@ export async function processExampleClearItem(payload: Record<string, unknown>):
       const ids = await pageIds(ds, BATCH + 1)
       const batch = ids.slice(0, BATCH)
       let done = value.done ?? 0
+      const started = Date.now()
+      let cut = false
       for (let i = 0; i < batch.length; i++) {
+        if (Date.now() - started > ITEM_BUDGET_MS) { cut = true; break }
         await archivePage(batch[i])
         done++
         await sleep(PAUSE_MS)
         // 20건마다 중단 여부를 본다(누르고 나서 몇 초 안에 멈춘다).
-        if (i % 20 === 19 && !(await writeIfRunning({ ...value, done, current: name }))) return
+        if (i % 10 === 9 && !(await writeIfRunning({ ...value, done, current: name }))) return
       }
       if (!(await writeIfRunning({ ...value, done, current: name }))) return
-      await enqueueSync(TARGET_EXAMPLE_CLEAR, { step: ids.length > BATCH ? step : step + 1 })
+      await enqueueSync(TARGET_EXAMPLE_CLEAR, { step: cut || ids.length > BATCH ? step : step + 1 })
       return
     }
     for (let i = 0; i < plan.length; i++) {
