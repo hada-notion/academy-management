@@ -88,9 +88,10 @@ export function batchTitle(req: ReportRequest): string {
 	return `${req.className ? req.className + " " : ""}${req.kind} ${mmdd(req.start)}~${mmdd(req.end)}`
 }
 
-// 보고서 이름: "26.10 강민호 주간 보고서" (v2.7 등록 자동화 [생성] 보고서의 제목 수식과 같다)
+// 보고서 이름: "강민호 중2 A 주간 보고서 10.19~10.25"(학생 · 반 · 구분 · 기간). 보고서 DB [편집] 보고서 이름 수식과 같은 꼴.
+// (11/2 사용자) 예전 "26.10 강민호 주간 보고서"는 반이 없어 두 반 학생의 보고서가, 기간이 없어 한 달의 주간 보고서들이 이름이 같았다.
 export function reportTitle(req: ReportRequest, studentName: string): string {
-	return `${req.start.slice(2, 4)}.${req.start.slice(5, 7)} ${studentName} ${req.kind}`
+	return `${[studentName, req.className, req.kind].filter(Boolean).join(" ")} ${mmdd(req.start)}~${mmdd(req.end)}`
 }
 
 // 기간 안에 다니는 등록: 등록일이 있고 기간 끝 이전, 종료일이 비었거나 기간 시작 이후(v2.7 버튼 변수 '대상등록'과 같다).
@@ -111,6 +112,15 @@ export function studentNameOf(reg: any): string {
 	if (prop?.formula?.string) return String(prop.formula.string).trim()
 	for (const p of Object.values(reg?.properties ?? {}) as any[]) {
 		if (p?.type === "title") return textOf(p.title).trim()
+	}
+	return ""
+}
+
+// 등록의 반 이름: '클래스명(등록)' 롤업(수료 보고서 이름에 쓴다).
+export function classNameOfReg(reg: any): string {
+	for (const item of reg?.properties?.["클래스명(등록)"]?.rollup?.array ?? []) {
+		const s = textOf(item?.title ?? item?.rich_text).trim()
+		if (s) return s
 	}
 	return ""
 }

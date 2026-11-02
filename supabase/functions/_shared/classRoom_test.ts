@@ -81,7 +81,7 @@ async function rejects(fn: () => Promise<unknown>, status: number) {
 
 Deno.test("date helpers use Seoul time and the existing title shape", () => {
  assert(room.seoulLabel("2026-10-12T15:30:00.000Z") === "10.13(화)")
- assert(room.recordTitle("과제", "실험 정리", "중1 B", D) === "[과제] 실험 정리(중1 B) 10.13(화)")
+ assert(room.recordTitle("과제", "실험 정리", "중1 B", D) === "[과제] 실험 정리 · 중1 B 10.13(화)")
  assert(room.recordTitle("학습", "개념원리", "", D) === "[학습] 개념원리 10.13(화)")
  const r = room.seoulDayRange("2026-10-13"); assert(r.start === "2026-10-12T15:00:00.000Z" && r.end === "2026-10-13T15:00:00.000Z")
 })
@@ -237,7 +237,7 @@ Deno.test("books: owners and template grouping data", () => withMock(async () =>
 Deno.test("records: group book links the class, repeat returns the existing record", () => withMock(async (f) => {
  const r1 = await room.createRecords({ sessionId: "s1", kind: "학습", bookIds: ["group"] })
  const rec = f.created[0]; assert(r1.records[0].created && ids(rec, "등록") === "ra,rb" && ids(rec, "출석") === "aa,ab" && ids(rec, "교재") === "regular" && ids(rec, "과목") === "math")
- assert(rec.properties["학습"].title[0].text.content === "[학습] 개념원리 1-2(중1 B) 10.13(화)" && rec.properties["보강"] === undefined && rec.properties["학습정보 수정일"])
+ assert(rec.properties["학습"].title[0].text.content === "[학습] 개념원리 1-2 · 중1 B 10.13(화)" && rec.properties["보강"] === undefined && rec.properties["학습정보 수정일"])
  f.pages.s1.properties["학습기록"] = rel(rec.id)
  const r2 = await room.createRecords({ sessionId: "s1", kind: "학습", bookIds: ["group"] })
  assert(!r2.records[0].created && r2.records[0].id === rec.id && f.created.length === 1)
@@ -245,12 +245,12 @@ Deno.test("records: group book links the class, repeat returns the existing reco
 Deno.test("records: template batch makes one record per student's own book", () => withMock(async (f) => {
  const r = await room.createRecords({ sessionId: "s1", kind: "과제", bookIds: ["indA", "indB"] })
  assert(r.records.length === 2 && f.created.map((p) => ids(p, "등록") + "/" + ids(p, "출석")).join() === "ra/aa,rb/ab")
- assert(f.created[0].properties["학습"].title[0].text.content === "[과제] RPM(김하늘)(중1 B) 10.13(화)")
+ assert(f.created[0].properties["학습"].title[0].text.content === "[과제] RPM(김하늘) · 중1 B 10.13(화)")
 }))
 Deno.test("records: no book uses the topic; chosen students only", () => withMock(async (f) => {
  await room.createRecords({ sessionId: "s1", kind: "평가", topic: "단원 평가", registrationIds: ["rb"] })
  const rec = f.created[0]; assert(ids(rec, "등록") === "rb" && ids(rec, "출석") === "ab" && rec.properties["진도교재"] === undefined)
- assert(rec.properties["주제"].rich_text[0].text.content === "단원 평가" && rec.properties["학습"].title[0].text.content === "[평가] 단원 평가(중1 B) 10.13(화)")
+ assert(rec.properties["주제"].rich_text[0].text.content === "단원 평가" && rec.properties["학습"].title[0].text.content === "[평가] 단원 평가 · 중1 B 10.13(화)")
  const r3 = await room.createRecords({ sessionId: "s1", kind: "학습", topic: "실험 정리", range: " p.1-3 ", content: "• 관찰" })
  const rec3 = f.created.find((p) => p.id === r3.records[0].id); assert(rec3.properties["범위"].rich_text[0].text.content === "p.1-3" && rec3.properties["내용"].rich_text[0].text.content === "• 관찰", "range and content at creation")
  await rejects(() => room.createRecords({ sessionId: "s1", kind: "학습", topic: "x", range: 3 }), 400)
@@ -270,9 +270,9 @@ Deno.test("update record: topic/range/content and title follow the rule", () => 
  f.pages[id].properties["수업"] = rel("s1")
  await room.updateRecord({ recordId: id, topic: "실험 정리", range: "p.12-15", content: "• 결과 정리" })
  const w = f.writes.at(-1)!.body.properties
- assert(w["주제"].rich_text[0].text.content === "실험 정리" && w["범위"].rich_text[0].text.content === "p.12-15" && w["학습"].title[0].text.content === "[학습] 실험 정리(중1 B) 10.13(화)")
+ assert(w["주제"].rich_text[0].text.content === "실험 정리" && w["범위"].rich_text[0].text.content === "p.12-15" && w["학습"].title[0].text.content === "[학습] 실험 정리 · 중1 B 10.13(화)")
  await room.updateRecord({ recordId: id, bookId: "group" })
- const w2 = f.writes.at(-1)!.body.properties; assert(ids({ properties: w2 }, "진도교재") === "group" && w2["학습"].title[0].text.content === "[학습] 개념원리 1-2(중1 B) 10.13(화)")
+ const w2 = f.writes.at(-1)!.body.properties; assert(ids({ properties: w2 }, "진도교재") === "group" && w2["학습"].title[0].text.content === "[학습] 개념원리 1-2 · 중1 B 10.13(화)")
 }))
 Deno.test("save attendance and activities: validated, stamped for the report sync", () => withMock(async (f) => {
  await room.saveAttendance([{ attendanceId: "ab", status: "🔴 결석", memo: "병결", comment: "다음 시간 보충해요" }])

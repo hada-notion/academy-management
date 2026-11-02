@@ -230,7 +230,7 @@ export async function createIndividualBooksForRegistration(registrationId: strin
 		const libId = libraryIds(t)[0]
 		const bookName = (libId && titles.get(libId)) || "라이브러리 연결 필요"
 		const properties: Record<string, unknown> = {
-			[PROP_BOOK_TITLE]: { title: [{ text: { content: `${bookName}(${reg.name})` } }] },
+			[PROP_BOOK_TITLE]: { title: [{ text: { content: `${bookName} · ${reg.name}` } }] },
 			[PROP_TEMPLATE_RELATION]: { relation: [{ id: t.id }] },
 			[PROP_PROGRESS_MODE]: { select: { name: selectName(t, PROP_PROGRESS_MODE) ?? "개별 진도" } },
 			[PROP_PROGRESS_STATUS]: { status: { name: STATUS_NEXT } },

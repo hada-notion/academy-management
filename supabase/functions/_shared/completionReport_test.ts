@@ -87,7 +87,7 @@ Deno.test("v2.8.0 수료 학생 1건: 이 교재 기록·학습활동·출석만
 	pages[B].properties["마지막 오류"] = txt("")
 	await m.processCompletionReportQueueItem({ bookId: B, batchId: "bt", regId: R1, start: "2026-10-01", end: "2026-10-30", bookName: "기억에 남는 풍경 그리기", last: true })
 	const p = c.created[0].props
-	eq([c.created[0].ds, p["보고서"].title[0].text.content, p["보고서 구분"].select.name, p["보고서 기간"].date, p["진도교재"].relation[0].id], ["reports", "학생r1 수료 보고서 기억에 남는 풍경 그리기", "수료 보고서", { start: "2026-10-01", end: "2026-10-30" }, B])
+	eq([c.created[0].ds, p["보고서"].title[0].text.content, p["보고서 구분"].select.name, p["보고서 기간"].date, p["진도교재"].relation[0].id], ["reports", "학생r1 수료 보고서 10.01~10.30", "수료 보고서", { start: "2026-10-01", end: "2026-10-30" }, B])
 	eq([p["학습기록"].relation.map((r: any) => r.id), p["학습활동"].relation.map((r: any) => r.id), p["출석"].relation.map((r: any) => r.id), p["일괄전송 선택"].checkbox], [["rec1"], ["act1"], ["att1"], true])
 	eq(c.marks, ["done"])
 })

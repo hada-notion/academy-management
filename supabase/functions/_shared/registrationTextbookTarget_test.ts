@@ -87,7 +87,7 @@ const request = (route: string, id: string, authorized = true) => new Request("h
 Deno.test("등록 생성: 개별교재 클래스 미복사·등록/출처/라이브러리·초기 이름", () => withMock(async f => {
  await target.createIndividualBooksForRegistration("a"); assert(f.created.length === 1); const p = f.created[0]
  assert(!("클래스" in p.properties)); assert(ids(p,"등록") === "a" && ids(p,"반별교재") === "template" && ids(p,"라이브러리") === "regular")
- assert(p.properties["진도교재"].title[0].text.content === "쎈 중등 수학 3-2(김철수 중3 A)"); assert(p.properties["진행상태"].status.name === "다음 교재")
+ assert(p.properties["진도교재"].title[0].text.content === "쎈 중등 수학 3-2 · 김철수 중3 A"); assert(p.properties["진행상태"].status.name === "다음 교재")
 }))
 Deno.test("등록 버튼 반복 실행: 같은 등록+기준은 중복 생성하지 않음", () => withMock(async f => {
  await target.createIndividualBooksForRegistration("a"); await target.createIndividualBooksForRegistration("a"); assert(f.created.length === 1)
@@ -154,12 +154,12 @@ Deno.test("기준 51개: 출처 필터를 50개씩 나누고 클래스 없이 �
  assert(q.every(c=>c.body.filter.or.every((x:any)=>x.property==="반별교재")))
 }))
 Deno.test("라이브러리 미연결이면 새 제목에 연결 필요 표시", () => withMock(async f => {
- f.pages.template.properties["라이브러리"]=rel(); await target.createIndividualBooksForRegistration("a"); assert(f.created[0].properties["진도교재"].title[0].text.content==="라이브러리 연결 필요(김철수 중3 A)")
+ f.pages.template.properties["라이브러리"]=rel(); await target.createIndividualBooksForRegistration("a"); assert(f.created[0].properties["진도교재"].title[0].text.content==="라이브러리 연결 필요 · 김철수 중3 A")
 }))
 Deno.test("옛 속성 이름 정규교재도 읽고 같은 이름으로 쓴다(Notion 이름을 아직 안 바꾼 학원)", () => withMock(async f => {
  const t=f.pages.template.properties;t["정규교재"]=t["라이브러리"];delete t["라이브러리"]
  await target.createIndividualBooksForRegistration("a"); const p=f.created[0]
- assert(ids(p,"정규교재")==="regular" && !("라이브러리" in p.properties)); assert(p.properties["진도교재"].title[0].text.content==="쎈 중등 수학 3-2(김철수 중3 A)")
+ assert(ids(p,"정규교재")==="regular" && !("라이브러리" in p.properties)); assert(p.properties["진도교재"].title[0].text.content==="쎈 중등 수학 3-2 · 김철수 중3 A")
 }))
 Deno.test("등록 버튼 핸들러: 인증 유지·202·처리 상태 완료", () => withMock(async f => {
  useUuidIds(f)
@@ -200,7 +200,7 @@ Deno.test("학습기록: 보강 수업은 반 교재도 가진 학생만 연결�
 Deno.test("서식으로 나뉜 교재명·등록명도 전체 제목 사용", () => withMock(async f => {
  f.pages.regular.properties["교재명"].title=[{plain_text:"쎈 ",text:{content:"쎈 "}},{plain_text:"중등 수학 3-2",text:{content:"중등 수학 3-2"}}]
  f.pages.a.properties["이름"].title=[{plain_text:"김철수 ",text:{content:"김철수 "}},{plain_text:"중3 A",text:{content:"중3 A"}}]
- await target.createIndividualBooksForRegistration("a");assert(f.created[0].properties["진도교재"].title[0].text.content==="쎈 중등 수학 3-2(김철수 중3 A)")
+ await target.createIndividualBooksForRegistration("a");assert(f.created[0].properties["진도교재"].title[0].text.content==="쎈 중등 수학 3-2 · 김철수 중3 A")
 }))
 Deno.test("그룹 전용 반은 개별교재 출처 조회를 하지 않음", () => withMock(async f => {
  f.pages.template.properties["진도방식"].select.name="그룹 진도"; await target.getPendingClassTextbookRegistrations("class");assert(!f.calls.some(c=>c.body.filter?.or))

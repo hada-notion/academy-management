@@ -124,7 +124,7 @@ export function seoulTime(iso: string | null): string {
 }
 // 학습기록 제목 규칙: [구분] 교재명 또는 주제(클래스) 날짜
 export function recordTitle(kind: string, subject: string, className: string, dateIso: string | null): string {
-	const classPart = className ? `(${className})` : ""
+	const classPart = className ? ` · ${className}` : ""
 	return [`[${kind}]`, `${subject}${classPart}`, seoulLabel(dateIso)].filter(Boolean).join(" ").trim()
 }
 

@@ -263,7 +263,7 @@ export async function finishCreateLearningRecord(sessionId: string): Promise<unk
 				}
 
 				const dateLabel = sessionDate ? formatKoreanDateLabel(sessionDate) : ""
-				const classPart = className ? `(${className})` : ""
+				const classPart = className ? ` · ${className}` : ""
 				const title = [`[학습]`, `${regularBookTitle}${classPart}`, dateLabel]
 					.filter(Boolean)
 					.join(" ")
@@ -366,7 +366,7 @@ export async function finishCreateLearningRecordForAttendance(attendanceId: stri
 			const regularBookTitle = regularBookPage ? getTitle(regularBookPage) : ""
 
 			const dateLabel = attendanceDate ? formatKoreanDateLabel(attendanceDate) : ""
-			const classPart = className ? `(${className})` : ""
+			const classPart = className ? ` · ${className}` : ""
 			const title = [`[보강]`, `${regularBookTitle}${classPart}`, dateLabel]
 				.filter(Boolean)
 				.join(" ")

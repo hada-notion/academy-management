@@ -160,7 +160,8 @@ export async function findClassMailbox(classId: string, month: string, create: {
 	const same = found.find((b: any) => samePeriod(b, PROP_MAILBOX_PERIOD, range))
 	if (same || !create) return same ?? null
 	return await deps.createPage(ds, {
-		[PROP_MAILBOX_TITLE]: { title: [{ text: { content: `${month.slice(2, 4)}.${month.slice(5, 7)} ${create.className} ${kind}` } }] },
+		// (11/2) 이름은 보고서 발송함("반 주간 보고서 10.19~10.25")처럼 반 → 구분 → 기간: "중1 A 수학 수강료 26.12".
+		[PROP_MAILBOX_TITLE]: { title: [{ text: { content: `${create.className} ${kind} ${month.slice(2, 4)}.${month.slice(5, 7)}` } }] },
 		[PROP_MAILBOX_KIND]: { select: { name: kind } },
 		[PROP_MAILBOX_PERIOD]: { date: { start: range.start, end: range.end } },
 		[PROP_MAILBOX_CLASS]: { relation: [{ id: classId }] },
