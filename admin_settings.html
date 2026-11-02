@@ -52,6 +52,10 @@
 .usage-summary{font-weight:600;margin:0;white-space:nowrap}
 .bar{flex:1;height:var(--space-2);background:var(--brand-soft);border-radius:var(--radius-pill);overflow:hidden}
 .bar span{display:block;height:100%;background:var(--success-ink);width:0;transition:width .3s}
+.setup-row{margin-top:var(--space-6)}
+.clear-list{list-style:none;margin:var(--space-3) 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--space-1) var(--space-5);font-size:var(--text-small)}
+.clear-list li{display:flex;justify-content:space-between;gap:var(--space-3);border-bottom:1px solid var(--brand-border);padding:var(--space-1) 0}
+.clear-progress{display:flex;align-items:center;gap:var(--space-4);margin:var(--space-4) 0}
 .cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-4);align-items:stretch}
 .dbcard{border:1px solid var(--brand-border);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4);background:var(--surface)}
 .dbhead{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-1) var(--space-3);margin-bottom:var(--space-2)}
@@ -125,7 +129,23 @@
 <div id="dashboard" hidden><div class="dash-grid">
 <section class="dash-col"><h3 class="subhead">관리자 비밀번호</h3><p class="help">키오스크·법정 서류·학교 검색·수업 관리 화면에서 씁니다.</p><div class="status" id="due-status"></div><button class="primary" id="start-change" type="button">비밀번호 변경</button></section>
 <section class="dash-col"><h3 class="subhead">Notion 웹훅 키</h3><p class="help">Notion 버튼·자동화가 서버를 부를 때 씁니다.</p><div class="status" id="webhook-summary"></div><button class="secondary wide" id="open-webhook" type="button">웹훅 키 교체</button></section>
-</div></div>
+</div>
+<section class="dash-col setup-row" id="clear-card" hidden><h3 class="subhead">예시 데이터 비우기 (최초 설치 때 한 번)</h3><p class="help">복제한 템플릿에 들어 있는 원본 예시 데이터를 이 학원 Notion에서 지웁니다. 알림톡 설정·과목만 남깁니다.</p><div class="status" id="clear-summary"></div><button class="secondary wide" id="open-clear" type="button">비울 데이터 확인</button></section>
+</div>
+<div id="clear-panel" hidden>
+<div class="status warn"><strong>되돌리기 어렵습니다.</strong>Notion 휴지통으로 보내 30일 안에 되살릴 수는 있지만, 한 건씩 되살려야 합니다. 설치가 끝나 실제로 쓰기 시작한 뒤에는 누르지 않습니다. 한 번 끝나면 이 기능은 잠깁니다.</div>
+<p class="help" id="clear-workspace"></p>
+<h3 class="subhead">비울 DB</h3><ul class="clear-list" id="clear-dbs"></ul>
+<p class="help" id="clear-keep"></p>
+<p class="help" id="clear-other" hidden></p>
+<div class="clear-progress" id="clear-progress" hidden><div class="bar"><span id="clear-bar"></span></div><span class="muted" id="clear-count"></span></div>
+<form id="clear-form" class="narrow">
+<label for="clear-confirm">확인을 위해 워크스페이스 이름을 그대로 입력</label><input type="text" id="clear-confirm" autocomplete="off" spellcheck="false" maxlength="200" required>
+<p class="help">맞게 입력해야 비웁니다. 페이지가 많으면 10~25분 걸리고, 이 화면을 닫아도 서버에서 계속 진행됩니다.</p>
+<button class="primary" type="submit">예시 데이터 비우기</button>
+</form>
+<button class="secondary wide" id="clear-back" type="button">돌아가기</button>
+</div>
 <form id="webhook-form" class="narrow" hidden>
 <ol class="flow"><li>새 웹훅 키를 만들면 화면에 표시되고, 교체를 마칠 때까지 이 탭에서 언제든 다시 복사할 수 있습니다.</li><li>교체 기간에는 이전 키와 새 키가 모두 동작합니다. Notion 버튼·자동화의 키를 하나씩 바꿉니다.</li><li>이전 키로 들어오는 호출이 없어지면 교체를 완료합니다. 이때 이전 키가 삭제되어 더 이상 동작하지 않습니다.</li></ol>
 <label for="webhook-password">현재 관리자 비밀번호</label><input type="password" id="webhook-password" autocomplete="current-password" maxlength="128" required>
@@ -182,6 +202,6 @@
 <noscript><p class="notice">관리자 설정을 사용하려면 JavaScript가 필요합니다.</p></noscript>
 </div>
 <script src="assets/hada-shortcuts.js?v=e1c30e10"></script>
-<script src="hada_config.js"></script><script src="admin_auth.js?v=4ffde89c"></script><script src="admin_settings.js?v=8046e067"></script>
+<script src="hada_config.js"></script><script src="admin_auth.js?v=4ffde89c"></script><script src="admin_settings.js?v=0b837e88"></script>
 </body>
 </html>
