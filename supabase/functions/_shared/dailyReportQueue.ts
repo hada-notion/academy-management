@@ -24,7 +24,7 @@ import {
 import { getFormulaText, sendDailyReportAlimtalk, appendSendLog } from "./alimtalkShared.ts"
 import { refreshDailyReportForSend } from "./dailyReportRefresh.ts"
 import { formatClassTime } from "./lessonNotice.ts"
-import { alimtalkVar, arrivalBlock, dailyConfigCategory, dailySectionVars, dateOnly, fitDailyLength } from "./noticeBlocks.ts"
+import { alimtalkVar, arrivalBlock, attendanceBasics, dailyConfigCategory, dailySectionVars, dateOnly, fitDailyLength } from "./noticeBlocks.ts"
 import { relIds } from "./notionClient.ts"
 import { cleanupExpiredReportPageCache } from "./persistentReportPageCache.ts"
 
@@ -51,11 +51,11 @@ export function dailyReportFromAttendance(page: any) {
   return {
     registrationId: relIds(p["등록"])[0] ?? null,
     sessionId: relIds(p["수업"])[0] ?? null,
-    studentName: getFormulaText(page, "학생이름(보고서)"),
-    className: getFormulaText(page, "클래스(보고서)"),
-    classDate: getFormulaText(page, "수업일(보고서)"),
-    attendanceStatus: getFormulaText(page, "출석상태(보고서)"),
-    studyContent: getFormulaText(page, "학습 내용(보고서)"),
+    // (11/2) 예전 (보고서) 수식 대신 (알림톡) 수식·`출석 상태` 선택값(attendanceBasics).
+    studentName: attendanceBasics(page).studentName,
+    className: attendanceBasics(page).className,
+    classDate: "",
+    attendanceStatus: attendanceBasics(page).status,
     parentPhone: getFormulaText(page, "학부모 연락처"),
     clickerUserId: p["실행자"]?.people?.[0]?.id ?? null,
     tokenRaw: plain(p["리포트 토큰"]) || null,

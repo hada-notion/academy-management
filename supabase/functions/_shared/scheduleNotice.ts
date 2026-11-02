@@ -248,7 +248,8 @@ export async function processScheduleEventItem(p: EventPayload): Promise<void> {
 		if (eventLabel(ev) !== "상담") return await deps.markError(p.eventId, "일정 안내는 '안내 구분'이 상담인 일정만 보냅니다. 휴강은 수업의 [수업 안내 전송](수업 구분 휴강)으로, 휴원·학원·학사 일정은 월간 일정 안내로 알려 주세요.")
 		// 다른 알림톡처럼 일정 페이지의 "변수(알림톡)" 수식 값을 보낸다(없으면 옛 (일정안내) 수식, 그것도 비면 같은 규칙으로 계산).
 		// (v2.8.0 통일안) 새 템플릿의 #{일정정보}와 옛 템플릿의 #{일정일시}·#{전달사항}을 함께 만든다. 보낼 때 템플릿에 있는 것만 남는다.
-		const note = getFormulaText(ev, "전달사항(일정안내)").trim() || noteText(textOf(ev.properties?.["메모"]?.rich_text))
+		// (11/2) 예전 일정 `전달사항(일정안내)` 수식(메모 50자, 같은 값)은 읽지 않는다.
+		const note = noteText(textOf(ev.properties?.["메모"]?.rich_text))
 		// 일시는 수식을 읽지 않는다(API의 수식 날짜는 UTC라 시각이 9시간 어긋남). 서버가 서울 시각으로.
 		const time = eventTimeText(ev)
 		const vars = {

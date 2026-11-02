@@ -416,7 +416,7 @@ function logCardHtml(l) {
                 ${l.compare || ""}
                 ${(() => {
                   // (v2.5.98) 날짜로 묶인 목록이라 출제일은 묶음 날짜와 같아 빼고 마감만 보인다.
-                  const meta = renderLogMetaRows(l.unit, l.note, [...(l.type === "과제" && l.due ? [`마감: ${withDow(l.due)}`] : []), ...(l.extraRows || [])], l.leadRows || [])
+                  const meta = renderLogMetaRows(l.unit, l.note, [...(l.type === "과제" ? [l.due ? `마감: ${withDow(l.due)}` : "마감: 다음 수업"] : []), ...(l.extraRows || [])], l.leadRows || [])
                   const bodyHtml = buildLogBodyHtml(l)
                   const hasExtra = l.photo || !!bodyHtml
                   const chevronBtn = hasExtra ? `<button type="button" class="log-extra-chevron" onclick="toggleLogExtra(this)" aria-label="펼치기"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button>` : ""

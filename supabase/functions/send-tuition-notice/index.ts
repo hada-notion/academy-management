@@ -173,7 +173,6 @@ Deno.serve(async (req) => {
     const period = getDateRange(tuitionPage, "청구기간")
     const periodDisplay = getFormulaText(tuitionPage, "청구기간(표시)")
     const amountDisplay = getFormulaText(tuitionPage, "청구금액(표시)")
-    const billingMonth = getFormulaText(tuitionPage, "청구년월(보고서)")
     const registrationId = getRelationFirstId(tuitionPage, "등록")
 
     // [NEW, 2026-09-23, PART N-7: 개별 버튼 응답 지연 해소] send-report와 동일한 이유로, 개별
