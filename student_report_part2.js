@@ -1020,7 +1020,7 @@ function findNextHomeworkItems(r, date) {
   // 마감·출제일은 시각이 붙은 값("2026-10-21T19:00…")일 수 있어 날짜만 비교한다. 그대로 비교하면 이날 마감인
   // 과제가 "날짜 뒤"로 판정되어 지난 과제와 이번 과제에 함께 나왔다(v2.7.16).
   const day = (v) => String(v || "").slice(0, 10)
-  // (v2.8.0) 마감이 아직 없는 과제(다음 수업이 아직 없어 "출제 전")도 그날 낸 것이면 이번 과제로 보인다.
+  // (v2.8.0) 마감이 아직 없는 과제(다음 수업이 아직 없어 "마감: 다음 수업")도 그날 낸 것이면 이번 과제로 보인다.
   const givenToday = (r.homework || []).filter((h) => !day(h.due) && day(h.classDate) === date)
   const upcoming = (r.homework || []).filter((h) => day(h.due) > date && (!h.classDate || day(h.classDate) <= date))
   if (!upcoming.length) return givenToday
@@ -1080,7 +1080,7 @@ function buildDailyBodyHtml(r, date) {
     groupBand(dueTodayHomework, (h) => reportItemHtml(r, h, { pill: h.status, pillTone: homeworkPillTone(h.status), extraRows: [h.classDate ? `출제: ${withDow(h.classDate)}` : null, h.due ? `마감: ${withDow(h.due)}` : null].filter(Boolean) }), "이날 마감인 과제가 없어요.")
   // 다음 과제는 아직 마감 전이라 "미제출" 배지를 달지 않는다(제출·일부 제출이 이미 있으면 그대로 보인다).
   const nextHomeworkHtml =
-    groupBand(nextHomeworkItems, (h) => reportItemHtml(r, h, { pill: h.status === "미제출" ? "" : h.status, pillTone: homeworkPillTone(h.status), extraRows: [h.classDate ? `출제: ${withDow(h.classDate)}` : null, h.due ? `마감: ${withDow(h.due)}` : "마감: 출제 전"].filter(Boolean) }), "출제된 과제가 없어요.")
+    groupBand(nextHomeworkItems, (h) => reportItemHtml(r, h, { pill: h.status === "미제출" ? "" : h.status, pillTone: homeworkPillTone(h.status), extraRows: [h.classDate ? `출제: ${withDow(h.classDate)}` : null, h.due ? `마감: ${withDow(h.due)}` : "마감: 다음 수업"].filter(Boolean) }), "출제된 과제가 없어요.")
   const testHtml =
     groupBand(todaysTests, (t) => reportItemHtml(r, t, { pill: testPillText(t), pillTone: testPillTone(t), leadRows: testEvalRow(t) ? [testEvalRow(t)] : [], extraRows: testScoreRows(t) }), "이날 평가가 없어요.") +
     sub(TREND_TITLE.day) +
