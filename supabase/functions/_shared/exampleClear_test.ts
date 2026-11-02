@@ -1,5 +1,6 @@
 import { assert, assertEquals } from "jsr:@std/assert@1"
-import { buildPlan, canStart, CLEAR_DBS, KEEP_DBS, STALE_MS } from "./exampleClear.ts"
+import { assertThrows } from "jsr:@std/assert@1"
+import { buildPlan, canStart, CLEAR_DBS, ClearError, KEEP_DBS, selectionKeep, STALE_MS } from "./exampleClear.ts"
 
 // scripts/clear-example-data.py의 목록과 같아야 한다(PC 스크립트와 화면이 같은 DB를 지운다).
 function pyList(src: string, name: string): string[] {
@@ -41,8 +42,19 @@ Deno.test("시작은 처음·오류·오래 멈춘 진행에서만", () => {
   const now = Date.parse("2026-11-02T12:00:00Z")
   assert(canStart(null, null, now))
   assert(canStart({ state: "error" }, "2026-11-02T11:59:00Z", now))
+  assert(canStart({ state: "stopped" }, "2026-11-02T11:59:00Z", now))
   assert(!canStart({ state: "done" }, "2026-11-02T11:00:00Z", now))
   assert(!canStart({ state: "locked" }, "2026-11-02T11:00:00Z", now))
   assert(!canStart({ state: "running" }, new Date(now - 60_000).toISOString(), now))
   assert(canStart({ state: "running" }, new Date(now - STALE_MS - 1).toISOString(), now))
+})
+
+Deno.test("화면에서 고른 DB만 비우고 나머지 비울 DB는 남긴다", () => {
+  const keep = selectionKeep(["출석(학원) DB", "학생(학원) DB"])
+  assert(!keep.includes("출석(학원) DB") && !keep.includes("학생(학원) DB"))
+  assert(keep.includes("라이브러리(학원) DB"))
+  assertEquals(keep.length, CLEAR_DBS.length - 2)
+  assertThrows(() => selectionKeep([]), ClearError)
+  assertThrows(() => selectionKeep(["알림톡 설정(학원) DB"]), ClearError) // 남기는 DB는 고를 수 없다
+  assertThrows(() => selectionKeep("출석(학원) DB"), ClearError)
 })

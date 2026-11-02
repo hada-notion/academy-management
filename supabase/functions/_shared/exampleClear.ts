@@ -73,7 +73,7 @@ export const STALE_MS = 20 * 60_000
 
 export type PlanItem = { name: string; ds: string }
 export type ClearState = {
-  state: "running" | "done" | "locked" | "error"
+  state: "running" | "done" | "locked" | "error" | "stopped"
   reason?: string
   workspace?: string
   plan?: PlanItem[]
@@ -87,7 +87,7 @@ export type ClearState = {
   finishedAt?: string
   at?: string
 }
-export type StatusDb = { name: string; count: number }
+export type StatusDb = { name: string; count: number; checked: boolean }
 export type ClearStatus = {
   workspace: string
   flag: ClearState | null
@@ -122,10 +122,21 @@ export async function writeFlag(value: ClearState): Promise<void> {
   if (!res.ok) throw new Error(`hada_setup_flags 저장 실패: ${res.status} ${await res.text()}`)
 }
 
-// 시작할 수 있는지: 처음이거나, 오류로 멈췄거나, 진행 중인데 오래 소식이 없을 때만.
+// 진행 중일 때만 바꾼다. 화면에서 [중단]을 누르면 state가 바뀌므로, 처리 중이던 묶음이 끝나도 "진행 중"으로 되돌리지 못하고 멈춘다.
+export async function writeIfRunning(value: ClearState): Promise<boolean> {
+  const res = await fetchSupabaseWithRetry(`${SB_URL()}/rest/v1/hada_setup_flags?key=eq.example_clear&value->>state=eq.running`, {
+    method: "PATCH",
+    headers: { ...sbHeaders(), Prefer: "return=representation" },
+    body: JSON.stringify({ value, updated_at: new Date().toISOString() }),
+  })
+  if (!res.ok) throw new Error(`hada_setup_flags 저장 실패: ${res.status} ${await res.text()}`)
+  return ((await res.json()) as unknown[]).length > 0
+}
+
+// 시작할 수 있는지: 처음이거나, 오류·중단으로 멈췄거나, 진행 중인데 오래 소식이 없을 때만.
 export function canStart(flag: ClearState | null, updatedAt: string | null, now = Date.now()): boolean {
   if (!flag) return true
-  if (flag.state === "error") return true
+  if (flag.state === "error" || flag.state === "stopped") return true
   if (flag.state === "running") return !updatedAt || now - Date.parse(updatedAt) > STALE_MS
   return false
 }
@@ -158,6 +169,15 @@ export async function dataSources(): Promise<Map<string, string[]>> {
   return out
 }
 
+// 화면에서 고른 DB만 남긴다. 비울 DB 목록에 없는 이름(남기는 DB 등)은 받지 않는다.
+export function selectionKeep(selected: unknown): string[] {
+  if (!Array.isArray(selected) || !selected.length) throw new ClearError(400, "비울 DB를 하나 이상 고르세요.")
+  const names = selected.map(String)
+  const bad = names.filter((n) => !CLEAR_DBS.includes(n))
+  if (bad.length) throw new ClearError(400, `비울 수 없는 DB입니다: ${bad.join(", ")}`)
+  return CLEAR_DBS.filter((n) => !names.includes(n))
+}
+
 export function buildPlan(sources: Map<string, string[]>, keep: string[] = []): { plan: PlanItem[]; missing: string[]; unknown: string[] } {
   const plan: PlanItem[] = []
   const clear = CLEAR_DBS.filter((n) => !keep.includes(n))
@@ -182,17 +202,18 @@ async function pageIds(ds: string, limit = Infinity): Promise<string[]> {
 
 export async function status(): Promise<ClearStatus> {
   const [{ value, updatedAt }, workspace, sources] = await Promise.all([readFlag(), workspaceName(), dataSources()])
+  // 지난번에 남긴 DB(원본 리허설의 업데이트 DB 등)는 처음부터 체크를 풀어 둔다.
   const keep = value?.keep ?? []
-  const { plan, missing, unknown } = buildPlan(sources, keep)
+  const { plan, missing, unknown } = buildPlan(sources)
   const counts = new Map<string, number>()
   // 이미 끝났거나 잠긴 뒤에는 세지 않는다(화면은 잠김만 보여 준다).
   if (canStart(value, updatedAt)) {
     for (const p of plan) counts.set(p.name, (counts.get(p.name) ?? 0) + (await pageIds(p.ds)).length)
   }
-  const dbs = [...new Set(plan.map((p) => p.name))].map((name) => ({ name, count: counts.get(name) ?? 0 }))
+  const dbs = [...new Set(plan.map((p) => p.name))].map((name) => ({ name, count: counts.get(name) ?? 0, checked: !keep.includes(name) }))
   return {
-    workspace, flag: value, updatedAt, dbs, total: dbs.reduce((s, d) => s + d.count, 0),
-    keep: [...KEEP_DBS, ...keep].filter((n) => sources.has(n)), missing, unknown, canStart: canStart(value, updatedAt),
+    workspace, flag: value, updatedAt, dbs, total: dbs.filter((d) => d.checked).reduce((s, d) => s + d.count, 0),
+    keep: KEEP_DBS.filter((n) => sources.has(n)), missing, unknown, canStart: canStart(value, updatedAt),
   }
 }
 
@@ -200,14 +221,14 @@ export class ClearError extends Error {
   constructor(public status: number, message: string) { super(message) }
 }
 
-export async function start(confirmWorkspace: string): Promise<ClearState> {
+export async function start(confirmWorkspace: string, selected: unknown): Promise<ClearState> {
+  const keep = selectionKeep(selected)
   const { value, updatedAt } = await readFlag()
   if (!canStart(value, updatedAt)) {
     throw new ClearError(409, value?.state === "running" ? "이미 비우는 중입니다." : "이 학원은 이미 예시 데이터를 비웠거나 잠겨 있습니다.")
   }
   const workspace = await workspaceName()
   if (!workspace || confirmWorkspace.trim() !== workspace) throw new ClearError(400, "워크스페이스 이름이 맞지 않습니다. 지우지 않았습니다.")
-  const keep = value?.keep ?? []
   const { plan } = buildPlan(await dataSources(), keep)
   let total = 0
   for (const p of plan) total += (await pageIds(p.ds)).length
@@ -216,6 +237,15 @@ export async function start(confirmWorkspace: string): Promise<ClearState> {
   await enqueueSync(TARGET_EXAMPLE_CLEAR, { step: 0 })
   wakeSyncQueueWorker()
   return state
+}
+
+// [중단]: 진행 중이면 stopped로 바꾼다. 처리 중이던 묶음(최대 BATCH건)은 끝까지 지우고 다음 묶음을 넣지 않는다.
+export async function stop(): Promise<ClearState | null> {
+  const { value } = await readFlag()
+  if (!value || value.state !== "running") return value
+  const stopped: ClearState = { ...value, state: "stopped", current: "", finishedAt: new Date().toISOString() }
+  await writeIfRunning(stopped)
+  return (await readFlag()).value
 }
 
 async function clearCopies(): Promise<void> {
@@ -237,26 +267,31 @@ export async function processExampleClearItem(payload: Record<string, unknown>):
       const { name, ds } = plan[step]
       const ids = await pageIds(ds, BATCH + 1)
       const batch = ids.slice(0, BATCH)
-      for (const id of batch) {
-        await archivePage(id)
+      let done = value.done ?? 0
+      for (let i = 0; i < batch.length; i++) {
+        await archivePage(batch[i])
+        done++
         await sleep(PAUSE_MS)
+        // 20건마다 중단 여부를 본다(누르고 나서 몇 초 안에 멈춘다).
+        if (i % 20 === 19 && !(await writeIfRunning({ ...value, done, current: name }))) return
       }
-      await writeFlag({ ...value, done: (value.done ?? 0) + batch.length, current: name })
+      if (!(await writeIfRunning({ ...value, done, current: name }))) return
       await enqueueSync(TARGET_EXAMPLE_CLEAR, { step: ids.length > BATCH ? step : step + 1 })
       return
     }
     for (let i = 0; i < plan.length; i++) {
       if ((await pageIds(plan[i].ds, 1)).length) {
         if ((value.passes ?? 1) >= 3) throw new Error(`${plan[i].name}에 지우지 못한 페이지가 남았습니다.`)
-        await writeFlag({ ...value, passes: (value.passes ?? 1) + 1, current: plan[i].name })
+        if (!(await writeIfRunning({ ...value, passes: (value.passes ?? 1) + 1, current: plan[i].name }))) return
         await enqueueSync(TARGET_EXAMPLE_CLEAR, { step: i })
         return
       }
     }
+    if ((await readFlag()).value?.state !== "running") return
     await clearCopies()
-    await writeFlag({ ...value, state: "done", current: "", finishedAt: new Date().toISOString() })
+    await writeIfRunning({ ...value, state: "done", current: "", finishedAt: new Date().toISOString() })
   } catch (err) {
-    await writeFlag({ ...value, state: "error", error: String((err as Error)?.message ?? err).slice(0, 300) }).catch(() => {})
+    await writeIfRunning({ ...value, state: "error", error: String((err as Error)?.message ?? err).slice(0, 300) }).catch(() => {})
     throw err
   }
 }
