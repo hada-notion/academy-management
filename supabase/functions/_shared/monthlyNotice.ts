@@ -492,7 +492,7 @@ export async function buildLetterNotice(letter: any): Promise<{ registrationId: 
 			"#{학원목록}": sectionListText(lines, "학원"),
 			"#{학사목록}": sectionListText(lines, "학교"),
 			"#{전달사항}": note,
-			"#{페이지ID}": `${Deno.env.get("REPORT_PATH") ?? "/project1/student_report.html"}?token=${await deps.token(registrationId)}`,
+			"#{페이지ID}": `${Deno.env.get("REPORT_PATH") ?? "/academy-management/student_report.html"}?token=${await deps.token(registrationId)}`,
 		},
 	}
 }

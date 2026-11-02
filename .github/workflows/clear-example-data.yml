@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   clear:
-    if: github.repository != 'hada-notion/project1'
+    if: github.repository != 'hada-notion/academy-management' && github.repository != 'hada-notion/project1'
     runs-on: ubuntu-latest
     env:
       WORKSPACE: ${{ inputs.workspace }}

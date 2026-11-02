@@ -89,7 +89,7 @@ export async function processDailyReportQueueItem(payload: { attendanceId: strin
   // 발송 전 단계: 실패하면 예외 → 큐 재시도(아직 보내지 않음).
   const runKey = `daily:${v.sessionId ?? "none"}:${Math.floor(Date.now() / RUN_BUCKET_MS)}`
   const { access_token } = await dailyReportDeps.refresh(v.registrationId, { sharedRunKey: runKey, tokenRaw: v.tokenRaw })
-  const REPORT_PATH = Deno.env.get("REPORT_PATH") ?? "/project1/student_report.html"
+  const REPORT_PATH = Deno.env.get("REPORT_PATH") ?? "/academy-management/student_report.html"
   // (v2.8.0 통일안) send-daily-report와 같은 값. 새 템플릿의 #{등원정보}는 출석 수업일시로 서울 날짜를 만들고(수식 날짜는 UTC),
   // 보강 출석이면 기존 결석의 수업일 줄을 앞에 붙인다(그때만 기존 결석을 한 번 더 읽고, 못 읽으면 그 줄 없이).
   // 옛 템플릿 변수도 함께 넣고, 보낼 때 그 템플릿에 있는 것만 남긴다(_shared/templateFit.ts).

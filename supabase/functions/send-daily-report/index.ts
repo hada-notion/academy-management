@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
 
       const parentPhone = await resolveParentPhone(attendancePage, registrationId)
 
-      const REPORT_PATH = Deno.env.get("REPORT_PATH") ?? "/project1/student_report.html"
+      const REPORT_PATH = Deno.env.get("REPORT_PATH") ?? "/academy-management/student_report.html"
       const tokenQueryString = REPORT_PATH + "?token=" + access_token
       // 변수 값은 "변수(알림톡)" 수식 → 없으면 서버 계산. 보낼 때 그 템플릿에 있는 것만 남긴다(_shared/templateFit.ts).
       const variables: Record<string, string> = fitDailyLength({

@@ -56,7 +56,7 @@ export const NOTICE_STATUS_PROP: Record<NoticeKind, string> = {
 const SIBLING_PROP: Partial<Record<NoticeKind, string>> = { tuition: "같은 달 수강료", letter: "같은 달 가정통신문" }
 const WAITING = "⚪ 대기"
 const RUN_BUCKET_MS = 5 * 60 * 1000
-const REPORT_PATH = Deno.env.get("REPORT_PATH") ?? "/project1/student_report.html"
+const REPORT_PATH = Deno.env.get("REPORT_PATH") ?? "/academy-management/student_report.html"
 const FALLBACK = {
 	pfId: Deno.env.get("SOLAPI_PF_ID") ?? "",
 	senderNumber: Deno.env.get("SOLAPI_SENDER_NUMBER") ?? "",
