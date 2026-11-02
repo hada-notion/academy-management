@@ -35,6 +35,7 @@ function clearSummary(s){
  if(f&&f.state==='done')return [`${date(f.finishedAt||s.updatedAt)}에 비웠습니다(${f.done||0}건). 이 기능은 잠겼습니다.`,false];
  if(f&&f.state==='locked')return ['이미 쓰고 있는 학원이라 잠겨 있습니다. 실제 데이터를 지우지 않도록 막아 둔 것입니다.',false];
  if(f&&f.state==='running'&&!s.canStart)return [`비우는 중입니다: ${f.done||0} / ${f.total||0}건${f.current?` · ${f.current}`:''}`,true];
+ if(f&&f.state==='stopped')return [`중단했습니다(${f.done||0}건 지움). 다시 시작하면 남은 것만 지웁니다.`,true];
  if(f&&(f.state==='error'||f.state==='running'))return [`멈췄습니다${f.error?`: ${f.error}`:''}. 다시 시작하면 남은 것만 지웁니다.`,true];
  return ['아직 비우지 않았습니다. 설치를 시작할 때 한 번 비웁니다.',true];
 }
@@ -46,24 +47,36 @@ function showClearProgress(s){
  const f=s.flag||{};const total=f.total||0,done=f.done||0;
  $('clear-progress').hidden=false;$('clear-bar').style.width=total?`${Math.min(100,Math.round(done*100/total))}%`:'0%';
  text('clear-count',`${done} / ${total}건${f.current?` · ${f.current}`:''}`);
+ $('clear-stop').hidden=f.state!=='running';
 }
 async function pollClear(){
  let s;try{s=await clearRequest('state',{},20000);}catch{return;}
  if(s.flag&&s.flag.state==='running'&&!s.canStart){showClearProgress(s);return;}
  stopClearPoll();const [msg]=clearSummary(s);
  if(s.flag&&s.flag.state==='done'){showClearProgress(s);$('clear-form').hidden=true;notice(msg,'success');}
+ else if(s.flag&&s.flag.state==='stopped'){await openClear();notice(msg,'info');}
  else{notice(msg,'error');$('clear-form').hidden=false;}
 }
+// Checked DB names and the total of their pages; the "전체 선택" box follows the list (partly checked = indeterminate).
+function clearChecks(){return [...document.querySelectorAll('#clear-dbs input')];}
+function updateClearTotal(){
+ const boxes=clearChecks(),on=boxes.filter(b=>b.checked);
+ const all=$('clear-all');all.checked=on.length===boxes.length&&boxes.length>0;all.indeterminate=on.length>0&&on.length<boxes.length;
+ text('clear-workspace',`이 학원 워크스페이스: ${clearWorkspace||'(이름 없음)'} · 고른 DB ${on.length}개 · 비울 페이지 ${on.reduce((s,b)=>s+Number(b.dataset.count),0)}건`);
+}
+let clearWorkspace='';
 function startClearPoll(){stopClearPoll();clearTimer=setInterval(pollClear,5000);}
 async function openClear(){
  const s=await clearRequest('status');
  panel('clear-panel','예시 데이터 비우기','이 학원 Notion에서 원본 예시 데이터를 지웁니다. 최초 설치 때 한 번만 씁니다.');
- text('clear-workspace',`이 학원 워크스페이스: ${s.workspace||'(이름 없음)'} · 비울 페이지 ${s.total}건`);
+ clearWorkspace=s.workspace||'';
  const list=$('clear-dbs');list.replaceChildren();
- for(const d of s.dbs){const li=el('li');const n=el('span');n.textContent=d.name.replace('(학원) DB','');const c=el('span','muted');c.textContent=`${d.count}건`;li.append(n,c);list.append(li);}
- text('clear-keep',`남기는 DB: ${s.keep.map(n=>n.replace('(학원) DB','')).join(' · ')||'없음'} · 매뉴얼 페이지와 DB 템플릿도 그대로입니다.`);
- const other=[];if(s.missing.length)other.push(`찾지 못한 DB(통합 공유 확인): ${s.missing.join(', ')}`);if(s.unknown.length)other.push(`목록에 없어 건드리지 않는 DB: ${s.unknown.join(', ')}`);
- $('clear-other').hidden=!other.length;text('clear-other',other.join(' / '));
+ for(const d of s.dbs){const li=el('li'),label=el('label'),box=el('input');box.type='checkbox';box.checked=d.checked;box.dataset.name=d.name;box.dataset.count=String(d.count);box.onchange=updateClearTotal;
+  const c=el('span','muted',`${d.count}건`);label.append(box,el('span','',d.name.replace('(학원) DB','')),c);li.append(label);list.append(li);}
+ updateClearTotal();
+ text('clear-keep',`항상 남기는 DB: ${s.keep.map(n=>n.replace('(학원) DB','')).join(' · ')||'없음'} · 체크를 푼 DB와 매뉴얼 페이지·DB 템플릿도 그대로입니다.`);
+ $('clear-missing').hidden=!s.missing.length;text('clear-missing',s.missing.length?`찾지 못한 DB(통합 공유 확인): ${s.missing.join(', ')}`:'');
+ $('clear-other').hidden=!s.unknown.length;text('clear-other-sum',`목록에 없어 건드리지 않는 DB ${s.unknown.length}개`);text('clear-other-text',s.unknown.join(', '));
  $('clear-confirm').value='';$('clear-form').hidden=!s.canStart;$('clear-progress').hidden=true;
  if(s.flag&&s.flag.state==='running'&&!s.canStart){showClearProgress(s);startClearPoll();}
  else if(!s.canStart){const [msg]=clearSummary(s);notice(msg,s.flag&&s.flag.state==='done'?'success':'info');}
@@ -364,9 +377,13 @@ $('open-webhook').onclick=e=>task(openWebhook,e.currentTarget,webhook.rotating&&
 $('webhook-back').onclick=()=>task(profile);
 $('open-clear').onclick=e=>task(openClear,e.currentTarget,'불러오는 중… (DB마다 건수를 세느라 최대 1분)');
 $('clear-back').onclick=()=>task(profile);
+$('clear-all').onchange=e=>{clearChecks().forEach(b=>{b.checked=e.currentTarget.checked;});updateClearTotal();};
+$('clear-stop').onclick=e=>task(async()=>{await clearRequest('stop',{},20000);notice('중단을 요청했습니다. 지우던 묶음까지만 지우고 몇 초 안에 멈춥니다.','info');},e.currentTarget,'중단하는 중…');
 $('clear-form').onsubmit=e=>{e.preventDefault();task(async()=>{
- if(!confirm('이 학원 Notion의 예시 데이터를 모두 휴지통으로 보냅니다. 알림톡 설정·과목·메뉴·웹페이지·학년만 남습니다. 계속할까요?'))return;
- const f=await clearRequest('start',{workspace:$('clear-confirm').value});
+ const dbs=clearChecks().filter(b=>b.checked).map(b=>b.dataset.name);
+ if(!dbs.length)throw new Error('비울 DB를 하나 이상 고르세요.');
+ if(!confirm(`고른 DB ${dbs.length}개의 페이지를 모두 휴지통으로 보냅니다. 체크를 푼 DB와 알림톡 설정·과목·메뉴·웹페이지·학년은 남습니다. 계속할까요?`))return;
+ const f=await clearRequest('start',{workspace:$('clear-confirm').value,dbs});
  $('clear-form').hidden=true;showClearProgress({flag:f});notice('비우기를 시작했습니다. 이 화면을 닫아도 서버에서 계속 진행됩니다.','info');startClearPoll();
 },e.submitter,'시작하는 중…');};
 $('progress-back').onclick=()=>task(profile);
