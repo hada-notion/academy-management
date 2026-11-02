@@ -66,6 +66,8 @@ function updateClearTotal(){
  text('clear-workspace',`이 학원 워크스페이스: ${clearWorkspace||'(이름 없음)'} · 고른 DB ${on.length}개 · 비울 페이지 ${on.reduce((s,b)=>s+Number(b.dataset.count),0)}건`);
 }
 let clearWorkspace='';
+// The DB's own Notion icon: a built-in Notion icon image or an emoji; nothing for uploaded images (their links expire).
+function dbIcon(icon){const box=el('span','db-icon');if(icon&&icon.emoji)box.textContent=icon.emoji;else if(icon&&icon.url){const img=document.createElement('img');img.src=icon.url;img.alt='';img.width=16;img.height=16;img.onerror=()=>img.remove();box.append(img);}return box;}
 function startClearPoll(){stopClearPoll();clearTimer=setInterval(pollClear,5000);}
 async function openClear(){
  const s=await clearRequest('status');
@@ -75,11 +77,12 @@ async function openClear(){
  // Grouped by purpose; each group says whether its data must go (필수, example students and records) or may stay (선택).
  const groups=new Map();for(const d of s.dbs){if(!groups.has(d.group))groups.set(d.group,{required:d.required,dbs:[]});groups.get(d.group).dbs.push(d);}
  for(const [name,g] of groups){
-  const wrap=el('section','clear-group'),head=el('label','clear-group-head'),gbox=el('input'),ul=el('ul','clear-list');gbox.type='checkbox';
+  const wrap=el('section',`clear-group ${g.required?'req':'opt'}`),head=el('label','clear-group-head'),gbox=el('input'),ul=el('ul','clear-list');gbox.type='checkbox';
   head.append(gbox,el('span','',name),el('b',`tag ${g.required?'req':'opt'}`,g.required?'필수':'선택'),el('span','muted',`${g.dbs.reduce((t,d)=>t+d.count,0)}건`));
   gbox.onchange=()=>{ul.querySelectorAll('input').forEach(b=>{b.checked=gbox.checked;});updateClearTotal();};
   for(const d of g.dbs){const li=el('li'),label=el('label'),box=el('input');box.type='checkbox';box.checked=d.checked;box.dataset.name=d.name;box.dataset.count=String(d.count);box.dataset.required=d.required?'1':'';box.onchange=updateClearTotal;
-   label.append(box,el('span','',d.name.replace('(학원) DB','')),el('span','muted',`${d.count}건`));li.append(label);ul.append(li);}
+   label.classList.toggle('off',!d.checked);box.addEventListener('change',()=>label.classList.toggle('off',!box.checked));
+   label.append(box,dbIcon(d.icon),el('span','',d.name.replace('(학원) DB','')),el('span','muted',`${d.count}건`));li.append(label);ul.append(li);}
   wrap.append(head,ul);list.append(wrap);}
  updateClearTotal();
  text('clear-keep',`항상 남기는 DB: ${s.keep.map(n=>n.replace('(학원) DB','')).join(' · ')||'없음'} · 체크를 푼 DB와 매뉴얼 페이지·DB 템플릿도 그대로입니다.`);

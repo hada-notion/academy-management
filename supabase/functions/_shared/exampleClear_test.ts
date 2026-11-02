@@ -1,6 +1,6 @@
 import { assert, assertEquals } from "jsr:@std/assert@1"
 import { assertThrows } from "jsr:@std/assert@1"
-import { buildPlan, canStart, CLEAR_DBS, ClearError, GROUPS, KEEP_DBS, selectionKeep, STALE_MS } from "./exampleClear.ts"
+import { buildPlan, canStart, CLEAR_DBS, ClearError, GROUPS, iconOf, KEEP_DBS, selectionKeep, STALE_MS } from "./exampleClear.ts"
 
 // scripts/clear-example-data.py의 목록과 같아야 한다(PC 스크립트와 화면이 같은 DB를 지운다).
 function pyList(src: string, name: string): string[] {
@@ -63,4 +63,14 @@ Deno.test("비울 DB는 모두 화면 묶음 하나에만 들어 있다", () => 
   const all = GROUPS.flatMap((g) => g.dbs)
   assertEquals([...all].sort(), [...CLEAR_DBS].sort())
   assertEquals(new Set(all).size, all.length)
+})
+
+Deno.test("DB 아이콘: Notion 기본 아이콘·이모지만 쓰고 올린 그림은 뺀다", () => {
+  assertEquals(iconOf({ type: "external", external: { url: "/icons/push-pin_gray.svg" } }), { url: "https://www.notion.so/icons/push-pin_gray.svg" })
+  assertEquals(iconOf({ type: "external", external: { url: "https://www.notion.so/icons/user_gray.svg" } }), { url: "https://www.notion.so/icons/user_gray.svg" })
+  assertEquals(iconOf({ type: "icon", icon: { name: "school", color: "gray" } }), { url: "https://www.notion.so/icons/school_gray.svg" })
+  assertEquals(iconOf({ type: "emoji", emoji: "📌" }), { emoji: "📌" })
+  assertEquals(iconOf({ type: "file", file: { url: "https://prod-files-secure.s3.amazonaws.com/x.png" } }), null)
+  assertEquals(iconOf({ type: "external", external: { url: "https://evil.example/x.svg" } }), null)
+  assertEquals(iconOf(null), null)
 })
