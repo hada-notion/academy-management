@@ -7,6 +7,7 @@
 // - 지울 DB·남길 DB는 scripts/clear-example-data.py의 CLEAR_DBS/KEEP_DBS와 같다(exampleClear_test.ts가 대조).
 // - 한 번 끝나면 hada_setup_flags(example_clear).state = "done"으로 잠긴다. 이미 쓰고 있던 학원(원본 포함)은
 //   마이그레이션 20261102010000이 처음 들어갈 때 "locked"로 잠근다. 다시 열려면 그 행을 SQL로 지운다.
+//   원본 리허설처럼 일부 DB를 남길 때는 그 행을 {"state":"error","keep":["업데이트(학원) DB"]}처럼 SQL로 바꿔 연다(keep은 다음 실행에도 이어진다).
 // - 마지막에 Supabase 사본(hada_clear_example_copies, scripts/clear-example-data.sql과 같은 표)도 비운다.
 
 import { NOTION_API } from "./constants.ts"
@@ -80,6 +81,7 @@ export type ClearState = {
   done?: number
   current?: string
   passes?: number
+  keep?: string[]
   error?: string
   startedAt?: string
   finishedAt?: string
@@ -156,10 +158,11 @@ export async function dataSources(): Promise<Map<string, string[]>> {
   return out
 }
 
-export function buildPlan(sources: Map<string, string[]>): { plan: PlanItem[]; missing: string[]; unknown: string[] } {
+export function buildPlan(sources: Map<string, string[]>, keep: string[] = []): { plan: PlanItem[]; missing: string[]; unknown: string[] } {
   const plan: PlanItem[] = []
-  for (const name of CLEAR_DBS) for (const ds of sources.get(name) ?? []) plan.push({ name, ds })
-  const missing = CLEAR_DBS.filter((n) => n !== OLD_NAME && !sources.has(n))
+  const clear = CLEAR_DBS.filter((n) => !keep.includes(n))
+  for (const name of clear) for (const ds of sources.get(name) ?? []) plan.push({ name, ds })
+  const missing = clear.filter((n) => n !== OLD_NAME && !sources.has(n))
   const unknown = [...sources.keys()].filter((n) => !CLEAR_DBS.includes(n) && !KEEP_DBS.includes(n)).sort()
   return { plan, missing, unknown }
 }
@@ -179,7 +182,8 @@ async function pageIds(ds: string, limit = Infinity): Promise<string[]> {
 
 export async function status(): Promise<ClearStatus> {
   const [{ value, updatedAt }, workspace, sources] = await Promise.all([readFlag(), workspaceName(), dataSources()])
-  const { plan, missing, unknown } = buildPlan(sources)
+  const keep = value?.keep ?? []
+  const { plan, missing, unknown } = buildPlan(sources, keep)
   const counts = new Map<string, number>()
   // 이미 끝났거나 잠긴 뒤에는 세지 않는다(화면은 잠김만 보여 준다).
   if (canStart(value, updatedAt)) {
@@ -188,7 +192,7 @@ export async function status(): Promise<ClearStatus> {
   const dbs = [...new Set(plan.map((p) => p.name))].map((name) => ({ name, count: counts.get(name) ?? 0 }))
   return {
     workspace, flag: value, updatedAt, dbs, total: dbs.reduce((s, d) => s + d.count, 0),
-    keep: KEEP_DBS.filter((n) => sources.has(n)), missing, unknown, canStart: canStart(value, updatedAt),
+    keep: [...KEEP_DBS, ...keep].filter((n) => sources.has(n)), missing, unknown, canStart: canStart(value, updatedAt),
   }
 }
 
@@ -203,10 +207,11 @@ export async function start(confirmWorkspace: string): Promise<ClearState> {
   }
   const workspace = await workspaceName()
   if (!workspace || confirmWorkspace.trim() !== workspace) throw new ClearError(400, "워크스페이스 이름이 맞지 않습니다. 지우지 않았습니다.")
-  const { plan } = buildPlan(await dataSources())
+  const keep = value?.keep ?? []
+  const { plan } = buildPlan(await dataSources(), keep)
   let total = 0
   for (const p of plan) total += (await pageIds(p.ds)).length
-  const state: ClearState = { state: "running", workspace, plan, total, done: 0, current: plan[0]?.name ?? "", passes: 1, startedAt: new Date().toISOString() }
+  const state: ClearState = { state: "running", workspace, keep, plan, total, done: 0, current: plan[0]?.name ?? "", passes: 1, startedAt: new Date().toISOString() }
   await writeFlag(state)
   await enqueueSync(TARGET_EXAMPLE_CLEAR, { step: 0 })
   wakeSyncQueueWorker()
