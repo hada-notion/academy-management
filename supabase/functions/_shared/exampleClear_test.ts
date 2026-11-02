@@ -29,6 +29,14 @@ Deno.test("계획은 지울 순서대로, 남길 DB·모르는 DB는 넣지 않�
   assert(!missing.includes("패치·이슈 관리 DB")) // 옛 이름은 없어도 된다
 })
 
+Deno.test("keep에 적은 DB는 이번 계획에서 뺀다(원본 리허설)", () => {
+  const sources = new Map([["출석(학원) DB", ["a"]], ["업데이트(학원) DB", ["u"]]])
+  assertEquals(buildPlan(sources).plan.map((p) => p.name), ["출석(학원) DB", "업데이트(학원) DB"])
+  const { plan, missing } = buildPlan(sources, ["업데이트(학원) DB"])
+  assertEquals(plan.map((p) => p.name), ["출석(학원) DB"])
+  assert(!missing.includes("업데이트(학원) DB"))
+})
+
 Deno.test("시작은 처음·오류·오래 멈춘 진행에서만", () => {
   const now = Date.parse("2026-11-02T12:00:00Z")
   assert(canStart(null, null, now))
