@@ -13,7 +13,7 @@ Supabase 프로젝트 정보를 이번 학원의 값으로 한 번에 치환하�
 무엇을 바꾸지 "않는지" (이 스크립트 범위 밖, 별도로 처리 필요):
   - GitHub Actions Secrets / Supabase Edge Function Secrets (docs/새-학원-이식-체크리스트.md 참고)
   - Notion 쪽의 "등록(학원) DB → 학생 페이지" 수식(예전 이름 "안내 링크")에 박힌 GitHub Pages 주소
-    (예: https://hada-notion.github.io/project1/student_report.html?token=...)
+    (예: https://hada-notion.github.io/academy-management/student_report.html?token=...)
     이건 코드가 아니라 Notion 수식이라 이 학원의 Notion 워크스페이스에서 직접 고쳐야 합니다.
 
 사용법:
@@ -22,7 +22,7 @@ Supabase 프로젝트 정보를 이번 학원의 값으로 한 번에 치환하�
     --new-url https://<새 프로젝트 ref>.supabase.co \
     --old-anon-key <이전 anon key 전체 문자열> \
     --new-anon-key <새 anon key 전체 문자열> \
-    --old-pages-path project1 \
+    --old-pages-path academy-management \
     --new-pages-path <새 GitHub 저장소 이름>
 
 이 저장소를 새로 clone한 뒤(첫 커밋/push 전에) 한 번 실행하세요. 실행 후 값이
@@ -81,7 +81,7 @@ def main() -> int:
         "t7Ltb_iSYqE4gHSoGSm-OlpiLjGqIcgrhzGJ-t56EDc"
     ))
     parser.add_argument("--new-anon-key", required=True)
-    parser.add_argument("--old-pages-path", default="project1")
+    parser.add_argument("--old-pages-path", default="academy-management")
     parser.add_argument("--new-pages-path", required=True, help="예: gangnam-academy (새 GitHub 저장소 이름)")
     parser.add_argument("--repo-root", default=".", help="저장소 루트 경로 (기본: 현재 디렉터리)")
     args = parser.parse_args()

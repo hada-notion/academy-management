@@ -71,7 +71,7 @@ const SOLAPI_API_SECRET = Deno.env.get("SOLAPI_API_SECRET")!
 const SOLAPI_SENDER_NUMBER_FALLBACK = Deno.env.get("SOLAPI_SENDER_NUMBER") ?? ""
 const SOLAPI_PF_ID_FALLBACK = Deno.env.get("SOLAPI_PF_ID") ?? ""
 // (10/31) 템플릿 ID 기본값(Secrets SOLAPI_TEMPLATE_ID_*)은 없앴다. 알림톡 설정 행이 없거나 꺼져 있으면 보내지 않고 사유를 남긴다.
-const REPORT_PATH = Deno.env.get("REPORT_PATH") ?? "/project1/student_report.html"
+const REPORT_PATH = Deno.env.get("REPORT_PATH") ?? "/academy-management/student_report.html"
 
 // 보고서(학원) DB / 수강료(학원) DB에 공통으로 있는 체크박스. send-selected-notifications가
 // 일괄전송 대상을 고르는 필터이기도 하다 (_shared/PROP_BULK_SELECT와 이름을 동일하게 유지).

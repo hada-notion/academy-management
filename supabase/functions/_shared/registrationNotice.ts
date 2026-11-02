@@ -35,7 +35,7 @@ export const REGISTRATION_MEMO_PROP = REG_MEMO_PROP // 등록(학원) DB, 보낸
 export type RegistrationNoticeKind = "등록 안내" | "클래스 변경 안내"
 export type RegistrationNoticePayload = { regId: string; kind: RegistrationNoticeKind; clickerUserId?: string | null }
 
-const REPORT_PATH = Deno.env.get("REPORT_PATH") ?? "/project1/student_report.html"
+const REPORT_PATH = Deno.env.get("REPORT_PATH") ?? "/academy-management/student_report.html"
 const textOf = (arr: any): string => (Array.isArray(arr) ? arr.map((t: any) => t?.plain_text ?? t?.text?.content ?? "").join("") : "")
 
 export function classNameOf(cls: any): string {
