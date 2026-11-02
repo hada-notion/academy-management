@@ -85,7 +85,6 @@ import { processAssignmentQueueItem } from "../_shared/assignmentPlan.ts"
 import { processNoticeQueueItem } from "../_shared/noticeQueue.ts"
 import { processCartPlanQueueItem } from "../_shared/cartPlan.ts"
 import { processClassReportsQueueItem, processRegistrationReportQueueItem } from "../_shared/classReportPlan.ts"
-import { processBatchEvaluationsQueueItem } from "../_shared/evaluationPlan.ts"
 import { processRoutineChecksQueueItem } from "../_shared/routineCheck.ts"
 import { processCompletionQueueItem, processCompletionReportQueueItem } from "../_shared/completionReport.ts"
 import { processLessonNoticeQueueItem } from "../_shared/lessonNotice.ts"
@@ -137,8 +136,7 @@ const HANDLERS: Record<string, (payload: any, cachedGetPage: (id: string) => Pro
   // (v2.8.0) 클래스 [보고서 생성] → create-class-reports. 반 1건(발송함 찾기·만들기)이 학생 1건씩을 다시 넣는다.
   "class-reports": processClassReportsQueueItem,
   "registration-report": processRegistrationReportQueueItem,
-  // (v2.8.0) 알림톡 발송함 [평가 생성] → create-class-reports/evaluations. 교재마다 평가 기록 → create-assignment 큐.
-  "batch-evaluations": processBatchEvaluationsQueueItem,
+  // (11/02) 발송함 [평가 생성]("batch-evaluations")은 없앴다. 혹시 남은 옛 항목은 "알 수 없는 target"으로 끝난다.
   // (v2.8.0 루틴, 항목 18) 수업 [루틴 체크 생성] → create-class-reports/routine-checks. 수업 1건 → 루틴 × 출석 체크 행.
   "routine-checks": processRoutineChecksQueueItem,
   // (v2.8.0 수료) 진도교재 [수료] → create-class-reports/completion. 교재 1건 → 발송함·진도교재 완료 → 학생 1건씩 수료 보고서.
