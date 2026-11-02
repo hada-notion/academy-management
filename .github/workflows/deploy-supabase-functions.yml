@@ -60,12 +60,16 @@ jobs:
       - name: Test administrator authentication and key scopes
         run: deno test --allow-env --allow-read=admin_settings.js supabase/functions/_shared/adminSecurity_test.ts
 
+      - name: Test example data clearing lists
+        run: deno test --allow-env --allow-read=scripts/clear-example-data.py supabase/functions/_shared/exampleClear_test.ts
+
       - name: Test security migration and transactional Vault rollback
         run: |
           npm install --prefix "$RUNNER_TEMP/hada-security-tests" @electric-sql/pglite@0.5.8 --no-audit --no-fund
           PGLITE_MODULE="$RUNNER_TEMP/hada-security-tests/node_modules/@electric-sql/pglite" node tests/admin-security-sql.cjs
           PGLITE_MODULE="$RUNNER_TEMP/hada-security-tests/node_modules/@electric-sql/pglite" node tests/class-room-copy-sql.cjs
           PGLITE_MODULE="$RUNNER_TEMP/hada-security-tests/node_modules/@electric-sql/pglite" node tests/class-room-copy-cron-sql.cjs
+          PGLITE_MODULE="$RUNNER_TEMP/hada-security-tests/node_modules/@electric-sql/pglite" node tests/example-clear-sql.cjs
 
       - name: Run regression guard checks
         run: bash scripts/check-known-regressions.sh

@@ -1,7 +1,7 @@
 'use strict';
 (() => {
 const $=id=>document.getElementById(id);
-const forms=['login-form','change-form','dashboard','webhook-form','webhook-key','webhook-progress'];
+const forms=['login-form','change-form','dashboard','webhook-form','webhook-key','webhook-progress','clear-panel'];
 let base='',session='',mustChange=false,busy=false;
 // The login is shared with legal documents and school search in this tab (admin_auth.js): the server issues the same
 // kind of administrator session to all three. A session from the initial password (0000) is kept only in memory until
@@ -14,13 +14,59 @@ function text(id,value){$(id).textContent=value;}
 function notice(message,kind='info'){text('connection-status',message);['info','success','error'].forEach(k=>$('connection-status').classList.toggle(k,k===kind));}
 function friendly(e){return e instanceof TypeError||e.name==='TimeoutError'||e.name==='AbortError'?'인증 서버에 연결하지 못했습니다. 연결 설정과 네트워크를 확인해 주세요.':(e.message||'처리하지 못했습니다.');}
 function error(message){text('form-error',message);$('form-error').hidden=!message;}
-function panel(id,title,description){forms.forEach(x=>$(x).hidden=x!==id);$('logout').hidden=id!=='dashboard';text('panel-title',title);text('panel-description',description);error('');$('retry').hidden=true;$('main-card').classList.toggle('centered',!!id&&!['dashboard','webhook-progress'].includes(id));}
+function panel(id,title,description){forms.forEach(x=>$(x).hidden=x!==id);$('logout').hidden=id!=='dashboard';text('panel-title',title);text('panel-description',description);error('');$('retry').hidden=true;$('main-card').classList.toggle('centered',!!id&&!['dashboard','webhook-progress','clear-panel'].includes(id));if(id!=='clear-panel')stopClearPoll();}
 function clearPasswords(){document.querySelectorAll('input[type=password]').forEach(x=>x.value='');$('new-webhook-key').value='';}
 function forgetSession(){session='';mustChange=false;HadaAdminAuth.saveSession('');keepNewKey('');clearPasswords();}
 function loggedOutFacts(){text('owner-status','로그인 후 확인');text('last-change','로그인 후 표시');text('next-change','로그인 후 표시');text('webhook-fact','평소 유지 · 사고 시 별도 교체');}
 async function request(action,values={},timeout=20000){
  const res=await fetch(base+'/functions/v1/admin-security',{method:'POST',headers:{'Content-Type':'application/json',...(session?{'x-admin-key':session}:{})},body:JSON.stringify({action,...values}),cache:'no-store',signal:AbortSignal.timeout(timeout)});
  const data=await res.json().catch(()=>({}));if(!res.ok){const e=new Error(data.error||'인증 서버 응답을 확인하지 못했습니다.');e.status=res.status;e.needsConfirm=!!data.needs_confirm;throw e;}return data;
+}
+// Example data clearing (first install only, clear-example-data). The server finds this academy's own Notion DBs with
+// its own token, clears them from the sync queue a batch at a time and locks itself after one successful run.
+async function clearRequest(action,values={},timeout=90000){
+ const res=await fetch(base+'/functions/v1/clear-example-data',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':session},body:JSON.stringify({action,...values}),cache:'no-store',signal:AbortSignal.timeout(timeout)});
+ const data=await res.json().catch(()=>({}));if(!res.ok){const e=new Error(data.error||'예시 데이터 비우기 서버 응답을 확인하지 못했습니다.');e.status=res.status;throw e;}return data;
+}
+let clearTimer=null;
+function stopClearPoll(){if(clearTimer){clearInterval(clearTimer);clearTimer=null;}}
+function clearSummary(s){
+ const f=s.flag;
+ if(f&&f.state==='done')return [`${date(f.finishedAt||s.updatedAt)}에 비웠습니다(${f.done||0}건). 이 기능은 잠겼습니다.`,false];
+ if(f&&f.state==='locked')return ['이미 쓰고 있는 학원이라 잠겨 있습니다. 실제 데이터를 지우지 않도록 막아 둔 것입니다.',false];
+ if(f&&f.state==='running'&&!s.canStart)return [`비우는 중입니다: ${f.done||0} / ${f.total||0}건${f.current?` · ${f.current}`:''}`,true];
+ if(f&&(f.state==='error'||f.state==='running'))return [`멈췄습니다${f.error?`: ${f.error}`:''}. 다시 시작하면 남은 것만 지웁니다.`,true];
+ return ['아직 비우지 않았습니다. 설치를 시작할 때 한 번 비웁니다.',true];
+}
+async function loadClearState(){
+ try{const s=await clearRequest('state',{},20000);const [msg,open]=clearSummary(s);text('clear-summary',msg);$('open-clear').hidden=!open;$('clear-card').hidden=false;}
+ catch{$('clear-card').hidden=true;}
+}
+function showClearProgress(s){
+ const f=s.flag||{};const total=f.total||0,done=f.done||0;
+ $('clear-progress').hidden=false;$('clear-bar').style.width=total?`${Math.min(100,Math.round(done*100/total))}%`:'0%';
+ text('clear-count',`${done} / ${total}건${f.current?` · ${f.current}`:''}`);
+}
+async function pollClear(){
+ let s;try{s=await clearRequest('state',{},20000);}catch{return;}
+ if(s.flag&&s.flag.state==='running'&&!s.canStart){showClearProgress(s);return;}
+ stopClearPoll();const [msg]=clearSummary(s);
+ if(s.flag&&s.flag.state==='done'){showClearProgress(s);$('clear-form').hidden=true;notice(msg,'success');}
+ else{notice(msg,'error');$('clear-form').hidden=false;}
+}
+function startClearPoll(){stopClearPoll();clearTimer=setInterval(pollClear,5000);}
+async function openClear(){
+ const s=await clearRequest('status');
+ panel('clear-panel','예시 데이터 비우기','이 학원 Notion에서 원본 예시 데이터를 지웁니다. 최초 설치 때 한 번만 씁니다.');
+ text('clear-workspace',`이 학원 워크스페이스: ${s.workspace||'(이름 없음)'} · 비울 페이지 ${s.total}건`);
+ const list=$('clear-dbs');list.replaceChildren();
+ for(const d of s.dbs){const li=el('li');const n=el('span');n.textContent=d.name.replace('(학원) DB','');const c=el('span','muted');c.textContent=`${d.count}건`;li.append(n,c);list.append(li);}
+ text('clear-keep',`남기는 DB: ${s.keep.map(n=>n.replace('(학원) DB','')).join(' · ')||'없음'} · 매뉴얼 페이지와 DB 템플릿도 그대로입니다.`);
+ const other=[];if(s.missing.length)other.push(`찾지 못한 DB(통합 공유 확인): ${s.missing.join(', ')}`);if(s.unknown.length)other.push(`목록에 없어 건드리지 않는 DB: ${s.unknown.join(', ')}`);
+ $('clear-other').hidden=!other.length;text('clear-other',other.join(' / '));
+ $('clear-confirm').value='';$('clear-form').hidden=!s.canStart;$('clear-progress').hidden=true;
+ if(s.flag&&s.flag.state==='running'&&!s.canStart){showClearProgress(s);startClearPoll();}
+ else if(!s.canStart){const [msg]=clearSummary(s);notice(msg,s.flag&&s.flag.state==='done'?'success':'info');}
 }
 // Webhook key rotation. The server keeps only the new key's hash. While the rotation is open, this browser tab keeps
 // the key in sessionStorage so it can be copied again from the progress view (pasting URLs and keys in turn clears the
@@ -290,6 +336,7 @@ async function profile(){
  if(mustChange){text('owner-status','초기 비밀번호 사용 중');notice('초기 비밀번호를 사용 중입니다. 새 비밀번호로 변경해 주세요.','warn');showChange(true);return;}
  text('owner-status','변경 완료');
  try{await loadWebhook();}catch{text('webhook-summary','웹훅 키 상태를 확인하지 못했습니다. 잠시 후 다시 로그인해 주세요.');}
+ await loadClearState();
  text('due-status',info.change_due?'마지막 변경 후 3개월이 지났습니다. 보안을 위해 비밀번호를 변경해 주세요.':'현재 권장 변경 기간 내에 있습니다. 유출이 의심되면 즉시 변경해 주세요.');
  panel('dashboard','관리자 보안 설정','관리자 비밀번호는 Notion 웹훅 키와 따로 바꿀 수 있어요.');
 }
@@ -315,6 +362,13 @@ $('close-facts').onclick=()=>$('facts-dialog').close();
 $('close-help').onclick=()=>$('help-dialog').close();
 $('open-webhook').onclick=e=>task(openWebhook,e.currentTarget,webhook.rotating&&!links?'불러오는 중… (처음엔 Notion 링크를 찾느라 최대 1분)':'불러오는 중…');
 $('webhook-back').onclick=()=>task(profile);
+$('open-clear').onclick=e=>task(openClear,e.currentTarget,'불러오는 중… (DB마다 건수를 세느라 최대 1분)');
+$('clear-back').onclick=()=>task(profile);
+$('clear-form').onsubmit=e=>{e.preventDefault();task(async()=>{
+ if(!confirm('이 학원 Notion의 예시 데이터를 모두 휴지통으로 보냅니다. 알림톡 설정·과목·메뉴·웹페이지·학년만 남습니다. 계속할까요?'))return;
+ const f=await clearRequest('start',{workspace:$('clear-confirm').value});
+ $('clear-form').hidden=true;showClearProgress({flag:f});notice('비우기를 시작했습니다. 이 화면을 닫아도 서버에서 계속 진행됩니다.','info');startClearPoll();
+},e.submitter,'시작하는 중…');};
 $('progress-back').onclick=()=>task(profile);
 $('webhook-form').onsubmit=e=>{e.preventDefault();task(async()=>{
  const data=await request('webhook-start',{current_password:$('webhook-password').value});clearPasswords();
