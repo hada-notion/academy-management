@@ -32,7 +32,7 @@ let clearTimer=null;
 function stopClearPoll(){if(clearTimer){clearInterval(clearTimer);clearTimer=null;}}
 function clearSummary(s){
  const f=s.flag;
- if(f&&f.state==='done')return [`${date(f.finishedAt||s.updatedAt)}에 비웠습니다(${f.done||0}건). 이 기능은 잠겼습니다.`,false];
+ if(f&&f.state==='done')return [`${date(f.finishedAt||s.updatedAt)}에 비웠습니다(${(f.done||0).toLocaleString()}건). 이 기능은 잠겼습니다.`,false];
  if(f&&f.state==='locked')return ['이미 쓰고 있는 학원이라 잠겨 있습니다. 실제 데이터를 지우지 않도록 막아 둔 것입니다.',false];
  if(f&&f.state==='running'&&!s.canStart)return [`비우는 중입니다: ${f.done||0} / ${f.total||0}건${f.current?` · ${f.current}`:''}`,true];
  if(f&&f.state==='stopped')return [`중단했습니다(${f.done||0}건 지움). 다시 시작하면 남은 것만 지웁니다.`,true];
@@ -49,11 +49,29 @@ function showClearProgress(s){
  text('clear-count',`${done} / ${total}건${f.current?` · ${f.current}`:''}`);
  $('clear-stop').hidden=f.state!=='running';
 }
+// After a finished (or locked) run the server no longer counts pages, so the list would show 0 for every DB, kept ones
+// included. Show one summary instead: a full bar, what was cleared and what was kept.
+const shortDb=n=>n.replace('(학원) DB','');
+function showClearDone(s){
+ const f=s.flag||{};
+ $('clear-select').hidden=true;$('clear-form').hidden=true;$('clear-stop').hidden=true;$('clear-warn').hidden=true;$('clear-workspace').hidden=true;
+ const kept=[...(s.keep||[]),...(f.keep||[]).filter(n=>n!=='패치·이슈 관리 DB')].map(shortDb);
+ const done=$('clear-done');done.replaceChildren();done.hidden=false;
+ if(f.state==='done'){
+  $('clear-progress').hidden=false;$('clear-bar').style.width='100%';text('clear-count',`완료 · ${(f.done||0).toLocaleString()}건 비움`);
+  const cleared=[...new Set((f.plan||[]).map(p=>shortDb(p.name)))];
+  done.append(el('strong','',`${date(f.finishedAt||s.updatedAt)}에 비웠습니다. 이 기능은 잠겼습니다.`),el('span','',`비운 DB ${cleared.length}개: ${cleared.join(' · ')}`),el('br'),el('span','',`남긴 DB: ${[...new Set(kept)].join(' · ')}`));
+ }else{
+  $('clear-progress').hidden=true;
+  done.append(el('strong','','이 학원은 비우기가 잠겨 있습니다.'),el('span','','이미 쓰고 있는 학원이라 실제 데이터를 지우지 않도록 막아 두었습니다.'));
+ }
+ done.scrollIntoView({block:'center'});
+}
 async function pollClear(){
  let s;try{s=await clearRequest('state',{},20000);}catch{return;}
  if(s.flag&&s.flag.state==='running'&&!s.canStart){showClearProgress(s);return;}
  stopClearPoll();const [msg]=clearSummary(s);
- if(s.flag&&s.flag.state==='done'){showClearProgress(s);$('clear-form').hidden=true;notice(msg,'success');}
+ if(s.flag&&s.flag.state==='done'){showClearDone(s);notice(msg,'success');}
  else if(s.flag&&s.flag.state==='stopped'){await openClear();notice(msg,'info');}
  else{notice(msg,'error');$('clear-form').hidden=false;}
 }
@@ -88,9 +106,9 @@ async function openClear(){
  text('clear-keep',`항상 남기는 DB: ${s.keep.map(n=>n.replace('(학원) DB','')).join(' · ')||'없음'} · 체크를 푼 DB와 매뉴얼 페이지·DB 템플릿도 그대로입니다.`);
  $('clear-missing').hidden=!s.missing.length;text('clear-missing',s.missing.length?`찾지 못한 DB(통합 공유 확인): ${s.missing.join(', ')}`:'');
  $('clear-other').hidden=!s.unknown.length;text('clear-other-sum',`목록에 없어 건드리지 않는 DB ${s.unknown.length}개`);text('clear-other-text',s.unknown.join(', '));
- $('clear-confirm').value='';$('clear-form').hidden=!s.canStart;$('clear-progress').hidden=true;
+ $('clear-confirm').value='';$('clear-form').hidden=!s.canStart;$('clear-progress').hidden=true;$('clear-select').hidden=false;$('clear-done').hidden=true;$('clear-warn').hidden=false;$('clear-workspace').hidden=false;
  if(s.flag&&s.flag.state==='running'&&!s.canStart){showClearProgress(s);startClearPoll();}
- else if(!s.canStart){const [msg]=clearSummary(s);notice(msg,s.flag&&s.flag.state==='done'?'success':'info');}
+ else if(!s.canStart){const [msg]=clearSummary(s);showClearDone(s);notice(msg,s.flag&&s.flag.state==='done'?'success':'info');}
 }
 // Webhook key rotation. The server keeps only the new key's hash. While the rotation is open, this browser tab keeps
 // the key in sessionStorage so it can be copied again from the progress view (pasting URLs and keys in turn clears the
