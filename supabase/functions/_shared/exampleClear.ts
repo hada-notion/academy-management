@@ -64,6 +64,19 @@ export const KEEP_DBS = [
   "학년(학원) DB",
 ]
 
+// 화면 묶음. required = 예시 학생·업무 기록이라 꼭 비울 것, 아니면 그대로 써도 되는 기준 자료(선택).
+export const GROUPS: { name: string; required: boolean; dbs: string[] }[] = [
+  { name: "학생·수강", required: true, dbs: ["학생(학원) DB", "등록(학원) DB", "클래스(학원) DB", "시간표(학원) DB"] },
+  { name: "수업·학습", required: true, dbs: ["수업(학원) DB", "출석(학원) DB", "학습기록(학원) DB", "학습활동(학원) DB", "루틴 체크(학원) DB", "진도교재(학원) DB", "대시보드(학원) DB"] },
+  { name: "보고서·알림", required: true, dbs: ["보고서(학원) DB", "알림톡 발송함(학원) DB", "가정통신문(학원) DB", "자동화 로그(학원) DB"] },
+  { name: "수납", required: true, dbs: ["수강료(학원) DB", "결제(학원) DB", "교재비(학원) DB", "교재배부(학원) DB", "교재결제(학원) DB"] },
+  { name: "시험·일정", required: true, dbs: ["시험(학원) DB", "시험정보(학원) DB", "성적(학원) DB", "일정(학원) DB"] },
+  { name: "직원", required: true, dbs: ["강사(학원) DB", "근무(학원) DB"] },
+  { name: "기준 자료", required: false, dbs: ["학교(학원) DB", "교시(학원) DB", "루틴(학원) DB", "라이브러리(학원) DB", "단원목록(학원) DB", "자료(학원) DB"] },
+  { name: "원본 기록", required: false, dbs: ["업데이트(학원) DB", "패치·이슈 관리 DB"] },
+]
+export const groupOf = (name: string) => GROUPS.find((g) => g.dbs.includes(name))
+
 const OLD_NAME = CLEAR_DBS[CLEAR_DBS.length - 1]
 // 한 큐 항목이 지우는 최대 건수. 건마다 PAUSE_MS를 쉬어 Notion 평균 초당 3회 한도 안에 두고, 워커 시간 예산(100초) 안에 끝낸다.
 const BATCH = 60
@@ -87,7 +100,7 @@ export type ClearState = {
   finishedAt?: string
   at?: string
 }
-export type StatusDb = { name: string; count: number; checked: boolean }
+export type StatusDb = { name: string; count: number; checked: boolean; group: string; required: boolean }
 export type ClearStatus = {
   workspace: string
   flag: ClearState | null
@@ -210,7 +223,10 @@ export async function status(): Promise<ClearStatus> {
   if (canStart(value, updatedAt)) {
     for (const p of plan) counts.set(p.name, (counts.get(p.name) ?? 0) + (await pageIds(p.ds)).length)
   }
-  const dbs = [...new Set(plan.map((p) => p.name))].map((name) => ({ name, count: counts.get(name) ?? 0, checked: !keep.includes(name) }))
+  const dbs = [...new Set(plan.map((p) => p.name))].map((name) => {
+    const g = groupOf(name)
+    return { name, count: counts.get(name) ?? 0, checked: !keep.includes(name), group: g?.name ?? "기타", required: g?.required ?? false }
+  })
   return {
     workspace, flag: value, updatedAt, dbs, total: dbs.filter((d) => d.checked).reduce((s, d) => s + d.count, 0),
     keep: KEEP_DBS.filter((n) => sources.has(n)), missing, unknown, canStart: canStart(value, updatedAt),

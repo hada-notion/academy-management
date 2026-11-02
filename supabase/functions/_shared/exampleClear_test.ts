@@ -1,6 +1,6 @@
 import { assert, assertEquals } from "jsr:@std/assert@1"
 import { assertThrows } from "jsr:@std/assert@1"
-import { buildPlan, canStart, CLEAR_DBS, ClearError, KEEP_DBS, selectionKeep, STALE_MS } from "./exampleClear.ts"
+import { buildPlan, canStart, CLEAR_DBS, ClearError, GROUPS, KEEP_DBS, selectionKeep, STALE_MS } from "./exampleClear.ts"
 
 // scripts/clear-example-data.py의 목록과 같아야 한다(PC 스크립트와 화면이 같은 DB를 지운다).
 function pyList(src: string, name: string): string[] {
@@ -57,4 +57,10 @@ Deno.test("화면에서 고른 DB만 비우고 나머지 비울 DB는 남긴다"
   assertThrows(() => selectionKeep([]), ClearError)
   assertThrows(() => selectionKeep(["알림톡 설정(학원) DB"]), ClearError) // 남기는 DB는 고를 수 없다
   assertThrows(() => selectionKeep("출석(학원) DB"), ClearError)
+})
+
+Deno.test("비울 DB는 모두 화면 묶음 하나에만 들어 있다", () => {
+  const all = GROUPS.flatMap((g) => g.dbs)
+  assertEquals([...all].sort(), [...CLEAR_DBS].sort())
+  assertEquals(new Set(all).size, all.length)
 })

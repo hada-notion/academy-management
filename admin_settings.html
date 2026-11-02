@@ -62,6 +62,16 @@
 .clear-head .subhead{margin:0}
 .clear-all{font-weight:600;font-size:var(--text-small)}
 .clear-other summary{cursor:pointer;font-size:var(--text-small)}
+.clear-group{margin-top:var(--space-5)}
+.clear-group .clear-list{margin-top:var(--space-1)}
+.clear-group-head{display:flex;align-items:center;gap:var(--space-3);min-height:var(--hit-min);margin:0;padding-bottom:var(--space-1);border-bottom:2px solid var(--brand-border);cursor:pointer;font-weight:700}
+.clear-group-head input{width:var(--icon-md);height:var(--icon-md);margin:0;flex-shrink:0;accent-color:var(--success-ink)}
+.clear-group-head .muted{margin-left:auto;font-weight:400;font-size:var(--text-small)}
+.tag{font-size:var(--text-caption);font-weight:700;border-radius:var(--radius-sm);padding:0 var(--space-2);white-space:nowrap}
+.tag.req{background:var(--danger-soft);color:var(--danger-ink)}
+.tag.opt{background:var(--info-soft);color:var(--info-ink)}
+.clear-legend{display:flex;flex-wrap:wrap;gap:var(--space-2) var(--space-5);font-size:var(--text-small);margin:var(--space-2) 0 0}
+.clear-legend span{display:inline-flex;align-items:center;gap:var(--space-2)}
 .clear-progress{display:flex;align-items:center;gap:var(--space-4);margin:var(--space-4) 0}
 .cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-4);align-items:stretch}
 .dbcard{border:1px solid var(--brand-border);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4);background:var(--surface)}
@@ -142,7 +152,7 @@
 <div id="clear-panel" hidden>
 <div class="status warn"><strong>되돌리기 어렵습니다.</strong>Notion 휴지통으로 보내 30일 안에 되살릴 수는 있지만, 한 건씩 되살려야 합니다. 설치가 끝나 실제로 쓰기 시작한 뒤에는 누르지 않습니다. 한 번 끝나면 이 기능은 잠깁니다.</div>
 <p class="help" id="clear-workspace"></p>
-<div class="clear-head"><h3 class="subhead">비울 DB</h3><label class="clear-all"><input type="checkbox" id="clear-all">전체 선택</label></div><ul class="clear-list" id="clear-dbs"></ul>
+<div class="clear-head"><h3 class="subhead">비울 DB</h3><label class="clear-all"><input type="checkbox" id="clear-all">전체 선택</label></div><p class="clear-legend"><span><b class="tag req">필수</b>예시 학생·업무 기록이라 비웁니다</span><span><b class="tag opt">선택</b>그대로 써도 되는 기준 자료라 골라서 비웁니다</span></p><div id="clear-dbs"></div>
 <p class="help" id="clear-keep"></p>
 <p class="help" id="clear-missing" hidden></p>
 <details class="clear-other help" id="clear-other" hidden><summary id="clear-other-sum"></summary><p id="clear-other-text"></p></details>
@@ -210,6 +220,6 @@
 <noscript><p class="notice">관리자 설정을 사용하려면 JavaScript가 필요합니다.</p></noscript>
 </div>
 <script src="assets/hada-shortcuts.js?v=e1c30e10"></script>
-<script src="hada_config.js"></script><script src="admin_auth.js?v=4ffde89c"></script><script src="admin_settings.js?v=f63f3ee1"></script>
+<script src="hada_config.js"></script><script src="admin_auth.js?v=4ffde89c"></script><script src="admin_settings.js?v=70c324e1"></script>
 </body>
 </html>
