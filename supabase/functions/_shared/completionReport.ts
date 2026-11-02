@@ -15,7 +15,7 @@ import { createPage, getPage, queryAllPages, queryDataSource, relIds, todaySeoul
 import { DS_LEARNING_RECORD, DS_REPORT, DS_STUDY_ACTIVITY, PROP_LAST_ERROR } from "./constants.ts"
 import { enqueueSync } from "./syncQueue.ts"
 import { markDone, markError, markRunning, type StatusSpec } from "./statusTracking.ts"
-import { reportProps, resolveBatchDataSourceId, seoulDay, studentNameOf } from "./classReportPlan.ts"
+import { classNameOfReg, reportProps, resolveBatchDataSourceId, seoulDay, studentNameOf } from "./classReportPlan.ts"
 
 export const COMPLETION_STATUS_SPEC: StatusSpec = {
 	statusProp: "수료 상태",
@@ -172,8 +172,8 @@ export async function processCompletionReportQueueItem(p: CompletionReportPayloa
 			const reg: any = await deps.getPage(p.regId)
 			const rels = await collectBookRelations(p.regId, p.bookId)
 			const studentName = studentNameOf(reg)
-			const props = reportProps({ kind: COMPLETION_KIND, start: p.start, end: p.end, className: "" }, { batchId: p.batchId, regId: p.regId, studentName, ...rels })
-			props["보고서"] = { title: [{ text: { content: `${studentName} ${COMPLETION_KIND} ${p.bookName}` } }] }
+			// (11/2) 이름은 다른 보고서와 같은 꼴 "학생 반 수료 보고서 MM.DD~MM.DD"(reportTitle).
+			const props = reportProps({ kind: COMPLETION_KIND, start: p.start, end: p.end, className: classNameOfReg(reg) }, { batchId: p.batchId, regId: p.regId, studentName, ...rels })
 			props["진도교재"] = { relation: [{ id: p.bookId }] }
 			await deps.createPage(DS_REPORT, props)
 		}
