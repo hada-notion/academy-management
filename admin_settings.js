@@ -58,10 +58,11 @@ async function pollClear(){
  else{notice(msg,'error');$('clear-form').hidden=false;}
 }
 // Checked DB names and the total of their pages; the "전체 선택" box follows the list (partly checked = indeterminate).
-function clearChecks(){return [...document.querySelectorAll('#clear-dbs input')];}
+function clearChecks(){return [...document.querySelectorAll('#clear-dbs .clear-list input')];}
 function updateClearTotal(){
  const boxes=clearChecks(),on=boxes.filter(b=>b.checked);
  const all=$('clear-all');all.checked=on.length===boxes.length&&boxes.length>0;all.indeterminate=on.length>0&&on.length<boxes.length;
+ document.querySelectorAll('#clear-dbs .clear-group').forEach(g=>{const items=[...g.querySelectorAll('.clear-list input')],n=items.filter(b=>b.checked).length,gb=g.querySelector('.clear-group-head input');gb.checked=n===items.length;gb.indeterminate=n>0&&n<items.length;});
  text('clear-workspace',`이 학원 워크스페이스: ${clearWorkspace||'(이름 없음)'} · 고른 DB ${on.length}개 · 비울 페이지 ${on.reduce((s,b)=>s+Number(b.dataset.count),0)}건`);
 }
 let clearWorkspace='';
@@ -71,8 +72,15 @@ async function openClear(){
  panel('clear-panel','예시 데이터 비우기','이 학원 Notion에서 원본 예시 데이터를 지웁니다. 최초 설치 때 한 번만 씁니다.');
  clearWorkspace=s.workspace||'';
  const list=$('clear-dbs');list.replaceChildren();
- for(const d of s.dbs){const li=el('li'),label=el('label'),box=el('input');box.type='checkbox';box.checked=d.checked;box.dataset.name=d.name;box.dataset.count=String(d.count);box.onchange=updateClearTotal;
-  const c=el('span','muted',`${d.count}건`);label.append(box,el('span','',d.name.replace('(학원) DB','')),c);li.append(label);list.append(li);}
+ // Grouped by purpose; each group says whether its data must go (필수, example students and records) or may stay (선택).
+ const groups=new Map();for(const d of s.dbs){if(!groups.has(d.group))groups.set(d.group,{required:d.required,dbs:[]});groups.get(d.group).dbs.push(d);}
+ for(const [name,g] of groups){
+  const wrap=el('section','clear-group'),head=el('label','clear-group-head'),gbox=el('input'),ul=el('ul','clear-list');gbox.type='checkbox';
+  head.append(gbox,el('span','',name),el('b',`tag ${g.required?'req':'opt'}`,g.required?'필수':'선택'),el('span','muted',`${g.dbs.reduce((t,d)=>t+d.count,0)}건`));
+  gbox.onchange=()=>{ul.querySelectorAll('input').forEach(b=>{b.checked=gbox.checked;});updateClearTotal();};
+  for(const d of g.dbs){const li=el('li'),label=el('label'),box=el('input');box.type='checkbox';box.checked=d.checked;box.dataset.name=d.name;box.dataset.count=String(d.count);box.dataset.required=d.required?'1':'';box.onchange=updateClearTotal;
+   label.append(box,el('span','',d.name.replace('(학원) DB','')),el('span','muted',`${d.count}건`));li.append(label);ul.append(li);}
+  wrap.append(head,ul);list.append(wrap);}
  updateClearTotal();
  text('clear-keep',`항상 남기는 DB: ${s.keep.map(n=>n.replace('(학원) DB','')).join(' · ')||'없음'} · 체크를 푼 DB와 매뉴얼 페이지·DB 템플릿도 그대로입니다.`);
  $('clear-missing').hidden=!s.missing.length;text('clear-missing',s.missing.length?`찾지 못한 DB(통합 공유 확인): ${s.missing.join(', ')}`:'');
@@ -382,7 +390,8 @@ $('clear-stop').onclick=e=>task(async()=>{await clearRequest('stop',{},20000);no
 $('clear-form').onsubmit=e=>{e.preventDefault();task(async()=>{
  const dbs=clearChecks().filter(b=>b.checked).map(b=>b.dataset.name);
  if(!dbs.length)throw new Error('비울 DB를 하나 이상 고르세요.');
- if(!confirm(`고른 DB ${dbs.length}개의 페이지를 모두 휴지통으로 보냅니다. 체크를 푼 DB와 알림톡 설정·과목·메뉴·웹페이지·학년은 남습니다. 계속할까요?`))return;
+ const keptRequired=clearChecks().filter(b=>!b.checked&&b.dataset.required).map(b=>b.dataset.name.replace('(학원) DB',''));
+ if(!confirm(`고른 DB ${dbs.length}개의 페이지를 모두 휴지통으로 보냅니다. 체크를 푼 DB와 알림톡 설정·과목·메뉴·웹페이지·학년은 남습니다.`+(keptRequired.length?`\n필수 DB를 남깁니다(${keptRequired.join(', ')}). 예시 학생·업무 기록이 남아 실제 운영에 섞일 수 있습니다.`:'')+'\n계속할까요?'))return;
  const f=await clearRequest('start',{workspace:$('clear-confirm').value,dbs});
  $('clear-form').hidden=true;showClearProgress({flag:f});notice('비우기를 시작했습니다. 이 화면을 닫아도 서버에서 계속 진행됩니다.','info');startClearPoll();
 },e.submitter,'시작하는 중…');};
