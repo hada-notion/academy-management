@@ -140,11 +140,9 @@ async function prepareReport(page: any): Promise<Prepared> {
 		}
 	}
 	const period = getDateRange(page, "보고서 기간")
-	// 변수 값은 "변수(알림톡)" 수식 → 옛 "(보고서)" 수식(_shared/noticeBlocks.ts alimtalkVar).
-	// (v2.8.0 통일안) 새 템플릿의 #{학습현황}(두 칸 표기)과 옛 템플릿의 #{보고서요약}을 함께 만든다.
-	const v = (name: string, fallback = "") => alimtalkVar(page, name, fallback, `${name}(보고서)`)
+	// 변수 값은 "변수(알림톡)" 수식(_shared/noticeBlocks.ts alimtalkVar). (11/2) 예전 (보고서) 수식은 읽지 않는다.
+	const v = (name: string, fallback = "") => alimtalkVar(page, name, fallback)
 	const studentName = v("학생이름")
-	const summary = getFormulaText(page, "보고서요약(보고서)")
 	const fixed: Record<string, string> = {
 		"#{학생이름}": studentName,
 		"#{클래스}": v("클래스"),

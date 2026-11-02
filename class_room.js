@@ -709,7 +709,7 @@ function recCard(r){
  const units=(r.unit||'').split(/(?=\d+-\d+\.)/).map(x=>x.trim()).filter(Boolean);
  const note=(r.content||'').split('\n').map(l=>l.trim()).join('\n').trim();
  // 기록 카드는 늘 날짜·수업으로 묶인 곳에 보이므로(학습기록 탭·홈·캘린더·교재 상세) 출제일은 묶음 날짜와 겹쳐 빼고 마감만(v2.5.98)
- const extras=r.kind==='과제'&&r.homework?.due?[`마감: ${withDow(r.homework.due)}`]:[];
+ const extras=r.kind==='과제'&&r.homework?[r.homework.due?`마감: ${withDow(r.homework.due)}`:'마감: 다음 수업']:[];
  const hw=r.homework,sc=r.score;
  const pill=hw?`<span class="pill hw ${pillTone(hw.submitted,hw.total)}">제출 ${hw.submitted}/${hw.total}</span>`:sc?`<span class="pill b-${["good","fair","low","poor"][scoreBand(sc.avg)]}">평균 ${sc.avg}점</span>`:'';
  const body=bodyHtml(r.body),meta=units.map(u=>`<span class="log-context">• ${esc(u)}</span>`).join('')+(note?`<span class="log-note">${esc(note)}</span>`:'')+extras.map(x=>`<span class="log-context">• ${esc(x)}</span>`).join('');

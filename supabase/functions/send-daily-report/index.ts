@@ -35,7 +35,7 @@ import { refreshDailyReportForSend } from "../_shared/dailyReportRefresh.ts"
 import { enqueueSync, wakeSyncQueueWorker } from "../_shared/syncQueue.ts"
 import { extractPageId } from "../_shared/notionClient.ts"
 import { formatClassTime } from "../_shared/lessonNotice.ts"
-import { alimtalkVar, arrivalBlock, dailyConfigCategory, dailySectionVars, dateOnly, fitDailyLength } from "../_shared/noticeBlocks.ts"
+import { alimtalkVar, arrivalBlock, attendanceBasics, dailyConfigCategory, dailySectionVars, dateOnly, fitDailyLength } from "../_shared/noticeBlocks.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -92,7 +92,8 @@ Deno.serve(async (req) => {
     try {
       // 이미 전송한 건은 무거운 출석/캐시 최신화 전에 먼저 걸러낸다.
       const attendancePage = await notionGetPage(attendanceId)
-      const studentName = getFormulaText(attendancePage, "학생이름(보고서)")
+      const basics = attendanceBasics(attendancePage)
+      const studentName = basics.studentName
 
       const alreadySent = attendancePage.properties?.["전송완료 체크"]?.checkbox === true
       if (alreadySent) {
@@ -105,17 +106,15 @@ Deno.serve(async (req) => {
       // 모두 성공한 뒤에만 알림톡을 보낸다. 최신화 실패 시 아래 catch로 이동해 전송하지 않는다.
       const { access_token, reportUrl } = await refreshDailyReportForSend(registrationId)
 
-      const className = getFormulaText(attendancePage, "클래스(보고서)")
-      const classDate = getFormulaText(attendancePage, "수업일(보고서)")
-      const attendanceStatus = getFormulaText(attendancePage, "출석상태(보고서)")
-      const studyContent = getFormulaText(attendancePage, "학습 내용(보고서)")
+      const className = basics.className
+      const attendanceStatus = basics.status
       // (v2.8.0 통일안) 새 템플릿의 #{등원정보}: 날짜는 수식을 읽지 않고(API의 수식 날짜는 UTC) 출석 수업일시로 서울 날짜를 만든다.
       // 보강 출석이면 기존 결석의 수업일 줄을 앞에 붙인다. 못 읽으면 그 줄 없이.
       const makeupId = attendancePage.properties?.["기존 결석"]?.relation?.[0]?.id
       const makeupPage = makeupId ? await notionGetPage(makeupId).catch(() => null) : null
       const makeupIso = String(makeupPage?.properties?.["수업일시"]?.date?.start ?? "")
       const arrival = arrivalBlock({
-        classDate: dateOnly(formatClassTime(attendancePage.properties?.["수업일시"]?.date?.start)) || classDate,
+        classDate: dateOnly(formatClassTime(attendancePage.properties?.["수업일시"]?.date?.start)),
         status: attendanceStatus,
         makeupOf: makeupIso ? dateOnly(formatClassTime(makeupIso)) : undefined,
       })
@@ -124,8 +123,7 @@ Deno.serve(async (req) => {
 
       const REPORT_PATH = Deno.env.get("REPORT_PATH") ?? "/project1/student_report.html"
       const tokenQueryString = REPORT_PATH + "?token=" + access_token
-      // 변수 값은 "변수(알림톡)" 수식 → 옛 "(보고서)" 수식. 옛 템플릿(#{수업일}·#{출석상태})과 새 템플릿(#{등원정보})
-      // 변수를 함께 넣고, 보낼 때 그 템플릿에 있는 것만 남긴다(_shared/templateFit.ts).
+      // 변수 값은 "변수(알림톡)" 수식 → 없으면 서버 계산. 보낼 때 그 템플릿에 있는 것만 남긴다(_shared/templateFit.ts).
       const variables: Record<string, string> = fitDailyLength({
         "#{학생이름}": alimtalkVar(attendancePage, "학생이름", studentName),
         "#{클래스}": alimtalkVar(attendancePage, "클래스", className),

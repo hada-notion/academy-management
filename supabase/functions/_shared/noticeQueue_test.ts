@@ -35,7 +35,7 @@ const reportPage = (status = "⚪ 대기") => ({
 		등록: rel(REG),
 		"알림톡 발송함": rel("batch-1"),
 		"리포트 토큰": rollup("raw-token"),
-		"학생이름(보고서)": formula("한지민"),
+		"학생이름(알림톡)": formula("한지민"),
 		"학부모 연락처(보고서)": formula("010-0000-0000"),
 		"보고서기간(보고서)": formula("10월"),
 		"보고서 기간": { date: { start: "2026-10-01", end: "2026-10-31" } },

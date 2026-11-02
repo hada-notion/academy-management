@@ -189,12 +189,11 @@ Deno.serve(async (req) => {
       throw new Error(`이 보고서의 '보고서 구분'이 "주간 보고서" / "월간 보고서" / "수료 보고서" 중 하나가 아닙니다 (현재 값: "${reportType || "없음"}").`)
     }
 
-    const studentName = getFormulaText(reportPage, "학생이름(보고서)")
+    // (11/2) 예전 (보고서) 수식 대신 (알림톡) 수식. 연락처는 `학부모 연락처(보고서)`(등록 → 학생 우선 연락처, 이름만 예전 꼴)를 그대로 쓴다.
+    const studentName = alimtalkVar(reportPage, "학생이름", "")
     const parentPhone = getFormulaText(reportPage, "학부모 연락처(보고서)")
-    const reportPeriodLabel = getFormulaText(reportPage, "보고서기간(보고서)")
-    const className = getFormulaText(reportPage, "클래스(보고서)")
-    const studyPeriod = getFormulaText(reportPage, "학습기간(보고서)")
-    const reportSummary = getFormulaText(reportPage, "보고서요약(보고서)")
+    const className = alimtalkVar(reportPage, "클래스", "")
+    const studyPeriod = alimtalkVar(reportPage, "학습기간", "")
     const teacherComment = (reportPage.properties?.["선생님 한마디"]?.rich_text ?? [])
       .map((item: any) => item.plain_text ?? "")
       .join("")
@@ -251,7 +250,7 @@ Deno.serve(async (req) => {
           const variables: Record<string, string> = {
             "#{학생이름}": studentName,
             "#{클래스}": className,
-            "#{학습기간}": alimtalkVar(reportPage, "학습기간", studyPeriod),
+            "#{학습기간}": studyPeriod,
             // (v2.8.0 통일안) 큐 경로와 같은 새 템플릿 변수. 보낼 때 템플릿에 있는 것만 남는다.
             // (v2.8.0 구역) 주간·월간 학습·활동 보고서의 구역 변수.
             ...reportSectionVars(reportPage),

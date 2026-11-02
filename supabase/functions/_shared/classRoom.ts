@@ -132,7 +132,8 @@ async function getPages(pageIds: string[]): Promise<Page[]> {
 	return await mapWithConcurrency(dedupe(pageIds), 6, (id) => getPage(id)) as Page[]
 }
 function studentName(attendance: Page): string {
-	return formulaString(attendance, "학생이름(보고서)") || plain(attendance, "출석")
+	// (11/2) 예전 `학생이름(보고서)` 대신 `학생이름(알림톡)`.
+	return formulaString(attendance, "학생이름(알림톡)") || plain(attendance, "출석")
 }
 
 // ---------- 조회 ----------
@@ -218,7 +219,7 @@ export async function loadDay(date: string, teacherId?: string) {
 			attendanceId: a.id as string,
 			registrationId: rel(a, "등록")[0] ?? null,
 			name: studentName(a),
-			className: formulaString(a, "클래스(보고서)") ?? "",
+			className: formulaString(a, "클래스(알림톡)") ?? "",
 			start: a.properties?.["수업일시"]?.date?.start ?? null,
 		})),
 	}

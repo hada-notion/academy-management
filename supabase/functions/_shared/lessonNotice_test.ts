@@ -13,8 +13,8 @@ const att = (o: { status?: string; at?: string | null; sent?: string | null; reg
 		"수업 안내 일시": { type: "date", date: o.sent ? { start: o.sent } : null },
 		"등록": { type: "relation", relation: o.reg === false ? [] : [{ id: "reg-1" }] },
 		"수업": { type: "relation", relation: [{ id: "ses-1" }] },
-		"학생이름(보고서)": formula("김하윤"),
-		"클래스(보고서)": formula("고1 A"),
+		"학생이름(알림톡)": formula("김하윤"),
+		"클래스(알림톡)": formula("고1 A"),
 		"학부모 연락처": formula("01012345678"),
 	},
 })
@@ -42,13 +42,13 @@ Deno.test("v2.8.0 수업 안내: 보강이면 수업구분 보강 수업, 일반
 	eq(m.noteText(null), "없음")
 	eq([m.formatClassTime("2026-11-03T19:05:00+09:00"), m.formatClassTime("2026-01-04"), m.formatClassTime("2026-10-30T23:30:00.000Z")], ["26.11.03(화) 19:05", "26.01.04(일)", "26.10.31(토) 08:30"])
 	eq((m.planLessonNotice(att(), null) as any).configCategory, "수업 일정 안내")
-	// 출석의 (수업안내) 수식이 있으면 그 값을 그대로 보낸다(다른 알림톡과 같은 규칙).
+	// (11/2) 예전 출석 (수업안내) 수식은 읽지 않는다. 전달사항은 수업 `수업 안내 메모`에서.
 	const withF: any = att()
 	withF.properties["전달사항(수업안내)"] = { type: "formula", formula: { type: "string", string: "수식 값" } }
 	// 일시 수식은 API가 UTC로 계산해 9시간 어긋나므로(10/27 원본 "09:00") 읽지 않는다.
 	withF.properties["수업일시(수업안내)"] = { type: "formula", formula: { type: "string", string: "26.10.30(금) 08:00" } }
 	const pf: any = m.planLessonNotice(withF, ses(false, "메모"))
-	eq([pf.variables["#{전달사항}"], pf.variables["#{수업일정}"]], ["수식 값", "📅 일시  26.10.30(금) 17:00"])
+	eq([pf.variables["#{전달사항}"], pf.variables["#{수업일정}"]], ["메모", "📅 일시  26.10.30(금) 17:00"])
 })
 
 Deno.test("v2.8.0 수업 안내: 받은 뒤 일시가 바뀌면 새 시간으로 수업 안내를 다시, 같으면 건너뜀, 결석·일시 없음은 안 보냄", () => {

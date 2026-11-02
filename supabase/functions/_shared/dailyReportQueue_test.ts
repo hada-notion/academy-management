@@ -11,7 +11,7 @@ await import("../send-daily-report/index.ts")
 const f = (s: string) => ({ type: "formula", formula: { type: "string", string: s } })
 const rel = (...ids: string[]) => ({ relation: ids.map((id) => ({ id })) })
 function attendance(extra: Record<string, any> = {}) {
- return { id: "att", properties: { 등록: rel("reg"), 수업: rel("sess"), "전송완료 체크": { checkbox: false }, "학생이름(보고서)": f("박현준"), "클래스(보고서)": f("고1 A"), "수업일(보고서)": f("10.05(월)"), "출석상태(보고서)": f("출석"), "학습 내용(보고서)": f("개념 정리"), "학부모 연락처": f("010-0000-0000"), 실행자: { people: [{ id: "user" }] }, "리포트 토큰": { type: "rollup", rollup: { type: "array", array: [{ type: "rich_text", rich_text: [{ plain_text: "tok123" }] }] } }, 보고서: rel(), ...extra } }
+ return { id: "att", properties: { 등록: rel("reg"), 수업: rel("sess"), "전송완료 체크": { checkbox: false }, "학생이름(알림톡)": f("박현준"), "클래스(알림톡)": f("고1 A"), "출석 상태": { select: { name: "🟢 출석" } }, "수업일시": { date: { start: "2026-10-05T09:00:00.000Z" } }, "학부모 연락처": f("010-0000-0000"), 실행자: { people: [{ id: "user" }] }, "리포트 토큰": { type: "rollup", rollup: { type: "array", array: [{ type: "rich_text", rich_text: [{ plain_text: "tok123" }] }] } }, 보고서: rel(), ...extra } }
 }
 function mock(page: any) {
  const patches: any[] = [], calls: string[] = []
@@ -45,7 +45,7 @@ Deno.test("v2.6.20 일일 보고서 한 건: 출석 1번 읽고 최신화(공용
  assert(r.refreshed.length === 1 && r.refreshed[0].o.tokenRaw === "tok123" && /^daily:sess:\d+$/.test(r.refreshed[0].o.sharedRunKey), JSON.stringify(r.refreshed))
  const v = r.sent[0].variables
  assert(r.sent.length === 1 && r.sent[0].primaryPhone === "010-0000-0000" && v["#{학생이름}"] === "박현준" && v["#{학습기록}"] === "이날 학습 기록이 없습니다." && v["#{페이지ID}"].endsWith("?token=tok123"), JSON.stringify(r.sent))
- assert(v["#{등원정보}"] === "📅 수업일  10.05(월)\n✅ 출결  출석", JSON.stringify(v))
+ assert(v["#{등원정보}"] === "📅 수업일  26.10.05(월)\n✅ 출결  출석", JSON.stringify(v))
  const att = r.patches.filter((p) => p.properties?.["보고서 전송 상태"])
  assert(att.length === 1 && statusOf(att[0]) === "✅ 완료" && att[0].properties["전송완료 체크"].checkbox === true, JSON.stringify(r.patches))
 })

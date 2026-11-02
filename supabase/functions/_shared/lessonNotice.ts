@@ -29,7 +29,7 @@ import {
 } from "./adminShared.ts"
 import { getFormulaText, normalizePhone, resolveAlimtalkRecipients } from "./alimtalkShared.ts"
 import { relIds } from "./notionClient.ts"
-import { alimtalkVar, dateOnly } from "./noticeBlocks.ts"
+import { attendanceBasics, dateOnly } from "./noticeBlocks.ts"
 import { fitVariablesToTemplate } from "./templateFit.ts"
 import { sessionKind } from "./sessionKind.ts"
 
@@ -94,7 +94,8 @@ export function planLessonNotice(attendance: any, session: any | null, makeupOfI
   const makeup = sk === "보강"
   const label = makeup ? "보강 수업" : sk === "휴강" ? "휴강" : "정규 수업"
   const memo = (session?.properties?.[LESSON_MEMO_PROP]?.rich_text ?? []).map((t: any) => t.plain_text ?? "").join("").trim()
-  const note = getFormulaText(attendance, "전달사항(수업안내)").trim() || noteText(memo)
+  // (11/2) 예전 출석 `전달사항(수업안내)` 수식(같은 값)은 읽지 않는다. 수업 `수업 안내 메모`에서 만든다.
+  const note = noteText(memo)
   // 일시는 수식을 읽지 않는다: Notion API가 수식의 formatDate를 UTC로 계산해 18:00이 "09:00"으로 온다(10/27 원본). 서버가 서울 시각으로.
   const classTime = formatClassTime(classIso)
   const makeupOf = makeupOfIso ? dateOnly(formatClassTime(makeupOfIso)) : ""
@@ -104,8 +105,8 @@ export function planLessonNotice(attendance: any, session: any | null, makeupOfI
     // (v2.8.0 구역, 10/30 사용자) 보강 수업과 그 밖의 수업(시간 변경·공휴일 정상 수업 등)을 템플릿으로 나눈다.
     configCategory: makeup ? "보강 수업 안내" : sk === "휴강" ? "휴강 안내" : "수업 일정 안내",
     variables: {
-      "#{학생이름}": alimtalkVar(attendance, "학생이름", getFormulaText(attendance, "학생이름(보고서)")),
-      "#{클래스}": alimtalkVar(attendance, "클래스", getFormulaText(attendance, "클래스(보고서)")),
+      "#{학생이름}": attendanceBasics(attendance).studentName,
+      "#{클래스}": attendanceBasics(attendance).className,
       "#{전달사항}": note,
       // (v2.8.0 구역) [보강 정보]/[휴강 정보]/[수업 정보] 구역: 보강이면 📅 기존 + 🔁 일시, 아니면 📅 일시. 날짜는 서버가 서울 시각으로 만든다.
       // (10/31) 🔁는 다시 하는 수업(보강 일시)에, 결석한 날은 📅 기존.

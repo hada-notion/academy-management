@@ -10,6 +10,18 @@ export const NO_NOTE = "없음"
 // 템플릿 변수 하나의 값: "이름(알림톡)" → 옛 이름(있으면) → 계산값.
 // 앞 공백은 남긴다: 목록 블록 첫 줄 "  • …"·반 하나 "  수학반"의 두 칸이 값의 맨 앞이다(10/29 실발송에서 첫 줄 들여쓰기가 빠짐).
 const keepLead = (v: string) => (v.trim() ? v.replace(/\s+$/, "") : "")
+// (11/2) 출석 페이지의 학생 이름·반·출결. 예전 `학생이름(보고서)`·`클래스(보고서)`·`출석상태(보고서)` 수식 대신
+// `(알림톡)` 수식과 `출석 상태` 선택값을 읽는다(예전 수식은 지울 예정). 이름이 비면 출석 제목의 첫 낱말(학생 이름).
+export function attendanceBasics(page: any): { studentName: string; className: string; status: string } {
+	const title = (Object.values(page?.properties ?? {}) as any[]).find((p) => p?.type === "title")
+	const titleText = (title?.title ?? []).map((t: any) => t.plain_text ?? t.text?.content ?? "").join("").trim()
+	return {
+		studentName: getFormulaText(page, "학생이름(알림톡)").trim() || titleText.split(" ")[0] || "",
+		className: getFormulaText(page, "클래스(알림톡)").trim(),
+		status: String(page?.properties?.["출석 상태"]?.select?.name ?? "").trim(),
+	}
+}
+
 export function alimtalkVar(page: any, name: string, fallback: string, legacy?: string): string {
 	const own = keepLead(getFormulaText(page, `${name}(알림톡)`))
 	if (own) return own
