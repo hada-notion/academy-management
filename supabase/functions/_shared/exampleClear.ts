@@ -100,7 +100,9 @@ export type ClearState = {
   finishedAt?: string
   at?: string
 }
-export type StatusDb = { name: string; count: number; checked: boolean; group: string; required: boolean }
+export type StatusDb = { name: string; count: number; checked: boolean; group: string; required: boolean; icon: DbIcon }
+// 화면에 그릴 DB 아이콘. Notion 기본 아이콘은 notion.so/icons 그림 주소, 이모지는 글자. 직접 올린 그림(주소가 만료됨)은 넣지 않는다.
+export type DbIcon = { emoji: string } | { url: string } | null
 export type ClearStatus = {
   workspace: string
   flag: ClearState | null
@@ -161,6 +163,36 @@ export async function workspaceName(): Promise<string> {
   return me?.bot?.workspace_name ?? ""
 }
 
+export function iconOf(icon: any): DbIcon {
+  if (!icon || typeof icon !== "object") return null
+  if (icon.type === "emoji" && typeof icon.emoji === "string") return { emoji: icon.emoji }
+  if (icon.type === "icon" && /^[\w-]+$/.test(icon.icon?.name ?? "") && /^[\w-]*$/.test(icon.icon?.color ?? "")) {
+    return { url: `https://www.notion.so/icons/${icon.icon.name}_${icon.icon.color || "gray"}.svg` }
+  }
+  const url = icon.type === "external" ? icon.external?.url : null
+  if (typeof url === "string") {
+    if (/^\/icons\/[\w.-]+\.svg$/.test(url)) return { url: `https://www.notion.so${url}` }
+    if (/^https:\/\/www\.notion\.so\/icons\/[\w.-]+\.svg$/.test(url)) return { url }
+  }
+  return null
+}
+
+// DB(데이터 소스의 부모 데이터베이스) 아이콘. 데이터 소스에 아이콘이 있으면 그것을 쓴다.
+async function iconsOf(sources: Map<string, string[]>, icons: Map<string, unknown>): Promise<Map<string, DbIcon>> {
+  const out = new Map<string, DbIcon>()
+  for (const [name, ids] of sources) {
+    const own = icons.get(ids[0])
+    if (own) { out.set(name, iconOf(own)); continue }
+    const parent = dbParent.get(ids[0])
+    if (!parent) { out.set(name, null); continue }
+    const res = await fetchWithRetry(`${NOTION_API}/databases/${parent}`, { headers: notionHeaders() })
+    out.set(name, res.ok ? iconOf((await res.json())?.icon) : null)
+  }
+  return out
+}
+const dbParent = new Map<string, string>()
+const dsIcon = new Map<string, unknown>()
+
 // 이 통합이 볼 수 있는 데이터 소스(이름 → id 목록). 휴지통에 간 DB는 뺀다.
 export async function dataSources(): Promise<Map<string, string[]>> {
   const out = new Map<string, string[]>()
@@ -176,6 +208,8 @@ export async function dataSources(): Promise<Map<string, string[]>> {
       const name = (r.title ?? []).map((t: { plain_text?: string }) => t.plain_text ?? "").join("").trim()
       if (!name) continue
       out.set(name, [...(out.get(name) ?? []), r.id])
+      if (r.parent?.database_id) dbParent.set(r.id, r.parent.database_id)
+      if (r.icon) dsIcon.set(r.id, r.icon)
     }
     cursor = data.has_more ? data.next_cursor : undefined
   } while (cursor)
@@ -223,9 +257,11 @@ export async function status(): Promise<ClearStatus> {
   if (canStart(value, updatedAt)) {
     for (const p of plan) counts.set(p.name, (counts.get(p.name) ?? 0) + (await pageIds(p.ds)).length)
   }
-  const dbs = [...new Set(plan.map((p) => p.name))].map((name) => {
+  const planned = new Map([...new Set(plan.map((p) => p.name))].map((n) => [n, sources.get(n) ?? []]))
+  const icons = await iconsOf(planned, dsIcon).catch(() => new Map<string, DbIcon>())
+  const dbs = [...planned.keys()].map((name) => {
     const g = groupOf(name)
-    return { name, count: counts.get(name) ?? 0, checked: !keep.includes(name), group: g?.name ?? "기타", required: g?.required ?? false }
+    return { name, count: counts.get(name) ?? 0, checked: !keep.includes(name), group: g?.name ?? "기타", required: g?.required ?? false, icon: icons.get(name) ?? null }
   })
   return {
     workspace, flag: value, updatedAt, dbs, total: dbs.filter((d) => d.checked).reduce((s, d) => s + d.count, 0),

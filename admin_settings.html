@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.supabase.co; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.notion.so; connect-src 'self' https://*.supabase.co; base-uri 'none'; form-action 'none'">
 <title>관리자 설정 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Cpath%20d%3D%22M12%2015a3%203%200%201%200%200-6%203%203%200%200%200%200%206z%22%2F%3E%3Cpath%20d%3D%22M19.4%2015a1.65%201.65%200%200%200%20.33%201.82l.06.06a2%202%200%201%201-2.83%202.83l-.06-.06a1.65%201.65%200%200%200-1.82-.33%201.65%201.65%200%200%200-1%201.51V21a2%202%200%201%201-4%200v-.09A1.65%201.65%200%200%200%209%2019.4a1.65%201.65%200%200%200-1.82.33l-.06.06a2%202%200%201%201-2.83-2.83l.06-.06A1.65%201.65%200%200%200%204.68%2015a1.65%201.65%200%200%200-1.51-1H3a2%202%200%201%201%200-4h.09A1.65%201.65%200%200%200%204.6%209a1.65%201.65%200%200%200-.33-1.82l-.06-.06a2%202%200%201%201%202.83-2.83l.06.06A1.65%201.65%200%200%200%209%204.68a1.65%201.65%200%200%200%201-1.51V3a2%202%200%201%201%204%200v.09a1.65%201.65%200%200%200%201%201.51%201.65%201.65%200%200%200%201.82-.33l.06-.06a2%202%200%201%201%202.83%202.83l-.06.06A1.65%201.65%200%200%200%2019.4%209a1.65%201.65%200%200%200%201.51%201H21a2%202%200%201%201%200%204h-.09a1.65%201.65%200%200%200-1.51%201z%22%2F%3E%3C%2Fsvg%3E">
 <link rel="stylesheet" href="assets/hada-ui.css?v=beb0d95e">
@@ -62,11 +62,19 @@
 .clear-head .subhead{margin:0}
 .clear-all{font-weight:600;font-size:var(--text-small)}
 .clear-other summary{cursor:pointer;font-size:var(--text-small)}
-.clear-group{margin-top:var(--space-5)}
-.clear-group .clear-list{margin-top:var(--space-1)}
-.clear-group-head{display:flex;align-items:center;gap:var(--space-3);min-height:var(--hit-min);margin:0;padding-bottom:var(--space-1);border-bottom:2px solid var(--brand-border);cursor:pointer;font-weight:700}
+#clear-dbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--space-4);margin:var(--space-4) 0;align-items:start}
+.clear-group{border:1px solid var(--brand-border);border-radius:var(--radius-md);overflow:hidden;background:var(--surface)}
+.clear-group .clear-list{display:block;margin:0;padding:var(--space-1) var(--space-4) var(--space-2) var(--space-12)}
+.clear-group .clear-list li:last-child{border-bottom:0}
+.clear-group-head{display:flex;align-items:center;gap:var(--space-3);min-height:var(--hit-min);margin:0;padding:var(--space-1) var(--space-4);cursor:pointer;font-weight:700}
+.clear-group.req .clear-group-head{background:var(--danger-soft);color:var(--danger-ink)}
+.clear-group.opt .clear-group-head{background:var(--info-soft);color:var(--info-ink)}
+.clear-group-head .tag{background:var(--surface)}
+.db-icon{width:var(--icon-md);height:var(--icon-md);flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:var(--text-small);line-height:1}
+.clear-list label.off span:not(.muted){color:var(--text-subtle)}
+.clear-list label.off img{opacity:.45}
 .clear-group-head input{width:var(--icon-md);height:var(--icon-md);margin:0;flex-shrink:0;accent-color:var(--success-ink)}
-.clear-group-head .muted{margin-left:auto;font-weight:400;font-size:var(--text-small)}
+.clear-group-head .muted{margin-left:auto;font-weight:400;font-size:var(--text-small);color:inherit}
 .tag{font-size:var(--text-caption);font-weight:700;border-radius:var(--radius-sm);padding:0 var(--space-2);white-space:nowrap}
 .tag.req{background:var(--danger-soft);color:var(--danger-ink)}
 .tag.opt{background:var(--info-soft);color:var(--info-ink)}
@@ -220,6 +228,6 @@
 <noscript><p class="notice">관리자 설정을 사용하려면 JavaScript가 필요합니다.</p></noscript>
 </div>
 <script src="assets/hada-shortcuts.js?v=e1c30e10"></script>
-<script src="hada_config.js"></script><script src="admin_auth.js?v=4ffde89c"></script><script src="admin_settings.js?v=70c324e1"></script>
+<script src="hada_config.js"></script><script src="admin_auth.js?v=4ffde89c"></script><script src="admin_settings.js?v=d4200bbe"></script>
 </body>
 </html>
