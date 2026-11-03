@@ -73,7 +73,7 @@ import {
 import { CORS_HEADERS, makePageCache } from "../_shared/reportCacheShared.ts"
 import { requireAdminKey } from "../_shared/adminShared.ts"
 import { processCreateLearningRecordQueueItem } from "../_shared/createLearningRecordTarget.ts"
-import { processSyncClassReportCacheQueueItem } from "../_shared/classReportCacheTarget.ts"
+import { processRegistrationReportCacheQueueItem, processSyncClassReportCacheQueueItem } from "../_shared/classReportCacheTarget.ts"
 import { processCascadeDeleteQueueItem } from "../_shared/cascadeDeleteTarget.ts"
 import { processDashboardLinkQueueItem } from "../_shared/dashboardLinkTarget.ts"
 import { processRegistrationTextbookQueueItem } from "../_shared/registrationTextbookTarget.ts"
@@ -116,6 +116,8 @@ import { processExampleClearItem, TARGET_EXAMPLE_CLEAR } from "../_shared/exampl
 const HANDLERS: Record<string, (payload: any, cachedGetPage: (id: string) => Promise<any>) => Promise<void>> = {
   "create-learning-record": processCreateLearningRecordQueueItem,
   "sync-class-report-cache": processSyncClassReportCacheQueueItem,
+  // (v2.8.0 항목 37) 반 1건이 학생 1건씩을 다시 넣는다(기록 많은 반이 시간 제한에 끊겨도 저장된 학생은 남게).
+  "registration-report-cache": processRegistrationReportCacheQueueItem,
   "cascade-delete": processCascadeDeleteQueueItem,
   "sync-dashboard-link": processDashboardLinkQueueItem,
   // (v2.6.10) 등록 DB "교재 상태 ⚪ 대기" 자동화 → sync-registration-textbook/queue
