@@ -480,17 +480,17 @@ export async function buildRegistrationDetail(reg: any, cachedGetPage: (id: stri
 
   const pastLogDetails = logDetails.filter((l) => (l.iso ?? "").slice(0, 10) <= todayIso && (l.iso ?? "") >= sinceIso)
 
-  // 화면에 실제로 보여줄 최근 12건만 본문(블록)을 가져온다 -- 그보다 오래된 건 어차피 안 보이므로
-  // 조회할 필요가 없다. 동시성은 4~6개로 제한해서(mapWithConcurrency), Notion API에 한꺼번에
+  // (v2.8.0 항목 39) 목록은 최근 6개월(sinceIso)을 모두 싣는다. 예전에는 목록도 12건에서 잘라 지난 교재·지난 날짜에 학습이 비어 보였다.
+  // 본문(블록)만 최근 12건을 가져온다. 동시성은 4~6개로 제한해서(mapWithConcurrency), Notion API에 한꺼번에
   // 너무 많은 블록 조회 요청을 쏘지 않게 한다(리포트 발송 병목 검토 참고).
-  const studyLogCandidates = pastLogDetails
+  const allStudyLogs = pastLogDetails
     .filter((l) => l.category === "학습")
     .sort((a, b) => ((a.iso ?? "") < (b.iso ?? "") ? 1 : -1))
-    .slice(0, 12)
+  const studyLogCandidates = allStudyLogs.slice(0, 12)
   const studyLogBodies = new Map(
     await mapWithConcurrency(studyLogCandidates, 6, async (l) => [l.id, await readPageBodyBlocks(l.id)] as const),
   )
-  const study_logs = studyLogCandidates
+  const study_logs = allStudyLogs
     .map((l) => ({ iso: l.iso, date: fmtDateKr(l.iso), book: l.bookTitle, book_id: l.bookKey, range: l.range, unit: l.unit, note: l.content, body: studyLogBodies.get(l.id) ?? [], ...(makeupOfByLog.get(l.id.replace(/-/g, "")) ? { makeup_of: makeupOfByLog.get(l.id.replace(/-/g, "")) } : {}) }))
 
   const activityPages = await shareQueriedPages(
@@ -554,10 +554,11 @@ export async function buildRegistrationDetail(reg: any, cachedGetPage: (id: stri
   // 오늘의 과제/평가가 미래 값으로 오인되어 제외된다. 서울 기준 날짜로 통일해 비교한다.
   const activityClassDate = (a: { classIso: string | null }) => kstDateOf(a.classIso)
 
+  // (v2.8.0 항목 39) 최근 순. 목록은 모두 싣고 본문만 앞의 6건을 읽는다.
   const homeworkActivities = activities.filter((a) => {
     const classDate = activityClassDate(a)
     return a.category === "과제" && classDate && classDate >= sinceIso && classDate <= todayIso
-  })
+  }).sort((x, y) => String(y.classIso ?? "").localeCompare(String(x.classIso ?? "")))
   const testActivities = activities.filter((a) => {
     const classDate = activityClassDate(a)
     return a.category === "평가" && classDate && classDate >= sinceIso && classDate <= todayIso
@@ -568,7 +569,7 @@ export async function buildRegistrationDetail(reg: any, cachedGetPage: (id: stri
     .sort((x, y) => String(y.classIso ?? "").localeCompare(String(x.classIso ?? "")))
   const detailedTests = shownTests.slice(0, TESTS_DETAILED)
 
-  // 화면에 실제 표시되는 학습 12건·과제 6건·평가 6건의 학생별 학습활동 본문만 가져온다.
+  // 최근 학습 12건·과제 6건·평가 6건의 학생별 학습활동 본문만 가져온다(그 이전 기록은 글자만 보인다).
   // 학습기록 본문은 반 전체가 공유하는 원본 자료이고, 학습활동 본문은 학생별 풀이·필기·답안이다.
   const studyActivityByRecordId = new Map(
     activities
@@ -618,7 +619,7 @@ export async function buildRegistrationDetail(reg: any, cachedGetPage: (id: stri
     .slice(-GALLERY_MAX_PHOTOS)
 
   const studyLogsWithActivity = study_logs.map((log, index) => {
-    const source = studyLogCandidates[index]
+    const source = allStudyLogs[index]
     const activity = source ? studyActivityByRecordId.get(source.id) : undefined
     return {
       ...log,
@@ -642,7 +643,7 @@ export async function buildRegistrationDetail(reg: any, cachedGetPage: (id: stri
     source_body: a.learningRecordId ? (sourcePageBodies.get(a.learningRecordId) ?? []) : [],
     activity_body: activityPageBodies.get(a.id) ?? [],
   }))
-  const homework = homeworkAll.slice(0, 6)
+  const homework = homeworkAll
 
   // [FIX, 2026-09-19] 아래 slice(0, 10)는 UTC 기준 날짜라, 자정 근처(KST 00시~09시)에 만들어진
   // 출석 기록(수업일시)에 연결된 과제/평가는 하루 전 날짜의 "과제 현황" 칸에 잘못 표시됐다.

@@ -203,3 +203,48 @@ Deno.test("v2.8.0 작품 모아보기: 프로그램 학습기록의 사진만 �
 		globalThis.fetch = realFetch
 	}
 })
+
+Deno.test("v2.8.0 리포트 캐시: 학습·과제 목록은 6개월치를 모두 싣고, 본문은 최근 학습 12건·과제 6건만 읽는다(항목 39)", async () => {
+	const sel = (name: string) => ({ type: "select", select: { name } })
+	const rel = (...ids: string[]) => ({ type: "relation", relation: ids.map((id) => ({ id })) })
+	const pages: Record<string, any> = {}
+	const rows: any[] = []
+	for (let i = 1; i <= 15; i++) {
+		pages[`log-${i}`] = { id: `log-${i}`, properties: { "구분": sel("학습"), "학습": { type: "title", title: [{ plain_text: `학습 ${i}` }] } } }
+		rows.push({ notion_page_id: `att-${i}`, registration_id: "reg-1", class_iso: `${daysAgo(i)}T18:00:00+09:00`, status: "출석", check_in: "", check_out: "", teacher_comment: "", study_log_ids: [`log-${i}`] })
+	}
+	const acts: any[] = []
+	for (let i = 1; i <= 8; i++) {
+		pages[`hw-rec-${i}`] = { id: `hw-rec-${i}`, properties: { "구분": sel("과제") } }
+		pages[`hw-att-${i}`] = { id: `hw-att-${i}`, properties: { "수업일시": { type: "date", date: { start: `${daysAgo(i)}T18:00:00+09:00` } } } }
+		acts.push({ id: `hw-${i}`, properties: { "구분": sel("과제"), "학습기록": rel(`hw-rec-${i}`), "출석": rel(`hw-att-${i}`), "과제상태": sel("🔵 제출") } })
+	}
+	acts.reverse() // Notion이 어떤 순서로 주어도 최근 순으로 고른다.
+	const bodyAsked = new Set<string>()
+	const realFetch = globalThis.fetch
+	globalThis.fetch = (async (input: Request | URL | string) => {
+		const url = String(input instanceof Request ? input.url : input)
+		const json = (v: unknown) => new Response(JSON.stringify(v), { status: 200, headers: { "Content-Type": "application/json" } })
+		if (url.includes("/rest/v1/attendance_records")) return json(rows)
+		if (url.startsWith("https://mock.supabase")) return json([])
+		if (url.includes("/data_sources/activities/query")) return json({ results: acts, has_more: false })
+		if (url.includes("/query")) return json({ results: [], has_more: false })
+		const block = url.match(/\/blocks\/([^/]+)/)
+		if (block) { bodyAsked.add(block[1]); return json({ results: [], has_more: false }) }
+		throw new Error(`unexpected fetch ${url}`)
+	}) as typeof fetch
+	try {
+		const detail: any = await buildRegistrationDetail({ id: "reg-1", properties: {} }, async (id: string) => pages[id] ?? { id, properties: {} })
+		eq(detail.study_logs.length, 15)
+		eq(detail.study_logs[0].iso >= detail.study_logs[14].iso, true)
+		eq(detail.homework.length, 8)
+		eq(detail.homework[0].iso >= detail.homework[7].iso, true)
+		eq(detail.homework_days.length, 8)
+		eq(bodyAsked.has("log-12"), true)
+		eq(bodyAsked.has("log-13"), false)
+		eq(bodyAsked.has("hw-6"), true)
+		eq(bodyAsked.has("hw-7"), false)
+	} finally {
+		globalThis.fetch = realFetch
+	}
+})
