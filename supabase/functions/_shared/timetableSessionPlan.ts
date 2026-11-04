@@ -2,6 +2,7 @@
 // 수식이 기준일·등원/하원 시간·클래스·클래스 이름·담당강사·그날 수강 중인 명단을 JSON 한 줄로 계산하므로,
 // 서버는 시간표·클래스 페이지 읽기와 등록 조회를 하지 않는다. 메뉴 일괄 생성은 시간표 DB를 한 번 조회할 때
 // 수식 값이 함께 오므로 그 값을 큐 항목에 담고, 워커는 그 값으로 바로 만든다. 출석은 출석 조정 큐가 만든다.
+import { SESSION_KIND_PROP, SESSION_KIND_REGULAR } from "./sessionKind.ts"
 import { createPage, pickProp, relIds } from "./notionClient.ts"
 import { DS_CLASS_SESSION } from "./constants.ts"
 import { STATUS_DONE } from "./statusTracking.ts"
@@ -82,6 +83,7 @@ export async function createSessionFromPlan(timetableId: string, plan: SessionPl
 		시간표: { relation: [{ id: timetableId }] },
 		등록: { relation: plan.regIds.map((id) => ({ id })) },
 		...(plan.teacherIds.length ? { 담당강사: { relation: plan.teacherIds.map((id) => ({ id })) } } : {}),
+		[SESSION_KIND_PROP]: { select: { name: SESSION_KIND_REGULAR } },
 		"생성 상태": { select: { name: STATUS_DONE } },
 	})
 	return page.id

@@ -6,7 +6,7 @@
 //
 // 학생 연결 규칙은 [학습기록 생성] 버튼(createLearningRecordTarget.ts)과 같다:
 //   - 그룹 진도 교재는 수업의 학생 전체, 개별 진도 교재는 그 교재를 가진 학생만.
-//   - 보강 수업("보강" 체크)은 그룹 교재도 가진 학생만 연결하고 기록에 "보강"을 체크한다.
+//   - 보강 수업(`수업 구분` 보강)은 그룹 교재도 가진 학생만 연결하고 기록에 "보강"을 체크한다.
 // 학습활동(출제)은 기존 create-assignment와 같은 공용 코드(finishCreateAssignment)를 쓴다.
 
 import {
@@ -49,6 +49,7 @@ import { cleanUnitIds, selectedUnitsProp, unitNamesOf, unitTextOf, unitIdsOf } f
 import { runInBackground } from "./backgroundTask.ts"
 import { mirrorJobs, mirrorPageIds, mirrorSaved, removePages } from "./classRoomCopy.ts"
 import { libraryIds } from "./libraryProp.ts"
+import { isMakeupSession, SESSION_KIND_MAKEUP, SESSION_KIND_PROP } from "./sessionKind.ts"
 
 type Page = Record<string, any>
 
@@ -167,7 +168,7 @@ function sessionSummary(p: Page) {
 		time: [seoulTime(when.start), seoulTime(when.end)].filter(Boolean).join("–"),
 		teacherIds: rel(p, "담당강사"),
 		classIds: rel(p, "클래스"),
-		makeup: checkboxValue(p, "보강"),
+		makeup: isMakeupSession(p),
 		students: rel(p, "출석").length,
 		records: rel(p, "학습기록").length,
 		attendanceSummary: formulaString(p, "출석현황") ?? "",
@@ -247,7 +248,7 @@ export async function loadClasses(date: string, teacherId?: string) {
 			{ property: "수업일시", date: { before: new Date(t + 29 * 86_400_000).toISOString() } },
 			...teacherFilter(teacherId),
 		],
-	})).filter((p: Page) => !checkboxValue(p, "보강") && rel(p, "클래스").length)
+	})).filter((p: Page) => !isMakeupSession(p) && rel(p, "클래스").length)
 		.sort((a: Page, b: Page) => String(a.properties?.["수업일시"]?.date?.start).localeCompare(String(b.properties?.["수업일시"]?.date?.start)))
 	const byClass = new Map<string, Page[]>()
 	for (const p of sessions) { const c = rel(p, "클래스")[0]; byClass.set(c, [...(byClass.get(c) ?? []), p]) }
@@ -285,7 +286,7 @@ async function classSessionPages(session: Page, around?: string) {
 		{ property: "수업일시", date: { before: new Date(t + 36 * 86_400_000).toISOString() } },
 	]
 	const sessions = (await queryAllPages(DS_CLASS_SESSION, { and: [{ property: "클래스", relation: { contains: classId } }, ...range] }))
-		.filter((p: Page) => !checkboxValue(p, "보강"))
+		.filter((p: Page) => !isMakeupSession(p))
 		.sort((a: Page, b: Page) => String(a.properties?.["수업일시"]?.date?.start).localeCompare(String(b.properties?.["수업일시"]?.date?.start)))
 		.slice(0, 90)
 	return { sessions, range }
@@ -765,7 +766,7 @@ async function sessionContext(sessionId: string): Promise<SessionContext> {
 	const attendances = await getPages(rel(session, "출석"))
 	const regToAttendance = new Map<string, string[]>()
 	for (const a of attendances) for (const r of rel(a, "등록")) regToAttendance.set(r, [...(regToAttendance.get(r) ?? []), a.id])
-	return { session, attendances, regToAttendance, className: await className(session), makeup: checkboxValue(session, "보강"), date: dateStart(session, "수업일시") }
+	return { session, attendances, regToAttendance, className: await className(session), makeup: isMakeupSession(session), date: dateStart(session, "수업일시") }
 }
 
 // 교재 기준 대상 등록: 직접 고른 학생이 있으면 그 학생들(수업 학생 중), 아니면
@@ -915,7 +916,7 @@ export async function createActivities(recordId: string) {
 }
 
 // ---------- 보강 대기실 ----------
-// 고른 보강 출석들로 보강 수업을 만든다(1명=1:1, 여러 명=그룹). 시간표·클래스는 비워 두고 "보강"을 체크한다.
+// 고른 보강 출석들로 보강 수업을 만든다(1명=1:1, 여러 명=그룹). 시간표·클래스는 비워 두고 `수업 구분`을 보강으로 둔다.
 export async function createMakeupSession(body: any) {
 	const attendanceIds = ids(body?.attendanceIds, 30)
 	if (!attendanceIds.length) throw new ClassRoomError(400, "보강 학생을 골라 주세요.")
@@ -934,7 +935,7 @@ export async function createMakeupSession(body: any) {
 		"이름": { title: [{ text: { content: `보강 ${label}` } }] },
 		"수업일시": { date: { start, ...(end ? { end } : {}) } },
 		"담당강사": relation([body.teacherId]),
-		"보강": { checkbox: true },
+		[SESSION_KIND_PROP]: { select: { name: SESSION_KIND_MAKEUP } },
 		"등록": relation(regs),
 		"출석": relation(attendanceIds),
 	}) as Page
@@ -951,7 +952,7 @@ export async function unlinkMakeup(attendanceId: string) {
 	const sessionId = rel(attendance, "수업")[0]
 	if (!sessionId) return { ok: true }
 	const session = await getPage(sessionId) as Page
-	if (!checkboxValue(session, "보강")) throw new ClassRoomError(409, "정규 수업의 출석은 여기서 뗄 수 없습니다.")
+	if (!isMakeupSession(session)) throw new ClassRoomError(409, "정규 수업의 출석은 여기서 뗄 수 없습니다.")
 	const regs = rel(attendance, "등록")
 	await updatePageProperties(attendanceId, { "수업": relation([]), "담당강사": relation([]), ...touched() })
 	await updatePageProperties(sessionId, {
@@ -967,7 +968,7 @@ export async function unlinkMakeup(attendanceId: string) {
 export async function deleteMakeupSession(sessionId: string) {
 	if (!isId(sessionId)) throw new ClassRoomError(400, "수업 형식이 올바르지 않습니다.")
 	const session = await getPage(sessionId) as Page
-	if (!checkboxValue(session, "보강")) throw new ClassRoomError(409, "보강 수업만 여기서 지울 수 있습니다.")
+	if (!isMakeupSession(session)) throw new ClassRoomError(409, "보강 수업만 여기서 지울 수 있습니다.")
 	if (rel(session, "학습기록").length) throw new ClassRoomError(409, "이 보강 수업에 학습기록이 있어요. 기록을 먼저 지워 주세요.")
 	const attendanceIds = rel(session, "출석")
 	await mapWithConcurrency(attendanceIds, 3, (id) => updatePageProperties(id, { "수업": relation([]), "담당강사": relation([]), ...touched() }))

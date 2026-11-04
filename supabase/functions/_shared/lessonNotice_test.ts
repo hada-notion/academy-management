@@ -18,7 +18,7 @@ const att = (o: { status?: string; at?: string | null; sent?: string | null; reg
 		"학부모 연락처": formula("01012345678"),
 	},
 })
-const ses = (makeup: boolean, memo = "") => ({ id: "ses-1", properties: { "보강": { type: "checkbox", checkbox: makeup }, "수업 안내 메모": { type: "rich_text", rich_text: memo ? [{ plain_text: memo }] : [] } } })
+const ses = (makeup: boolean, memo = "") => ({ id: "ses-1", properties: { "수업 구분": { type: "select", select: makeup ? { name: "보강" } : null }, "수업 안내 메모": { type: "rich_text", rich_text: memo ? [{ plain_text: memo }] : [] } } })
 
 Deno.test("v2.8.0 수업 안내: 같은 시각 비교(표기 차이 무시)", () => {
 	eq(m.sameInstant("2026-10-30T17:00:00.000+09:00", "2026-10-30T08:00:00.000Z"), true)
@@ -111,9 +111,9 @@ Deno.test("v2.8.0 수업 안내 큐: 설정 꺼짐·연락처 없음은 로그 �
 	eq(c.patches[0].props["수업 안내 일시"], undefined)
 })
 
-Deno.test("v2.8.0 구역: 수업 구분 휴강이면 휴강 안내 행, 선택 속성 보강이나 예전 보강 체크면 보강", async () => {
+Deno.test("v2.8.0 구역: 수업 구분 휴강이면 휴강 안내 행, 보강이면 보강, 정규와 빈 값은 일반 수업", async () => {
 	const k = await import("./sessionKind.ts")
-	eq([k.sessionKind({ properties: { "수업 구분": { select: { name: "휴강" } } } }), k.sessionKind({ properties: { "수업 구분": { select: { name: "보강" } } } }), k.sessionKind({ properties: { "보강": { checkbox: true } } }), k.sessionKind({ properties: {} })], ["휴강", "보강", "보강", ""])
+	eq([k.sessionKind({ properties: { "수업 구분": { select: { name: "휴강" } } } }), k.sessionKind({ properties: { "수업 구분": { select: { name: "보강" } } } }), k.sessionKind({ properties: { "수업 구분": { select: { name: "정규" } } } }), k.sessionKind({ properties: {} })], ["휴강", "보강", "", ""])
 	const off: any = m.planLessonNotice(att(), { properties: { "수업 구분": { select: { name: "휴강" } } } })
 	eq([off.configCategory, off.variables["#{수업일정}"]], ["휴강 안내", "📅 일시  26.10.30(금) 17:00"])
 })

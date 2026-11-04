@@ -190,7 +190,7 @@ Deno.test("학습기록: 보강 수업은 반 교재도 가진 학생만 연결�
  for(const makeup of [false,true]){
   const grp: any=book("group"+makeup,"그룹 진도",["class"],["a"]);f.pages[grp.id]=grp;grp.properties["오늘 학습"]={checkbox:true}
   f.pages.a.properties["진도교재"]=rel(grp.id);f.pages.b.properties["진도교재"]=rel()
-  f.pages.session={id:"session",db:"sessions",properties:{"등록":rel("a","b"),"출석":rel("att-a","att-b"),"클래스":rel(),"수업일시":{date:{start:"2026-10-06T20:00:00+09:00"}},"보강":{checkbox:makeup}}}
+  f.pages.session={id:"session",db:"sessions",properties:{"등록":rel("a","b"),"출석":rel("att-a","att-b"),"클래스":rel(),"수업일시":{date:{start:"2026-10-06T20:00:00+09:00"}},"수업 구분":{select:makeup?{name:"보강"}:null}}}
   for(const id of ["a","b"])f.pages["att-"+id]={id:"att-"+id,db:"attendance",properties:{"등록":rel(id)}}
   await learning.finishCreateLearningRecord("session");const rec=f.created.filter(p=>p.db==="records").at(-1)
   if(makeup)assert(rec && ids(rec,"등록")==="a" && ids(rec,"출석")==="att-a" && rec.properties["보강"]?.checkbox===true,"보강 수업")

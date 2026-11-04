@@ -89,14 +89,14 @@ Deno.test("안전장치: 다녀야 할 학생 0명 + 출석 삭제 계획은 아
  assert(q.length === 1 && !("plan" in q[0].payload) && !m.writes.some((w) => w.id === A1 || w.id === A2), JSON.stringify(q))
 }))
 Deno.test("큐 처리 실패(페이지를 읽은 경우): 오류 상태를 쓰고 재시도를 위해 예외를 다시 던짐", () => withMock(async (m) => {
- ;(globalThis as any).mockPages = { [S]: { id: S, properties: { "출석 조정 정보": formula(JSON.stringify({ v: 1, add: [{ reg: R1 }], del: [] })), "클래스": rel(CLS), "담당강사": rel(T), "수업일시": { date: { start: null } }, "보강": { checkbox: false } } } }
+ ;(globalThis as any).mockPages = { [S]: { id: S, properties: { "출석 조정 정보": formula(JSON.stringify({ v: 1, add: [{ reg: R1 }], del: [] })), "클래스": rel(CLS), "담당강사": rel(T), "수업일시": { date: { start: null } }, "수업 구분": { select: null } } } }
  let threw = false
  try { await target.processFixAttendanceQueueItem({ pageId: S, plan: null, session: null }) } catch { threw = true } finally { delete (globalThis as any).mockPages }
  assert(threw && m.writes.some((w) => w.id === S && w.body.properties["출석 조정 상태"]?.select?.name === "⚠️ 오류") && !m.calls.some((c) => c.url.endsWith("/rest/v1/sync_queue")))
 }))
 Deno.test("큐 경로: 인증, 본문의 수식 계획을 Notion 읽기 없이 큐에 넣음", () => withMock(async (m) => {
  const plan = JSON.stringify({ v: 1, day: "2026-10-15", add: [{ reg: R1, att: "", rec: [] }], del: [] })
- const body = JSON.stringify({ source: { type: "automation" }, data: { object: "page", id: S, properties: { "출석 조정 정보": formula(plan), "클래스": rel(CLS), "담당강사": rel(T), "수업일시": { date: { start: session.start, end: session.end } }, "보강": { checkbox: false } } } })
+ const body = JSON.stringify({ source: { type: "automation" }, data: { object: "page", id: S, properties: { "출석 조정 정보": formula(plan), "클래스": rel(CLS), "담당강사": rel(T), "수업일시": { date: { start: session.start, end: session.end } }, "수업 구분": { select: null } } } })
  const url = "https://mock.supabase/functions/v1/fix-attendance/queue"
  assert((await handler(new Request(url, { method: "POST", body }))).status === 401)
  assert((await handler(new Request(url, { method: "POST", headers: { "x-admin-key": "test-only" }, body }))).status === 202)
@@ -110,7 +110,7 @@ Deno.test("큐 경로: 인증, 본문의 수식 계획을 Notion 읽기 없이 �
 }))
 Deno.test("v2.8.0 큐 경로: 보강 수업은 계획 없이 넣어 워커가 새로 읽게 하고, 상태를 바로 🔄로 바꾼다(연속 [보강 배정])", () => withMock(async (m) => {
  const plan = JSON.stringify({ v: 1, mk: 1, day: "2026-10-29", add: [{ reg: R1, att: "", rec: [] }], del: [], roster: [R1] })
- const body = JSON.stringify({ data: { object: "page", id: S, properties: { "출석 조정 정보": formula(plan), "클래스": rel(), "담당강사": rel(), "수업일시": { date: { start: "2026-10-29" } }, "보강": { checkbox: true } } } })
+ const body = JSON.stringify({ data: { object: "page", id: S, properties: { "출석 조정 정보": formula(plan), "클래스": rel(), "담당강사": rel(), "수업일시": { date: { start: "2026-10-29" } }, "수업 구분": { select: { name: "보강" } } } } })
  assert((await handler(new Request("https://mock.supabase/functions/v1/fix-attendance/queue", { method: "POST", headers: { "x-admin-key": "test-only" }, body }))).status === 202)
  const q = m.calls.filter((c) => c.url.endsWith("/rest/v1/sync_queue")).at(-1)
  assert(q && q.body[0].payload.pageId === S && !("plan" in q.body[0].payload), JSON.stringify(q?.body))
@@ -118,7 +118,7 @@ Deno.test("v2.8.0 큐 경로: 보강 수업은 계획 없이 넣어 워커가 �
 }))
 Deno.test("큐 처리: 본문에 계획이 없으면 수업 페이지를 한 번 읽어 수식 값으로 처리", () => withMock(async (m) => {
  const plan = JSON.stringify({ v: 1, day: "2026-10-15", add: [{ reg: R1, att: "", rec: [] }], del: [] })
- ;(globalThis as any).mockPages = { [S]: { id: S, properties: { "출석 조정 정보": formula(plan), "클래스": rel(CLS), "담당강사": rel(T), "수업일시": { date: { start: session.start, end: session.end } }, "보강": { checkbox: false } } } }
+ ;(globalThis as any).mockPages = { [S]: { id: S, properties: { "출석 조정 정보": formula(plan), "클래스": rel(CLS), "담당강사": rel(T), "수업일시": { date: { start: session.start, end: session.end } }, "수업 구분": { select: null } } } }
  try {
   await target.processFixAttendanceQueueItem({ pageId: S, plan: null, session: null })
   assert(m.calls.filter((c) => c.method === "GET" && c.url.includes("/pages/")).length === 1, "one page read")

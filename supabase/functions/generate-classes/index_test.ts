@@ -43,6 +43,7 @@ Deno.test("실제 버튼 핸들러: 월수금 날짜순 수업 생성 → 출석
   const sessions=f.created.filter(p=>p.db==="sessions");assert(sessions.map(p=>p.properties["수업일시"].date.start.slice(0,10)).join()==="2026-10-12,2026-10-14,2026-10-16","wrong order "+JSON.stringify(sessions));assert(f.pages.menu.properties["상태"].select.name==="✅ 완료")
   // v2.6.12: 수업추가는 수업만 명단과 함께 만들고(완료 상태) 출석은 만들지 않는다. 수업마다 출석 조정 큐에 한 건.
   assert(f.created.filter(p=>p.db==="attendance").length===0,"no attendance from generate-classes")
+  assert(sessions.every(p=>p.properties["수업 구분"].select.name==="정규"),"새 수업은 정규")
   assert(sessions.every(p=>p.properties["등록"].relation.map((r:any)=>r.id).join()==="a,b"&&p.properties["생성 상태"].select.name==="✅ 완료"))
   const queued=f.calls.filter(c=>c.url.endsWith("/rest/v1/sync_queue")).map(c=>c.body[0]);assert(queued.length===3&&queued.every(q=>q.target==="fix-attendance")&&queued.map(q=>q.payload.pageId).join()===sessions.map(p=>p.id).join(),JSON.stringify(queued))
   // 워커: Notion이 계산한 "출석 조정 정보"(명단 a,b 모두 출석 없음)를 수업 페이지에 두고 큐를 처리한다.
