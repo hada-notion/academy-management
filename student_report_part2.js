@@ -899,7 +899,8 @@ function buildReportTabHtml(r) {
   const reportComments = r.report_comments || []
   const { rangeStart, rangeEnd } = reportRange()
   const attendanceRows = (r.attendance_rows || []).filter((a) => a.date >= rangeStart && a.date <= rangeEnd)
-  const homeworkItems = (r.homework_days || []).filter((h) => h.date && h.date >= rangeStart && h.date <= rangeEnd)
+  // 과제이행률은 마감일 기준이다(도넛을 눌렀을 때 목록·캘린더 과제 현황과 같다). "제출"만 완료로 센다.
+  const homeworkItems = homework.filter((h) => { const d = String(h.due || "").slice(0, 10); return d && d >= rangeStart && d <= rangeEnd })
   // (10/30 사용자) 일일 수업 기록 기반으로 되돌림: 주간·월간 보고서는 그 기간 모든 평가(평가 구분과 상관없이)로 추이·평균을 낸다.
   const testItems = tests.filter((t) => t.date >= rangeStart && t.date <= rangeEnd)
   // 출석률은 상태가 확정된 출석만 계산한다. 빈 상태(미입력/미래 수업)는 분모에서 제외하고,
@@ -907,7 +908,7 @@ function buildReportTabHtml(r) {
   const countedAttendanceRows = attendanceRows.filter((a) => ["출석", "보강", "결석"].includes(a.status))
   const presentCount = countedAttendanceRows.filter((a) => a.status === "출석" || a.status === "보강").length
   const attRate = countedAttendanceRows.length ? Math.round((presentCount / countedAttendanceRows.length) * 100) : 0
-  const doneHomework = homeworkItems.filter((h) => h.status === "완료").length
+  const doneHomework = homeworkItems.filter((h) => h.status === "제출").length
   const hwRate = homeworkItems.length ? Math.round((doneHomework / homeworkItems.length) * 100) : 0
   // (v2.5.97) 평가 평균: 기간 안 평가 점수(정답 ÷ 전체 문항)의 평균, 소수 한 자리(최근 평가 추이와 같음). 도넛은 점수만큼 채운다.
   const scoredTests = testItems.filter((t) => t.total)
