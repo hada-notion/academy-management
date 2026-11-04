@@ -16,6 +16,7 @@ import { queryAllPages, getPage, mapWithConcurrency, selectName, formulaString, 
 import { text, dateStartOf, relationIds, numberOf, fetchSupabaseWithRetry } from "./reportCacheShared.ts"
 import { DS_CLASS_SESSION, DS_ATTENDANCE, DS_LEARNING_RECORD, DS_STUDY_ACTIVITY } from "./constants.ts"
 import { runInBackground } from "./backgroundTask.ts"
+import { isMakeupSession } from "./sessionKind.ts"
 import { unitNamesOf, unitTextOf, unitIdsOf } from "./selectedUnits.ts"
 
 type Page = Record<string, any>
@@ -55,7 +56,7 @@ export function sessionRow(p: Page, classes: Map<string, { name: string; emoji: 
 		class_name: c?.name ?? "",
 		class_emoji: c?.emoji ?? "",
 		teacher_ids: rel(p, "담당강사"),
-		is_makeup: checkboxValue(p, "보강"),
+		is_makeup: isMakeupSession(p),
 		attendance_ids: rel(p, "출석"),
 		record_ids: rel(p, "학습기록"),
 		attendance_summary: formulaString(p, "출석현황") ?? "",

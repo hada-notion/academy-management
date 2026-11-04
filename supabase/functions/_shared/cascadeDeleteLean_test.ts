@@ -98,7 +98,7 @@ Deno.test("v2.8.0 보강 수업 삭제: 휴지통에 보내면서 보강 대상(
 
 Deno.test("v2.8.0 보강 출석 삭제: 기존 결석 관계를 비우고 보강 수업 명단에서 이 학생을 뺀다(평소 수업·평소 출석은 그대로)", async () => {
 	const pages = world()
-	pages.sess.properties["보강"] = { checkbox: true }
+	pages.sess.properties["수업 구분"] = { select: { name: "보강" } }
 	pages.sess.properties["등록"] = rel("reg1", "reg2", "reg3")
 	pages.att1.properties["기존 결석"] = rel("abs1")
 	const { writes } = await run(pages, "att1")
@@ -117,7 +117,7 @@ Deno.test("v2.8.0 보강 출석 삭제: 기존 결석 관계를 비우고 보강
 	assert(!("기존 결석" in (r3.writes.filter((w) => w.id === "att2").at(-1)!.body.properties ?? {})), "평소 출석은 기존 결석을 쓰지 않음")
 	// 수업째 지우면 하위 보강 출석은 관계만 비우고 명단은 건드리지 않는다.
 	const p4 = world()
-	p4.sess.properties["보강"] = { checkbox: true }
+	p4.sess.properties["수업 구분"] = { select: { name: "보강" } }
 	p4.sess.properties["등록"] = rel("reg1")
 	p4.att1.properties["기존 결석"] = rel("abs1")
 	const r4 = await run(p4, "sess")

@@ -14,10 +14,10 @@ function fixture() {
   cls: { id: "cls", db: "classes", properties: { "클래스명": title("중1 B"), "이모지": text("🟡") } },
   regular: { id: "regular", db: "regulars", properties: { "교재명": title("개념원리 1-2"), "과목": rel("math"), "북커버": { type: "files", files: [{ type: "external", external: { url: "https://example.com/cover.png" } }] }, "전체 페이지": { type: "number", number: 248 } } },
   t1: { id: "t1", db: "teachers", properties: { "이름": title("안규빈"), "직책": { select: { name: "강사" } } } },
-  s1: { id: "s1", db: "sessions", properties: { "이름": title("중1 B 10.13(화)"), "수업일시": { date: { start: D, end: "2026-10-13T09:00:00.000Z" } }, "담당강사": rel("t1"), "클래스": rel("cls"), "등록": rel("ra", "rb"), "출석": rel("aa", "ab"), "학습기록": rel(), "보강": { checkbox: false }, "출석현황": formula("✅ 정상(2)") } },
-  sOther: { id: "sOther", db: "sessions", properties: { "이름": title("다른 날"), "수업일시": { date: { start: "2026-10-14T08:00:00.000Z" } }, "담당강사": rel("t1"), "출석": rel(), "학습기록": rel(), "보강": { checkbox: false } } },
-  sPrev: { id: "sPrev", db: "sessions", properties: { "이름": title("중1 B 10.08(목)"), "수업일시": { date: { start: "2026-10-08T08:00:00.000Z" } }, "클래스": rel("cls"), "출석": rel("pa", "pb", "pc"), "학습기록": rel(), "보강": { checkbox: false } } },
-  sMk: { id: "sMk", db: "sessions", properties: { "이름": title("보강"), "수업일시": { date: { start: "2026-10-09T08:00:00.000Z" } }, "클래스": rel("cls"), "출석": rel(), "학습기록": rel(), "보강": { checkbox: true } } },
+  s1: { id: "s1", db: "sessions", properties: { "이름": title("중1 B 10.13(화)"), "수업일시": { date: { start: D, end: "2026-10-13T09:00:00.000Z" } }, "담당강사": rel("t1"), "클래스": rel("cls"), "등록": rel("ra", "rb"), "출석": rel("aa", "ab"), "학습기록": rel(), "수업 구분": { select: null }, "출석현황": formula("✅ 정상(2)") } },
+  sOther: { id: "sOther", db: "sessions", properties: { "이름": title("다른 날"), "수업일시": { date: { start: "2026-10-14T08:00:00.000Z" } }, "담당강사": rel("t1"), "출석": rel(), "학습기록": rel(), "수업 구분": { select: null } } },
+  sPrev: { id: "sPrev", db: "sessions", properties: { "이름": title("중1 B 10.08(목)"), "수업일시": { date: { start: "2026-10-08T08:00:00.000Z" } }, "클래스": rel("cls"), "출석": rel("pa", "pb", "pc"), "학습기록": rel(), "수업 구분": { select: null } } },
+  sMk: { id: "sMk", db: "sessions", properties: { "이름": title("보강"), "수업일시": { date: { start: "2026-10-09T08:00:00.000Z" } }, "클래스": rel("cls"), "출석": rel(), "학습기록": rel(), "수업 구분": { select: { name: "보강" } } } },
   pa: { id: "pa", db: "attendance", properties: { "출석": title("pa"), "수업": rel("sPrev"), "수업일시": { date: { start: "2026-10-08T08:00:00.000Z" } }, "출석 상태": { select: { name: "🟢 출석" } } } },
   pb: { id: "pb", db: "attendance", properties: { "출석": title("pb"), "수업": rel("sPrev"), "수업일시": { date: { start: "2026-10-08T08:00:00.000Z" } }, "출석 상태": { select: { name: "🔴 결석" } } } },
   pc: { id: "pc", db: "attendance", properties: { "출석": title("pc"), "수업": rel("sPrev"), "수업일시": { date: { start: "2026-10-08T08:00:00.000Z" } }, "출석 상태": { select: null } } },
@@ -258,7 +258,7 @@ Deno.test("records: no book uses the topic; chosen students only", () => withMoc
  await rejects(() => room.createRecords({ sessionId: "s1", kind: "학습", registrationIds: ["rc"] }), 400)
 }))
 Deno.test("records: makeup session links owners only and checks 보강", () => withMock(async (f) => {
- f.pages.s1.properties["보강"] = { checkbox: true }; f.pages.s1.properties["클래스"] = rel()
+ f.pages.s1.properties["수업 구분"] = { select: { name: "보강" } }; f.pages.s1.properties["클래스"] = rel()
  await room.createRecords({ sessionId: "s1", kind: "학습", bookIds: ["indB"] })
  const rec = f.created[0]; assert(ids(rec, "등록") === "rb" && rec.properties["보강"].checkbox === true && rec.properties["학습"].title[0].text.content === "[학습] RPM(박서준) 10.13(화)")
  f.pages.ra.properties["진도교재"] = rel("group"); f.pages.rb.properties["진도교재"] = rel("indB")
@@ -300,7 +300,7 @@ Deno.test("save attendance and activities: validated, stamped for the report syn
 }))
 Deno.test("makeup: create a session, unlink, and delete without touching attendance pages", () => withMock(async (f) => {
  const m = await room.createMakeupSession({ attendanceIds: ["wait1"], teacherId: "t1", start: "2026-10-13T06:00:00.000Z" })
- const s = f.pages[m.sessionId]; assert(s.properties["보강"].checkbox === true && ids(s, "등록") === "rc" && ids(s, "출석") === "wait1" && s.properties["시간표"] === undefined && s.properties["클래스"] === undefined)
+ const s = f.pages[m.sessionId]; assert(s.properties["수업 구분"].select.name === "보강" && s.properties["보강"] === undefined && ids(s, "등록") === "rc" && ids(s, "출석") === "wait1" && s.properties["시간표"] === undefined && s.properties["클래스"] === undefined)
  assert(s.properties["이름"].title[0].text.content === "보강 10.13(화) 15:00" && ids(f.pages.wait1, "수업") === m.sessionId && ids(f.pages.wait1, "담당강사") === "t1")
  await rejects(() => room.createMakeupSession({ attendanceIds: ["wait1"], teacherId: "t1", start: "2026-10-13T06:00:00.000Z" }), 409)
  await rejects(() => room.unlinkMakeup("aa"), 409) // regular session
