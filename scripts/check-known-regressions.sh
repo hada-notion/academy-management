@@ -213,6 +213,10 @@ if ! grep -q 'containsBlockId(row.registration_detail' supabase/functions/get-re
   echo "❌ get-report-file: 보고서 토큰의 파일 접근 권한 검증이 빠졌습니다."
   fail=1
 fi
+if ! grep -q 'letters.some' supabase/functions/get-report-letter/index.ts; then
+  echo "❌ get-report-letter: 보낸 달만 여는 검증이 빠졌습니다."
+  fail=1
+fi
 if ! grep -q 'get-report-file' student_report_part1.js; then
   echo "❌ student_report_part1.js: 최신 파일 URL 요청 코드가 빠졌습니다."
   fail=1
