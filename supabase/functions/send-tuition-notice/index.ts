@@ -109,7 +109,7 @@ async function sendAlimtalk(
       pfId: config.pfId,
       templateId: config.templateId,
       variables,
-      disableSms: false,
+      disableSms: true,
     },
   }, { allowDuplicates: true })
 }

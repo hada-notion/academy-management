@@ -136,7 +136,7 @@ export async function sendConfiguredAlimtalk(kind: SendLogCategory, registration
     results.push(await messageService.send({
       to: r.phone,
       from: normalizePhone(config.senderNumber),
-      kakaoOptions: { pfId: config.pfId, templateId: config.templateId, variables: fitted, disableSms: false },
+      kakaoOptions: { pfId: config.pfId, templateId: config.templateId, variables: fitted, disableSms: true },
     }, { allowDuplicates: true }))
   }
   return results

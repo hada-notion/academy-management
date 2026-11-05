@@ -100,7 +100,7 @@ async function sendKakao(to: string, variables: Record<string, string>, config: 
 	return service.send({
 		to: normalizePhone(to),
 		from: normalizePhone(config.senderNumber),
-		kakaoOptions: { pfId: config.pfId, templateId: config.templateId, variables: fitted, disableSms: false },
+		kakaoOptions: { pfId: config.pfId, templateId: config.templateId, variables: fitted, disableSms: true },
 	}, { allowDuplicates: true })
 }
 

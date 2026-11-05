@@ -333,7 +333,7 @@ async function processStudent(studentId: string, webhookPage: any | null, resend
         pfId: config.pfId,
         templateId: config.templateId,
         variables: fitted,
-        disableSms: false,
+        disableSms: true,
       },
     })
 
