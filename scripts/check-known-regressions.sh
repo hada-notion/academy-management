@@ -263,9 +263,10 @@ for page in student_report.html attendance_kiosk.html legal_documents.html schoo
   fi
 done
 
-# 메뉴얼은 패치와 같이 간다(v2.7.17부터). 버전 문서마다 "매뉴얼 영향" 줄이 있어야 하고,
-# "있음"이면 "메뉴얼" 항목이, "없음"이면 무엇을 찾아봤는지("확인:")가 있어야 한다.
-# 이 규칙이 없을 때 v2.7.16의 리포트 변경이 메뉴얼에 빠져 v2.7.18로 따로 맞췄다.
+# 매뉴얼은 패치와 같이 간다(v2.7.17부터). 버전 문서마다 "매뉴얼 영향" 줄이 있어야 하고,
+# "있음"이면 "매뉴얼" 항목이, "없음"이면 무엇을 찾아봤는지("확인:")가 있어야 한다.
+# 이 규칙이 없을 때 v2.7.16의 리포트 변경이 매뉴얼에 빠져 v2.7.18로 따로 맞췄다.
+# 표기는 "매뉴얼"이다. v2.7.x 문서는 옛 표기("메뉴얼")로 남아 있어 두 표기를 모두 받는다.
 for f in docs/updates/v[0-9]*.md; do
   [ -f "$f" ] || continue
   ver=$(basename "$f" .md); ver=${ver#v}
@@ -278,8 +279,8 @@ for f in docs/updates/v[0-9]*.md; do
     echo "❌ $f 에 '- 매뉴얼 영향:' 줄이 없습니다."
     fail=1
   elif echo "$line" | grep -q '있음'; then
-    if ! grep -q '^## 항목 .*메뉴얼' "$f"; then
-      echo "❌ $f 는 매뉴얼 영향이 있음인데 '## 항목 N. 메뉴얼 …' 항목이 없습니다."
+    if ! grep -q '^## 항목 .*[매메]뉴얼' "$f"; then
+      echo "❌ $f 는 매뉴얼 영향이 있음인데 '## 항목 N. 매뉴얼 …' 항목이 없습니다."
       fail=1
     fi
   elif ! echo "$line" | grep -q '확인:'; then
