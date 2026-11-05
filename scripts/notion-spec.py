@@ -27,6 +27,8 @@ CONFIG_DBS = {"웹페이지(학원) DB", "알림톡 설정(학원) DB", "자동�
 SKIP_DBS = {"", "업데이트(학원) DB", "패치·이슈 관리 DB"}  # 원본 작업 기록 DB(옛 이름도 뺀다)
 
 
+MENUS = "메뉴 페이지 보기"  # 명세 안 메뉴 보기 묶음의 키(DB 이름과 겹치지 않는다)
+
 GLOBALS = {
     '{{"global":"today","source":"global"}}': "today()",
     '{{"global":"current_user","source":"global"}}': 'context("나")',
@@ -181,7 +183,20 @@ def build(scan):
             "views": [norm_view(v) for v in db.get("views") or []],
             "layout": norm_layout(db.get("layout")),
         }
+    # 메뉴 페이지 안의 DB 보기(인라인·연결). DB 명세와 같은 파일에 두되 DB 목록에서는 뺀다(dbs()).
+    menus = {}
+    for menu, blocks in sorted((scan.get("menus") or {}).items()):
+        menus[menu] = [{"db": b.get("db", ""),
+                        "views": [norm_view(v) for v in b.get("views") or [] if not v.get("missing")]}
+                       for b in blocks]
+    if menus:
+        spec[MENUS] = menus
     return mask(spec)
+
+
+def dbs(spec):
+    """명세에서 DB 항목만(메뉴 페이지 보기 묶음 제외)."""
+    return {k: v for k, v in spec.items() if k != MENUS}
 
 
 def _squash(o):
@@ -213,7 +228,11 @@ def _hash(o):
 def items(spec):
     """비교 단위. 키는 사람이 읽을 수 있게 `DB / 종류 / 이름`, 값은 (지문, 내용)."""
     out = {}
-    for db, d in spec.items():
+    for menu, blocks in (spec.get(MENUS) or {}).items():
+        for i, b in enumerate(blocks, 1):
+            for v in b["views"]:
+                out[f"메뉴 / {menu} / {i}. {b['db']} / 보기 / {v.get('name') or '(이름 없음)'}"] = (_hash(v), v)
+    for db, d in dbs(spec).items():
         out[f"{db} / DB"] = (_hash({"config": d["config"]}), {"config": d["config"]})
         for p in d["props"]:
             body = {k: v for k, v in p.items() if k not in ("name", "button")}
@@ -306,9 +325,9 @@ def render_md(spec, scanned_at):
         "## 목차",
         "",
     ]
-    for name in spec:
+    for name in dbs(spec):
         out.append(f"- {name}")
-    for name, db in spec.items():
+    for name, db in dbs(spec).items():
         out += ["", f"## {name}", ""]
         if db["config"]:
             out += ["(학원 설정 DB: 속성 모양만 기준, 행은 학원별)", ""]
@@ -552,7 +571,7 @@ def render_layouts(spec, scanned_at):
         "## 목차",
         "",
     ]
-    names = [n for n, d in spec.items() if d.get("layout") and d["layout"]["main"]]
+    names = [n for n, d in dbs(spec).items() if d.get("layout") and d["layout"]["main"]]
     out += [f"- [{n}](#{n.lower().replace(' ', '-').replace('(', '').replace(')', '')})" for n in names]
     short = {"show": "보임", "hide_if_empty": "빈 값 숨김", "hide": "숨김"}
     for name in names:
@@ -640,6 +659,18 @@ def render_layouts(spec, scanned_at):
                 out.append(f"- {MODULE.get(m['type'], m['type'])}")
         if hidden:
             out.append(f"- 숨김 {len(hidden)}개: " + ", ".join(f"`{p}`" for p in hidden))
+    menus = spec.get(MENUS) or {}
+    if menus:
+        out += ["", "## 메뉴 페이지 보기", "",
+                "메뉴(학원) DB 각 페이지 본문에 놓인 DB 블록과 그 탭(보기)이다. 위에서부터 블록 번호를 붙인다. "
+                "모든 메뉴 맨 위의 메뉴 이동 보드(메뉴(학원) DB `표`)도 블록으로 센다. 하위 페이지(매뉴얼 장 등) 안은 넣지 않는다."]
+        for menu, blocks in menus.items():
+            out += ["", f"### {menu}", "", "| 블록 | 탭 | 보기 | DB | 보이는 속성 | 조건 |",
+                    "| --- | --- | --- | --- | --- | --- |"]
+            for i, blk in enumerate(blocks, 1):
+                for v in blk["views"]:
+                    out.append(f"| {i} | `{cell(v.get('name') or '(이름 없음)')}` | {VIEW.get(v.get('type'), v.get('type'))} | "
+                               f"{v.get('db', '')} | {cell(' · '.join(v.get('visible') or []))} | {tab_cond(v)} |")
     return "\n".join(out) + "\n"
 
 
@@ -663,7 +694,7 @@ def main():
     fp = fingerprint(spec, scan.get("scannedAt", ""))
     (out_dir / "노션-지문.json").write_text(
         json.dumps(fp, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    print(f"{len(spec)} DB, 항목 {len(fp['항목'])}개 → {out_dir}")
+    print(f"{len(dbs(spec))} DB, 메뉴 {len(spec.get(MENUS) or {})}, 항목 {len(fp['항목'])}개 → {out_dir}")
 
 
 if __name__ == "__main__":
