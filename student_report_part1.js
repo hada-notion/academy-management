@@ -700,7 +700,7 @@ function mapRegistration(reg) {
     report_mode: reg.report_mode === "tests_only" ? "tests_only" : "all",
     // (v2.8.0 작품 모아보기) 프로그램 사진(수업 순서). blockId는 만료된 주소를 새로 받을 때 쓴다.
     gallery: (reg.gallery || []).map((g) => ({ bookId: g.book_id || "", date: isoToKstDate(g.iso) || (g.iso ? String(g.iso).slice(0, 10) : ""), range: g.range || "", url: g.url || "", caption: g.caption || "", blockId: g.block_id || "", mine: !!g.mine })).filter((g) => g.url),
-    // (v2.8.0 루틴, 항목 18) 루틴 체크: 루틴 이름·날짜(서울)·했음. 루틴을 안 쓰는 반은 빈 목록이고 화면에 루틴 칸이 없다.
+    // (v2.8.0 루틴, 항목 18) 루틴 체크: 루틴 이름·날짜(서울)·완료. 루틴을 안 쓰는 반은 빈 목록이고 화면에 루틴 칸이 없다.
     routines: (reg.routines || []).map((x) => ({ name: x.name || "", date: x.date || "", done: !!x.done })).filter((x) => x.name && x.date),
   })
 }

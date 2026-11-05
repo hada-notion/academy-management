@@ -37,7 +37,7 @@ Deno.test("v2.8.0 루틴: 반 루틴(쉬기 제외, 순서대로) × 출석마�
 	eq(c.marks, ["running", "done"])
 	eq(c.created.map((x) => x.props["이름"].title[0].text.content), ["단어 암기 · 강하을 10.30(금)", "일기 · 강하을 10.30(금)", "단어 암기 · 이서윤 10.30(금)", "일기 · 이서윤 10.30(금)"])
 	const p = c.created[0].props
-	eq([c.created[0].ds, p["루틴"].relation[0].id, p["출석"].relation[0].id, p["수업"].relation[0].id, p["등록"].relation[0].id, p["했음"].checkbox], ["checks", R1, A1, S, G1, false])
+	eq([c.created[0].ds, p["루틴"].relation[0].id, p["출석"].relation[0].id, p["수업"].relation[0].id, p["등록"].relation[0].id, p["완료"].checkbox], ["checks", R1, A1, S, G1, false])
 })
 
 Deno.test("v2.8.0 루틴: 이미 있는 (출석, 루틴)은 건너뛴다(두 번 눌러도 빠진 것만)", async () => {
@@ -58,11 +58,11 @@ Deno.test("v2.8.0 루틴: 루틴이 없거나 출석이 없으면 만들지 않�
 	eq([cb.created.length, cb.marks[1].includes("출석이 없습니다")], [0, true])
 })
 
-Deno.test("v2.8.0 루틴 리포트: 등록의 체크 → 이름·날짜(출석 수업일시, 없으면 수업)·했음, DB 없으면 빈 목록", async () => {
+Deno.test("v2.8.0 루틴 리포트: 등록의 체크 → 이름·날짜(출석 수업일시, 없으면 수업)·완료, DB 없으면 빈 목록", async () => {
 	const rows = [
-		{ properties: { "루틴": rel(R1), "출석": rel(A1), "수업": rel(S), "했음": { checkbox: true } } },
-		{ properties: { "루틴": rel(R2), "출석": rel("gone"), "수업": rel(S), "했음": { checkbox: false } } },
-		{ in_trash: true, properties: { "루틴": rel(R1), "출석": rel(A1), "했음": { checkbox: true } } },
+		{ properties: { "루틴": rel(R1), "출석": rel(A1), "수업": rel(S), "완료": { checkbox: true } } },
+		{ properties: { "루틴": rel(R2), "출석": rel("gone"), "수업": rel(S), "완료": { checkbox: false } } },
+		{ in_trash: true, properties: { "루틴": rel(R1), "출석": rel(A1), "완료": { checkbox: true } } },
 	]
 	const pages: Record<string, any> = { [R1]: routine(R1, "단어 암기", 1), [R2]: routine(R2, "일기", 2), [S]: { id: S, properties: { "수업일시": { date: { start: "2026-10-29T16:00:00+09:00" } } } } }
 	const get = async (id: string) => pages[id]
@@ -72,11 +72,11 @@ Deno.test("v2.8.0 루틴 리포트: 등록의 체크 → 이름·날짜(출석 �
 	eq(await m.routineRowsForRegistration("g1", get, new Map(), toDay, { checkDs: async () => null, queryAllPages: async () => rows }), [])
 })
 
-Deno.test("v2.8.0 루틴 일일 보고서: 출석의 체크 → 루틴 순서대로 이름·했음, 칸이 없으면 빈 목록", async () => {
+Deno.test("v2.8.0 루틴 일일 보고서: 출석의 체크 → 루틴 순서대로 이름·완료, 칸이 없으면 빈 목록", async () => {
 	const att = { properties: { "루틴 체크": rel("k1", "k2") } }
 	const pages: Record<string, any> = {
-		k1: { properties: { "루틴": rel(R2), "했음": { checkbox: false } } },
-		k2: { properties: { "루틴": rel(R1), "했음": { checkbox: true } } },
+		k1: { properties: { "루틴": rel(R2), "완료": { checkbox: false } } },
+		k2: { properties: { "루틴": rel(R1), "완료": { checkbox: true } } },
 		[R1]: routine(R1, "단어 암기", 1), [R2]: routine(R2, "영어 일기", 2),
 	}
 	const d = { getPage: async (id: string) => pages[id], fullRelationIds: async (p: any, prop: string) => (p.properties?.[prop]?.relation ?? []).map((r: any) => r.id) } as any

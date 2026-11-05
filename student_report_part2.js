@@ -991,7 +991,7 @@ function buildTestTrendChartHtml(points) {
 }
 // (v2.8.0 루틴, 항목 18) 루틴 체크. 루틴 이름은 데이터로 읽어 루틴이 늘어도 줄이 저절로 늘어난다.
 const ROUTINE_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>`
-// 기간 안 루틴별 했음/전체(루틴 이름 첫 등장 순서). 루틴을 안 쓰는 반은 빈 목록.
+// 기간 안 루틴별 완료/전체(루틴 이름 첫 등장 순서). 루틴을 안 쓰는 반은 빈 목록.
 function routineSummary(r, start, end) {
   const byName = new Map()
   ;(r.routines || []).filter((x) => x.date >= start && x.date <= end).forEach((x) => {
