@@ -791,6 +791,15 @@ body:not(.reg-expanded) .cal-hint { animation: calExtraFadeIn 0.26s ease both; }
 .home-stat.info b { color: var(--info); }
 .home-progress-row + .home-progress-row { margin-top: 12px; padding-top: 12px; border-top: 1px solid #f1f0f6; }
 .home-progress-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 가정통신문: 홈 맨 아래 줄·목록 줄·본문 */
+.letter-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 44px; padding: 0; border: 0; background: none; font: inherit; color: var(--text-primary); text-align: left; cursor: pointer; }
+.letter-row + .letter-row { border-top: 1px solid #f1f0f6; }
+.letter-row b { font-size: 14px; font-weight: 700; }
+.letter-chevron { width: 16px; height: 16px; flex: none; fill: none; stroke: var(--text-subtle); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.letter-body .feed-body { border-top: none; padding-top: 0; margin-top: 0; }
+.letter-lines + .letter-lines { margin-top: 12px; }
+.letter-note { font-size: 14px; line-height: 1.6; white-space: pre-line; color: var(--text-primary); }
+.letter-action { display: block; width: 100%; min-height: 44px; margin-top: 16px; border: 0; border-radius: 10px; background: #F5EFE7; color: #3F372F; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
 .progress-line { display: flex; align-items: center; gap: 8px; }
 .progress-line .track { flex: 1; height: 8px; border-radius: 8px; background: var(--brand-soft); overflow: hidden; }
 .progress-line .fill { height: 100%; border-radius: 8px; background: var(--brand-deep); }
@@ -1034,7 +1043,7 @@ body:not(.reg-expanded) .cal-hint { animation: calExtraFadeIn 0.26s ease both; }
 </div>
 
 <script src="hada_config.js"></script>
-<script src="student_report_part1.js?v=0de37a38"></script>
-<script src="student_report_part2.js?v=a9fec92e"></script>
+<script src="student_report_part1.js?v=795e1168"></script>
+<script src="student_report_part2.js?v=801dcd94"></script>
 </body>
 </html>

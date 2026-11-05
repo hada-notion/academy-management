@@ -315,5 +315,10 @@ export async function processNoticeQueueItem(payload: NoticePayload): Promise<vo
 		await noticeDeps.log({ ...logBase, ...sibLog, status: "성공" }).catch((err: unknown) => console.error("[notice] 전송 로그 실패:", extractErrorMessage(err)))
 		await finish(kind, String(sib.id), "✅ 완료", null, bulkReset)
 	}
+	// (v2.8.0) 가정통신문: 보낸 달이 리포트 홈 목록에 바로 보이도록 같은 달 장의 등록 리포트를 새로 만든다. 실패해도 발송은 이미 끝났다.
+	if (kind === "letter") {
+		const regIds = new Set([prep.registrationId, ...siblings.map((sib: any) => getRelationFirstId(sib, "등록") ?? prep.registrationId)])
+		for (const id of regIds) await noticeDeps.refresh(id).catch((err: unknown) => console.warn("[notice] 가정통신문 리포트 최신화 건너뜀:", id, extractErrorMessage(err)))
+	}
 	console.log(`[notice] ${kind} sent: ${pageId} (${recipients.length}명${siblings.length ? `, 같은 달 ${siblings.length}장 함께` : ""})`)
 }

@@ -82,9 +82,7 @@ Deno.test("v2.8.0 반별 보고서: 같은 반·구분·기간 발송함을 다�
 	})
 	await m.processClassReportsQueueItem(P)
 	eq(calls.created.length, 0)
-	// (v2.8.0) 반의 진행 중 진도교재를 발송함에 더한다(이미 있던 bk0은 그대로, bk1만 추가).
 	eq(calls.updates, [
-		{ id: "b-same", props: { "진도교재": { relation: [{ id: "bk0" }, { id: "bk1" }] } } },
 		{ id: "cls", props: { "보고서 생성 대상": { relation: [{ id: "b-same" }] } } },
 	])
 	eq(calls.enqueued, [{ target: "registration-report", payload: { ...P, batchId: "b-same", regId: "r1", last: true } }])

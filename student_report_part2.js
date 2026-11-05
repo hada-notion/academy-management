@@ -485,6 +485,135 @@ function buildHomeHeroHtml(r) {
     </div>
   `
 }
+// ===== 가정통신문 (홈 탭 맨 아래 → 본문 → 목록) =====
+// (v2.8.0) 등록이 아니라 학생·달 단위다(여러 반을 다녀도 한 달에 한 통). 목록은 캐시에 있고, 본문은 누를 때 읽는다(get-report-letter).
+let selectedLetterMonth = ""
+let letterFromList = false
+const letterCache = {}
+const LETTER_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M22 7l-10 6L2 7"></path></svg>`
+const LETTER_CHEVRON = `<svg class="letter-chevron" viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 6 15 12 9 18"></polyline></svg>`
+function letterLabel(month) {
+  const [y, m] = String(month).split("-")
+  return `${y === MOCK_TODAY.slice(0, 4) ? "" : `${y}년 `}${Number(m)}월 가정통신문`
+}
+function letterRowHtml(month, fromList) {
+  return `<button type="button" class="letter-row" onclick="openLetter(${jsArg(month)}, ${fromList})"><b>${esc(letterLabel(month))}</b>${LETTER_CHEVRON}</button>`
+}
+function buildHomeLetterHtml() {
+  const letters = STUDENT.letters || []
+  if (!letters.length) return ""
+  return `
+      <h3 class="sec-title"><span class="sec-icon">${LETTER_ICON}</span>가정통신문</h3>
+      <div class="card">${letterRowHtml(letters[0].month, false)}</div>`
+}
+async function fetchLetter(month) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/get-report-letter`, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ token: REPORT_ACCESS_TOKEN, month }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok || !data.letter) throw new Error(data.error || `HTTP ${res.status}`)
+    letterCache[month] = { letter: data.letter }
+  } catch (err) {
+    console.error("fetchLetter failed", err)
+    letterCache[month] = { failed: true }
+  }
+  if (view === "letter" && selectedLetterMonth === month) renderApp()
+}
+function letterToTop() {
+  window.scrollTo({ top: 0 })
+  document.body.scrollTop = 0
+}
+function openLetter(month, fromList) {
+  selectedLetterMonth = String(month)
+  letterFromList = !!fromList
+  view = "letter"
+  if (!letterCache[selectedLetterMonth] || letterCache[selectedLetterMonth].failed) {
+    delete letterCache[selectedLetterMonth]
+    fetchLetter(selectedLetterMonth)
+  }
+  renderApp()
+  letterToTop()
+}
+function openLetterList() {
+  view = "letters"
+  letterFromList = false
+  renderApp()
+  letterToTop()
+}
+function closeLetter() {
+  view = "detail"
+  regTab = "home"
+  letterFromList = false
+  renderApp()
+  letterToTop()
+}
+function letterBack() {
+  return view === "letter" && letterFromList ? openLetterList() : closeLetter()
+}
+function letterLinesHtml(title, lines) {
+  if (!lines || !lines.length) return ""
+  return `<div class="letter-lines"><div class="rep-sub">${esc(title)}</div><ul class="feed-list">${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul></div>`
+}
+function letterBodyHtml(state) {
+  if (!state) return `<div class="card"><div class="empty">가정통신문을 불러오는 중이에요</div></div>`
+  if (state.failed) return `<div class="card"><div class="empty">가정통신문을 불러오지 못했어요</div><button type="button" class="letter-action" onclick="openLetter(${jsArg(selectedLetterMonth)}, ${letterFromList})">다시 시도</button></div>`
+  const l = state.letter
+  const s = l.schedule || {}
+  const schedule = [letterLinesHtml("휴원 일정", s.rest), letterLinesHtml("학원 일정", s.academy), letterLinesHtml("학사 일정", s.school)].join("")
+  const many = (l.commonBodies || []).length > 1
+  const common = (l.commonBodies || []).map((c) => `${many && c.className ? `<div class="rep-sub">${esc(c.className)}</div>` : ""}<div class="card letter-body">${buildFeedBodyHtml(c.body)}</div>`).join("")
+  const own = buildFeedBodyHtml(l.body)
+  return `
+    ${(l.classes || []).length ? `<div class="section-hint">${esc(l.classes.join(" · "))}</div>` : ""}
+    ${common ? `<h3 class="sec-title">안내</h3>${common}` : ""}
+    ${l.note ? `<h3 class="sec-title">전달 사항</h3><div class="card letter-note">${esc(l.note)}</div>` : ""}
+    ${schedule ? `<h3 class="sec-title">일정 안내</h3><div class="card">${schedule}</div>` : ""}
+    ${own ? `<h3 class="sec-title">${esc(STUDENT.student_name)} 학생 안내</h3><div class="card letter-body">${own}</div>` : ""}`
+}
+function letterPageHtml(current, title, inner) {
+  const r = currentReg()
+  return `
+    <div class="reg-detail-page">
+      <div class="reg-header-bar">
+        <div class="reg-header-top">
+          <button class="reg-back-btn" onclick="letterBack()" aria-label="뒤로가기"><svg class="header-icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg></button>
+          <div class="reg-breadcrumb">
+            <span class="crumb" onclick="goIntro()">${esc(STUDENT.student_name)}</span>
+            <span class="crumb-sep">›</span>
+            <span class="crumb" onclick="closeLetter()">${esc(r ? r.class_name : "")}</span>
+            <span class="crumb-sep">›</span>
+            <span class="crumb current">${esc(current)}</span>
+          </div>
+        </div>
+      </div>
+      <div class="reg-tab-content"><div class="feed-narrow-wrap">
+        <h2><span class="page-title-icon">${LETTER_ICON}</span>${esc(title)}</h2>
+        ${inner}
+      </div></div>
+    </div>
+    ${regTabbarHtml("home", true)}
+  `
+}
+function renderLetterDetail() {
+  const state = letterCache[selectedLetterMonth]
+  return letterPageHtml("가정통신문", letterLabel(selectedLetterMonth), `
+        ${letterBodyHtml(state)}
+        <button type="button" class="letter-action" onclick="openLetterList()">목록으로</button>`)
+}
+function renderLetterList() {
+  const letters = STUDENT.letters || []
+  return letterPageHtml("가정통신문", "가정통신문", `
+        <div class="section-hint">보낸 가정통신문을 달별로 볼 수 있어요</div>
+        <div class="card">${letters.length ? letters.map((l) => letterRowHtml(l.month, true)).join("") : `<div class="empty">아직 받은 가정통신문이 없어요.</div>`}</div>`)
+}
+
 function buildHomeTabHtml(r) {
   const todayAtt = (r.attendance_rows || []).find((a) => a.date === MOCK_TODAY)
   const todayPlanned = isPlannedClassDate(r, MOCK_TODAY, closedDateSet())
@@ -521,7 +650,7 @@ function buildHomeTabHtml(r) {
           <div class="progress-line"><div class="track"><div class="fill" style="width:${b.progress ?? 0}%"></div></div><b>${b.progress ?? 0}%</b></div>
         </div>`).join("") : `<div class="empty">진행 중인 ${josa(regBookNoun(r), "이", "가")} 없어요.</div>`}</div>
       <h3 class="sec-title"><span class="sec-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg></span>선생님 한마디</h3>
-      <div class="card">${comment ? `<div class="speech">${esc(comment.text)}<small>${esc([comment.by, comment.date ? shortDateDow(comment.date) : ""].filter(Boolean).join(" · "))}</small></div>` : `<div class="empty">아직 등록된 한마디가 없어요.</div>`}</div>
+      <div class="card">${comment ? `<div class="speech">${esc(comment.text)}<small>${esc([comment.by, comment.date ? shortDateDow(comment.date) : ""].filter(Boolean).join(" · "))}</small></div>` : `<div class="empty">아직 등록된 한마디가 없어요.</div>`}</div>${buildHomeLetterHtml()}
     </div>
   `
 }
@@ -1244,14 +1373,17 @@ function renderApp() {
   } else if (view === "book") {
     app.innerHTML = renderBookDetail()
     attachRegScrollShrink()
+  } else if (view === "letter" || view === "letters") {
+    app.innerHTML = view === "letter" ? renderLetterDetail() : renderLetterList()
+    attachRegScrollShrink()
   } else {
     detachRegScrollShrink()
     app.innerHTML = renderIntro()
   }
   // 하단 탭바가 있는 등록 상세에는 안전 여백을 적용하고,
   // 등록/교재 상세에서는 새로고침 버튼을 상단 헤더 오른쪽에 배치한다.
-  document.body.classList.toggle("has-tabbar", view === "detail" || view === "book")
-  document.body.classList.toggle("has-detail-header", view === "detail" || view === "book")
+  document.body.classList.toggle("has-tabbar", view === "detail" || view === "book" || view === "letter" || view === "letters")
+  document.body.classList.toggle("has-detail-header", view === "detail" || view === "book" || view === "letter" || view === "letters")
 }
 
 async function initApp() {
@@ -1274,6 +1406,8 @@ async function initApp() {
 const reportNav = { idx: 0, depth: 0, layers: [], pending: 0, skip: false, popping: false, fromPop: false }
 function reportDepth() {
   if (view === "book") return (regTab === "home" ? 1 : 2) + 1
+  if (view === "letters") return 2
+  if (view === "letter") return letterFromList ? 3 : 2
   if (view !== "detail") return 0
   return (regTab === "home" ? 1 : 2) + (regTab === "calendar" && selectedCalDate ? 1 : 0)
 }
@@ -1344,6 +1478,7 @@ reportWrapLayer("image", "openFeedImage", "closeFeedImage", () => !!document.que
 }
 function reportGoUp() {
   if (view === "book") return closeBookDetail()
+  if (view === "letter" || view === "letters") return letterBack()
   if (view !== "detail") return
   if (regTab === "calendar" && selectedCalDate) return clearCalDay()
   if (regTab !== "home") return setRegTab("home")

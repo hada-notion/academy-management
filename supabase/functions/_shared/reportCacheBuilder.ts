@@ -1,6 +1,7 @@
 import { queryAllPages, mapWithConcurrency, pickProp } from "./notionClient.ts"
 import { routineRowsForRegistration, type RoutineRow } from "./routineCheck.ts"
 import { readPageBodyBlocks } from "./feedBody.ts"
+import { buildLetterList } from "./reportLetter.ts"
 import { parseTokenValue } from "./adminShared.ts"
 import {
   text,
@@ -172,7 +173,10 @@ async function buildStudentFields(studentId: string, cachedGetPage: (id: string)
     }),
   )
 
-  const notices = await buildStudentNotices(studentId, sp, cachedGetPage)
+  const [notices, letters] = await Promise.all([
+    buildStudentNotices(studentId, sp, cachedGetPage),
+    buildLetterList(relationIds(sp["등록"])),
+  ])
 
   return {
     student_name: studentName,
@@ -183,6 +187,7 @@ async function buildStudentFields(studentId: string, cachedGetPage: (id: string)
     primary_contact: primaryContact,
     siblings,
     notices,
+    letters,
     notice_visibility_policy: NOTICE_VISIBILITY_POLICY,
     issued_at: new Date().toISOString(),
   }

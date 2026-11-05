@@ -345,6 +345,8 @@ font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto San
 | 하단 탭 버튼 | `.reg-tab-btn` | `#tabbar button` | 높이 56, 글자 11/600, 아이콘-글자 4, 선택 = `#FBF8F3` 바탕·`#6B5D4D` 글자·모서리 10 | 일치 |
 | 탭 제목 | `.reg-tab-content h2` | `.page-title` | 17/700 `#191F28`, 아이콘 18, 아이콘 간격 8 | 일치 |
 | 안내 문구 | `.section-hint` | `.page-hint.ph` | 12/400 `#4E5968`, 아래 16 | 일치 |
+| 목록 줄(가정통신문) | `.letter-row` | 없음 | 높이 44, 14/700, 오른쪽 화살표 16, 줄 사이 선 `#f1f0f6` | 리포트 전용 |
+| 넓은 보조 버튼(가정통신문) | `.letter-action` | 없음 | 높이 44, 모서리 10, 바탕 `#F5EFE7`, 글자 `#3F372F` 14/700 | 리포트 전용 |
 | 전환 탭 | `.seg-toggle` | `.ph .center-tabs .tabs` | 트랙 `#F5EFE7` 알약·안쪽 4, 보이는 버튼 높이 32·안쪽 8/16·12/700, 선택 = 흰 바탕·`#6B5D4D` 글자·카드 그림자 `0 1px 4px rgba(0,0,0,.06)`, 아래 16, 누르는 영역 44 | 일치 |
 | 홈 요약 칸 | `.home-stat` | `.home-stat` | 바탕 `#FBF8F3`·모서리 10·안쪽 12/4, 숫자 15/800 줄 20(진한 의미색, 상태 없으면 `#191F28`), 라벨 11 줄 16·위 4, 칸 높이 64, 칸 사이 8 | 일치 |
 | 교재 카드 | `.book-row` | `.book-row.feed` | 흰 그림자 카드, 모서리 14, 안쪽 16, 표지-글 16, 표지 64×86 | 일치 |
