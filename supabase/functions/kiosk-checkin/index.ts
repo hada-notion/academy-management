@@ -407,7 +407,7 @@ Deno.serve(async (req: Request) => {
                       "일자": formatKstDateKorean(kstDate()),
                       "시간": formatKstTimeKorean(nowIso),
                     },
-                    disableSms: false,
+                    disableSms: true,
                   },
                 }, { allowDuplicates: true })
               }

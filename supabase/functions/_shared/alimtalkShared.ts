@@ -242,7 +242,7 @@ export async function sendDailyReportAlimtalk(payload: {
         pfId: config.pfId,
         templateId: config.templateId,
         variables,
-        disableSms: false,
+        disableSms: true,
       },
     }, { allowDuplicates: true }))
   }
