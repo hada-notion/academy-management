@@ -567,13 +567,12 @@ function letterBodyHtml(state) {
   const l = state.letter
   const s = l.schedule || {}
   const schedule = [letterLinesHtml("휴원 일정", s.rest), letterLinesHtml("학원 일정", s.academy), letterLinesHtml("학사 일정", s.school)].join("")
-  const many = (l.commonBodies || []).length > 1
-  const common = (l.commonBodies || []).map((c) => `${many && c.className ? `<div class="rep-sub">${esc(c.className)}</div>` : ""}<div class="card letter-body">${buildFeedBodyHtml(c.body)}</div>`).join("")
+  const common = (l.commonBodies || []).map((c) => `${c.className ? `<div class="rep-sub">${esc(c.className)}</div>` : ""}<div class="card letter-body">${buildFeedBodyHtml(c.body)}</div>`).join("")
   const own = buildFeedBodyHtml(l.body)
   return `
     ${(l.classes || []).length ? `<div class="section-hint">${esc(l.classes.join(" · "))}</div>` : ""}
     ${common ? `<h3 class="sec-title">안내</h3>${common}` : ""}
-    ${l.note ? `<h3 class="sec-title">전달 사항</h3><div class="card letter-note">${esc(l.note)}</div>` : ""}
+    ${(l.notes || []).length ? `<h3 class="sec-title">전달 사항</h3>${l.notes.map((n) => `${n.className ? `<div class="rep-sub">${esc(n.className)}</div>` : ""}<div class="card letter-note">${esc(n.text)}</div>`).join("")}` : ""}
     ${schedule ? `<h3 class="sec-title">일정 안내</h3><div class="card">${schedule}</div>` : ""}
     ${own ? `<h3 class="sec-title">${esc(STUDENT.student_name)} 학생 안내</h3><div class="card letter-body">${own}</div>` : ""}`
 }

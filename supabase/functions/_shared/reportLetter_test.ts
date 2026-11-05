@@ -11,7 +11,7 @@ const letter = (id: string, reg: string, month: string, box?: string) => ({
 })
 const regPage = (id: string, name: string) => ({ id, properties: { "클래스명(등록)": { rollup: { type: "array", array: [{ type: "rich_text", rich_text: [{ plain_text: name }] }] } } } })
 
-function mock(rows: Record<string, any[]>, opts: { note?: string; bodies?: Record<string, unknown[]>; lines?: any[] } = {}) {
+function mock(rows: Record<string, any[]>, opts: { memos?: Record<string, string>; bodies?: Record<string, unknown[]>; lines?: any[] } = {}) {
 	const filters: any[] = []
 	Object.assign(reportLetterDeps, {
 		dataSourceId: () => Promise.resolve("ds"),
@@ -21,7 +21,7 @@ function mock(rows: Record<string, any[]>, opts: { note?: string; bodies?: Recor
 		},
 		regsInMonth: () => Promise.resolve([regPage("r1", "중2 수학"), regPage("r2", "중2 영어")]),
 		events: () => Promise.resolve(opts.lines ?? []),
-		note: () => Promise.resolve(opts.note ?? "없음"),
+		getPage: (id: string) => Promise.resolve({ id, properties: { "가정통신문 전달사항": { rich_text: opts.memos?.[id] ? [{ plain_text: opts.memos[id] }] : [] } } }),
 		body: (id: string) => Promise.resolve(opts.bodies?.[id] ?? []),
 	})
 	return filters
@@ -49,7 +49,7 @@ Deno.test("v2.8.0 가정통신문 본문: 일정 구역·전달사항·반 공�
 		r1: [letter("a", "r1", "2026-12", "box1")],
 		r2: [letter("c", "r2", "2026-12", "box2"), letter("old", "r2", "2026-11", "box9")],
 	}, {
-		note: "보강을 엽니다.",
+		memos: { box1: "보강을 엽니다." },
 		bodies: {
 			box1: [{ type: "paragraph", text: "수학 안내" }, { type: "pdf", blockId: "blk", url: "https://f/a.pdf", name: "a.pdf" }],
 			box2: [],
@@ -65,13 +65,37 @@ Deno.test("v2.8.0 가정통신문 본문: 일정 구역·전달사항·반 공�
 	eq(v?.label, "12월")
 	eq(v?.classes, ["중2 수학", "중2 영어"])
 	eq(v?.schedule, { rest: ["12.24(목)  방학"], academy: ["12.05(토)  설명회", "12.19(토)  특강"], school: [] })
-	eq(v?.note, "보강을 엽니다.")
+	eq(v?.notes, [{ className: "중2 수학", text: "보강을 엽니다." }])
 	eq(v?.commonBodies, [{ className: "중2 수학", body: [{ type: "paragraph", text: "수학 안내" }, { type: "pdf", url: "https://f/a.pdf", name: "a.pdf" }] }])
 	eq(v?.body, [{ type: "paragraph", text: "서아 안내" }])
 })
 
-Deno.test("v2.8.0 가정통신문 본문: 보낸 장이 없는 달은 null, 전달사항이 '없음'이면 비운다", async () => {
+Deno.test("v2.8.0 가정통신문 본문: 보낸 장이 없는 달은 null, 전달사항이 없으면 빈 목록", async () => {
 	mock({ r1: [letter("a", "r1", "2026-12")] })
 	eq(await buildLetterView(["r1"], "s1", "2026-11"), null)
-	eq((await buildLetterView(["r1"], "s1", "2026-12"))?.note, "")
+	eq((await buildLetterView(["r1"], "s1", "2026-12"))?.notes, [])
+})
+
+const twoBoxes = { r1: [letter("a", "r1", "2026-12", "box1")], r2: [letter("c", "r2", "2026-12", "box2")] }
+const photo = (sig: string) => ({ type: "image", blockId: sig, url: `https://s3/x/${sig}/간식표.png?sig=${sig}`, caption: "" })
+
+Deno.test("v2.8.0 가정통신문 본문: 두 반에 같은 내용을 적으면 한 번만, 반 이름 없이(사진은 파일 이름으로 비교)", async () => {
+	mock(twoBoxes, {
+		memos: { box1: "공통 안내", box2: "공통 안내" },
+		bodies: { box1: [{ type: "paragraph", text: "11월 안내" }, photo("p1")], box2: [{ type: "paragraph", text: "11월 안내" }, photo("p2")] },
+	})
+	const v = await buildLetterView(["r1", "r2"], "s1", "2026-12")
+	eq(v?.notes, [{ className: "", text: "공통 안내" }])
+	eq(v?.commonBodies.length, 1)
+	eq(v?.commonBodies[0].className, "")
+})
+
+Deno.test("v2.8.0 가정통신문 본문: 내용이 다르면 반마다 따로, 반 이름을 붙인다", async () => {
+	mock(twoBoxes, {
+		memos: { box1: "수학 안내", box2: "영어 안내" },
+		bodies: { box1: [{ type: "paragraph", text: "수학" }], box2: [{ type: "paragraph", text: "영어" }] },
+	})
+	const v = await buildLetterView(["r1", "r2"], "s1", "2026-12")
+	eq(v?.notes, [{ className: "중2 수학", text: "수학 안내" }, { className: "중2 영어", text: "영어 안내" }])
+	eq(v?.commonBodies.map((c) => c.className), ["중2 수학", "중2 영어"])
 })

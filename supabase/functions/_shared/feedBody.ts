@@ -40,18 +40,36 @@ function textBlockItem(type: string, richText: any[] | undefined, extra: Record<
   if (!t) return null
   return { type: "text", style: type, text: t, spans, ...extra }
 }
-export async function blocksToFeedBody(blocks: any[]): Promise<unknown[]> {
+// 테스트에서 하위 블록 조회를 바꿔 끼울 수 있게 한다.
+export const feedBodyDeps = { getBlockChildren }
+// (v2.8.0 가정통신문) 콜아웃·중첩 목록·토글·단의 하위 블록도 읽는다. 없으면 콜아웃 둘째 줄부터 사라진다. 깊이는 3단계까지.
+const MAX_BODY_DEPTH = 3
+const CONTAINER_TYPES = new Set(["column_list", "column", "synced_block"])
+export async function blocksToFeedBody(blocks: any[], depth = 0): Promise<unknown[]> {
   const items: unknown[] = []
+  const childrenOf = async (b: any): Promise<unknown[]> => {
+    if (!b?.has_children || depth >= MAX_BODY_DEPTH) return []
+    try {
+      return await blocksToFeedBody(await feedBodyDeps.getBlockChildren(b.id), depth + 1)
+    } catch (err) {
+      console.warn(`하위 블록 조회 실패 - 건너뜀(${b.id}):`, (err as Error)?.message ?? err)
+      return []
+    }
+  }
   for (const b of blocks ?? []) {
     const type = b?.type
     if (!type) continue
+    if (CONTAINER_TYPES.has(type)) {
+      items.push(...await childrenOf(b))
+      continue
+    }
     if (type === "table") {
       // 표는 자기 자신이 아니라 하위 table_row 블록에 실제 셀 내용이 있으므로 한 단계 더
       // 가져와야 한다. 표 개수는 본문 하나당 보통 0~2개뿐이라 순차 조회로도 충분하다.
       let rows: unknown[] = []
       if (b.has_children) {
         try {
-          const rowBlocks = await getBlockChildren(b.id)
+          const rowBlocks = await feedBodyDeps.getBlockChildren(b.id)
           rows = (rowBlocks ?? [])
             .filter((r: any) => r?.type === "table_row")
             .map((r: any) => (r.table_row?.cells ?? []).map((cell: any[]) => richTextSpans(cell)))
@@ -100,8 +118,11 @@ export async function blocksToFeedBody(blocks: any[]): Promise<unknown[]> {
     }
     if (type === "callout") {
       const icon = b.callout?.icon?.type === "emoji" ? b.callout.icon.emoji : undefined
-      const item = textBlockItem(type, b.callout?.rich_text, icon ? { icon } : {})
+      const children = await childrenOf(b)
+      // 글이 하위 블록에만 있는 콜아웃도 있어서, 첫 줄이 비어도 하위가 있으면 싣는다.
+      const item = textBlockItem(type, b.callout?.rich_text, { ...(icon ? { icon } : {}), ...(children.length ? { children } : {}) })
       if (item) items.push(item)
+      else if (children.length) items.push({ type: "text", style: type, text: "", spans: [], ...(icon ? { icon } : {}), children })
       continue
     }
     if (type === "code") {
@@ -115,6 +136,8 @@ export async function blocksToFeedBody(blocks: any[]): Promise<unknown[]> {
     if (Array.isArray(richText)) {
       const item = textBlockItem(type, richText)
       if (item) items.push(item)
+      // 중첩 목록·토글의 하위는 부모 바로 아래에 이어 붙인다.
+      items.push(...await childrenOf(b))
     }
   }
   return items
