@@ -385,6 +385,7 @@ function normalizeFeedBody(rawBody) {
         icon: b.icon ? String(b.icon) : "",
         language: b.language ? String(b.language) : "",
         children,
+        color: b.style === "callout" && b.color ? String(b.color).replace(/[^a-z_]/g, "") : "",
       }
     })
     .filter(Boolean)
@@ -555,7 +556,7 @@ function buildFeedBodyHtml(body) {
     else if (style === "heading_4") parts.push(`<div class="feed-heading feed-h4">${renderFeedSpans(it.spans)}</div>`)
     else if (style === "quote") parts.push(`<div class="feed-quote">${renderFeedSpans(it.spans)}</div>`)
     else if (style === "to_do") parts.push(`<div class="feed-todo${it.checked ? " checked" : ""}"><span class="feed-todo-box">${it.checked ? "☑" : "☐"}</span><span>${renderFeedSpans(it.spans)}</span></div>`)
-    else if (style === "callout") parts.push(`<div class="feed-callout">${it.icon ? `<span class="feed-callout-icon">${esc(it.icon)}</span>` : ""}<div class="feed-callout-main">${it.spans.length ? `<div>${renderFeedSpans(it.spans)}</div>` : ""}${buildFeedBodyHtml(it.children)}</div></div>`)
+    else if (style === "callout") parts.push(`<div class="feed-callout${it.color ? ` feed-callout-${it.color}` : ""}">${it.icon ? `<span class="feed-callout-icon">${esc(it.icon)}</span>` : ""}<div class="feed-callout-main">${it.spans.length ? `<div>${renderFeedSpans(it.spans)}</div>` : ""}${buildFeedBodyHtml(it.children)}</div></div>`)
     else if (style === "code") parts.push(`<pre class="feed-code"><code>${esc(it.text)}</code></pre>`)
     // 옛 데이터(마이그레이션 전 style="heading"/"bullet")와도 호환되게 유지한다.
     else if (style === "heading") parts.push(`<div class="feed-heading feed-h3">${renderFeedSpans(it.spans)}</div>`)
