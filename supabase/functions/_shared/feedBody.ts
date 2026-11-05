@@ -119,11 +119,10 @@ export async function blocksToFeedBody(blocks: any[], depth = 0): Promise<unknow
     if (type === "callout") {
       const icon = b.callout?.icon?.type === "emoji" ? b.callout.icon.emoji : undefined
       const children = await childrenOf(b)
-      const color = typeof b.callout?.color === "string" && b.callout.color !== "default" ? b.callout.color : ""
       // 글이 하위 블록에만 있는 콜아웃도 있어서, 첫 줄이 비어도 하위가 있으면 싣는다.
-      const item = textBlockItem(type, b.callout?.rich_text, { ...(icon ? { icon } : {}), ...(color ? { color } : {}), ...(children.length ? { children } : {}) })
+      const item = textBlockItem(type, b.callout?.rich_text, { ...(icon ? { icon } : {}), ...(children.length ? { children } : {}) })
       if (item) items.push(item)
-      else if (children.length) items.push({ type: "text", style: type, text: "", spans: [], ...(icon ? { icon } : {}), ...(color ? { color } : {}), children })
+      else if (children.length) items.push({ type: "text", style: type, text: "", spans: [], ...(icon ? { icon } : {}), children })
       continue
     }
     if (type === "code") {
