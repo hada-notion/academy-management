@@ -1,5 +1,5 @@
 // 학습기록 페이지 본문(블록) → 피드 부록(v2.5.95에 reportCacheBuilder.ts에서 내용 그대로 옮김). 학부모 리포트 캐시와 수업 관리 기록 카드가 함께 쓴다.
-import { getBlockChildren } from "./notionClient.ts"
+import { getBlockChildren, mapWithConcurrency } from "./notionClient.ts"
 
 // 학습기록 페이지 "본문"(블록)을 학부모 리포트 피드용 부록으로 변환한다. 프론트엔드
 // normalizeFeedBody(student_report_part1.js)가 기대하는 { type: "text"|"image"|"video"|"divider", ... }
@@ -45,22 +45,25 @@ export const feedBodyDeps = { getBlockChildren }
 // (v2.8.0 가정통신문) 콜아웃·중첩 목록·토글·단의 하위 블록도 읽는다. 없으면 콜아웃 둘째 줄부터 사라진다. 깊이는 3단계까지.
 const MAX_BODY_DEPTH = 3
 const CONTAINER_TYPES = new Set(["column_list", "column", "synced_block"])
+const CHILD_READS = 5
 export async function blocksToFeedBody(blocks: any[], depth = 0): Promise<unknown[]> {
   const items: unknown[] = []
-  const childrenOf = async (b: any): Promise<unknown[]> => {
-    if (!b?.has_children || depth >= MAX_BODY_DEPTH) return []
+  // 하위 블록은 한 번에 몇 개씩 동시에 읽고(본문이 길면 하나씩 읽을 때 여는 데 오래 걸린다), 아래에서는 순서대로 붙인다.
+  const nested = new Map<string, unknown[]>()
+  const parents = depth < MAX_BODY_DEPTH ? (blocks ?? []).filter((b: any) => b?.has_children && b.type !== "table") : []
+  await mapWithConcurrency(parents, CHILD_READS, async (b: any) => {
     try {
-      return await blocksToFeedBody(await feedBodyDeps.getBlockChildren(b.id), depth + 1)
+      nested.set(b.id, await blocksToFeedBody(await feedBodyDeps.getBlockChildren(b.id), depth + 1))
     } catch (err) {
       console.warn(`하위 블록 조회 실패 - 건너뜀(${b.id}):`, (err as Error)?.message ?? err)
-      return []
     }
-  }
+  })
+  const childrenOf = (b: any): unknown[] => nested.get(b?.id) ?? []
   for (const b of blocks ?? []) {
     const type = b?.type
     if (!type) continue
     if (CONTAINER_TYPES.has(type)) {
-      items.push(...await childrenOf(b))
+      items.push(...childrenOf(b))
       continue
     }
     if (type === "table") {
@@ -118,7 +121,7 @@ export async function blocksToFeedBody(blocks: any[], depth = 0): Promise<unknow
     }
     if (type === "callout") {
       const icon = b.callout?.icon?.type === "emoji" ? b.callout.icon.emoji : undefined
-      const children = await childrenOf(b)
+      const children = childrenOf(b)
       // 글이 하위 블록에만 있는 콜아웃도 있어서, 첫 줄이 비어도 하위가 있으면 싣는다.
       const item = textBlockItem(type, b.callout?.rich_text, { ...(icon ? { icon } : {}), ...(children.length ? { children } : {}) })
       if (item) items.push(item)
@@ -137,7 +140,7 @@ export async function blocksToFeedBody(blocks: any[], depth = 0): Promise<unknow
       const item = textBlockItem(type, richText)
       if (item) items.push(item)
       // 중첩 목록·토글의 하위는 부모 바로 아래에 이어 붙인다.
-      items.push(...await childrenOf(b))
+      items.push(...childrenOf(b))
     }
   }
   return items

@@ -720,7 +720,7 @@ function mapReportToStudent(r) {
     father_phone: r.father_phone || "",
     primary_contact: r.primary_contact || "",
     notices: (r.notices || []).map((n) => ({ date: n.date || null, title: n.title || "", category: n.category || "" })),
-    letters: (r.letters || []).filter((l) => l && l.month).map((l) => ({ month: String(l.month) })),
+    letters: (r.letters || []).filter((l) => l && l.month).map((l) => ({ month: String(l.month), registrationId: String(l.registrationId || "") })),
     registrations: regs.map(mapRegistration),
   }
 }

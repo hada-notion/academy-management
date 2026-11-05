@@ -486,7 +486,7 @@ function buildHomeHeroHtml(r) {
   `
 }
 // ===== 가정통신문 (홈 탭 맨 아래 → 본문 → 목록) =====
-// (v2.8.0) 등록이 아니라 학생·달 단위다(여러 반을 다녀도 한 달에 한 통). 목록은 캐시에 있고, 본문은 누를 때 읽는다(get-report-letter).
+// (v2.8.0, 11/6 사용자) 반마다 따로 보인다: 영어반을 열면 영어반 내용만. 목록은 캐시에 있고, 본문은 누를 때 읽는다(get-report-letter).
 let selectedLetterMonth = ""
 let letterFromList = false
 const letterCache = {}
@@ -499,14 +499,23 @@ function letterLabel(month) {
 function letterRowHtml(month, fromList) {
   return `<button type="button" class="letter-row" onclick="openLetter(${jsArg(month)}, ${fromList})"><b>${esc(letterLabel(month))}</b>${LETTER_CHEVRON}</button>`
 }
+function regLetters() {
+  const id = currentReg()?.registration_id
+  return (STUDENT.letters || []).filter((l) => l.registrationId === id).sort((a, b) => b.month.localeCompare(a.month))
+}
+function letterKey(month) {
+  return `${currentReg()?.registration_id || ""}:${month}`
+}
 function buildHomeLetterHtml() {
-  const letters = STUDENT.letters || []
+  const letters = regLetters()
   if (!letters.length) return ""
   return `
       <h3 class="sec-title"><span class="sec-icon">${LETTER_ICON}</span>가정통신문</h3>
       <div class="card">${letterRowHtml(letters[0].month, false)}</div>`
 }
 async function fetchLetter(month) {
+  const registrationId = currentReg()?.registration_id
+  const key = letterKey(month)
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/get-report-letter`, {
       method: "POST",
@@ -515,16 +524,16 @@ async function fetchLetter(month) {
         "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ token: REPORT_ACCESS_TOKEN, month }),
+      body: JSON.stringify({ token: REPORT_ACCESS_TOKEN, month, registrationId }),
     })
     const data = await res.json().catch(() => ({}))
     if (!res.ok || !data.letter) throw new Error(data.error || `HTTP ${res.status}`)
-    letterCache[month] = { letter: data.letter }
+    letterCache[key] = { letter: data.letter }
   } catch (err) {
     console.error("fetchLetter failed", err)
-    letterCache[month] = { failed: true }
+    letterCache[key] = { failed: true }
   }
-  if (view === "letter" && selectedLetterMonth === month) renderApp()
+  if (view === "letter" && letterKey(selectedLetterMonth) === key) renderApp()
 }
 function letterToTop() {
   window.scrollTo({ top: 0 })
@@ -534,8 +543,9 @@ function openLetter(month, fromList) {
   selectedLetterMonth = String(month)
   letterFromList = !!fromList
   view = "letter"
-  if (!letterCache[selectedLetterMonth] || letterCache[selectedLetterMonth].failed) {
-    delete letterCache[selectedLetterMonth]
+  const key = letterKey(selectedLetterMonth)
+  if (!letterCache[key] || letterCache[key].failed) {
+    delete letterCache[key]
     fetchLetter(selectedLetterMonth)
   }
   renderApp()
@@ -567,12 +577,11 @@ function letterBodyHtml(state) {
   const l = state.letter
   const s = l.schedule || {}
   const schedule = [letterLinesHtml("휴원 일정", s.rest), letterLinesHtml("학원 일정", s.academy), letterLinesHtml("학사 일정", s.school)].join("")
-  const common = (l.commonBodies || []).map((c) => `${c.className ? `<div class="rep-sub">${esc(c.className)}</div>` : ""}<div class="card letter-body">${buildFeedBodyHtml(c.body)}</div>`).join("")
-  const own = buildFeedBodyHtml(l.body)
+  const common = buildFeedBodyHtml(l.classBody)
+  const own = buildFeedBodyHtml(l.studentBody)
   return `
-    ${(l.classes || []).length ? `<div class="section-hint">${esc(l.classes.join(" · "))}</div>` : ""}
-    ${common ? `<h3 class="sec-title">안내</h3>${common}` : ""}
-    ${(l.notes || []).length ? `<h3 class="sec-title">전달 사항</h3>${l.notes.map((n) => `${n.className ? `<div class="rep-sub">${esc(n.className)}</div>` : ""}<div class="card letter-note">${esc(n.text)}</div>`).join("")}` : ""}
+    ${common ? `<h3 class="sec-title">안내</h3><div class="card letter-body">${common}</div>` : ""}
+    ${l.note ? `<h3 class="sec-title">전달 사항</h3><div class="card letter-note">${esc(l.note)}</div>` : ""}
     ${schedule ? `<h3 class="sec-title">일정 안내</h3><div class="card">${schedule}</div>` : ""}
     ${own ? `<h3 class="sec-title">${esc(STUDENT.student_name)} 학생 안내</h3><div class="card letter-body">${own}</div>` : ""}`
 }
@@ -601,13 +610,13 @@ function letterPageHtml(current, title, inner) {
   `
 }
 function renderLetterDetail() {
-  const state = letterCache[selectedLetterMonth]
+  const state = letterCache[letterKey(selectedLetterMonth)]
   return letterPageHtml("가정통신문", letterLabel(selectedLetterMonth), `
         ${letterBodyHtml(state)}
         <button type="button" class="letter-action" onclick="openLetterList()">목록으로</button>`)
 }
 function renderLetterList() {
-  const letters = STUDENT.letters || []
+  const letters = regLetters()
   return letterPageHtml("가정통신문", "가정통신문", `
         <div class="section-hint">보낸 가정통신문을 달별로 볼 수 있어요</div>
         <div class="card">${letters.length ? letters.map((l) => letterRowHtml(l.month, true)).join("") : `<div class="empty">아직 받은 가정통신문이 없어요.</div>`}</div>`)
