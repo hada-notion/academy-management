@@ -5,7 +5,7 @@
 // 체크 명단과 학부모 리포트에 저절로 한 줄씩 늘어난다.
 //
 // 수업 [루틴 체크 생성] → create-class-reports/routine-checks → 큐 "routine-checks"
-//   = 이 수업 클래스의 루틴(쉬기 아님) × 이 수업 출석 → 루틴 체크 행(루틴·출석·수업·등록, 했음 꺼짐).
+//   = 이 수업 클래스의 루틴(쉬기 아님) × 이 수업 출석 → 루틴 체크 행(루틴·출석·수업·등록, 완료 꺼짐).
 //   이미 있는 (출석, 루틴) 짝은 건너뛴다(두 번 눌러도, 출석이 늘어난 뒤 다시 눌러도 빠진 것만).
 // 리포트(reportCacheBuilder)는 등록의 루틴 체크를 읽어 { name, date, done }으로 싣는다. 날짜는 출석(없으면 수업)의 수업일시.
 //
@@ -25,7 +25,7 @@ export const ROUTINE_BUTTON = "[루틴 체크 생성]"
 export type RoutineChecksPayload = { sessionId: string }
 
 // 루틴 체크(학원) DB 칸 / 루틴(학원) DB 칸
-export const P_CHECK = { title: "이름", routine: "루틴", attendance: "출석", session: "수업", registration: "등록", done: "했음" } as const
+export const P_CHECK = { title: "이름", routine: "루틴", attendance: "출석", session: "수업", registration: "등록", done: "완료" } as const
 export const P_ROUTINE = { title: "이름", rest: "쉬기", order: "순서" } as const
 const P_SESSION_CHECKS = "루틴 체크"
 const P_REGISTRATION_CHECKS = "루틴 체크"
