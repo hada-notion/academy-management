@@ -334,7 +334,68 @@
     };
   };
 
-  const result = { scannedAt: new Date().toISOString(), dbs: {} };
+  // 6) 메뉴 페이지의 DB 보기: 메뉴(학원) DB 행 본문 안의 인라인·연결 DB 블록과 그 보기(열·필터·정렬·묶음).
+  //    하위 페이지(매뉴얼 장 등) 안으로는 들어가지 않는다. 동기화 블록은 원본 블록을 따라간다.
+  //    시작 페이지가 메뉴 DB 행이 아니면(예: 4주 가이드에서 실행) 건너뛴다.
+  const menus = {};
+  const menuCid = root?.parent_table === 'collection' ? root.parent_id : null;
+  const menuViewId = menuCid ? (blocks[cols[menuCid]?.parent_id]?.view_ids || [])[0]
+    || ((await REQ('block', [cols[menuCid]?.parent_id].filter(Boolean)))[cols[menuCid]?.parent_id]?.view_ids || [])[0] : null;
+  if (menuCid && menuViewId) {
+    const qr = await (await fetch('/api/v3/queryCollection?src=initial_load', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        source: { type: 'collection', id: menuCid, spaceId: space },
+        collectionView: { id: menuViewId, spaceId: space },
+        loader: { type: 'reducer', reducers: { results: { type: 'results', limit: 500 } }, searchQuery: '', userTimeZone: 'Asia/Seoul' },
+      }),
+    })).json();
+    const rowIds = qr?.result?.reducerResults?.results?.blockIds || [];
+    const rows = await REQ('block', rowIds);
+    const found = []; // { menu, order, collection, viewIds }
+    for (const [rid, row] of Object.entries(rows)) {
+      const menu = text(row.properties?.title);
+      let front = (row.content || []).map((id) => ({ id, path: [] }));
+      const seenB = new Set();
+      for (let depth = 0; depth < 8 && front.length; depth++) {
+        const bs = await REQ('block', front.map((f) => f.id).filter((id) => !seenB.has(id)));
+        const next = [];
+        for (const f of front) {
+          if (seenB.has(f.id)) continue; seenB.add(f.id);
+          const b = bs[f.id]; if (!b || b.alive === false) continue;
+          if (b.type === 'page' || b.type === 'collection_view_page') continue;
+          if (b.type === 'collection_view') {
+            const cid2 = b.collection_id || b.format?.collection_pointer?.id;
+            found.push({ menu, order: [...f.path, (row.content || []).indexOf(f.id)], collection: cid2, viewIds: b.view_ids || [] });
+            continue;
+          }
+          const src = b.type === 'transclusion_reference' ? b.format?.transclusion_reference_pointer?.id : null;
+          (src ? [src] : (b.content || [])).forEach((c, i) => next.push({ id: c, path: [...f.path, i] }));
+        }
+        front = next;
+      }
+    }
+    // 메뉴 보기가 가리키는 DB 중 아직 모르는 것은 이름 찾기용으로만 읽는다(결과 dbs에는 넣지 않음)
+    const extra = [...new Set(found.map((x) => x.collection).filter((x) => x && !cols[x]))];
+    if (extra.length) {
+      Object.entries(await REQ('collection', extra)).forEach(([t, c]) => { if (c.space_id === space) cols[t] = c; });
+      await mergeExtraProps(extra.map((t) => cols[t]).filter(Boolean));
+    }
+    const mviews = await REQ('collection_view', found.flatMap((x) => x.viewIds));
+    const mdash = await REQP(Object.values(mviews).map((v) => v.format?.dashboard_layout_pointer).filter(Boolean), 'layout');
+    Object.assign(dashLayouts, mdash);
+    const wids = []; JSON.stringify(Object.values(mdash), (k, val) => { if (k === 'collection_view_id') wids.push(val); return val; });
+    Object.assign(widgetViews, await REQ('collection_view', wids.filter((w) => !widgetViews[w])));
+    found.sort((a, b) => a.menu.localeCompare(b.menu) || a.order.join('.').localeCompare(b.order.join('.'), undefined, { numeric: true }));
+    for (const x of found) {
+      const vs = x.viewIds.map((vid) => (mviews[vid] ? viewOf(mviews[vid], x.collection) : { missing: true }));
+      // 연결 보기 블록은 블록에 DB가 없고 보기마다 DB를 가리킨다(탭마다 다른 DB일 수 있다)
+      const db = cols[x.collection] ? cname(x.collection) : [...new Set(vs.map((v) => v.db).filter(Boolean))].join(' · ');
+      (menus[x.menu] = menus[x.menu] || []).push({ db, views: vs });
+    }
+  }
+
+  const result = { scannedAt: new Date().toISOString(), dbs: {}, menus };
   for (const [cid, c] of Object.entries(cols)) {
     if (!collIds.has(cid)) continue;
     const props = [];
@@ -374,5 +435,5 @@
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = 'hada-scan.json';
   document.body.appendChild(a); a.click(); a.remove();
-  return 'DB ' + Object.keys(result.dbs).length + ', ' + blob.size + ' bytes';
+  return 'DB ' + Object.keys(result.dbs).length + ', 메뉴 ' + Object.keys(result.menus).length + ', ' + blob.size + ' bytes';
 })();
