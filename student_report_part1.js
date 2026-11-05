@@ -432,7 +432,7 @@ async function openReportFile(blockId, button) {
   const oldHtml = button ? button.innerHTML : ""
   if (button) {
     button.disabled = true
-    button.textContent = "파일 준비 중..."
+    button.innerHTML = `<span class="spinner" aria-hidden="true"></span>파일 준비 중`
   }
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/get-report-file`, {

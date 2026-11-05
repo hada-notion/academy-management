@@ -571,8 +571,28 @@ function letterLinesHtml(title, lines) {
   if (!lines || !lines.length) return ""
   return `<div class="letter-lines"><div class="rep-sub">${esc(title)}</div><ul class="feed-list">${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul></div>`
 }
+// 로딩 표시: 실제 화면과 비슷한 크기로 자리를 잡아 둔다.
+const SKEL_STATUS = (text) => `<span class="sr-only" role="status">${text}</span>`
+function letterSkeletonHtml() {
+  return `<div class="skel-wrap">${SKEL_STATUS("가정통신문을 불러오는 중이에요")}
+    <span class="skel skel-title"></span>
+    <div class="card"><span class="skel skel-line w80"></span><span class="skel skel-line"></span><span class="skel skel-line w60"></span><span class="skel skel-box"></span></div>
+    <span class="skel skel-title"></span>
+    <div class="card"><span class="skel skel-line"></span><span class="skel skel-line w40"></span></div>
+  </div>`
+}
+function reportSkeletonHtml() {
+  return `<div class="feed-narrow-wrap skel-wrap skel-page">${SKEL_STATUS("리포트를 불러오는 중이에요")}
+    <span class="skel skel-title"></span>
+    <div class="card"><span class="skel skel-line w60"></span><span class="skel skel-line"></span><span class="skel skel-line w80"></span></div>
+    <span class="skel skel-title"></span>
+    <div class="card"><span class="skel skel-line w80"></span><span class="skel skel-box"></span></div>
+    <span class="skel skel-title"></span>
+    <div class="card"><span class="skel skel-line"></span><span class="skel skel-line w40"></span></div>
+  </div>`
+}
 function letterBodyHtml(state) {
-  if (!state) return `<div class="card"><div class="empty">가정통신문을 불러오는 중이에요</div></div>`
+  if (!state) return letterSkeletonHtml()
   if (state.failed) return `<div class="card"><div class="empty">가정통신문을 불러오지 못했어요</div><button type="button" class="letter-action" onclick="openLetter(${jsArg(selectedLetterMonth)}, ${letterFromList})">다시 시도</button></div>`
   const l = state.letter
   const s = l.schedule || {}
@@ -613,7 +633,7 @@ function renderLetterDetail() {
   const state = letterCache[letterKey(selectedLetterMonth)]
   return letterPageHtml("가정통신문", letterLabel(selectedLetterMonth), `
         ${letterBodyHtml(state)}
-        <button type="button" class="letter-action" onclick="openLetterList()">목록으로</button>`)
+        ${state ? `<button type="button" class="letter-action" onclick="openLetterList()">목록으로</button>` : ""}`)
 }
 function renderLetterList() {
   const letters = regLetters()
@@ -1395,7 +1415,7 @@ function renderApp() {
 }
 
 async function initApp() {
-  app.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:80vh;color:#8a8a8a;font-size:15px;">불러오는 중...</div>'
+  app.innerHTML = reportSkeletonHtml()
   await loadReportFromServer()
   if (DATA_ERROR || !STUDENT) {
     app.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:12px;color:#666;font-size:15px;text-align:center;padding:0 24px;"><div style="width:32px;height:32px;color:#c77;"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12" y2="17"></line></svg></div><div>' + esc(DATA_ERROR || "데이터를 불러올 수 없어요.") + '</div></div>'
