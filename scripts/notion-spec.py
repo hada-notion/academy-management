@@ -128,8 +128,33 @@ def norm_layout(L):
     }
 
 
+# 스캔한 모든 DB의 속성 이름. build()가 채운다
+KNOWN_PROPS = set()
+
+
+def drop_stale_props(v):
+    """웹훅에 실을 속성 목록에서 이름으로 못 바꾼 속성 id(지운 속성의 흔적)를 뺀다.
+
+    Notion은 속성을 지워도 웹훅 목록에 그 id를 남기고, 화면에는 보이지 않는다.
+    남겨 두면 원본과 운영의 지문이 그 흔적 때문에만 달라진다.
+    """
+    if isinstance(v, dict):
+        out = {}
+        for k, x in v.items():
+            if k == "selectedProperties" and isinstance(x, dict):
+                x = {kk: [n for n in ids if n in KNOWN_PROPS] if isinstance(ids, list) else ids
+                     for kk, ids in x.items()}
+            else:
+                x = drop_stale_props(x)
+            out[k] = x
+        return out
+    if isinstance(v, list):
+        return [drop_stale_props(x) for x in v]
+    return v
+
+
 def norm_action(a):
-    cfg = dict(a.get("cfg") or {})
+    cfg = drop_stale_props(dict(a.get("cfg") or {}))
     cfg.pop("apiVersion", None)
     if cfg.get("template_page_id"):  # 템플릿 페이지 id는 학원마다 다르다
         cfg["template_page_id"] = "(템플릿 지정)"
@@ -159,6 +184,8 @@ def norm_auto(a):
 
 def build(scan):
     spec = {}
+    KNOWN_PROPS.clear()
+    KNOWN_PROPS.update(p["name"] for db in scan["dbs"].values() for p in db.get("props") or [])
     for name, db in sorted(scan["dbs"].items()):
         if name in SKIP_DBS:
             continue
