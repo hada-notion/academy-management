@@ -6,6 +6,7 @@
 - 노션-명세.json, 노션-명세.md: 전체 명세. 비공개(원본 Notion "Notion 기준 명세" 페이지에 올린다)
 - 노션-지문.json: 항목별 지문만. 공개(docs/기준/노션-지문.json으로 커밋한다)
 - 노션-레이아웃.md: DB별 페이지 레이아웃(수식·버튼 동작 없음). 공개(docs/기준/노션-레이아웃.md로 커밋한다)
+- 노션-관계.md: 관계 표와 짝 점검. 공개(docs/기준/노션-관계.md로 커밋한다. 매뉴얼 17장 구조도 기준)
 
     python -I scripts/notion-spec.py <scan.json> <출력 폴더>
 
@@ -674,6 +675,62 @@ def render_layouts(spec, scanned_at):
     return "\n".join(out) + "\n"
 
 
+def short(name):
+    return re.sub(r"\(학원\) DB$", "", name)
+
+
+def relations(spec):
+    """관계 하나에 한 줄. 양방향은 두 쪽 속성을 한 줄로 묶고, 짝이 맞지 않으면 문제로 모은다."""
+    d = dbs(spec)
+    rows, problems, seen = [], [], set()
+    for db, x in sorted(d.items()):
+        for p in x["props"]:
+            if p["type"] != "relation" or (db, p["name"]) in seen:
+                continue
+            seen.add((db, p["name"]))
+            tgt, back = p.get("target", ""), p.get("twoWay")
+            limits = ["1" if p.get("limit") == 1 else ""]
+            if back:
+                q = next((o for o in (d.get(tgt) or {}).get("props", []) if o["name"] == back), None)
+                if not q or q["type"] != "relation" or q.get("target") != db or q.get("twoWay") != p["name"]:
+                    kind = f"{q['type']} 속성" if q and q["type"] != "relation" else "없거나 짝이 다른 속성"
+                    problems.append(f"{short(db)}.{p['name']} → {short(tgt)}.{back}: 양방향 짝이 {kind}")
+                    back = f"⚠️ {back}"
+                else:
+                    seen.add((tgt, back))
+                    limits.append("1" if q.get("limit") == 1 else "")
+            elif tgt not in d:
+                problems.append(f"{short(db)}.{p['name']} → {tgt or '(대상 없음)'}: 명세에 없는 DB")
+            rows.append((short(db), p["name"], short(tgt), back or "", " / ".join(filter(None, [
+                f"{p['name']} 1개" if limits[0] else "",
+                f"{back} 1개" if len(limits) > 1 and limits[1] else ""]))))
+    return rows, problems
+
+
+def render_relations(spec, scanned_at):
+    """공개용 관계 표. 구조도(매뉴얼 17장) mermaid와 맞춰 보는 기준."""
+    rows, problems = relations(spec)
+    two = sum(1 for r in rows if r[3] and not r[3].startswith("⚠️"))
+    out = [
+        "# Notion 관계 표",
+        "",
+        "> `scripts/notion-spec.py`가 원본 스캔으로 만든다. 손으로 고치지 않는다. "
+        "관계를 바꾸면 다시 스캔해 생성하고, 이 파일의 diff를 보고 매뉴얼 17장 구조도(17-2 그림·17-5 관계 표)를 함께 고친다.",
+        "",
+        f"- 원본 스캔: {scanned_at}",
+        f"- 관계 {len(rows)}개(양방향 {two}, 한쪽 {len(rows) - two - len(problems)}, 점검 필요 {len(problems)}). "
+        "양방향은 한 줄에 두 쪽 속성을 적는다.",
+        "- DB 이름의 \"(학원) DB\"는 줄여 적는다.",
+        "",
+        "## 점검",
+        "",
+    ]
+    out += [f"- ⚠️ {p}" for p in problems] or ["- 양방향 관계의 짝, 관계 대상 DB 모두 맞음"]
+    out += ["", "## 관계", "", "| DB | 관계 속성 | 상대 DB | 상대 쪽 속성 | 1개 제한 |", "|---|---|---|---|---|"]
+    out += [f"| {cell(a)} | {cell(b)} | {cell(c)} | {cell(e) or '— (한쪽)'} | {cell(f)} |" for a, b, c, e, f in rows]
+    return "\n".join(out) + "\n"
+
+
 def main():
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
@@ -691,6 +748,8 @@ def main():
     (out_dir / "노션-명세.md").write_text(render_md(spec, scan.get("scannedAt", "")), encoding="utf-8")
     (out_dir / "노션-레이아웃.md").write_text(
         render_layouts(spec, scan.get("scannedAt", "")), encoding="utf-8")
+    (out_dir / "노션-관계.md").write_text(
+        render_relations(spec, scan.get("scannedAt", "")), encoding="utf-8")
     fp = fingerprint(spec, scan.get("scannedAt", ""))
     (out_dir / "노션-지문.json").write_text(
         json.dumps(fp, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
