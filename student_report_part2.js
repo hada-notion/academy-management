@@ -15,25 +15,166 @@ function renderSchedulePage() {
   `
 }
 const DAYS = ["월", "화", "수", "목", "금", "토", "일"]
+// 통합 시간표(시간 축판): 왼쪽에 시간 눈금, 수업 블록은 시작~하원 시간 길이만큼 세로로 그린다.
+// - 범위는 그 학생 수업의 가장 이른 시작 ~ 가장 늦은 끝을 한 시간 단위로 넓힌 것
+// - 모든 요일이 2시간 넘게 비는 구간(오전·오후 분리)은 빗금 한 줄로 접는다
+// - 보이는 시간이 8시간을 넘으면(방학) 1시간 높이를 줄인다(최소 20px)
+// - 토·일은 수업이 있을 때만, 같은 요일에 겹치는 수업은 칸을 나눠 나란히
+// - 블록을 누르면 색을 고를 수 있고, 고른 색은 이 기기에만 저장한다(학원 데이터는 안 바꿈)
+const TT_DEFAULT_MIN = 90
+const TT_FOLD_MIN = 120
+const TT_BREAK_PX = 16
+const TT_COLOR_KEY = "hada-report-class-colors"
+function ttMin(t) {
+  const m = /^(\d{1,2}):(\d{2})/.exec(String(t || "").trim())
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null
+}
+function ttHHMM(min) { return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}` }
+function ttSavedColors() {
+  try { return JSON.parse(localStorage.getItem(TT_COLOR_KEY) || "{}") || {} } catch (e) { return {} }
+}
+function ttClassColor(name) {
+  const i = ttSavedColors()[name]
+  return CLASS_COLOR_PALETTE[i] || pickClassColorPalette(name)
+}
 function buildWeekGridHtml(regs) {
   const active = regs.filter((r) => r.status === "수강중")
   const byDay = {}
   DAYS.forEach((d) => (byDay[d] = []))
-  active.forEach((r) => { (r.schedule || []).forEach((s) => { if (byDay[s.day]) byDay[s.day].push({ ...s, class_name: r.class_name }) }) })
-  DAYS.forEach((d) => { byDay[d].sort((a, b) => (a.start || "").localeCompare(b.start || "")) })
+  active.forEach((r) => {
+    (r.schedule || []).forEach((s) => {
+      const st = ttMin(s.start)
+      if (!byDay[s.day] || st == null) return
+      let en = ttMin(s.end)
+      const guessed = en == null || en <= st
+      if (guessed) en = st + TT_DEFAULT_MIN
+      byDay[s.day].push({ st, en, guessed, class_name: r.class_name })
+    })
+  })
+  const all = DAYS.flatMap((d) => byDay[d])
+  if (!all.length) return `<div class="tt-empty">수강 중인 수업이 없어요</div>`
+  const days = DAYS.filter((d, i) => i < 5 || byDay[d].length)
+
+  // 보이는 구간: 수업이 있는 시간을 합치고, 2시간 넘게 빈 틈은 접는다(접는 경계는 정시에 맞춤)
+  const busy = all.map((s) => [s.st, s.en]).sort((a, b) => a[0] - b[0])
+  const merged = []
+  busy.forEach(([a, b]) => {
+    const last = merged[merged.length - 1]
+    if (last && a <= last[1]) last[1] = Math.max(last[1], b)
+    else merged.push([a, b])
+  })
+  const segs = [{ from: Math.floor(merged[0][0] / 60) * 60, to: 0 }]
+  merged.forEach(([a, b], i) => {
+    const next = merged[i + 1]
+    const end = Math.ceil(b / 60) * 60
+    if (!next) { segs[segs.length - 1].to = end; return }
+    const nextStart = Math.floor(next[0] / 60) * 60
+    if (nextStart - end >= TT_FOLD_MIN) {
+      segs[segs.length - 1].to = end
+      segs.push({ from: nextStart, to: 0 })
+    }
+  })
+  const visible = segs.reduce((n, s) => n + s.to - s.from, 0)
+  const hourPx = visible <= 480 ? 34 : Math.max(20, Math.round((34 * 480) / visible))
+  let off = 0
+  segs.forEach((s) => { s.y = off; off += ((s.to - s.from) * hourPx) / 60 + TT_BREAK_PX })
+  const height = off - TT_BREAK_PX
+  const y = (t) => {
+    const s = segs.find((g) => t >= g.from && t <= g.to) || segs[segs.length - 1]
+    return s.y + ((Math.min(Math.max(t, s.from), s.to) - s.from) * hourPx) / 60
+  }
+
+  const step = hourPx < 26 ? 2 : 1
+  const labels = []
+  const lines = []
+  segs.forEach((s, k) => {
+    for (let t = s.from; t <= s.to; t += 60) {
+      if (t === s.from || t === s.to || (t / 60) % step === 0) labels.push(`<span class="tt-hour" style="top:${y(t)}px">${t / 60}</span>`)
+      if (t > s.from && t < s.to) lines.push(`<i class="tt-line" style="top:${y(t)}px"></i>`)
+    }
+    if (k < segs.length - 1) lines.push(`<i class="tt-fold" style="top:${s.y + ((s.to - s.from) * hourPx) / 60}px;height:${TT_BREAK_PX}px" title="${ttHHMM(s.to)}~${ttHHMM(segs[k + 1].from)} 비어 있음"></i>`)
+  })
+
+  const colHtml = (d) => {
+    // 겹치는 수업은 같은 묶음 안에서 칸을 나눈다
+    const list = byDay[d].slice().sort((a, b) => a.st - b.st || a.en - b.en)
+    const blocks = []
+    let group = []
+    let groupEnd = -1
+    const flush = () => {
+      const lanes = []
+      group.forEach((s) => {
+        let li = lanes.findIndex((end) => end <= s.st)
+        if (li < 0) { li = lanes.length; lanes.push(0) }
+        lanes[li] = s.en
+        s.lane = li
+      })
+      group.forEach((s) => blocks.push({ ...s, lanes: lanes.length }))
+      group = []
+    }
+    list.forEach((s) => {
+      if (group.length && s.st >= groupEnd) flush()
+      group.push(s)
+      groupEnd = Math.max(groupEnd, s.en)
+    })
+    if (group.length) flush()
+    return blocks.map((s) => {
+      const p = ttClassColor(s.class_name)
+      const top = y(s.st)
+      const h = Math.max(20, y(s.en) - top - 2)
+      const w = 100 / s.lanes
+      const label = h < 32 ? `<b>${ttHHMM(s.st)}</b> ${esc(s.class_name)}` : `<b>${ttHHMM(s.st)}</b><br>${esc(s.class_name)}`
+      return `<button type="button" class="tt-block${s.guessed ? " guessed" : ""}" data-cls="${esc(s.class_name)}" onclick="openTtColorPicker(this)" style="top:${top}px;height:${h}px;left:${s.lane * w}%;width:calc(${w}% - 2px);background:${p.bg};color:${p.fg}" aria-label="${esc(s.class_name)} ${ttHHMM(s.st)}~${ttHHMM(s.en)} 색 바꾸기">${label}</button>`
+    }).join("")
+  }
+
   return `
-    <div class="week-grid">
-      ${DAYS.map((d) => `
-        <div class="week-col">
-          <div class="day-label">${d}</div>
-          ${byDay[d].length ? byDay[d].map((s) => {
-            const p = pickClassColorPalette(s.class_name)
-            return `<div class="week-slot" style="background:${p.bg};color:${p.fg}"><div class="slot-time">${esc(s.start)}</div>${esc(s.class_name)}</div>`
-          }).join("") : ""}
-        </div>
-      `).join("")}
+    <div class="tt-time" style="--tt-days:${days.length}">
+      <div></div>${days.map((d) => `<div class="day-label">${d}</div>`).join("")}
+      <div class="tt-axis" style="height:${height}px">${labels.join("")}</div>
+      ${days.map((d) => `<div class="tt-col" style="height:${height}px">${lines.join("")}${colHtml(d)}</div>`).join("")}
     </div>
   `
+}
+function closeTtColorPicker() {
+  const old = document.getElementById("tt-picker")
+  if (old) old.remove()
+  document.removeEventListener("click", ttPickerOutside, true)
+}
+function ttPickerOutside(e) {
+  const pk = document.getElementById("tt-picker")
+  if (pk && !pk.contains(e.target) && !e.target.closest(".tt-block")) closeTtColorPicker()
+}
+function openTtColorPicker(btn) {
+  closeTtColorPicker()
+  const name = btn.dataset.cls
+  const r = btn.getBoundingClientRect()
+  const pk = document.createElement("div")
+  pk.id = "tt-picker"
+  pk.className = "tt-picker"
+  pk.innerHTML = `<div class="tt-picker-title">${esc(name)} 색</div>
+    <div class="tt-swatches">${CLASS_COLOR_PALETTE.map((p, i) => `<button type="button" class="tt-swatch" style="background:${p.bg};border-color:${p.fg}" aria-label="색 ${i + 1}" onclick="setTtClassColor(${i})"></button>`).join("")}</div>
+    <button type="button" class="tt-reset" onclick="setTtClassColor(null)">기본색으로</button>`
+  pk.dataset.cls = name
+  document.body.appendChild(pk)
+  const left = Math.min(Math.max(8, r.left + window.scrollX), window.scrollX + document.documentElement.clientWidth - pk.offsetWidth - 8)
+  pk.style.left = `${left}px`
+  pk.style.top = `${r.bottom + window.scrollY + 6}px`
+  setTimeout(() => document.addEventListener("click", ttPickerOutside, true), 0)
+}
+function setTtClassColor(i) {
+  const pk = document.getElementById("tt-picker")
+  if (!pk) return
+  const name = pk.dataset.cls
+  const saved = ttSavedColors()
+  if (i == null) delete saved[name]
+  else saved[name] = i
+  try { localStorage.setItem(TT_COLOR_KEY, JSON.stringify(saved)) } catch (e) {}
+  const p = ttClassColor(name)
+  document.querySelectorAll(".tt-block").forEach((b) => {
+    if (b.dataset.cls === name) { b.style.background = p.bg; b.style.color = p.fg }
+  })
+  closeTtColorPicker()
 }
 
 function renderIntro() {
