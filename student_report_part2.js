@@ -34,9 +34,20 @@ function ttHHMM(min) { return `${String(Math.floor(min / 60)).padStart(2, "0")}:
 function ttSavedColors() {
   try { return JSON.parse(localStorage.getItem(TT_COLOR_KEY) || "{}") || {} } catch (e) { return {} }
 }
+// 저장값: 기본색 번호(0~7) 또는 직접 고른 색 코드("#rrggbb"). 직접 고른 색은 그 색을 배경으로, 글자는 같은 색을 어둡게 해서 쓴다.
+function ttDarken(hex, k) {
+  const n = parseInt(hex.slice(1), 16)
+  const ch = (v) => Math.round(v * (1 - k)).toString(16).padStart(2, "0")
+  return `#${ch(n >> 16)}${ch((n >> 8) & 255)}${ch(n & 255)}`
+}
+function ttLuma(hex) {
+  const n = parseInt(hex.slice(1), 16)
+  return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255
+}
 function ttClassColor(name) {
-  const i = ttSavedColors()[name]
-  return CLASS_COLOR_PALETTE[i] || pickClassColorPalette(name)
+  const v = ttSavedColors()[name]
+  if (typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v)) return { bg: v, fg: ttLuma(v) < 0.55 ? "#ffffff" : ttDarken(v, 0.62) }
+  return CLASS_COLOR_PALETTE[v] || pickClassColorPalette(name)
 }
 function buildWeekGridHtml(regs) {
   const active = regs.filter((r) => r.status === "수강중")
@@ -165,6 +176,13 @@ function openTtColorPicker(btn) {
   pk.className = "tt-picker"
   pk.innerHTML = `<div class="tt-picker-title">${esc(name)} · ${esc(btn.dataset.time || "")}</div><div class="tt-picker-sub">색 바꾸기</div>
     <div class="tt-swatches">${CLASS_COLOR_PALETTE.map((p, i) => `<button type="button" class="tt-swatch" style="background:${p.bg};border-color:${p.fg}" aria-label="색 ${i + 1}" onclick="setTtClassColor(${i})"></button>`).join("")}</div>
+    <div class="tt-custom-label">색 코드로 고르기</div>
+    <div class="tt-custom">
+      <input type="color" id="tt-color-input" value="${ttClassColor(name).bg}" aria-label="색 직접 고르기" oninput="document.getElementById('tt-hex-input').value=this.value" onchange="setTtClassColor(this.value)">
+      <input type="text" id="tt-hex-input" value="${ttClassColor(name).bg}" maxlength="7" placeholder="#a8c5e0" aria-label="색 코드" oninput="document.getElementById('tt-hex-error').textContent=''" onkeydown="if(event.key==='Enter')applyTtHex()">
+      <button type="button" class="tt-apply" onclick="applyTtHex()">적용</button>
+    </div>
+    <div class="tt-hex-error" id="tt-hex-error" role="alert"></div>
     <button type="button" class="tt-reset" onclick="setTtClassColor(null)">기본색으로</button>`
   pk.dataset.cls = name
   document.body.appendChild(pk)
@@ -172,6 +190,17 @@ function openTtColorPicker(btn) {
   pk.style.left = `${left}px`
   pk.style.top = `${r.bottom + window.scrollY + 6}px`
   setTimeout(() => document.addEventListener("click", ttPickerOutside, true), 0)
+}
+function applyTtHex() {
+  const el = document.getElementById("tt-hex-input")
+  let v = String(el.value || "").trim()
+  if (/^[0-9a-f]{6}$/i.test(v)) v = `#${v}`
+  if (/^#[0-9a-f]{3}$/i.test(v)) v = `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}`
+  if (!/^#[0-9a-f]{6}$/i.test(v)) {
+    document.getElementById("tt-hex-error").textContent = "#a8c5e0처럼 6자리 색 코드를 넣어 주세요"
+    return
+  }
+  setTtClassColor(v.toLowerCase())
 }
 function setTtClassColor(i) {
   const pk = document.getElementById("tt-picker")

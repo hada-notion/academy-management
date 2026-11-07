@@ -224,6 +224,13 @@ body {
 .tt-picker-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
 .tt-swatches { display: grid; grid-template-columns: repeat(4, 44px); gap: 4px; }
 .tt-swatch { width: 44px; height: 44px; border-radius: 50%; border: 2px solid; cursor: pointer; }
+.tt-custom-label { font-size: 12px; color: var(--text-muted); margin: 12px 0 6px; }
+.tt-custom { display: flex; gap: 6px; align-items: center; }
+.tt-custom input[type="color"] { width: 44px; height: 44px; padding: 0; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; cursor: pointer; flex: none; }
+.tt-custom input[type="text"] { flex: 1; min-width: 0; height: 44px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 8px; font: inherit; font-size: 13px; box-sizing: border-box; }
+.tt-apply { height: 44px; padding: 0 10px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; font: inherit; font-size: 13px; cursor: pointer; flex: none; }
+.tt-hex-error { font-size: 12px; color: #b91c1c; min-height: 0; margin-top: 4px; }
+.tt-hex-error:empty { display: none; }
 .tt-reset { margin-top: 10px; width: 100%; min-height: 44px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; font: inherit; font-size: 13px; cursor: pointer; }
 .up-hint { position: absolute; top: var(--hint-gap); left: 0; right: 0; margin-top: 0; font-size: var(--hint-font); color: var(--text-subtle); text-align: center; cursor: pointer; opacity: 0.8; }
 .up-hint .chevron { display: block; width: var(--hint-chevron); height: var(--hint-chevron); margin: 0 auto var(--hint-chevron-gap); }
@@ -1084,7 +1091,7 @@ body:not(.reg-expanded) .cal-hint { animation: calExtraFadeIn 0.26s ease both; }
 </div>
 
 <script src="hada_config.js"></script>
-<script src="student_report_part1.js?v=26f9f620"></script>
-<script src="student_report_part2.js?v=f7b809c6"></script>
+<script src="student_report_part1.js?v=1a5f971d"></script>
+<script src="student_report_part2.js?v=eb858db5"></script>
 </body>
 </html>

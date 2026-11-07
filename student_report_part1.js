@@ -29,15 +29,16 @@ function seedHash(seed) {
   return hash
 }
 // 통합 시간표에서 클래스마다 서로 다른 색상 배경을 안정적으로 배정한다 (같은 클래스명이면 항상 같은 색).
+// 11/8 채도를 낮춘 차분한 색으로 바꿨다(보라·파랑·초록·주황·빨강·노랑·브라운·회색 순서는 그대로 — 기기에 저장된 색 번호가 같은 계열로 남게).
 const CLASS_COLOR_PALETTE = [
-  { bg: "#f3e8fd", fg: "#7c3aed" },
-  { bg: "#dbeafe", fg: "#1d4ed8" },
-  { bg: "#dcfce7", fg: "#15803d" },
-  { bg: "#ffedd5", fg: "#c2410c" },
-  { bg: "#fee2e2", fg: "#b91c1c" },
-  { bg: "#fef9c3", fg: "#a16207" },
-  { bg: "#ede4da", fg: "#78350f" },
-  { bg: "#e2e8f0", fg: "#475569" },
+  { bg: "#eeebf7", fg: "#5b4b8a" },
+  { bg: "#e7eef6", fg: "#3d5a80" },
+  { bg: "#e8f1ea", fg: "#3f6b4e" },
+  { bg: "#f6ece2", fg: "#8a5a33" },
+  { bg: "#f5e7e7", fg: "#8a4646" },
+  { bg: "#f5f0dc", fg: "#7a6528" },
+  { bg: "#efe8e0", fg: "#6b5d4d" },
+  { bg: "#eceef1", fg: "#4b5563" },
 ]
 function pickClassColorPalette(seed) {
   return CLASS_COLOR_PALETTE[seedHash(seed) % CLASS_COLOR_PALETTE.length]
