@@ -23,6 +23,7 @@ const DAYS = ["월", "화", "수", "목", "금", "토", "일"]
 // - 블록을 누르면 색을 고를 수 있고, 고른 색은 이 기기에만 저장한다(학원 데이터는 안 바꿈)
 const TT_DEFAULT_MIN = 90
 const TT_FOLD_MIN = 120
+const TT_MIN_VISIBLE = 180
 const TT_BREAK_PX = 16
 const TT_COLOR_KEY = "hada-report-class-colors"
 function ttMin(t) {
@@ -33,9 +34,20 @@ function ttHHMM(min) { return `${String(Math.floor(min / 60)).padStart(2, "0")}:
 function ttSavedColors() {
   try { return JSON.parse(localStorage.getItem(TT_COLOR_KEY) || "{}") || {} } catch (e) { return {} }
 }
+// 저장값: 기본색 번호(0~7) 또는 직접 고른 색 코드("#rrggbb"). 직접 고른 색은 그 색을 배경으로, 글자는 같은 색을 어둡게 해서 쓴다.
+function ttDarken(hex, k) {
+  const n = parseInt(hex.slice(1), 16)
+  const ch = (v) => Math.round(v * (1 - k)).toString(16).padStart(2, "0")
+  return `#${ch(n >> 16)}${ch((n >> 8) & 255)}${ch(n & 255)}`
+}
+function ttLuma(hex) {
+  const n = parseInt(hex.slice(1), 16)
+  return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255
+}
 function ttClassColor(name) {
-  const i = ttSavedColors()[name]
-  return CLASS_COLOR_PALETTE[i] || pickClassColorPalette(name)
+  const v = ttSavedColors()[name]
+  if (typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v)) return { bg: v, fg: ttLuma(v) < 0.55 ? "#ffffff" : ttDarken(v, 0.62) }
+  return CLASS_COLOR_PALETTE[v] || pickClassColorPalette(name)
 }
 function buildWeekGridHtml(regs) {
   const active = regs.filter((r) => r.status === "수강중")
@@ -74,7 +86,15 @@ function buildWeekGridHtml(regs) {
       segs.push({ from: nextStart, to: 0 })
     }
   })
-  const visible = segs.reduce((n, s) => n + s.to - s.from, 0)
+  // 수업이 한두 시간뿐이면 시간표가 한 줄로 얇아 보여서, 보이는 시간을 최소 3시간으로 위아래에 나눠 늘린다
+  let visible = segs.reduce((n, s) => n + s.to - s.from, 0)
+  if (visible < TT_MIN_VISIBLE) {
+    const extra = TT_MIN_VISIBLE - visible
+    const above = Math.min(segs[0].from, Math.floor(extra / 120) * 60)
+    segs[0].from -= above
+    segs[segs.length - 1].to += extra - above
+    visible = TT_MIN_VISIBLE
+  }
   const hourPx = visible <= 480 ? 34 : Math.max(20, Math.round((34 * 480) / visible))
   let off = 0
   segs.forEach((s) => { s.y = off; off += ((s.to - s.from) * hourPx) / 60 + TT_BREAK_PX })
@@ -123,8 +143,10 @@ function buildWeekGridHtml(regs) {
       const top = y(s.st)
       const h = Math.max(20, y(s.en) - top - 2)
       const w = 100 / s.lanes
-      const label = h < 32 ? `<b>${ttHHMM(s.st)}</b> ${esc(s.class_name)}` : `<b>${ttHHMM(s.st)}</b><br>${esc(s.class_name)}`
-      return `<button type="button" class="tt-block${s.guessed ? " guessed" : ""}" data-cls="${esc(s.class_name)}" onclick="openTtColorPicker(this)" style="top:${top}px;height:${h}px;left:${s.lane * w}%;width:calc(${w}% - 2px);background:${p.bg};color:${p.fg}" aria-label="${esc(s.class_name)} ${ttHHMM(s.st)}~${ttHHMM(s.en)} 색 바꾸기">${label}</button>`
+      // 박스에는 반 이름만. 시작이 정시가 아니면(17:40 등) 눈금으로 읽기 어려워 시간을 작게 함께 쓴다. 정확한 시간은 눌러서 본다
+      const time = s.st % 60 ? `<span class="tt-start">${ttHHMM(s.st)}</span>` : ""
+      const label = time && h >= 32 ? `${time}<br>${esc(s.class_name)}` : `${time}${time ? " " : ""}${esc(s.class_name)}`
+      return `<button type="button" class="tt-block${s.guessed ? " guessed" : ""}" data-cls="${esc(s.class_name)}" data-time="${ttHHMM(s.st)}~${ttHHMM(s.en)}" onclick="openTtColorPicker(this)" style="top:${top}px;height:${h}px;left:${s.lane * w}%;width:calc(${w}% - 2px);background:${p.bg};color:${p.fg}" aria-label="${esc(s.class_name)} ${ttHHMM(s.st)}~${ttHHMM(s.en)} 색 바꾸기">${label}</button>`
     }).join("")
   }
 
@@ -152,8 +174,15 @@ function openTtColorPicker(btn) {
   const pk = document.createElement("div")
   pk.id = "tt-picker"
   pk.className = "tt-picker"
-  pk.innerHTML = `<div class="tt-picker-title">${esc(name)} 색</div>
+  pk.innerHTML = `<div class="tt-picker-title">${esc(name)} · ${esc(btn.dataset.time || "")}</div><div class="tt-picker-sub">색 바꾸기</div>
     <div class="tt-swatches">${CLASS_COLOR_PALETTE.map((p, i) => `<button type="button" class="tt-swatch" style="background:${p.bg};border-color:${p.fg}" aria-label="색 ${i + 1}" onclick="setTtClassColor(${i})"></button>`).join("")}</div>
+    <div class="tt-custom-label">색 코드로 고르기</div>
+    <div class="tt-custom">
+      <input type="color" id="tt-color-input" value="${ttClassColor(name).bg}" aria-label="색 직접 고르기" oninput="document.getElementById('tt-hex-input').value=this.value" onchange="setTtClassColor(this.value)">
+      <input type="text" id="tt-hex-input" value="${ttClassColor(name).bg}" maxlength="7" placeholder="#a8c5e0" aria-label="색 코드" oninput="document.getElementById('tt-hex-error').textContent=''" onkeydown="if(event.key==='Enter')applyTtHex()">
+      <button type="button" class="tt-apply" onclick="applyTtHex()">적용</button>
+    </div>
+    <div class="tt-hex-error" id="tt-hex-error" role="alert"></div>
     <button type="button" class="tt-reset" onclick="setTtClassColor(null)">기본색으로</button>`
   pk.dataset.cls = name
   document.body.appendChild(pk)
@@ -161,6 +190,17 @@ function openTtColorPicker(btn) {
   pk.style.left = `${left}px`
   pk.style.top = `${r.bottom + window.scrollY + 6}px`
   setTimeout(() => document.addEventListener("click", ttPickerOutside, true), 0)
+}
+function applyTtHex() {
+  const el = document.getElementById("tt-hex-input")
+  let v = String(el.value || "").trim()
+  if (/^[0-9a-f]{6}$/i.test(v)) v = `#${v}`
+  if (/^#[0-9a-f]{3}$/i.test(v)) v = `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}`
+  if (!/^#[0-9a-f]{6}$/i.test(v)) {
+    document.getElementById("tt-hex-error").textContent = "#a8c5e0처럼 6자리 색 코드를 넣어 주세요"
+    return
+  }
+  setTtClassColor(v.toLowerCase())
 }
 function setTtClassColor(i) {
   const pk = document.getElementById("tt-picker")
