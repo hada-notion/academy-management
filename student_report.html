@@ -215,11 +215,13 @@ body {
 .tt-line { position: absolute; left: 0; right: 0; border-top: 1px solid #eef0f3; }
 .tt-fold { position: absolute; left: 0; right: 0; border-top: 1px dashed #d8dce2; border-bottom: 1px dashed #d8dce2; background: repeating-linear-gradient(135deg, #f1f3f6 0 4px, transparent 4px 8px); }
 .tt-block { position: absolute; border: 0; border-radius: 6px; padding: 2px 4px; font: inherit; font-size: 11px; line-height: 1.25; text-align: left; overflow: hidden; word-break: keep-all; cursor: pointer; box-sizing: border-box; }
-.tt-block b { font-weight: 700; }
+.tt-block { font-weight: 600; }
+.tt-block .tt-start { font-size: 10px; font-weight: 700; }
 .tt-block.guessed { -webkit-mask-image: linear-gradient(to bottom, #000 70%, rgba(0,0,0,0.35)); mask-image: linear-gradient(to bottom, #000 70%, rgba(0,0,0,0.35)); }
 .tt-empty { font-size: 13px; color: var(--text-muted); text-align: center; padding: 16px 0; }
 .tt-picker { position: absolute; z-index: 50; background: #fff; border-radius: 12px; padding: 12px; box-shadow: 0 6px 24px rgba(0,0,0,0.14); width: 212px; box-sizing: border-box; }
-.tt-picker-title { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+.tt-picker-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.tt-picker-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
 .tt-swatches { display: grid; grid-template-columns: repeat(4, 44px); gap: 4px; }
 .tt-swatch { width: 44px; height: 44px; border-radius: 50%; border: 2px solid; cursor: pointer; }
 .tt-reset { margin-top: 10px; width: 100%; min-height: 44px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; font: inherit; font-size: 13px; cursor: pointer; }
@@ -1083,6 +1085,6 @@ body:not(.reg-expanded) .cal-hint { animation: calExtraFadeIn 0.26s ease both; }
 
 <script src="hada_config.js"></script>
 <script src="student_report_part1.js?v=26f9f620"></script>
-<script src="student_report_part2.js?v=c437fb3d"></script>
+<script src="student_report_part2.js?v=f7b809c6"></script>
 </body>
 </html>
