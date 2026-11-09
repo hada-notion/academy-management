@@ -1424,10 +1424,10 @@ function buildDailyBodyHtml(r, date) {
     groupBand(todaysTests, (t) => reportItemHtml(r, t, { pill: testPillText(t), pillTone: testPillTone(t), leadRows: testEvalRow(t) ? [testEvalRow(t)] : [], extraRows: testScoreRows(t) }), "이날 평가가 없어요.") +
     sub(TREND_TITLE.day) +
     band(buildTestTrendChartHtml(computePeriodTrendPoints(dailyTests, "day", date)))
-  // (v2.8.0 루틴) 그날 루틴: 했으면 "했어요", 아니면 "안 했어요". 루틴을 안 쓰는 반은 칸이 없다.
+  // (v2.8.0 루틴) 그날 루틴: 알림톡과 같은 O·X를 오른쪽 원 배지로(했음 파랑 동그라미, 안 함 빨강 엑스). 화면읽기는 "했어요"/"안 했어요". 루틴을 안 쓰는 반은 칸이 없다.
   const todaysRoutines = (r.routines || []).filter((x) => x.date === date)
   const routineHtml = todaysRoutines.length
-    ? groupBand(todaysRoutines, (x) => `<div class="rep-item"><div class="rep-title">${esc(x.name)}<span class="log-pill ${homeworkPillTone(x.done ? "제출" : "미제출")}">${x.done ? "했어요" : "안 했어요"}</span></div></div>`, "")
+    ? groupBand(todaysRoutines, (x) => `<div class="rep-item"><div class="rep-title">${esc(x.name)}${routineOxBadge(x.done)}</div></div>`, "")
     : empty("이날 루틴 체크가 없어요.")
   const commentHtml = comment
     ? band(`<div class="speech">${esc(comment.text)}${comment.by ? `<small>${esc(comment.by)}</small>` : ""}</div>`)
@@ -1711,3 +1711,12 @@ window.addEventListener("popstate", (e) => {
 })
 
 initApp()
+
+// (v2.8.0 루틴) 일간 보고서 루틴 O·X 원 배지. 색은 제출·미제출 알약과 같은 연한 바탕·진한 의미색.
+function routineOxBadge(done) {
+  const mark = done
+    ? '<circle cx="12" cy="12" r="7"></circle>'
+    : '<path d="M7 7l10 10M17 7L7 17"></path>'
+  const label = done ? "했어요" : "안 했어요"
+  return `<span class="ox-badge ${done ? "ox-done" : "ox-miss"}" role="img" aria-label="${label}"><svg viewBox="0 0 24 24" aria-hidden="true">${mark}</svg></span>`
+}
