@@ -716,6 +716,59 @@ async function fetchLetter(month) {
   }
   if (view === "letter" && letterKey(selectedLetterMonth) === key) renderApp()
 }
+// (v2.8.0, 11/10 대표) 주간·월간·수료 보고서 본문 "선생님 보고서": 반 전체(반 발송함 본문) + 학생(보고서 본문).
+// 가정통신문처럼 캐시에는 보고서 id만 있고, 본문은 그 보고서를 볼 때 get-report-body가 읽는다(보낸 보고서만, 안 보냈으면 빈 본문).
+// 비면 칸을 숨기므로 로딩 표시 없이 받아 오면 그 자리(data-report-body)만 채운다. 화면 전체를 다시 그리면 펼친 수료 구역이 접힌다.
+const reportBodyCache = {}
+function periodReports(reports, kind, rangeStart, rangeEnd) {
+  return (reports || []).filter((c) => c.kind === kind && c.start && (c.end || c.start) >= rangeStart && c.start <= rangeEnd)
+}
+function reportBodyKey(id) {
+  return `${currentReg()?.registration_id || ""}:${String(id || "").replace(/-/g, "")}`
+}
+async function fetchReportBody(id, key) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/get-report-body`, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ token: REPORT_ACCESS_TOKEN, reportId: id }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok || !data.body) throw new Error(data.error || `HTTP ${res.status}`)
+    reportBodyCache[key] = { body: data.body }
+  } catch (err) {
+    // 본문은 덧붙는 내용이라 실패하면 칸을 숨기고, 다음에 이 화면을 그릴 때 다시 읽는다.
+    console.error("fetchReportBody failed", err)
+    reportBodyCache[key] = { failed: true }
+  }
+  document.querySelectorAll(`[data-report-body="${key}"]`).forEach((el) => { el.innerHTML = reportBodyInnerHtml(key, el.dataset.reportBodyMode) })
+}
+function reportBodyInnerHtml(key, mode) {
+  const body = reportBodyCache[key]?.body
+  if (!body) return ""
+  const common = buildFeedBodyHtml(body.classBody)
+  const own = buildFeedBodyHtml(body.studentBody)
+  if (!common && !own) return ""
+  const cardCls = mode === "inline" ? "card rep-card letter-body" : "card letter-body"
+  const parts = (common ? `<div class="rep-sub">반 전체</div><div class="${cardCls}">${common}</div>` : "")
+    + (own ? `<div class="rep-sub">${esc(STUDENT.student_name)} 학생</div><div class="${cardCls}">${own}</div>` : "")
+  if (mode === "inline") return `<div class="rep-sub report-body-title">선생님 보고서</div>${parts}`
+  return `<h3 class="sec-title"><span class="sec-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg></span>선생님 보고서</h3>${parts}`
+}
+function reportBodySlotHtml(report, mode) {
+  if (!report || !report.id || !SUPABASE_URL || !REPORT_ACCESS_TOKEN) return ""
+  const key = reportBodyKey(report.id)
+  const state = reportBodyCache[key]
+  if (!state || state.failed) {
+    reportBodyCache[key] = { loading: true }
+    fetchReportBody(report.id, key)
+  }
+  return `<div class="report-body" data-report-body="${esc(key)}" data-report-body-mode="${mode}">${reportBodyInnerHtml(key, mode)}</div>`
+}
 function letterToTop() {
   window.scrollTo({ top: 0 })
   document.body.scrollTop = 0
@@ -1317,10 +1370,11 @@ function buildReportTabHtml(r) {
     <div class="card">
       ${(() => {
         const kind = reportPeriod === "week" ? "주간 보고서" : "월간 보고서"
-        const matched = reportComments.filter((c) => c.kind === kind && c.start && (c.end || c.start) >= rangeStart && c.start <= rangeEnd)
+        const matched = periodReports(reportComments, kind, rangeStart, rangeEnd).filter((c) => c.comment)
         return matched.length ? matched.map((c) => `<div class="speech">${esc(c.comment)}</div>`).join("") : `<div class="empty">아직 등록된 한마디가 없어요.</div>`
       })()}
     </div>
+    ${periodReports(reportComments, reportPeriod === "week" ? "주간 보고서" : "월간 보고서", rangeStart, rangeEnd).map((c) => reportBodySlotHtml(c, "section")).join("")}
     </div>
   `
 }

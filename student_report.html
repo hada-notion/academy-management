@@ -848,6 +848,10 @@ body:not(.reg-expanded) .cal-hint { animation: calExtraFadeIn 0.26s ease both; }
 .letter-lines + .letter-lines { margin-top: 12px; }
 .letter-note { font-size: 14px; line-height: 1.6; white-space: pre-line; color: var(--text-primary); }
 .letter-action { display: block; width: 100%; min-height: 44px; margin-top: 16px; border: 0; border-radius: 10px; background: #F5EFE7; color: #3F372F; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+/* 선생님 보고서(주간·월간·수료 보고서 본문): 가정통신문 본문과 같은 카드. 비면 자리도 남기지 않는다 */
+.report-body:empty { display: none; }
+.completion-detail .card + .report-body > .rep-sub:first-child { margin-top: 18px; }
+.completion-detail .report-body > :last-child { margin-bottom: 0; }
 .progress-line { display: flex; align-items: center; gap: 8px; }
 .progress-line .track { flex: 1; height: 8px; border-radius: 8px; background: var(--brand-soft); overflow: hidden; }
 .progress-line .fill { height: 100%; border-radius: 8px; background: var(--brand-deep); }
@@ -1102,7 +1106,7 @@ body:not(.reg-expanded) .cal-hint { animation: calExtraFadeIn 0.26s ease both; }
 </div>
 
 <script src="hada_config.js"></script>
-<script src="student_report_part1.js?v=1a5f971d"></script>
-<script src="student_report_part2.js?v=4a945bc4"></script>
+<script src="student_report_part1.js?v=9cad33c6"></script>
+<script src="student_report_part2.js?v=23d84a73"></script>
 </body>
 </html>
