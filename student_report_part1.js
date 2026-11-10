@@ -156,7 +156,7 @@ function buildCompletionHtml(r, book, items, bookTests) {
   const testHtml = testPoints.filter((p) => p.avg !== null).length ? sub("평가") + card(buildTestTrendChartHtml(testPoints)) : ""
 
   // (v2.8.0 보고서 본문) 한마디 아래 선생님 보고서(반 전체 = 수료 발송함 본문, 학생 = 수료 보고서 본문). 보낸 보고서만, 비면 숨김.
-  const detail = progressHtml + testHtml + (note && note.comment ? sub("선생님 한마디") + card(`<div class="speech">${esc(note.comment)}</div>`) : "") + reportBodySlotHtml(note, "inline")
+  const detail = progressHtml + testHtml + (note && note.comment ? sub("선생님 한마디") + card(`<div class="speech">${esc(note.comment)}</div>`) : "") + reportBodySlotHtml(note)
   return `
         <h3 class="sec-title"><span class="sec-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg></span>수료</h3>
         <div class="log-card 학습">
@@ -687,7 +687,7 @@ function mapRegistration(reg) {
       // Asia/Seoul 기준 날짜를 우선 사용하고, 실패하면 기존 방식(UTC slice)으로 되돌아간다.
       const kstDate = isoToKstDate(rawDate)
       // (v2.5.99) arrived/left: 키오스크가 찍은 실제 등원·하원 시각(서울 "HH:MM"). 이전 캐시에는 없을 수 있다.
-      return { date: kstDate || (rawDate ? String(rawDate).slice(0, 10) : null), weekday: a.weekday || "", status: a.status || "", arrived: isoToKstTime(a.arrived), left: isoToKstTime(a.left) }
+      return { id: a.id || "", date: kstDate || (rawDate ? String(rawDate).slice(0, 10) : null), weekday: a.weekday || "", status: a.status || "", arrived: isoToKstTime(a.arrived), left: isoToKstTime(a.left) }
     }),
     // 학습·과제·평가를 같은 수업일로 묶을 수 있도록 시각 포함 ISO 값을 모두 KST 날짜로 통일한다.
     study_logs: (reg.study_logs || []).map((s) => ({ type: "학습", book: s.book || "", bookId: s.book_id || "", range: s.range || "", unit: s.unit || "", date: isoToKstDate(s.iso) || (s.iso ? String(s.iso).slice(0, 10) : null), note: s.note || "", body: normalizeFeedBody(s.body), sourceBody: normalizeFeedBody(s.source_body || s.body), activityBody: normalizeFeedBody(s.activity_body), makeupOf: s.makeup_of || "" })),

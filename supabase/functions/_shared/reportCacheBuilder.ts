@@ -368,7 +368,8 @@ export async function buildRegistrationDetail(reg: any, cachedGetPage: (id: stri
   const attendance_rows = attendanceEntries
     .filter((e) => (e.iso ?? "").slice(0, 10) <= todayIso)
     .slice(0, 200)
-    .map((e) => ({ iso: e.iso, date: e.date, weekday: e.weekday, status: e.status, in: e.in, out: e.out, arrived: e.arrived, left: e.left }))
+    // (v2.8.0 보고서 본문) id: 일간 보고서 선생님 한마디를 펼치면 이 출석 페이지 본문을 읽는다(get-report-body).
+    .map((e) => ({ id: e.id, iso: e.iso, date: e.date, weekday: e.weekday, status: e.status, in: e.in, out: e.out, arrived: e.arrived, left: e.left }))
 
   const teacher_comments = attendanceEntries
     .filter((e) => e.comment && (e.iso ?? "").slice(0, 10) <= todayIso)

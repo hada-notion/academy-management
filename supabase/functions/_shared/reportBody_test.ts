@@ -1,5 +1,5 @@
 // (v2.8.0) 학부모 리포트 보고서 본문: 반 공통(발송함) + 학생 개인(보고서), 보낸 것만.
-import { buildReportBodyView, reportBodyDeps } from "./reportBody.ts"
+import { buildAttendanceBodyView, buildReportBodyView, reportBodyDeps } from "./reportBody.ts"
 
 function eq(a: unknown, b: unknown) {
 	if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`다름\n 실제: ${JSON.stringify(a)}\n 기대: ${JSON.stringify(b)}`)
@@ -51,4 +51,15 @@ Deno.test("v2.8.0 보고서 본문: 발송함이 없으면 반 본문은 비고,
 	const read = mock({ rp: old }, { rp: [{ type: "paragraph", text: "개인" }] })
 	eq(await buildReportBodyView("rp", "reg1"), { classBody: [], studentBody: [{ type: "paragraph", text: "개인" }] })
 	eq(read, ["rp"])
+})
+
+Deno.test("v2.8.0 일간 보고서 본문: 일일 보고서를 보낸 출석 페이지 본문만(반 공통 칸 없음), 안 보냄·남의 등록은 열지 않는다", async () => {
+	const att = (id: string, reg: string, status: string) => ({ id, properties: { "등록": rel(reg), "보고서 전송 상태": { select: { name: status } } } })
+	const read = mock({ a1: att("a1", "reg1", "✅ 완료"), a2: att("a2", "reg1", "⚪ 대기"), a3: att("a3", "reg2", "✅ 완료") }, {
+		a1: [{ type: "paragraph", text: "12번은 집에서 한 번 더" }, { type: "image", blockId: "img", url: "https://f/p.png" }],
+	})
+	eq(await buildAttendanceBodyView("a1", "reg1"), { classBody: [], studentBody: [{ type: "paragraph", text: "12번은 집에서 한 번 더" }, { type: "image", url: "https://f/p.png" }] })
+	eq(await buildAttendanceBodyView("a2", "reg1"), null)
+	eq(await buildAttendanceBodyView("a3", "reg1"), null)
+	eq(read, ["a1"])
 })

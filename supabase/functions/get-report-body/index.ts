@@ -1,9 +1,11 @@
 // POST /functions/v1/get-report-body
-// body: { token: string, reportId: string }
+// body: { token: string, reportId: string } 또는 { token: string, attendanceId: string }
 //
-// (v2.8.0) 학부모 리포트에서 주간·월간·수료 보고서를 볼 때 그 보고서의 본문(반 공통 = 발송함, 학생 개인 = 보고서 페이지)을 읽는다.
-// 토큰의 캐시(report_comments)에 있는 보고서만, 그중 보낸(✅ 완료) 것만 연다.
-import { buildReportBodyView } from "../_shared/reportBody.ts"
+// (v2.8.0) 학부모 리포트의 선생님 한마디 카드를 펼치면 보이는 본문을 읽는다.
+//  - reportId: 주간·월간·수료 보고서(반 공통 = 발송함, 학생 개인 = 보고서 페이지). 토큰의 캐시 report_comments에 있는 것만.
+//  - attendanceId: 일간 보고서(그날 출석 페이지 본문). 토큰의 캐시 attendance_rows에 있는 것만.
+// 그중 보낸(보고서 전송 상태 ✅ 완료) 것만 연다.
+import { buildAttendanceBodyView, buildReportBodyView } from "../_shared/reportBody.ts"
 import { CORS_HEADERS, selectReportCacheByToken } from "../_shared/reportCacheShared.ts"
 
 function json(body: Record<string, unknown>, status = 200): Response {
@@ -20,15 +22,17 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405)
 
   try {
-    const { token, reportId } = await req.json().catch(() => ({}))
-    if (!token || !reportId || !/^[0-9a-f-]{32,36}$/i.test(String(reportId))) return json({ error: "token, reportId가 필요합니다." }, 400)
+    const { token, reportId, attendanceId } = await req.json().catch(() => ({}))
+    const id = String(reportId ?? attendanceId ?? "")
+    if (!token || !id || (reportId && attendanceId) || !/^[0-9a-f-]{32,36}$/i.test(id)) return json({ error: "token과 reportId 또는 attendanceId가 필요합니다." }, 400)
 
     const row = await selectReportCacheByToken(String(token))
     if (!row) return json({ error: "유효하지 않은 토큰입니다." }, 404)
-    const comments = (row.registration_detail as any)?.report_comments ?? []
-    if (!comments.some((c: any) => key(c?.id) === key(reportId))) return json({ error: "이 보고서가 없습니다." }, 404)
+    const detail = (row.registration_detail as any) ?? {}
+    const listed = (reportId ? detail.report_comments ?? [] : detail.attendance_rows ?? []).some((c: any) => key(c?.id) === key(id))
+    if (!listed) return json({ error: reportId ? "이 보고서가 없습니다." : "이 출석이 없습니다." }, 404)
 
-    const view = await buildReportBodyView(String(reportId), row.registration_id)
+    const view = reportId ? await buildReportBodyView(id, row.registration_id) : await buildAttendanceBodyView(id, row.registration_id)
     // 안 보낸 보고서는 오류가 아니라 빈 본문(화면은 칸을 숨긴다).
     return json({ body: view ?? { classBody: [], studentBody: [] } })
   } catch (err) {
