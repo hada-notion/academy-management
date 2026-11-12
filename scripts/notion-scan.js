@@ -11,7 +11,7 @@
 // - 웹훅 헤더는 이름만 남기고 값은 버린다. 서버 주소는 <HOST>로 바꾼다.
 // - 환경마다 다른 ID(컬렉션·속성·스페이스)는 이름으로 바꾸고 버린다.
 // - 브라우저에 노션 계정이 여러 개 로그인돼 있으면 노션이 다른 계정으로 읽어 빈 결과가 나온다.
-//   그래서 처음에 이 페이지를 읽을 수 있는 계정을 찾아 그 계정 헤더(x-notion-active-user-header,
+//   그래서 처음에 이 페이지를 편집할 수 있는 계정(읽기 공유만 된 계정은 버튼·자동화 동작을 못 읽음)을 찾아 그 계정 헤더(x-notion-active-user-header,
 //   x-notion-space-id)를 모든 요청에 붙인다. 못 찾으면 window.HADA_SCAN_USER에 사용자 id를 넣고 다시 실행한다.
 (async () => {
   let HDR = {};
@@ -37,21 +37,31 @@
   // 페이지 대신 다른 app.notion.com 주소에서 실행할 때는 window.HADA_SCAN_PAGE에 공개 DB 페이지 id를 넣는다
   const pageId = (window.HADA_SCAN_PAGE || location.pathname.match(/[0-9a-f]{32}/)?.[0] || '').replace(/-/g, '');
   const dashed = (h) => h.replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, '$1-$2-$3-$4-$5');
-  // 0) 이 페이지를 읽을 수 있는 로그인 계정 찾기(계정이 하나면 헤더 없이 그대로 간다)
+  // 0) 이 페이지를 편집할 수 있는 로그인 계정 찾기(계정이 하나면 헤더 없이 그대로 간다)
+  // 읽기 공유된 페이지(예: 4주 따라하기 가이드)는 다른 계정도 "reader"로 읽히지만, 버튼·자동화 동작
+  // (automation_action)은 워크스페이스 편집 계정만 읽힌다. 그래서 "읽힘"이 아니라 "편집 권한"으로 고른다.
   const probe = async () => (await (await API('/api/v3/syncRecordValuesMain', { requests: [{ pointer: { table: 'block', id: dashed(pageId) }, version: -1 }] })).json()).recordMap?.block?.[dashed(pageId)];
+  const canEdit = (x) => !!pick(x) && !['none', 'reader', 'comment_only'].includes(x?.value?.role || 'reader');
   const first = await probe();
-  if (!pick(first)) {
+  if (!canEdit(first)) {
     const cookie = (n) => decodeURIComponent((document.cookie.split('; ').find((c) => c.startsWith(n + '=')) || '').slice(n.length + 1));
-    const spaceId = first?.spaceId || first?.value?.spaceId || window.HADA_SCAN_SPACE;
+    const spaceId = first?.spaceId || first?.value?.spaceId || pick(first)?.space_id || window.HADA_SCAN_SPACE;
     let users = [];
     try { users = JSON.parse(cookie('notion_users') || '[]'); } catch (e) { users = []; }
     users = [window.HADA_SCAN_USER, cookie('notion_user_id'), ...users].filter((u, i, a) => u && a.indexOf(u) === i);
+    let readOnly = pick(first) ? {} : null; // 편집 계정이 없을 때 쓸 읽기 계정 헤더
+    let found = false;
     for (const u of users) {
       HDR = { 'x-notion-active-user-header': u, ...(spaceId ? { 'x-notion-space-id': spaceId } : {}) };
-      if (pick(await probe())) break;
-      HDR = {};
+      const x = await probe();
+      if (canEdit(x)) { found = true; break; }
+      if (pick(x) && !readOnly) readOnly = HDR;
     }
-    if (!Object.keys(HDR).length) throw new Error('이 페이지를 읽을 수 있는 로그인 계정을 찾지 못했습니다. 이 워크스페이스 계정으로 로그인했는지 확인하고, 계정이 여러 개면 window.HADA_SCAN_USER에 그 계정 사용자 id를 넣어 다시 실행하세요.');
+    if (!found) {
+      if (!readOnly) throw new Error('이 페이지를 읽을 수 있는 로그인 계정을 찾지 못했습니다. 이 워크스페이스 계정으로 로그인했는지 확인하고, 계정이 여러 개면 window.HADA_SCAN_USER에 그 계정 사용자 id를 넣어 다시 실행하세요.');
+      HDR = readOnly;
+      console.warn('[hada-scan] 이 페이지를 편집할 수 있는 계정이 없어 읽기 권한으로 스캔합니다. 버튼·자동화 동작이 { missing: true }로 나올 수 있습니다. 워크스페이스 편집 계정으로 로그인하거나 window.HADA_SCAN_USER를 지정하세요.');
+    }
   }
   const collIds = new Set();
   const seen = new Set();
