@@ -1894,3 +1894,17 @@ table.stt tr.fresh td{background:#F1FAF4}table.stt tr.fresh td:first-child{box-s
 /* ═════ 197판 ═════ 성적 줄: 이름 · 점수 칸 · "점" · 등수 칸 · "등" · 백분율(오른쪽 44). 고친 줄은 이름 옆 노란 점 */
 .recrow .nm .tdot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--warning-ink);margin-left:var(--space-1);vertical-align:middle}
 .box .exst{font-variant-numeric:tabular-nums}
+
+/* ═════ 198판 ═════ 보고서 탭: 학생 줄(이름 · 상태 알약 · [다시] · 펼침 단추 28) + 미리보기(작은 라벨 + 글) */
+.recrow .anb{width:28px;height:28px;border:0;background:none;border-radius:var(--radius-sm);color:var(--subtle);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
+.recrow .anb svg.i{width:16px;height:16px}
+.recrow .anb:hover,.recrow .anb.on{background:var(--brand-soft);color:var(--brand)}
+.recrow .rpill{display:inline-flex;align-items:center;height:20px;padding:0 var(--space-2);border-radius:var(--radius-pill);font-size:var(--text-micro);font-weight:700;background:var(--brand-soft);color:var(--brand);flex:none;white-space:nowrap}
+.recrow .rpill.ok{background:var(--success-soft);color:var(--success-ink)}
+.recrow .rpill.ex{background:var(--line2);color:var(--muted)}
+.recrow .lnk{border:0;background:none;color:var(--brand);font-size:var(--text-label);font-weight:700;cursor:pointer;padding:0 var(--space-1);height:28px;flex:none}
+.lrprev{padding:var(--space-2) 0 var(--space-3);border-bottom:1px solid var(--line2);display:flex;flex-direction:column;gap:var(--space-2)}
+.lrprev>div{display:flex;gap:var(--space-2);font-size:var(--text-label);line-height:1.5}
+.lrprev small{flex:none;width:72px;color:var(--muted);font-weight:600;font-size:var(--text-label)}
+.lrprev span{min-width:0;overflow-wrap:anywhere}
+.box .lrst{font-variant-numeric:tabular-nums}
