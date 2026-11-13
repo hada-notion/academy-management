@@ -1887,3 +1887,6 @@ table.stt tr.fresh td{background:#F1FAF4}table.stt tr.fresh td:first-child{box-s
 .attrow .anb.has{color:var(--brand)}
 .attrow .anb+.attseg{margin-left:0}
 .anbox{display:flex;flex-direction:column;gap:var(--space-3);padding:var(--space-2) 0 var(--space-3);border-bottom:1px solid var(--line2)}
+
+/* ═════ 196판 ═════ 수업 안내 묶음: 제목 오른쪽 [전송 n] 단추, 아래 현황 한 줄 */
+.box .lmst{font-variant-numeric:tabular-nums}
