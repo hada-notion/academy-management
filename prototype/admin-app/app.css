@@ -1842,3 +1842,32 @@ table.stt tr.fresh td{background:#F1FAF4}table.stt tr.fresh td:first-child{box-s
 #view .pg-ttl .mlab{font-size:var(--text-body);font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink)}
 #view .pg-ttl .tnav{display:inline-flex;gap:var(--space-1)}
 .pg-note{font-size:var(--text-label);color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* ═════ 191판 ═════ 수업 창 학습기록 카드: 머리(구분 · 교재 · 범위 · 작성 중 · 펼침) + 접힌 요약 한 줄 / 펼치면 입력칸과 학생 줄 */
+.box h3 .lnk{display:inline-flex;align-items:center;gap:var(--space-1);height:var(--ctl-s);padding:0 var(--space-2);border:0;background:none;color:var(--brand);font-size:var(--text-label);font-weight:700;cursor:pointer;border-radius:var(--radius-sm)}
+.box h3 .lnk:hover{background:var(--brand-soft)}
+.box h3 .lnk svg.i{width:14px;height:14px}
+.reccard{border:1px solid var(--line2);border-radius:var(--radius-md);margin-bottom:var(--space-2);background:var(--surface)}
+.reccard.draft{border-color:var(--warning-ink)}
+.reccard .rech{display:flex;align-items:center;gap:var(--space-2);min-height:44px;padding:0 var(--space-3);cursor:pointer;font-size:var(--text-small)}
+.reccard .rech b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.reccard .rech .hint{white-space:nowrap}
+.reccard .rech svg.i{width:14px;height:14px;flex:none}
+.reccard .rk{display:inline-flex;align-items:center;gap:var(--space-1);height:20px;padding:0 var(--space-2);border-radius:var(--radius-pill);font-size:var(--text-micro);font-weight:700;background:var(--brand-soft);color:var(--brand);flex:none}
+.reccard .rk.k1{background:var(--warning-soft);color:var(--warning-ink)}
+.reccard .rk.k2{background:var(--success-soft);color:var(--success-ink)}
+.reccard .pill.w{display:inline-flex;align-items:center;height:20px;padding:0 var(--space-2);border-radius:var(--radius-pill);font-size:var(--text-micro);font-weight:700;background:var(--warning-soft);color:var(--warning-ink);flex:none}
+.reccard .recs{padding:0 var(--space-3) var(--space-3);font-size:var(--text-label);color:var(--muted);font-variant-numeric:tabular-nums}
+.reccard .recb{padding:var(--space-2) var(--space-3) var(--space-3);border-top:1px solid var(--line2)}
+.reccard .recb .hfgrid{display:flex;flex-direction:column;gap:var(--space-3);margin-bottom:var(--space-3)}
+.recst{border-top:1px solid var(--line2);margin-bottom:var(--space-3)}
+.recrow{display:flex;align-items:center;gap:var(--space-2);min-height:44px;border-bottom:1px solid var(--line2);font-size:var(--text-small)}
+.recrow .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.recrow .recsc{width:64px;height:var(--ctl-s);text-align:right;font-variant-numeric:tabular-nums;border:1px solid var(--line);border-radius:var(--radius-sm);padding:0 var(--space-2);font-size:var(--text-small);background:var(--surface);color:var(--ink)}
+
+/* ═════ 192판 ═════ 기록 카드: 평가 줄 = 이름 · 정답 칸 · "/ 전체" · 점수(오른쪽 맞춤 44), 과제검사 카드의 범위 글 */
+.recrow .recpt{width:44px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums;font-size:var(--text-small);flex:none}
+.recrow input.recsc{width:64px;flex:none}
+.reccard .recs2{font-size:var(--text-label);color:var(--muted);margin-bottom:var(--space-2)}
+.reccard .recb .row{display:flex;align-items:center;gap:var(--space-2)}
+.reccard .recb .row .link{font-size:var(--text-label)}
