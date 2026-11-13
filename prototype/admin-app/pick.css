@@ -1,0 +1,480 @@
+/* 고르기 칸 모듈(pick) — 클래스 칸 · 학생 칸 공통 (261113 대표: 모듈 하나로 만들어 어디든 같게 붙임)
+   값은 hada-tokens.css 토큰만 씀. 모양 기준: 관리앱-화면규칙.md 10장 */
+.hp{font-family:var(--font-sans);color:var(--text-ink);font-size:var(--text-body)}
+.hp *{box-sizing:border-box}
+
+/* 칸 */
+.hp-fld{display:flex;align-items:center;gap:var(--space-2);width:100%;min-height:44px;padding:0 var(--space-3);border:1px solid var(--control-border);border-radius:var(--radius-md);background:var(--surface);font:inherit;color:inherit;text-align:left;cursor:pointer}
+.hp-fld:hover{border-color:var(--brand-mid)}
+.hp-fld:focus-visible{outline:2px solid var(--brand-deep);outline-offset:2px}
+.hp-fld.open{background:var(--warning-soft);border-color:var(--warning-border)}
+.hp-fld[disabled]{cursor:default;background:var(--brand-tint);color:var(--text-subtle)}
+.hp-ph{flex:1;text-align:center;color:var(--text-subtle)}
+.hp-fld b{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hp-meta{margin-left:auto;flex:none;font-size:var(--text-caption);color:var(--text-muted);white-space:nowrap}
+.hp-dot{width:10px;height:10px;border-radius:50%;flex:none}
+.hp-dot.ring{background:transparent!important;border:2px solid currentColor}
+
+/* 떠 있는 목록(칸 폭) */
+.hp-pop{position:fixed;z-index:60;display:flex;flex-direction:column;padding:var(--space-2);border:1px solid var(--brand-border);border-radius:var(--radius-lg);background:var(--surface);box-shadow:var(--shadow-float)}
+.hp-search{display:flex;align-items:center;gap:var(--space-2);height:40px;padding:0 var(--space-3);border:1px solid var(--control-border);border-radius:var(--radius-md);color:var(--text-subtle);flex:none}
+.hp-search input{flex:1;min-width:0;border:0;outline:0;font:inherit;color:var(--text-ink);background:none}
+.hp-search svg{width:16px;height:16px;flex:none}
+.hp-list{flex:1;min-height:0;overflow:auto;margin-top:var(--space-2);border:1px solid var(--brand-border);border-radius:var(--radius-md)}
+.hp-gh{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:6px;padding:6px var(--space-3);background:var(--brand-tint);font-size:var(--text-caption);font-weight:700;color:var(--text-muted)}
+.hp-gh small{font-weight:400;color:var(--text-subtle)}
+.hp-gh .hp-act{margin-left:auto}
+.hp-n{display:inline-flex;min-width:18px;height:18px;padding:0 5px;border-radius:var(--radius-pill);background:var(--brand-deep);color:#fff;font-size:11px;align-items:center;justify-content:center}
+.hp-empty{padding:var(--space-4);text-align:center;color:var(--text-subtle);font-size:var(--text-caption)}
+.hp-foot{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) 2px 0;flex:none}
+.hp-sp{flex:1}
+.hp-link{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 4px;border:0;background:none;font:inherit;font-size:var(--text-caption);font-weight:600;color:var(--text-muted);cursor:pointer;border-radius:var(--radius-sm)}
+.hp-link:hover{color:var(--text-ink);background:var(--brand-soft)}
+.hp-link.pri{color:var(--brand-deep)}
+.hp-link svg{width:14px;height:14px}
+
+/* 클래스 줄 */
+.hp-c{display:flex;align-items:center;gap:var(--space-2);min-height:40px;padding:0 var(--space-3);border-top:1px solid var(--divider);cursor:pointer}
+.hp-gh+.hp-c{border-top:0}
+.hp-c:hover,.hp-c.hi{background:var(--brand-soft)}
+.hp-c.on{background:var(--brand-light);font-weight:700}
+.hp-c .hp-meta{font-weight:400}
+.hp-tag{flex:none;font-size:11px;font-weight:700;padding:1px 6px;border-radius:var(--radius-xs);background:var(--brand-light);color:var(--brand-deep);white-space:nowrap}
+.hp-tag.w{background:var(--warning-soft);color:var(--warning-ink)}
+
+/* 학생 줄(목록·쌓임 같은 모양) */
+.hp-s{display:grid;grid-template-columns:18px minmax(0,1fr) auto;column-gap:var(--space-2);row-gap:2px;align-items:center;padding:7px var(--space-3);border-top:1px solid var(--divider);cursor:pointer}
+.hp-gh+.hp-s{border-top:0}
+.hp-s:hover{background:var(--brand-tint)}
+.hp-s.dis{cursor:default;color:var(--text-subtle)}
+.hp-s input{width:16px;height:16px;margin:0;accent-color:var(--brand-deep)}
+.hp-s .nm{display:flex;align-items:center;gap:6px;min-width:0;white-space:nowrap;overflow:hidden}
+.hp-s .sc{font-size:var(--text-caption);color:var(--text-muted)}
+.hp-s .sub{grid-column:2/4;display:flex;gap:var(--space-2);font-size:var(--text-caption);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hp-s .sub .r{color:var(--danger-ink);font-weight:600}.hp-s .sub .w{color:var(--warning-ink);font-weight:600}.hp-s .sub .g{color:var(--text-muted)}
+.hp-g{font-size:var(--text-micro);font-weight:800;border-radius:var(--radius-xs);padding:1px 5px}
+.hp-g.e{background:var(--success-soft);color:var(--success-ink)}.hp-g.m{background:var(--info-soft);color:var(--info-ink)}.hp-g.h{background:var(--danger-soft);color:var(--danger-ink)}.hp-g.x{background:var(--brand-light);color:var(--text-muted)}
+
+/* 칸 아래 쌓임 */
+.hp-stack{margin-top:var(--space-2);border:1px solid var(--brand-border);border-radius:var(--radius-md);overflow:hidden}
+
+/* 따로 뜨는 찾기 창 */
+.hp-dim{position:fixed;inset:0;z-index:80;background:rgba(43,38,34,.32);display:flex;align-items:center;justify-content:center;padding:var(--space-4)}
+.hp-dlg{width:min(620px,100%);max-height:min(720px,100%);display:flex;flex-direction:column;padding:var(--space-5);border-radius:var(--radius-lg);background:var(--surface);box-shadow:var(--shadow-float)}
+.hp-dlg h2{margin:0 0 var(--space-3);font-size:var(--text-section);display:flex;align-items:center;gap:6px}
+.hp-bar{display:flex;gap:var(--space-2);flex:none}.hp-bar .hp-search{flex:1}
+.hp-sel{height:40px;padding:0 var(--space-3);border:1px solid var(--control-border);border-radius:var(--radius-md);background:var(--surface);font:inherit;color:var(--text-ink)}
+.hp-dlg .hp-list{min-height:240px}
+.hp-act-row{display:flex;align-items:center;gap:var(--space-2);margin-top:var(--space-4);padding-top:var(--space-3);border-top:1px solid var(--divider)}
+.hp-btn{min-height:44px;padding:0 var(--space-4);border:1px solid var(--control-border);border-radius:var(--radius-md);background:var(--surface);font:inherit;font-weight:700;color:var(--text-ink);cursor:pointer}
+.hp-btn.pri{background:var(--brand-deep);border-color:var(--brand-deep);color:#fff}.hp-btn[disabled]{opacity:.45;cursor:default}
+.hp-hint{font-size:var(--text-caption);color:var(--text-muted)}
+@media (prefers-reduced-motion:no-preference){.hp-pop{animation:hpIn .12s ease-out}@keyframes hpIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}}
+
+/* 줄바꿈 없음(대표 지적): 이름은 한 줄·넘치면 말줄임, 칩은 짧게(MM.DD 종료·개강 하나만), 강사·인원은 오른쪽 고정 */
+.hp-c{white-space:nowrap}
+.hp-c .hp-nm{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.hp-c .hp-tag{font-size:var(--text-micro);padding:1px 5px}
+.hp-c .hp-meta{flex:none;margin-left:auto;padding-left:var(--space-2)}
+
+/* 비우기 x(261113 대표): 고른 값이 있을 때만, 칸에 마우스를 올리거나 키보드로 칸에 오면 보임 */
+.hp-clr{flex:none;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;margin-right:-4px;border-radius:50%;color:var(--text-muted);opacity:0;transition:opacity .12s}
+.hp-clr svg{width:14px;height:14px}
+.hp-fld:hover .hp-clr,.hp-fld:focus-visible .hp-clr,.hp-fld.open .hp-clr{opacity:1}
+.hp-clr:hover{background:var(--brand-light);color:var(--text-ink)}
+@media (hover:none){.hp-clr{opacity:1}}
+
+/* 클래스 줄 2줄(261113 대표 — 학생 줄과 같은 틀) */
+.hp-c{display:grid;grid-template-columns:10px minmax(0,1fr) auto;column-gap:var(--space-2);row-gap:2px;align-items:center;min-height:0;padding:7px var(--space-3)}
+.hp-c .hp-nm{font-weight:600}
+.hp-c .hp-tag{justify-self:end}
+.hp-c .sub{grid-column:2/4;display:flex;gap:var(--space-2);font-size:var(--text-caption);font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hp-c .sub .w{color:var(--warning-ink);font-weight:600}.hp-c .sub .g{color:var(--text-muted)}
+.hp-c .sub>span,.hp-s .sub>span{min-width:0;overflow:hidden;text-overflow:ellipsis}.hp-c .sub .w,.hp-s .sub .r,.hp-s .sub .w{flex:none}
+
+/* 고른 학생 카드(261113 대표): 칸 아래 카드 하나씩 · 손잡이 · 체크 · 2줄 · 끌어 순서 바꾸기 */
+.hp-sh{display:flex;align-items:center;gap:4px;margin:var(--space-3) 2px var(--space-2);font-size:var(--text-caption);font-weight:700;color:var(--text-muted)}
+.hp-sh b{color:var(--text-ink)}.hp-sh .hp-link{margin-left:auto}
+.hp-cards{display:flex;flex-direction:column;gap:var(--space-2)}
+.hp-card{position:relative;display:grid;grid-template-columns:14px 18px minmax(0,1fr);column-gap:var(--space-2);row-gap:2px;align-items:center;padding:8px var(--space-3) 8px var(--space-2);border:1px solid var(--brand-border);border-radius:var(--radius-md);background:var(--surface)}
+.hp-card:hover{border-color:var(--brand-mid)}
+.hp-card.off{background:var(--brand-tint)}.hp-card.off .nm{color:var(--text-muted)}
+.hp-card.dis{color:var(--text-subtle)}
+.hp-card input{width:16px;height:16px;margin:0;accent-color:var(--brand-deep)}
+.hp-card .nm{display:flex;align-items:center;gap:6px;min-width:0;white-space:nowrap;overflow:hidden;font-weight:600}
+.hp-card .sc{font-size:var(--text-caption);color:var(--text-muted);font-weight:400}
+.hp-card .sub{grid-column:3;display:flex;gap:var(--space-2);font-size:var(--text-caption);white-space:nowrap;overflow:hidden}
+.hp-card .sub .r{color:var(--danger-ink);font-weight:600;flex:none}.hp-card .sub .w{color:var(--warning-ink);font-weight:600;flex:none}.hp-card .sub .g{color:var(--text-muted);min-width:0;overflow:hidden;text-overflow:ellipsis}
+.hp-grip{grid-row:1/3;display:inline-flex;color:var(--text-subtle);cursor:grab}.hp-grip svg{width:14px;height:14px}
+.hp-card.drag{opacity:.45}
+.hp-card.before::before,.hp-card.after::after{content:"";position:absolute;left:6px;right:6px;height:2px;border-radius:2px;background:var(--brand-deep)}
+.hp-card.before::before{top:-6px}.hp-card.after::after{bottom:-6px}
+
+/* 줄 위치 통일(261113 대표): 위 줄 = 이름(왼쪽) · 칩(오른쪽 — 학생은 학교·학년, 클래스는 종료·개강), 아래 줄 = 정보 */
+.hp-rt{display:inline-flex;align-items:center;gap:6px;justify-self:end;white-space:nowrap}
+.hp-rt .sc{font-size:var(--text-caption);color:var(--text-muted)}
+.hp-s .nm,.hp-card .nm{font-weight:600}
+.hp-card{grid-template-columns:14px 18px minmax(0,1fr) auto}
+.hp-card .sub{grid-column:3/5}
+/* 체크 = 두 줄 가운데, 손잡이 크게(261113 대표) */
+.hp-s input,.hp-card input{grid-row:1/3;align-self:center;width:18px;height:18px}
+.hp-s{grid-template-columns:18px minmax(0,1fr) auto}
+.hp-card{grid-template-columns:20px 18px minmax(0,1fr) auto;padding-left:6px}
+.hp-grip{align-self:center;justify-content:center;width:20px;height:32px;border-radius:var(--radius-sm)}
+.hp-grip svg{width:20px;height:20px}
+.hp-grip:hover{background:var(--brand-soft);color:var(--text-muted)}
+
+/* 카드: 손잡이·체크 없앰(261113 대표) — 카드를 끌어 순서, 마우스 올리면 x로 빼기 */
+.hp-card{grid-template-columns:minmax(0,1fr) auto;padding:9px var(--space-3);cursor:grab}
+.hp-card .sub{grid-column:1/3}
+.hp-card .hp-clr{opacity:0;margin-left:2px}
+.hp-card:hover .hp-clr{opacity:1}
+.hp-card .hp-add{min-height:24px;padding:0 6px;opacity:0}.hp-card:hover .hp-add{opacity:1}
+@media (hover:none){.hp-card .hp-clr,.hp-card .hp-add{opacity:1}}
+
+/* 카드 상태(학생 카드 시안 반영) */
+.hp-card:focus-visible{outline:2px solid var(--brand-deep);outline-offset:2px}
+.hp-card:active{cursor:grabbing}
+.hp-card.ghost{border:2px dashed var(--brand-border);background:var(--brand-tint)}.hp-card.ghost>*{visibility:hidden}
+.hp-card.sel{background:var(--brand-light);border-color:var(--brand-deep)}
+.hp-card.dragging{opacity:.5}
+.hp-gsh{margin-top:var(--space-4)}
+.hp-todo{min-height:28px;color:var(--text-muted);font-weight:600}
+.hp-dragcnt{position:fixed;top:-100px;left:0;padding:6px 12px;border-radius:999px;background:var(--brand-deep);color:#fff;font-size:13px;font-weight:700;white-space:nowrap}
+.hp-live{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* 오른쪽 끝 단추 자리 고정(261113 대표): 모든 카드에 24px 자리를 늘 비워 둬 x·+가 나와도 칩이 밀리지 않음 */
+.hp-slot{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;flex:none;margin-left:2px}
+.hp-card .hp-clr{margin:0}
+.hp-card .hp-add{opacity:0;color:var(--brand-deep)}.hp-card:hover .hp-add,.hp-card:focus-visible .hp-add{opacity:1}
+.hp-card:focus-visible .hp-clr{opacity:1}
+
+/* x·+ = 카드 오른쪽 끝 세로 가운데(261113 대표): 단추 자리가 두 줄에 걸친 세 번째 열 */
+.hp-card{grid-template-columns:minmax(0,1fr) auto 24px;column-gap:var(--space-2)}
+.hp-card .nm{grid-column:1;grid-row:1}.hp-card .hp-rt{grid-column:2;grid-row:1}
+.hp-card .sub{grid-column:1/3;grid-row:2}
+.hp-card .hp-slot{grid-column:3;grid-row:1/3;align-self:center;margin:0}
+
+/* 고른 클래스 칸 = 카드 모양(학생 카드와 같은 틀·크기) */
+.hp-fld.hp-cardfld{display:grid;grid-template-columns:minmax(0,1fr) auto 24px;column-gap:var(--space-2);row-gap:2px;align-items:center;min-height:0;padding:9px var(--space-3)}
+.hp-cardfld .nm{grid-column:1;grid-row:1;display:flex;align-items:center;gap:var(--space-2);min-width:0;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hp-cardfld .hp-rt{grid-column:2;grid-row:1}
+.hp-cardfld .hp-slot{grid-column:3;grid-row:1/3;align-self:center;margin:0}
+.hp-cardfld .sub{grid-column:1/3;grid-row:2;display:flex;font-size:var(--text-caption);white-space:nowrap;overflow:hidden;padding-left:18px}
+.hp-cardfld .sub .g{color:var(--text-muted);overflow:hidden;text-overflow:ellipsis}
+.hp-cardfld .hp-clr{margin:0}
+
+/* 드롭다운 줄 = 카드와 같은 틀, 체크박스 없음(261113 대표): 오른쪽 세로 가운데 + → 고르면 ✓(연갈색 바탕), 마우스 올리면 x */
+.hp-s{grid-template-columns:minmax(0,1fr) auto 24px;column-gap:var(--space-2);padding:8px var(--space-3)}
+.hp-s .nm{grid-column:1;grid-row:1}.hp-s .hp-rt{grid-column:2;grid-row:1}
+.hp-s .sub{grid-column:1/3;grid-row:2}
+.hp-s .hp-slot{grid-column:3;grid-row:1/3;align-self:center;margin:0;border-radius:50%}
+.hp-s .hp-slot svg{width:15px;height:15px}
+.hp-plus{display:inline-flex;color:var(--text-subtle)}
+.hp-s:hover .hp-plus,.hp-s:focus-visible .hp-plus{color:var(--brand-deep)}
+.hp-s:hover .hp-slot{background:var(--brand-light)}
+.hp-s.on{background:var(--brand-light)}
+.hp-on{display:inline-flex;color:var(--brand-deep)}.hp-off{display:none;color:var(--text-ink)}
+.hp-s.on:hover .hp-on{display:none}.hp-s.on:hover .hp-off{display:inline-flex}
+.hp-s:focus-visible{outline:2px solid var(--brand-deep);outline-offset:-2px}
+.hp-s.dis{cursor:default}.hp-s.dis:hover{background:none}
+/* 줄 아무 데나 눌러도 되니 +는 평소 숨김 — 마우스를 올리거나 키보드로 오면만(카드 x와 같은 규칙). 넣은 줄의 ✓는 상태라 늘 보임 */
+.hp-plus{opacity:0}
+.hp-s:hover .hp-plus,.hp-s:focus-visible .hp-plus{opacity:1}
+@media (hover:none){.hp-plus{opacity:1}}
+/* 글자 크기 = 화면규칙 1장 단계(261113 대표 "글씨 통일"): 본문·이름·칸 14 · 정보 줄·학교·묶음 머리 12 · 칩 11 · 여백은 4의 배수 */
+.hp{font-size:var(--text-small)}
+.hp-fld{font-size:var(--text-small)}
+.hp-card .nm,.hp-s .nm,.hp-c .hp-nm,.hp-cardfld .nm{font-size:var(--text-small);font-weight:600}
+.hp-card .sub,.hp-s .sub,.hp-c .sub,.hp-cardfld .sub,.hp-rt .sc,.hp-sh,.hp-gh{font-size:var(--text-caption)}
+.hp-g,.hp-tag{font-size:var(--text-micro);font-weight:700;padding:1px 6px}
+.hp-card,.hp-s,.hp-c,.hp-fld.hp-cardfld{padding-top:8px;padding-bottom:8px}
+.hp-search input,.hp-sel,.hp-btn{font-size:var(--text-small)}
+.hp-dlg h2{font-size:17px}
+
+/* ───── 한 줄 모양(.hp-one, 261113 대표): 이름 · 배지 · 설명 ……… 학교 · 단추 ─────
+   같은 마크업을 펼쳐(display:contents) 한 줄로. 글자 13(이름 600)·12. 높이 36.
+   좁아지면 우선순위가 낮은 것부터 숨김: ① 회색 설명(등록 클래스 등) 말줄임 → 숨김 ② 학교 ③ 학년 배지 — 이름·빨강/노랑 알림·단추는 늘 */
+.hp-one .hp-cards,.hp-one .hp-list,.hp-one.hp-pop .hp-list,.hp-one .hp-fld{container-type:inline-size}
+.hp-one .hp-card,.hp-one .hp-s,.hp-one .hp-c,.hp-one .hp-fld.hp-cardfld{display:flex;align-items:center;gap:var(--space-2);min-height:36px;padding:4px var(--space-2) 4px var(--space-3);white-space:nowrap}
+.hp-one .hp-rt,.hp-one .sub{display:contents}
+.hp-one .nm,.hp-one .hp-nm{order:1;flex:none;max-width:45%;overflow:hidden;text-overflow:ellipsis;font-size:var(--text-label);font-weight:600}
+.hp-one .hp-g,.hp-one .hp-tag{order:2;flex:none}
+.hp-one .sub .r,.hp-one .sub .w{order:3;flex:none;max-width:60%;overflow:hidden;text-overflow:ellipsis;font-size:var(--text-caption)}
+.hp-one .sub .g{order:4;flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:var(--text-caption);color:var(--text-muted)}
+.hp-one .hp-rt .sc{order:5;flex:none;margin-left:auto;font-size:var(--text-caption)}
+.hp-one .hp-slot{order:6;margin-left:0}
+.hp-one .sub .g+*,.hp-one .sub .g{padding-left:0}
+.hp-one .hp-cards{gap:4px}
+.hp-one .hp-cardfld .nm{display:flex;align-items:center;gap:var(--space-2)}
+.hp-one .hp-cardfld .sub{padding-left:0}
+@container (max-width:340px){.hp-one .sub .g{display:none}.hp-one .hp-rt .sc{margin-left:auto}}
+@container (max-width:280px){.hp-one .hp-rt .sc{display:none}.hp-one .hp-slot{margin-left:auto}}
+@container (max-width:220px){.hp-one .hp-g{display:none}}
+/* 한 줄: 알림·이름도 모자라면 …로 줄어듦(넘치지 않게) */
+.hp-one .nm,.hp-one .hp-nm{flex:0 1 auto;min-width:3em}
+.hp-one .sub .r,.hp-one .sub .w{flex:0 1 auto;min-width:0;max-width:none}
+.hp-one .hp-g,.hp-one .hp-tag,.hp-one .hp-rt .sc,.hp-one .hp-slot{flex:none}
+/* 높이 통일(261113 대표): 칸 = 40(창 안 입력 칸과 같음) · 한 줄 줄·카드 = 40 · 두 줄 카드 = 56(8 + 이름 20 + 4 + 정보 16 + 8) */
+.hp-fld{min-height:40px}
+.hp-card,.hp-s,.hp-c,.hp-fld.hp-cardfld{row-gap:4px;padding-top:8px;padding-bottom:8px}
+.hp-card .nm,.hp-s .nm,.hp-c .hp-nm,.hp-cardfld .nm,.hp-rt{line-height:20px}
+.hp-card .sub,.hp-s .sub,.hp-c .sub,.hp-cardfld .sub{line-height:16px}
+.hp-one .hp-card,.hp-one .hp-s,.hp-one .hp-c,.hp-one .hp-fld.hp-cardfld{min-height:40px;padding-top:4px;padding-bottom:4px}
+.hp-search{height:40px}
+/* 두 줄 카드 바깥 높이 56으로 고정: 선 1 + 8 + 이름 20 + 2 + 정보 16 + 8 + 선 1 */
+.hp-card,.hp-s,.hp-c,.hp-fld.hp-cardfld{row-gap:2px}
+.hp-rt{height:20px}.hp-g,.hp-tag{line-height:16px}
+.hp-slot{height:24px}
+
+/* 칸 = 검색창(261113 대표 — Threads 검색처럼) */
+.hp-fld[hidden]{display:none!important}
+.hp-sfld{display:flex;align-items:center;gap:var(--space-2);padding:0 var(--space-3);cursor:text}
+.hp-sfld>svg{width:16px;height:16px;flex:none;color:var(--text-subtle)}
+.hp-sfld input{flex:1;min-width:0;height:100%;border:0;outline:0;background:none;font:inherit;font-size:var(--text-small);color:var(--text-ink)}
+.hp-sfld input::placeholder{color:var(--text-subtle)}
+.hp-sfld:focus-within{border-color:var(--brand-deep)}
+.hp-sfld.open{background:var(--surface);border-color:var(--brand-deep)}
+.hp-pop .hp-list{margin-top:0}
+
+/* 학교+학년 배지 하나(하다고1) · 한 줄 = 이름 · 배지 ……… 정보(오른쪽 정렬), 결석·안내(빨강·노랑)는 한 줄에서 뺌(261113 대표) */
+.hp-one .sub .r,.hp-one .sub .w{display:none}
+.hp-one .sub .g{order:4;flex:0 1 auto;margin-left:auto;text-align:right}
+.hp-one .hp-rt{display:contents}
+.hp-one .hp-slot{order:6;margin-left:0}
+@container (max-width:340px){.hp-one .sub .g{display:inline}}
+@container (max-width:300px){.hp-one .sub .g{display:none}.hp-one .hp-slot{margin-left:auto}}
+@container (max-width:220px){.hp-one .hp-g{display:inline-flex}}
+@container (max-width:200px){.hp-one .hp-g{display:none}}
+
+/* 학교·학년은 따로(학교 회색 글자 + 학년 칩), 자리는 이름 바로 옆 · 정보는 오른쪽(261113 대표) */
+.hp-rt{justify-self:start;gap:6px}
+.hp-card,.hp-s{grid-template-columns:auto auto minmax(0,1fr) 24px}
+.hp-card .nm,.hp-s .nm{grid-column:1;grid-row:1}
+.hp-card .hp-rt,.hp-s .hp-rt{grid-column:2;grid-row:1}
+.hp-card .hp-slot,.hp-s .hp-slot{grid-column:4;grid-row:1/3}
+.hp-card .sub,.hp-s .sub{grid-column:1/4;grid-row:2}
+/* 한 줄: 이름 · 학교 · 학년 칩 ……… 정보(오른쪽) */
+.hp-one .hp-rt .sc{order:2;margin-left:0}
+.hp-one .hp-g{order:3}
+.hp-one .sub .g{order:4;margin-left:auto}
+@container (max-width:300px){.hp-one .sub .g{display:none}}
+@container (max-width:240px){.hp-one .hp-rt .sc{display:none}}
+@container (max-width:200px){.hp-one .hp-g{display:none}}
+/* 학년 칩 색 = 시제품 gchip과 같게: 초 초록 · 중 파랑 · 고 갈색 · 빈칸 회색(261113 대표) */
+.hp-g.e{background:var(--grade-e-bg);color:var(--grade-e-ink)}.hp-g.m{background:var(--grade-m-bg);color:var(--grade-m-ink)}.hp-g.h{background:var(--grade-h-bg);color:var(--grade-h-ink)}.hp-g.x{background:var(--grade-x-bg);color:var(--grade-x-ink)}
+
+/* 얇은 스크롤(261113 대표): 목록·찾기 창 — 폭 6, 둥근 손잡이, 평소 옅게·올리면 진하게 */
+.hp-list,.hp-pop{scrollbar-width:thin;scrollbar-color:var(--brand-mid) transparent}
+.hp-list::-webkit-scrollbar{width:6px;height:6px}
+.hp-list::-webkit-scrollbar-track{background:transparent;margin:4px}
+.hp-list::-webkit-scrollbar-thumb{background:var(--brand-border);border-radius:999px}
+.hp-list:hover::-webkit-scrollbar-thumb{background:var(--brand-mid)}
+.hp-list::-webkit-scrollbar-button{display:none;height:0}
+
+/* 모양 = 기능(261113 대표): 떨어진 카드 = 끌어서 어딘가에 놓음(간격·각자 테두리·옅은 그림자·손 커서) / 붙은 목록 = 넣고 빼기만(한 테두리, 줄 사이 선, 그림자·손 커서 없음) */
+.hp-cards{gap:var(--space-2)}
+.hp-card{box-shadow:0 1px 2px rgba(60,45,30,.06),0 2px 8px rgba(60,45,30,.06);cursor:grab}
+.hp-card:hover{box-shadow:0 2px 4px rgba(60,45,30,.08),0 4px 12px rgba(60,45,30,.08)}
+.hp-cards.hp-attached{gap:0;border:1px solid var(--brand-border);border-radius:var(--radius-md);overflow:hidden;background:var(--surface)}
+.hp-attached .hp-card{border:0;border-radius:0;border-top:1px solid var(--divider);box-shadow:none;cursor:default}
+.hp-attached .hp-card:first-child{border-top:0}
+.hp-attached .hp-card:hover{box-shadow:none;background:var(--brand-tint)}
+.hp-one .hp-attached{gap:0}
+
+/* 붙은 목록 안 구역 머리 = 드롭다운 묶음 머리와 같은 옅은 줄 */
+.hp-attached .hp-gh{position:static;border-top:1px solid var(--divider)}
+.hp-attached .hp-gh:first-child{border-top:0}
+.hp-attached .hp-gh+.hp-card{border-top:1px solid var(--divider)}
+/* 구역이 클래스일 때(ingrp): 이름 ……… 학교 학년(오른쪽) */
+.hp-card.ingrp .hp-rt{grid-column:2/4;justify-self:end}
+.hp-one .hp-card.ingrp .hp-rt{display:inline-flex;order:5;margin-left:auto}
+.hp-one .hp-card.ingrp .hp-rt .sc{order:0}
+.hp-one .hp-card.ingrp .sub .g{display:none}
+/* 한 줄에서 급한 정도 = 이름 앞 색 점(빨강 지남 · 노랑 곧), 글은 마우스를 올리면 */
+.hp-one .hp-card.urg-r .nm::before,.hp-one .hp-card.urg-w .nm::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px;background:var(--danger)}
+.hp-one .hp-card.urg-w .nm::before{background:var(--warning)}
+
+/* 오른쪽 단추 = 둥근 사각형 24 · 모서리 6(261113 대표 — 위 줄 아이콘 단추와 같은 모양, 동그라미는 표시에만) */
+.hp-clr,.hp-s .hp-slot,.hp-tog{border-radius:6px}
+/* 보강 대기 학생 카드 */
+.hp-wait{grid-template-columns:auto auto minmax(0,1fr) auto 24px}
+.hp-wait .hp-wchips{grid-column:4;grid-row:1;display:flex;gap:4px;justify-self:end}
+.hp-wait .hp-slot{grid-column:5;grid-row:1/3}
+.hp-wait .sub{grid-column:1/5;grid-row:2}
+.hp-tog{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:0;background:none;color:var(--text-muted);cursor:pointer;opacity:1;padding:0}
+.hp-tog:hover{background:var(--brand-light);color:var(--text-ink)}
+.hp-tog svg{width:16px;height:16px;transition:transform .15s}
+.hp-wait.open .hp-tog svg{transform:rotate(180deg)}
+.hp-wait.open{border-color:var(--brand-mid)}
+.hp-tag.st-pre{background:var(--warning-soft);color:var(--warning-ink)}.hp-tag.st-need{background:var(--brand-light);color:var(--brand-deep)}
+.hp-tag.st-re{background:var(--danger-soft);color:var(--danger-ink)}.hp-tag.st-pend,.hp-tag.pend{background:var(--info-soft);color:var(--info-ink)}.hp-tag.done{background:var(--success-soft);color:var(--success-ink)}
+.hp-absl{grid-column:1/-1;grid-row:3;margin:8px -12px -8px;border-top:1px solid var(--divider);background:var(--brand-tint);cursor:default}
+.hp-abs{display:grid;grid-template-columns:8px minmax(0,1fr) auto;column-gap:var(--space-2);row-gap:4px;align-items:center;padding:8px var(--space-3);border-top:1px solid var(--divider)}
+.hp-abs:first-child{border-top:0}
+.hp-abs .t{display:flex;flex-direction:column;min-width:0}
+.hp-abs .r{color:var(--danger-ink);font-weight:600;font-size:var(--text-caption);line-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hp-abs .m{color:var(--text-subtle);font-size:var(--text-caption);line-height:16px}
+.hp-abs.st-none .r,.hp-abs.st-done .r{color:var(--text-muted)}
+.hp-seg{display:inline-flex;border:1px solid var(--control-border);border-radius:6px;overflow:hidden;background:var(--surface)}
+.hp-seg button{height:28px;padding:0 10px;border:0;background:none;font:inherit;font-size:var(--text-caption);font-weight:600;color:var(--text-muted);cursor:pointer}
+.hp-seg button+button{border-left:1px solid var(--control-border)}
+.hp-seg button.on{background:var(--brand-light);color:var(--brand-deep);font-weight:800}
+.hp-abs .why{grid-column:1/-1;display:flex;gap:var(--space-2)}
+.hp-inp{flex:1;min-width:0;height:32px;padding:0 var(--space-3);border:1px solid var(--control-border);border-radius:6px;font:inherit;font-size:var(--text-small)}
+.hp-btn.sm{min-height:32px;padding:0 12px;font-size:var(--text-caption)}
+.hp-absl>.hp-link{margin:4px var(--space-2) 6px}
+.hp-card .hp-tog{opacity:1!important}
+
+/* 보강 대기 카드 = 한 줄 카드 틀(높이 40): 이름 · 학교 · 학년 ……… 상태 칩 · ∨ */
+.hp-wait{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto 24px;grid-template-rows:auto;align-items:center;min-height:40px;padding:4px var(--space-2) 4px var(--space-3);column-gap:var(--space-2)}
+.hp-wait .nm{grid-column:1;grid-row:1;font-size:var(--text-label)}
+.hp-wait .hp-rt{grid-column:2;grid-row:1;justify-self:start}
+.hp-wait .hp-wchips{grid-column:4;grid-row:1}
+.hp-wait .hp-slot{grid-row:1;grid-column:5}
+.hp-wait .hp-absl{grid-row:2;margin:4px calc(-1 * var(--space-2)) -4px calc(-1 * var(--space-3))}
+
+/* 보강 대기 = 차분하게(261113 대표): 오른쪽 설명은 배경 없는 글씨, 펼친 결석 줄도 빨강 대신 기본 글씨 */
+.hp-wn{font-size:var(--text-caption);color:var(--text-muted);white-space:nowrap}
+.hp-abs .r{color:var(--text-ink);font-weight:600}
+.hp-abs .m{color:var(--text-subtle)}
+.hp-wait.open{border-color:var(--brand-border)}
+.hp-absl{background:var(--surface)}
+
+/* 보강 대기: 펼친 판은 카드 밖(카드 크기 그대로) · 다른 색 · 카드보다 조금 좁게(양쪽 8) · 위는 카드에 붙음 */
+.hp-witem{display:flex;flex-direction:column}
+.hp-wait .hp-absl{display:none}
+.hp-witem>.hp-absl{margin:0 var(--space-2);padding:2px 0;background:var(--brand-soft);border:1px solid var(--brand-border);border-top:0;border-radius:0 0 var(--radius-md) var(--radius-md);box-shadow:inset 0 4px 6px -6px rgba(60,45,30,.25)}
+.hp-witem.open>.hp-wait{border-color:var(--brand-mid)}
+.hp-abs{grid-template-columns:8px minmax(0,1fr) auto;padding:6px var(--space-3);border-top:1px solid var(--brand-border)}
+.hp-abs:first-child{border-top:0}
+.hp-abs .t{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:var(--text-caption);line-height:20px}
+.hp-abs .t b{font-weight:700;color:var(--text-ink)}
+.hp-abs .m{color:var(--text-muted)}
+.hp-dec{height:28px;padding:0 10px;border:1px solid var(--brand-deep);border-radius:6px;background:var(--surface);font:inherit;font-size:var(--text-caption);font-weight:700;color:var(--brand-deep);cursor:pointer;white-space:nowrap}
+.hp-dec:hover{background:var(--brand-light)}
+.hp-dec.off{border-color:var(--control-border);color:var(--text-subtle);font-weight:600;background:transparent}
+.hp-abs.st-none .t b,.hp-abs.st-none .m{color:var(--text-subtle)}
+.hp-witem>.hp-absl>.hp-link{margin:2px var(--space-2) 2px}
+.hp-witem.open .hp-tog svg{transform:rotate(180deg)}
+
+/* 보강 탭 */
+.hp-tabs{display:flex;gap:4px;border-bottom:1px solid var(--divider);margin-bottom:var(--space-2)}
+.hp-tabs button{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 var(--space-3);border:0;border-bottom:2px solid transparent;background:none;font:inherit;font-size:var(--text-small);font-weight:600;color:var(--text-muted);cursor:pointer}
+.hp-tabs button.on{color:var(--text-ink);border-bottom-color:var(--brand-deep);font-weight:700}
+/* 보강 대기 카드(등록 기준): 이름 · 학교 · 학년 ……… 클래스 · 숫자 배지 */
+.hp-wait{grid-template-columns:auto auto minmax(0,1fr) auto 24px;cursor:pointer}
+.hp-wcls{display:inline-flex;align-items:center;gap:6px;min-width:0;font-size:var(--text-caption);color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hp-wait .hp-wcls{grid-column:4;grid-row:1;justify-self:end}
+.hp-wcls .hp-dot{width:8px;height:8px}
+.hp-wcount{justify-self:center}
+.hp-wait .hp-slot .hp-wn svg{width:14px;height:14px}
+/* 최근 결석 줄: 이름 · 클래스 ……… 날짜 · 상태 아이콘 */
+.hp-rec{display:grid;grid-template-columns:auto minmax(0,1fr) auto 24px;align-items:center;column-gap:var(--space-2);min-height:40px;padding:4px var(--space-2) 4px var(--space-3);cursor:default}
+.hp-rec .nm{grid-column:1;font-size:var(--text-label)}
+.hp-rec .hp-wcls{grid-column:2;justify-self:start}
+.hp-rec .hp-rd{grid-column:3;font-size:var(--text-caption);color:var(--text-muted);font-variant-numeric:tabular-nums}
+.hp-rec .hp-slot{grid-column:4}
+.hp-sti{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:0;background:none;padding:0;opacity:1!important;cursor:pointer}
+.hp-sti svg{width:16px;height:16px}
+.hp-sti:hover:not([disabled]){background:var(--brand-light)}
+.hp-sti[disabled]{cursor:default}
+.hp-sti.s-need{color:var(--brand-deep)}.hp-sti.s-none{color:var(--text-subtle)}.hp-sti.s-pend,.hp-sti.s-done{color:var(--text-muted)}
+.hp-rec.st-none .nm,.hp-rec.st-none .hp-wcls{color:var(--text-subtle)}
+.hp-weeks{height:28px;padding:0 6px;font-size:var(--text-caption)}
+.hp-todo{display:flex;align-items:center;gap:6px}
+.hp-witem .hp-abs{grid-template-columns:minmax(0,1fr) auto}
+
+/* v31(261113 대표) 정보 줄 클래스 = 색 점 + 이름 */
+.hp-cd{white-space:nowrap}
+.hp-cd .hp-dot{display:inline-block;width:8px;height:8px;margin-right:4px;vertical-align:0}
+.hp-cd+.hp-cd{margin-left:10px}
+.hp-gp{margin-right:10px}
+/* 끌 때 = 카드 그대로(크기·사각형), 여러 장이면 오른쪽 위 숫자 */
+.hp-ghost{position:fixed;top:-1000px;left:0;padding:10px 10px 0 0;background:transparent;pointer-events:none}
+.hp-ghost .hp-card{box-shadow:0 4px 14px rgba(60,45,30,.18)}
+.hp-ghostn{position:absolute;top:0;right:0;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--brand-deep);color:#fff;font-size:12px;font-weight:700;line-height:22px;text-align:center}
+/* 보강 대기 열림 = 카드와 이어진 한 덩어리: 위 학생 줄 진하게 · 결석 줄 흰 바탕 */
+.hp-witem.open{border:1px solid var(--brand-mid);border-radius:var(--radius-md);overflow:hidden;background:var(--surface);box-shadow:0 1px 2px rgba(60,45,30,.06),0 2px 8px rgba(60,45,30,.06)}
+.hp-witem.open>.hp-wait{border:0;border-radius:0;box-shadow:none;background:var(--brand-light);min-height:38px}
+.hp-witem.open>.hp-wait:hover{box-shadow:none}
+.hp-witem>.hp-absl{margin:0;padding:0;background:var(--surface);border:0;border-top:1px solid var(--brand-border);border-radius:0;box-shadow:none}
+.hp-witem .hp-abs{grid-template-columns:minmax(0,1fr) auto 24px;column-gap:var(--space-2);min-height:40px;padding:4px var(--space-2) 4px var(--space-3);border-top:1px solid var(--divider)}
+.hp-witem .hp-abs:first-child{border-top:0}
+.hp-stt{font-size:var(--text-caption);font-weight:700;color:var(--brand-deep);white-space:nowrap}
+.hp-abs.st-none .hp-stt{color:var(--text-subtle);font-weight:500}
+.hp-abs.st-pend .hp-stt,.hp-abs.st-done .hp-stt{color:var(--text-muted);font-weight:500}
+.hp-abs.st-none .t b,.hp-abs.st-none .m{color:var(--text-subtle)}
+.hp-abs.st-none .t b{text-decoration:line-through}
+/* 상태 아이콘: 보강 필요 = 채운 갈색 사각(켜짐) · 보강 없음 = 회색 테두리(꺼짐) · 예정·완료 = 테두리 없이 흐리게 */
+.hp-sti{border-radius:6px}
+.hp-sti.s-need{background:var(--brand-deep);color:#fff}
+.hp-sti.s-need:hover:not([disabled]){background:var(--brand-deep);filter:brightness(1.2)}
+.hp-sti.s-none{background:var(--surface);color:var(--text-subtle);box-shadow:inset 0 0 0 1px var(--control-border)}
+.hp-sti.s-none:hover:not([disabled]){background:var(--brand-light);color:var(--brand-deep)}
+.hp-sti.s-pend,.hp-sti.s-done{color:var(--text-muted);background:none}
+.hp-rec.st-none .hp-rd{color:var(--text-subtle);text-decoration:line-through}
+
+/* v32(261113 대표) 상태 아이콘 = 원래 선 아이콘 느낌으로 되돌림: 필요 = 갈색 선, 없음 = 옅은 회색 선 */
+.hp-sti,.hp-sti.s-need,.hp-sti.s-none,.hp-sti.s-pend,.hp-sti.s-done{background:none;box-shadow:none;filter:none}
+.hp-sti.s-need{color:var(--brand-deep)}
+.hp-sti.s-none{color:var(--text-subtle);opacity:.55!important}
+.hp-sti.s-pend,.hp-sti.s-done{color:var(--text-muted)}
+.hp-sti:hover:not([disabled]),.hp-sti.s-need:hover:not([disabled]),.hp-sti.s-none:hover:not([disabled]){background:var(--brand-light);opacity:1!important}
+/* 열린 보강 카드 위 줄 = 학생 고르기에서 고른 줄과 같은 연한 색 */
+.hp-witem.open>.hp-wait{background:var(--brand-tint)}
+/* 상태 글 = 클래스 글과 같은 글꼴(12 · 보통 굵기 · 회색), 필요만 갈색 */
+.hp-stt{font-size:var(--text-caption);font-weight:400;color:var(--brand-deep)}
+.hp-abs.st-none .hp-stt{color:var(--text-subtle);font-weight:400}
+.hp-abs.st-pend .hp-stt,.hp-abs.st-done .hp-stt{color:var(--text-muted);font-weight:400}
+.hp-abs .t b{font-weight:600}
+/* 오른쪽 칸 정렬: 카드 배지와 결석 줄 아이콘이 같은 세로선 */
+.hp-witem .hp-slot{display:flex;align-items:center;justify-content:center;width:24px;margin:0!important;padding:0}
+.hp-witem .hp-abs{padding-right:var(--space-2)}
+.hp-witem .hp-sti,.hp-rec .hp-sti{margin:0!important;flex:none}
+
+/* v33 보강 없음 사유 칸 = 결석 줄 안 둘째 줄(높이 32 · 테두리 · 연필) */
+.hp-why{grid-column:1/-1;display:flex;align-items:center;gap:6px;height:32px;margin:2px 0 4px;padding:0 10px;border:1px solid var(--control-border);border-radius:6px;background:var(--surface);color:var(--text-subtle);cursor:text}
+.hp-why:focus-within{border-color:var(--brand-deep);box-shadow:0 0 0 3px var(--brand-light)}
+.hp-why svg{width:14px;height:14px;flex:none}
+.hp-why input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:var(--text-caption);color:var(--text-ink)}
+.hp-why input::placeholder{color:var(--text-subtle)}
+.hp-witem .hp-abs.st-none{row-gap:0}
+/* v34 보강 없음 줄 = 위 40(결석일·상태·아이콘 가운데) + 사유 칸(아래 여백 8) */
+.hp-witem .hp-abs.st-none{grid-template-rows:40px auto;align-items:center;padding-top:0;padding-bottom:8px}
+.hp-witem .hp-abs.st-none .hp-why{margin:0}
+.hp-witem .hp-abs .t,.hp-witem .hp-abs .hp-stt{line-height:20px}
+
+/* v36 학생 줄·카드 맨 앞 = 사람 아이콘 16(입력칸 [아이콘 내용]과 같은 틀) */
+.hp-uic{width:16px;height:16px;flex:none;margin-right:var(--space-2);color:var(--text-subtle);vertical-align:-3px}
+.hp-one .hp-card .nm,.hp-one .hp-s .nm,.hp-wait .nm,.hp-rec .nm{display:inline-flex;align-items:center}
+/* 고른 클래스 카드: 색 동그라미 16 = 아이콘, 누르면 색판 */
+.hp-cdot{width:16px;height:16px;border-radius:50%;flex:none;cursor:pointer}
+.hp-cdot:hover{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--brand-mid)}
+.hp-cdot.none{background:var(--brand-mid);cursor:default}.hp-cdot.none:hover{box-shadow:none}
+.hp-cardfld .sub{padding-left:24px}
+.hp-colpop{padding:6px}
+/* v37 급한 정도 = 카드 왼쪽 띠 3(빨강 = 수강 시작 지남 · 노랑 = 7일 안 시작), 자세한 글은 마우스를 올리면 */
+.hp-one .hp-card.urg-r .nm::before,.hp-one .hp-card.urg-w .nm::before{display:none}
+.hp-card.urg-r{box-shadow:inset 3px 0 0 var(--danger),0 1px 2px rgba(60,45,30,.06),0 2px 8px rgba(60,45,30,.06)}
+.hp-card.urg-w{box-shadow:inset 3px 0 0 var(--warning),0 1px 2px rgba(60,45,30,.06),0 2px 8px rgba(60,45,30,.06)}
+.hp-card.urg-r:hover{box-shadow:inset 3px 0 0 var(--danger),0 2px 4px rgba(60,45,30,.08),0 4px 12px rgba(60,45,30,.08)}
+.hp-card.urg-w:hover{box-shadow:inset 3px 0 0 var(--warning),0 2px 4px rgba(60,45,30,.08),0 4px 12px rgba(60,45,30,.08)}
+.hp-sfld input,.hp-cardfld .nm,.hp-cardfld .hp-rt{position:relative;top:-1px}
+/* v37 색 동그라미: 마우스·색판 열림 표시를 동그라미 안쪽 흰 고리로(바깥 고리는 이름 칸에 잘림) */
+.hp-cdot:hover,.hp-cardfld.open .hp-cdot{box-shadow:inset 0 0 0 2px rgba(255,255,255,.85),0 0 0 1px rgba(0,0,0,.12) inset}
+
+/* v42 두 줄 카드 = 바깥 56(위아래 7 + 20 + 2 + 16 + 테두리) */
+.hp:not(.hp-one) .hp-card,.hp-pop:not(.hp-one) .hp-s{padding-top:7px;padding-bottom:7px;row-gap:4px}
+
+/* v45 보강 카드 열림(261113 대표): 학생 줄 = 흰색, 결석 줄 = 연한 색 · 이름 자리까지 들여쓰고 앞에 작은 달력 아이콘 */
+.hp-witem.open>.hp-wait{background:var(--surface)}
+.hp-witem>.hp-absl{background:var(--brand-tint)}
+.hp-witem .hp-abs{padding-left:36px}
+.hp-abs .t{display:flex;align-items:center;gap:6px}
+.hp-ai{display:inline-flex;flex:none;color:var(--text-subtle)}
+.hp-ai svg{width:14px;height:14px}
+.hp-abs.st-none .hp-ai{opacity:.5}
+.hp-witem .hp-abs .t{flex-direction:row;flex-wrap:nowrap;white-space:nowrap;overflow:hidden}.hp-witem .hp-abs .t .m{overflow:hidden;text-overflow:ellipsis}
+/* v47 모두 빼기 한 번 더 */
+.hp-link.warn{color:var(--danger)!important}
