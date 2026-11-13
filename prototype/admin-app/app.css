@@ -1890,3 +1890,7 @@ table.stt tr.fresh td{background:#F1FAF4}table.stt tr.fresh td:first-child{box-s
 
 /* ═════ 196판 ═════ 수업 안내 묶음: 제목 오른쪽 [전송 n] 단추, 아래 현황 한 줄 */
 .box .lmst{font-variant-numeric:tabular-nums}
+
+/* ═════ 197판 ═════ 성적 줄: 이름 · 점수 칸 · "점" · 등수 칸 · "등" · 백분율(오른쪽 44). 고친 줄은 이름 옆 노란 점 */
+.recrow .nm .tdot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--warning-ink);margin-left:var(--space-1);vertical-align:middle}
+.box .exst{font-variant-numeric:tabular-nums}
