@@ -1908,3 +1908,12 @@ table.stt tr.fresh td{background:#F1FAF4}table.stt tr.fresh td:first-child{box-s
 .lrprev small{flex:none;width:72px;color:var(--muted);font-weight:600;font-size:var(--text-label)}
 .lrprev span{min-width:0;overflow-wrap:anywhere}
 .box .lrst{font-variant-numeric:tabular-nums}
+
+/* ═════ 199판 ═════ 오늘(카드 화면): 누르는 줄(수업·일정) + 줄 아래 요약 글 + 줄 안 알약 */
+.crow.tdl{cursor:pointer}
+.crow.tdl:hover{background:var(--brand-soft)}
+.crow .tdm{display:block;color:var(--muted);font-size:var(--text-caption);font-variant-numeric:tabular-nums;margin-top:2px}
+.crow .dotc{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:var(--space-2);vertical-align:middle}
+.crow .rpill,.cbox h3 .rpill{display:inline-flex;align-items:center;height:20px;padding:0 var(--space-2);border-radius:var(--radius-pill);font-size:var(--text-micro);font-weight:700;background:var(--brand-soft);color:var(--brand);white-space:nowrap;vertical-align:middle}
+.crow .rpill.ex,.cbox h3 .rpill.ex{background:var(--line2);color:var(--muted)}
+.crow .ca svg.i{width:14px;height:14px;color:var(--subtle)}
