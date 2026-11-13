@@ -1836,3 +1836,9 @@ table.stt.gt.ro tr[data-id]{cursor:default}
 .svl{margin-top:var(--space-2);max-height:240px;overflow:auto;border-top:1px solid var(--line2)}.svl>div{min-height:28px;display:flex;align-items:center;gap:var(--space-2);font-size:var(--text-label);border-bottom:1px solid var(--line2)}.svl .hint{color:var(--muted);font-size:var(--text-caption)}.svl .bad{color:#B23C2A;font-size:var(--text-caption)}
 table.stt tr.fresh td{background:#F1FAF4}table.stt tr.fresh td:first-child{box-shadow:inset 3px 0 0 #16A064}
 .dlg .warnbox{margin-top:var(--space-2)}
+
+/* ═════ 190판 ═════ 달 단위 화면 제목 줄: 제목 → ‹ › → [이번 달] → "2026.11" → 개수 → 한 줄 요약(미납 합계 등). 시간표 주 이동과 같은 부품 */
+#view .pg-ttl.ttl{display:flex;align-items:center}
+#view .pg-ttl .mlab{font-size:var(--text-body);font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink)}
+#view .pg-ttl .tnav{display:inline-flex;gap:var(--space-1)}
+.pg-note{font-size:var(--text-label);color:var(--muted);font-variant-numeric:tabular-nums}
