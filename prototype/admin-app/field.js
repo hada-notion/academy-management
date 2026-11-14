@@ -5,7 +5,7 @@
    목록이 뜨는 칸(드롭다운·요일·날짜·시간·색): 칸과 같은 폭으로 칸 바로 아래 4 띄워 열림(달력·색판은 칸이 좁으면 최소 폭)(아래 자리가 모자라면 위), 한 번에 하나, 바깥 누름·Esc = 닫힘, ↑↓·Enter */
 (function(){
 const P='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">';
-const I={chevc:P+'<circle cx="12" cy="12" r="10"/><path d="m8 10 4 4 4-4"/></svg>',plus:P+'<path d="M12 5v14M5 12h14"/></svg>',droplet:P+'<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>',type:P+'<path d="M17 10H3M21 6H3M21 14H3M17 18H3"/></svg>',
+const I={loader:P+'<path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>',chevc:P+'<circle cx="12" cy="12" r="10"/><path d="m8 10 4 4 4-4"/></svg>',plus:P+'<path d="M12 5v14M5 12h14"/></svg>',droplet:P+'<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>',type:P+'<path d="M17 10H3M21 6H3M21 14H3M17 18H3"/></svg>',
   memo:P+'<path d="M17 10H3M21 6H3M21 14H3M17 18H3"/></svg>',
   hash:P+'<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg>',
   tel:P+'<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.9.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>',
