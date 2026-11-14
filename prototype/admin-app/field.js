@@ -38,13 +38,19 @@ function pop(box,build,cls){if(OPEN&&OPEN.box===box)return OPEN.pop;close();cons
   const up=r.bottom+4+p.offsetHeight>innerHeight-8&&r.top-4-p.offsetHeight>8,op=p.offsetParent;
   if(up&&op===box.parentElement)p.style.bottom=(op.clientHeight-box.offsetTop+4)+"px";else p.style.top=(up?box.offsetTop-4-p.offsetHeight:top)+"px";p.style.left=box.offsetLeft+"px";p.style.width=box.offsetWidth+"px";/* 293판(대표): 달력처럼 칸보다 넓은 창이 오른쪽 창·화면 밖으로 나가면 칸 오른쪽 끝에 맞춰 안쪽으로 */{const lim=Math.min(innerWidth,(box.closest(".panel,#lp,#sp,.dlg,.mp-pn")||document.documentElement).getBoundingClientRect().right)-8,pr=p.getBoundingClientRect();if(pr.right>lim)p.style.left=(box.offsetLeft-(pr.right-lim))+"px"}return p}
 // 칸 틀: 라벨(칸 위 12/600, 아래 4) · 칸(40) · 알림 글(칸 아래 12)
-const shell=(host,o,inner,cls)=>{host.innerHTML=`<div class="hf ${o.disabled?"dis":""}">${o.label?`<span class="hf-lbl">${esc(o.label)}${o.req?' <i>*</i>':""}${o.tipHtml||""}</span>`:""}<div class="hf-box ${cls||""}">${inner}</div><span class="hf-msg">${esc(o.help||"")}</span></div>`;return host.querySelector(".hf-box")};
+/* 302판(대표): 알림톡으로 나가는 칸 = 칸 옵션 alim:"화면|칸" 하나 → 라벨 오른쪽 [알림톡 미리보기] 버튼, 누르면 칸 아래에 실제 알림톡 모양(입력하면 바로 바뀜). 모양·템플릿은 alim-preview.js 한 곳 */
+const alimOf=o=>o&&o.alim&&window.ALIMV&&ALIMV.forField(o.alim);
+function alimBind(host,o){const a=alimOf(o);if(!a)return;const bt=host.querySelector(".alv-btnq");if(!bt)return;let box=null;
+  const cur=()=>{const i=host.querySelector("textarea,input");return i?i.value:""};const draw=()=>{if(box)box.innerHTML=ALIMV.render(a[0],cur(),a[1],a[2])};
+  bt.onclick=e=>{e.preventDefault();e.stopPropagation();if(box){box.remove();box=null;bt.setAttribute("aria-expanded","false");return}box=document.createElement("div");box.className="alv-wrap";host.querySelector(".hf").appendChild(box);bt.setAttribute("aria-expanded","true");draw()};
+  host.addEventListener("input",draw)}
+const shell=(host,o,inner,cls)=>{host.innerHTML=`<div class="hf ${o.disabled?"dis":""}">${o.label?`<span class="hf-lbl${alimOf(o)?" alv-row":""}">${esc(o.label)}${o.req?' <i>*</i>':""}${o.tipHtml||""}${alimOf(o)?`<button type="button" class="alv-btnq" aria-expanded="false" title="이 칸이 들어가는 알림톡을 실제 모양으로 봐요">${icn("msg")}알림톡 미리보기</button>`:""}</span>`:""}<div class="hf-box ${cls||""}">${inner}</div><span class="hf-msg">${esc(o.help||"")}</span></div>`;alimBind(host,o);return host.querySelector(".hf-box")};
 const say=(host,t,err)=>{const m=host.querySelector(".hf-msg");m.textContent=t||"";host.querySelector(".hf").classList.toggle("err",!!(err&&t))};
 const X=`<button type="button" class="hf-x" tabindex="-1" aria-label="비우기" title="비우기">${I.x}</button>`;
 const has=(b,v)=>b.classList.toggle("has",!!v);
 // 글자 입력 공통(text·num·tel·memo)
 function typed(host,o,icon,attrs,fmt,check,cls){const tag=cls==="hf-memo"?"textarea":"input";
-  const memo=tag==="textarea";const b=shell(host,o,`${memo||icon==="type"?"":I[icon]}<${tag} ${attrs||""} placeholder="${esc(o.placeholder||"")}" ${o.disabled?"disabled":""} ${tag==="input"?`value="${esc(o.value||"")}">`:`rows="1">${esc(o.value||"")}</textarea>`}${o.unit?`<span class="hf-unit">${esc(o.unit)}</span>`:""}${o.disabled||memo?"":X}`,cls);
+  const memo=tag==="textarea";const b=shell(host,o,`${memo||icon==="type"?"":icn(icon)}<${tag} ${attrs||""} placeholder="${esc(o.placeholder||"")}" ${o.disabled?"disabled":""} ${tag==="input"?`value="${esc(o.value||"")}">`:`rows="1">${esc(o.value||"")}</textarea>`}${o.unit?`<span class="hf-unit">${esc(o.unit)}</span>`:""}${o.disabled||memo?"":X}`,cls);
   const i=b.querySelector(tag);if(memo&&!o.disabled){const g=document.createElement("span");g.className="hf-grip";g.title="끌어서 높이 조절";b.appendChild(g);/* 291판(대표): 아래로만 늘림 — 아래 선 어디서든 잡고 끌기 */
     g.onpointerdown=e=>{e.preventDefault();g.setPointerCapture(e.pointerId);const y0=e.clientY,h0=i.offsetHeight;b.classList.add("drag");g.onpointermove=ev=>{i.style.height=Math.max(64,h0+ev.clientY-y0)+"px"};g.onpointerup=g.onpointercancel=()=>{g.onpointermove=null;b.classList.remove("drag")}}}
   const grow=()=>{if(memo&&i.scrollHeight>i.clientHeight)i.style.height=i.scrollHeight+"px"};/* 271판: 긴 글은 입력란 자체가 늘어남(손잡이로도) */
@@ -56,12 +62,15 @@ function typed(host,o,icon,attrs,fmt,check,cls){const tag=cls==="hf-memo"?"texta
   return {el:i,get value(){return i.value}}}
 const text=(host,o={})=>typed(host,o,o.icon||"type",`maxlength="${o.max||100}" autocomplete="off"`);
 const memo=(host,o={})=>typed(host,o,"memo",`maxlength="${o.max||1000}"`,null,null,"hf-memo");
-const num=(host,o={})=>typed(host,o,"hash",'inputmode="numeric" autocomplete="off"',v=>{const d=v.replace(/[^\d]/g,"").replace(/^0+(?=\d)/,"");return o.comma===false?d:d.replace(/\B(?=(\d{3})+(?!\d))/g,",")},v=>{const n=+v.replace(/,/g,"");return o.max!=null&&n>o.max?`${o.max.toLocaleString()}${o.unit||""}까지 적을 수 있어요`:o.min!=null&&n<o.min?`${o.min}${o.unit||""}부터 적을 수 있어요`:""});
+const num=(host,o={})=>typed(host,o,o.icon||"hash",'inputmode="numeric" autocomplete="off"',v=>{const d=v.replace(/[^\d]/g,"").replace(/^0+(?=\d)/,"");return o.comma===false?d:d.replace(/\B(?=(\d{3})+(?!\d))/g,",")},v=>{const n=+v.replace(/,/g,"");return o.max!=null&&n>o.max?`${o.max.toLocaleString()}${o.unit||""}까지 적을 수 있어요`:o.min!=null&&n<o.min?`${o.min}${o.unit||""}부터 적을 수 있어요`:""});
 // 전화번호: 숫자만 넣으면 줄표가 자동(010-0000-0000 · 02-000-0000), 자리 수가 맞지 않으면 알림
 const telFmt=v=>{const d=v.replace(/\D/g,"").slice(0,11);if(d.startsWith("02")){const t=d.slice(0,10);return t.length<3?t:t.length<6?t.slice(0,2)+"-"+t.slice(2):t.length<10?t.slice(0,2)+"-"+t.slice(2,5)+"-"+t.slice(5):t.slice(0,2)+"-"+t.slice(2,6)+"-"+t.slice(6)}
   return d.length<4?d:d.length<8?d.slice(0,3)+"-"+d.slice(3):d.length<11?d.slice(0,3)+"-"+d.slice(3,6)+"-"+d.slice(6):d.slice(0,3)+"-"+d.slice(3,7)+"-"+d.slice(7)};
-const tel=(host,o={})=>typed(host,Object.assign({placeholder:"010-0000-0000"},o),"tel",'inputmode="tel" autocomplete="off"',telFmt,v=>{const d=v.replace(/\D/g,"");return (d.startsWith("01")?d.length===11||(d.length===10&&!d.startsWith("010")):d.length>=9&&d.length<=11)?"":"번호 자리 수를 확인해 주세요"});
+const tel=(host,o={})=>typed(host,Object.assign({placeholder:"010-0000-0000"},o),o.icon||"tel",'inputmode="tel" autocomplete="off"',telFmt,v=>{const d=v.replace(/\D/g,"");return (d.startsWith("01")?d.length===11||(d.length===10&&!d.startsWith("010")):d.length>=9&&d.length<=11)?"":"번호 자리 수를 확인해 주세요"});
 // 목록에서 하나 고르기(드롭다운): 항목이 9개 이상이면 위에 찾기 칸
+/* 299판: 아이콘 이름 → field.js 그림, 없으면 규칙 파일 아이콘 사전(FEATHER) */const UI_ICONS=new Set(["list","chevc","x","more","check","search","plus","type","left","right","toggle","split","drop","memo"]);/* 300판(연결): 뜻 아이콘은 규칙 파일 사전(FEATHER)이 먼저 — 표 열 머리와 같은 그림. 칸 조작 아이콘만 field.js 것 */
+const FE={cal:"calendar",tel:"phone",clock:"clock",hash:"hash",repeat:"repeat",loader:"loader"};
+const icn=k=>{const g=typeof FEATHER!=="undefined"?FEATHER[FE[k]||k]:null;return !UI_ICONS.has(k)&&g?P+g+"</svg>":(I[k]||I.list)};
 function list(p,items,cur,onPick,o){let addK="";p.innerHTML=`${(items.length>8||(o&&o.add))&&!(o&&o.keepFocus)?`<label class="hf-q">${I.search}<input placeholder="${o&&o.add?"찾거나 새로 적기":"찾기"}" autocomplete="off"></label>`:""}<div class="hf-list" role="listbox" tabindex="-1"></div>`;
   const L=p.querySelector(".hf-list"),q=p.querySelector(".hf-q input");let act=Math.max(0,items.findIndex(x=>x.v===cur)),xs=items;
   const draw=()=>{const k=q?q.value.trim():"";xs=items.filter(x=>!k||x.t.includes(k));addK=o&&o.add&&k&&!items.some(x=>x.t===k)?k:"";act=Math.max(0,Math.min(act,xs.length-1+(addK?1:0)));
@@ -74,7 +83,7 @@ function list(p,items,cur,onPick,o){let addK="";p.innerHTML=`${(items.length>8||
   const key=e=>{if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();const n=xs.length+(addK?1:0);if(!n)return;act=(act+(e.key==="ArrowDown"?1:-1)+n)%n;draw()}else if(e.key==="Enter"){e.preventDefault();if(xs[act])onPick(xs[act]);else if(addK)o.add(addK)}};
   draw();if(q){q.oninput=()=>{act=0;draw()};q.onkeydown=key;setTimeout(()=>q.focus())}else if(!o||!o.keepFocus){L.onkeydown=key;setTimeout(()=>L.focus({preventScroll:true}))}return key}
 function select(host,o={}){const items=(o.items||[]).map(x=>typeof x==="string"?{v:x,t:x}:x);let v=o.value??null;
-  const b=shell(host,o,`${I[o.icon||"list"]}<span class="hf-val"></span>${o.disabled||o.clear===false?"":X}`,"hf-btn");if(!o.disabled)b.tabIndex=0;b.setAttribute("role","combobox");
+  const b=shell(host,o,`${icn(o.icon||(typeof iconRule==="function"&&iconRule(o.label,"select"))||"list")}<span class="hf-val"></span>${o.disabled||o.clear===false?"":X}`,"hf-btn");if(!o.disabled)b.tabIndex=0;b.setAttribute("role","combobox");
   const show=()=>{const it=items.find(x=>x.v===v);b.querySelector(".hf-val").innerHTML=it?`${it.color?`<span class="hf-dot" style="background:${it.color}"></span>`:""}${it.cls?`<span class="spill ${esc(it.cls)}">${esc(it.t)}</span>`:esc(it.t)}`:`<span class="ph">${esc(o.placeholder||"선택")}</span>`;has(b,it)};
   const set=x=>{v=x;show();o.onChange&&o.onChange(v)};
   const open=()=>{if(o.disabled)return;if(OPEN&&OPEN.box===b){close();return}pop(b,p=>list(p,items,v,x=>{set(x.v);close();b.focus()},o.onAdd||o.onDel||o.onEdit?{add:o.onAdd&&(t=>{close();o.onAdd(t)}),del:o.onDel&&(x=>{close();o.onDel(x)}),edit:o.onEdit&&(x=>{close();o.onEdit(x)})}:undefined))};
@@ -85,7 +94,7 @@ function select(host,o={}){const items=(o.items||[]).map(x=>typeof x==="string"?
 const day=(host,o={})=>select(host,Object.assign({icon:"repeat",placeholder:"요일",items:"월화수목금토일".split("").map(d=>({v:d,t:d+"요일"}))},o));
 // 요일 여러 개: 칸 안 요일 단추(누르면 켜고 끄기, 켜짐 = 갈색 채움)
 function days(host,o={}){const v=new Set(o.value||[]);
-  const b=shell(host,o,`${I.repeat}<span class="hf-days">${"월화수목금토일".split("").map(d=>`<button type="button" data-d="${d}" ${o.disabled?"disabled":""}>${d}</button>`).join("")}</span><span class="hf-cnt"></span>`,"hf-daysbox");
+  const b=shell(host,o,`${icn(o.icon||"repeat")}<span class="hf-days">${"월화수목금토일".split("").map(d=>`<button type="button" data-d="${d}" ${o.disabled?"disabled":""}>${d}</button>`).join("")}</span><span class="hf-cnt"></span>`,"hf-daysbox");
   const show=()=>{b.querySelectorAll("[data-d]").forEach(x=>{const on=v.has(x.dataset.d);x.classList.toggle("on",on);x.setAttribute("aria-pressed",on)});b.querySelector(".hf-cnt").textContent=v.size?`주 ${v.size}회`:"요일 선택"};
   b.querySelectorAll("[data-d]").forEach(x=>x.onclick=()=>{const d=x.dataset.d;v.has(d)?v.delete(d):v.add(d);show();o.onChange&&o.onChange("월화수목금토일".split("").filter(z=>v.has(z)))});
   show();return {get value(){return "월화수목금토일".split("").filter(z=>v.has(z))}}}
@@ -106,7 +115,7 @@ const times=o=>{const [a,b]=[(o&&o.from)||"07:00",(o&&o.to)||"23:00"].map(t=>+t.
 // 날짜 자리 = 늘 같은 폭(날짜 + 요일, 적는 중·빈 칸·날짜만·날짜 시간 모두 같음) · 날짜·시간 칸 하나 = 글자로 바로 적기(숫자만 넣으면 . : 자동) + 누르면 달력·시간 목록
 function dt(host,o,parts){const vals={d:o.value?o.value.slice(0,10):"",t:o.value&&o.value.length>10?o.value.slice(11,16):(o.time||"")};if(parts==="t")vals.t=o.value||"";
   const seg=k=>k==="d"?`<span class="hf-dwrap ${o.dow===false?"nodw":""}"><input class="hf-d" data-k="d" inputmode="numeric" placeholder="YYYY.MM.DD" value="${vals.d?vals.d.replace(/-/g,"."):""}" ${o.disabled?"disabled":""}>${o.dow!==false?`<span class="hf-dw"></span>`:""}</span>`:`<input class="hf-t" data-k="t" inputmode="numeric" placeholder="HH:mm" value="${esc(vals.t)}" ${o.disabled?"disabled":""}>`;
-  const b=shell(host,o,`${I[parts==="t"?"clock":"cal"]}${parts.split("").map(seg).join(parts.length>1?'<span class="hf-sep"></span>':"")}${o.disabled?"":X}`,"hf-dt hf-"+parts);
+  const b=shell(host,o,`${icn(o.icon||(parts==="t"?"clock":"cal"))}${parts.split("").map(seg).join(parts.length>1?'<span class="hf-sep"></span>':"")}${o.disabled?"":X}`,"hf-dt hf-"+parts);
   const out=()=>parts==="dt"?(vals.d&&vals.t?vals.d+" "+vals.t:vals.d||""):parts==="d"?vals.d:vals.t;
   const show=()=>{const w=b.querySelector(".hf-dw");if(w)w.textContent=vals.d?`(${dw(vals.d)})`:"";has(b,vals.d||vals.t)};
   const fire=()=>{show();o.onChange&&o.onChange(out())};
@@ -129,10 +138,10 @@ const date=(host,o={})=>dt(host,o,"d");
 const time=(host,o={})=>dt(host,o,"t");
 const datetime=(host,o={})=>dt(host,o,"dt");
 // 기간 = 두 칸 사이 "-" · 끝이 시작보다 앞이면 알림
-function range(host,o,fn){host.innerHTML=`<div class="hf">${o.label?`<span class="hf-lbl">${esc(o.label)}${o.req?' <i>*</i>':""}${o.tipHtml||""}</span>`:""}<div class="hf-range"><div></div><span class="hf-dash">-</span><div></div></div><span class="hf-msg"></span></div>`;
+function range(host,o,fn){host.innerHTML=`<div class="hf">${o.label?`<span class="hf-lbl">${esc(o.label)}${o.req?' <i>*</i>':""}${o.tipHtml||""}</span>`:""}<div class="hf-range"><div></div><span class="hf-dash">-</span><div></div></div><span class="hf-msg">${esc(o.help||"")}</span></div>`;
   const [A,B]=host.querySelectorAll(".hf-range>div");const v=[...(o.value||["",""])];
-  const chk=()=>{const m=v[0]&&v[1]&&v[1]<v[0]?(fn===time?"끝 시간이 시작보다 앞이에요":"끝 날짜가 시작보다 앞이에요"):"";const s=host.querySelector(".hf>.hf-msg");s.textContent=m;host.querySelector(".hf").classList.toggle("err",!!m);o.onChange&&o.onChange(v.slice())};
-  fn(A,Object.assign({},o,{label:"",value:v[0],placeholder:"",onChange:x=>{v[0]=x;chk()}}));fn(B,Object.assign({},o,{label:"",value:v[1],onChange:x=>{v[1]=x;chk()}}));return {get value(){return v.slice()}}}
+  const chk=()=>{const m=v[0]&&v[1]&&v[1]<v[0]?(fn===time?"끝 시간이 시작보다 앞이에요":"끝 날짜가 시작보다 앞이에요"):"";const s=host.querySelector(".hf>.hf-msg");s.textContent=m||o.help||"";host.querySelector(".hf").classList.toggle("err",!!m);o.onChange&&o.onChange(v.slice())};
+  fn(A,Object.assign({},o,{label:"",help:"",tipHtml:"",value:v[0],placeholder:"",onChange:x=>{v[0]=x;chk()}}));fn(B,Object.assign({},o,{label:"",help:"",tipHtml:"",value:v[1],onChange:x=>{v[1]=x;chk()}}));return {get value(){return v.slice()}}}
 const dateRange=(host,o={})=>range(host,Object.assign({dow:false},o),date);
 const timeRange=(host,o={})=>range(host,o,time);
 // 색: 칸 = 왼쪽 아이콘 자리에 고른 색 동그라미(16, 안 골랐으면 무지개 동그라미) + 이름 · x/Delete = 비우기, 누르면 색판(6칸 × 2줄, 다른 클래스가 쓰는 색은 마우스를 올리면 클래스 이름)
@@ -165,14 +174,14 @@ function seg(host,o={}){let v=o.value??o.items[0];const b=shell(host,o,`<span cl
   b.querySelectorAll("[data-v]").forEach(x=>x.onclick=()=>{v=x.dataset.v;show();o.onChange&&o.onChange(v)});show();return {get value(){return v}}}
 // 여러 개 고르기(288판, 앱 hfMulti와 같은 모양): 누르면 체크 목록 · 9개 이상이거나 새로 적기면 위에 찾기 · 아래 n개 선택 [비우기][닫기]
 function multi(host,o={}){const ii=k=>(I[k]||"").replace("<svg","<svg class=\"i s\"");const items=(o.items||[]).map(x=>typeof x==="string"?{v:x,t:x}:x);const v=new Set(o.value||[]);/* 292판: 앱 여러 개 고르기(hfMulti)와 같은 모양·반응 */
-  const b=shell(host,o,`${I[o.icon||"chevc"]||I.list}<span class="hf-val"></span>`,"hf-btn hfm");if(!o.disabled)b.tabIndex=0;b.setAttribute("role","combobox");
+  const b=shell(host,o,`${icn(o.icon||(typeof iconRule==="function"&&iconRule(o.label,"multi"))||"chevc")}<span class="hf-val"></span>`,"hf-btn hfm");if(!o.disabled)b.tabIndex=0;b.setAttribute("role","combobox");
   const show=()=>{const a=items.filter(x=>v.has(x.v));b.querySelector(".hf-val").innerHTML=a.length?a.map(x=>`<span class="hfm-c ${esc(x.cls||"")}">${esc(x.t)}</span>`).join(""):`<span class="ph">${esc(o.placeholder||"선택")}</span>`;b.classList.toggle("has",a.length>0)};
   const ch=()=>{show();o.onChange&&o.onChange(items.filter(x=>v.has(x.v)).map(x=>x.v))};
   const open=()=>{if(o.disabled)return;if(OPEN&&OPEN.box===b){close();return}pop(b,p=>{let q="";
-    const draw=()=>{p.innerHTML=`${o.onAdd||items.length>10?`<span class="searchbox mlq">${ii("search")}<input class="inp" placeholder="${o.onAdd?"찾거나 새로 적기":"찾기"}" autocomplete="off" maxlength="30" aria-label="찾기"></span>`:""}<div class="tsl">${items.map(x=>`<label class="ck2 tso ${v.has(x.v)?"on":""}"><input type="checkbox" value="${esc(x.v)}" ${v.has(x.v)?"checked":""}><b class="${x.cls?"spill "+esc(x.cls):""}">${esc(x.t)}</b>${o.onEdit?`<button type="button" class="mldel" data-mledit="${esc(x.v)}" title="이름 · 색 · 삭제">${ii("more")}</button>`:""}</label>`).join("")}</div>${o.onAdd?`<button type="button" class="mlnew" hidden></button>`:""}<div class="tsf"><span class="lb">${v.size}개 선택</span><span class="sp"></span>${v.size?`<button type="button" class="btn" data-clr>비우기</button>`:""}<button type="button" class="btn pri" data-ok>${ii("check")}닫기</button></div>`;
+    const draw=()=>{p.innerHTML=`${o.onAdd||items.length>10?`<span class="searchbox mlq">${ii("search")}<input class="inp" id="mlQ" placeholder="${o.onAdd?"찾거나 새로 적기":"찾기"}" autocomplete="off" maxlength="30" aria-label="찾기"></span>`:""}<div class="tsl">${items.map(x=>`<label class="ck2 tso ${v.has(x.v)?"on":""}"><input type="checkbox" value="${esc(x.v)}" ${v.has(x.v)?"checked":""}><b class="${x.cls?"spill "+esc(x.cls):""}">${esc(x.t)}</b>${o.onEdit?`<button type="button" class="mldel" data-mledit="${esc(x.v)}" title="이름 · 색 · 삭제">${ii("more")}</button>`:o.onDel?`<button type="button" class="mldel" data-mldel="${esc(x.v)}" title="이 항목 삭제">${ii("x")}</button>`:""}</label>`).join("")}</div>${o.onAdd?`<button type="button" class="mlnew" id="mlAdd" hidden></button>`:""}<div class="tsf"><span class="lb">${v.size}개 선택</span><span class="sp"></span>${v.size?`<button type="button" class="btn" id="mlClr" data-clr>비우기</button>`:""}<button type="button" class="btn pri" id="mlOk" data-ok>${ii("check")}닫기</button></div>`;
       p.querySelectorAll(".tso input").forEach(c=>c.onchange=()=>{const k=items.find(x=>String(x.v)===c.value).v;c.checked?v.add(k):v.delete(k);ch();draw()});
       const clr=p.querySelector("[data-clr]");if(clr)clr.onclick=()=>{v.clear();ch();draw()};p.querySelector("[data-ok]").onclick=()=>{close();b.focus()};
-      p.querySelectorAll("[data-mledit]").forEach(d=>d.onclick=e=>{e.preventDefault();e.stopPropagation();const x=d.dataset.mledit;close();o.onEdit(x)});
+      p.querySelectorAll("[data-mledit]").forEach(d=>d.onclick=e=>{e.preventDefault();e.stopPropagation();const x=d.dataset.mledit;close();o.onEdit(x)});p.querySelectorAll("[data-mldel]").forEach(d=>d.onclick=e=>{e.preventDefault();e.stopPropagation();const x=d.dataset.mldel;close();o.onDel(x)});
       const mq=p.querySelector(".mlq input");if(mq){mq.value=q;const ad=p.querySelector(".mlnew");const ft=()=>{q=mq.value.trim();p.querySelectorAll(".tso").forEach(l=>{l.hidden=!!q&&!l.textContent.includes(q)&&!l.querySelector("input").checked});if(ad){const ex=items.some(x=>x.t===q);ad.hidden=!q||ex;ad.innerHTML=ii("plus")+"<span>‘"+esc(q)+"’ 생성</span>"}};ft();mq.oninput=ft;
         const go=()=>{const t=q;if(!t||!ad||ad.hidden)return;close();o.onAdd(t)};if(ad)ad.onclick=go;mq.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();go()}else if(e.key==="Escape"){close();b.focus()}};setTimeout(()=>{mq.focus();mq.setSelectionRange(q.length,q.length)})}};
     p.classList.add("mlpop");draw()})};
@@ -187,5 +196,8 @@ function search(host,o={}){const b=shell(host,o,`${I.search}<input placeholder="
   b.onpointerdown=e=>{if(e.target===b||e.target.closest("svg:not(.hf-x svg)")){e.preventDefault();i.focus()}};i.oninput=draw;
   const x=b.querySelector(".hf-x");x.onpointerdown=e=>e.preventDefault();x.onclick=()=>{i.value="";draw();i.focus()};draw();return {el:i,get value(){return i.value}}}
 
-window.HF={palette,toNotion,text,memo,num,tel,select,multi,search,day,days,date,time,datetime,dateRange,timeRange,color,sw,seg,close,COLORS};
+/* 304판(연결): 고르기 단추 칸 — 모양은 고르기 칸과 같고, 펼치는 목록은 화면이 onOpen(칸)으로 정함(등록 카드 시간표·교재 등) */
+function pick(host,o={}){const b=shell(host,o,`${icn(o.icon||(typeof iconRule==="function"&&iconRule(o.label,"select"))||"list")}<span class="hf-val">${o.valueHtml||`<span class="ph">${esc(o.placeholder||"선택")}</span>`}</span>`,"hf-btn");if(!o.disabled)b.tabIndex=0;Object.assign(b.dataset,o.data||{});
+  const go=()=>{if(!o.disabled&&o.onOpen)o.onOpen(b)};b.onclick=go;b.onkeydown=e=>{if(["Enter"," ","ArrowDown"].includes(e.key)){e.preventDefault();go()}};has(b,!!o.valueHtml);return b}
+window.HF={palette,toNotion,text,memo,num,tel,select,multi,search,pick,day,days,date,time,datetime,dateRange,timeRange,color,sw,seg,close,COLORS};
 })();

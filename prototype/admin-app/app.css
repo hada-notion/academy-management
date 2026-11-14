@@ -2432,3 +2432,9 @@ table.stt tr[data-id].sel:not(.sdel):hover td{background:var(--sel-bg)}
 
 /* 296판 오른쪽 창 제목 앞 화면 아이콘 */
 .phead h2 .phi{display:inline-flex;align-items:center;flex:none;color:var(--muted)}.phead h2 .phi svg.i{width:18px;height:18px}
+
+/* 299판(연결): 오른쪽 창 칸 간격은 한 곳 — 모든 창(표 화면 #lp · 학생 #sp · 모듈 페이지)이 같은 값 */
+:is(.panel,.stpanel,#lp,#sp) .hfgrid{display:flex;flex-direction:column;gap:12px}:is(.panel,.stpanel,#lp,#sp) .hfgrid>.fld2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin:0}
+
+/* 299판 학생 할 일 줄(모듈 할 일 창 안): 이름·학교·학년 간격, 오른쪽 글 */
+.tdr .nm{display:inline-flex;align-items:center;gap:6px;min-width:0}.tdr .nm .sc{color:var(--muted)}.tdr .r{margin-left:8px;color:var(--muted);font-size:var(--text-small)}.tdr .r.w{color:var(--warning-ink)}.tdnone{display:flex;align-items:center;gap:6px;padding:12px;color:var(--subtle)}

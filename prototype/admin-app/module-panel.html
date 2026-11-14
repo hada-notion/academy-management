@@ -2,7 +2,7 @@
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>오른쪽 창 모듈</title>
 <!-- 오른쪽 창 모듈 페이지. 앱과 같은 CSS(hada-tokens·app·pick·field)와 입력칸(field.js), 창 그리기(panel.js)를 그대로 쓴다 — 여기서 고친 부품이 앱에 그대로 들어간다. 모음표: _catalog/index.html -->
 <link rel="stylesheet" href="hada-tokens.css"><link rel="stylesheet" href="app.css"><link rel="stylesheet" href="pick.css"><link rel="stylesheet" href="field.css">
-<script src="pick.js"></script><script src="field.js"></script><script src="panel.js"></script>
+<link rel="stylesheet" href="alim.css"><script src="hada-rules.js"></script><script src="alim-preview.js"></script><script src="pick.js"></script><script src="field.js"></script><script src="panel.js"></script>
 <style>
 body{margin:0;background:var(--canvas,#F7F8FA);overflow:auto;height:auto}
 .mp-top{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--divider,#EEE7DD);padding:14px 24px}
@@ -15,14 +15,14 @@ main{padding:8px 24px 80px;max-width:1500px}
 /* 모듈 페이지 안의 창 = 앱 오른쪽 창과 같은 폭, 화면에 붙지 않고 놓임 */
 .mp-pn{position:static!important;width:360px;max-height:none;height:auto;border:1px solid var(--line2,#E5DED4);border-radius:var(--radius-lg,14px);background:var(--surface,#fff);box-shadow:0 1px 4px rgba(25,31,40,.06);overflow:visible;display:flex;flex-direction:column;padding:0 var(--space-4,16px)!important;overflow:visible!important}
 /* 아래 단추줄 = 앱 그대로(붙는 위치만 창 안 흐름으로) */.mp-pn>.actions{position:static;border-radius:0 0 var(--radius-lg) var(--radius-lg)}
-/* 칸 간격 = 앱 #lp 와 같게(app.css #lp .hfgrid) */.mp-pn .hfgrid{display:flex;flex-direction:column;gap:12px}
+/* 칸 간격은 app.css 공통 규칙(299판) */
 .mp-skel{width:360px;border:2px dashed #CFC2B2;border-radius:14px;background:#fff;font-size:13px}
 .mp-skel>div{padding:10px 14px;border-bottom:1px dashed #E2D8CC}.mp-skel>div:last-child{border-bottom:0}.mp-skel b{color:var(--brand-deep)}.mp-skel small{display:block;color:var(--text-subtle)}
 .mp-code{font:12px/1.5 ui-monospace,Consolas,monospace;background:#FBF8F3;border:1px solid #EEE7DD;border-radius:10px;padding:10px 12px;white-space:pre;overflow:auto;max-width:560px;color:#4E5968}
 .mp-rule{font-size:12.5px;color:var(--text-muted);margin:6px 0 0;max-width:360px}
 </style></head><body>
 <div class="mp-top"><h1>오른쪽 창 모듈</h1><p>창 하나 = 머리 · 탭 바 · 상자[칸 · 줄 목록 · 카드 · 미니] · 아래 단추. 앱과 같은 CSS·입력칸을 써요. 화면별 지금 모습은 <a href="_catalog/index.html">오른쪽 창 모음표</a>.</p>
-<nav class="mp-nav"><a href="#s0">0 뼈대</a><a href="#s1">1 머리</a><a href="#s2">2 탭 바</a><a href="#s3">3 상자</a><a href="#s4">4 칸</a><a href="#s5">5 날짜·시각 한 줄</a><a href="#s6">6 줄 목록</a><a href="#s7">7 카드</a><a href="#s8">8 미니 부품</a><a href="#s9">9 선택 전(할 일)</a><a href="#s10">10 아래 단추</a><a href="#s11">전체 예시</a></nav></div>
+<nav class="mp-nav"><a href="#s0">0 뼈대</a><a href="#sic">아이콘 규칙</a><a href="#s1">1 머리</a><a href="#s2">2 탭 바</a><a href="#s3">3 상자</a><a href="#s4">4 칸</a><a href="#s5">5 날짜·시각 한 줄</a><a href="#s6">6 줄 목록</a><a href="#s7">7 카드</a><a href="#s8">8 미니 부품</a><a href="#s9">9 선택 전(할 일)</a><a href="#s10">10 아래 단추</a><a href="#s11">전체 예시</a></nav></div>
 <main>
 
 <section class="mp-sec" id="s0"><h2>0. 창 뼈대</h2><p class="d">모든 오른쪽 창은 이 네 칸으로만 만든다. 높이가 정해진 칸(머리 3줄·탭 바·아래 단추)은 창마다 같은 자리 — 탭을 바꿔도, 다른 화면으로 가도 위치가 움직이지 않는다.</p>
@@ -35,6 +35,7 @@ main{padding:8px 24px 80px;max-width:1500px}
 }
 선택 전 = { todo: { groups:[{name, why, rows}], summary:[[이름, 값]], list } }</pre></div></section>
 
+<section class="mp-sec" id="sic"><h2>아이콘 규칙 — 규칙 파일(hada-rules.js) 한 곳</h2><p class="d">아래 표는 규칙 파일을 그대로 읽어 그려요. 메뉴 · 창 제목 · 표 열 머리 · 오른쪽 창 칸이 모두 이 규칙을 써요. 아이콘을 바꾸려면 규칙 파일 한 줄만 고쳐요. 순서: ① 칸 이름 예외 → ② 메뉴와 연결된 칸 = 그 메뉴 아이콘 → ③ 칸 종류 → ④ 고르기 기본 ⌄.</p><div class="mp-row" id="hic"></div></section>
 <section class="mp-sec" id="s1"><h2>1. 머리</h2><p class="d">1줄 = 무엇인지(이름 + 상태 배지 + (?)), 2줄 = 정보 글(종류 · 날짜 · 학생·학교) + 기타 배지(정규·보강·학년), 3줄 = 바로 가기. 줄마다 한 줄, 넘치면 …. 배지는 모두 둥근 알약 20px.</p><div class="mp-row" id="h1"></div></section>
 
 <section class="mp-sec" id="s2"><h2>2. 탭 바</h2><p class="d">숫자는 이름 뒤 작게. 못 여는 탭은 흐리게. 탭이 없는 창도 '정보' 하나를 둬서 높이를 맞춘다.</p><div class="mp-row" id="h2"></div></section>
@@ -95,8 +96,9 @@ const gchip = g => `<span class="gchip ${/^초/.test(g) ? "elem" : /^중/.test(g
 // 1 머리
 put("h1", [
   cell("클래스", head({ name: "중1 수학", dot: "#B794F6", status: [{ t: "운영 중", tone: "green" }], info: ["클래스", "이하다"], links: [{ t: "시간표" }, { t: "수업" }] })),
-  cell("학생 — 이름을 바로 고침", head({ name: "장예린", nameInput: "새 학생 이름", status: [{ t: "등록 중", tone: "green" }], help: "등록상태는 자동이에요", info: ["하다고"], badges: [gchip("고3")], links: [{ t: "주간 시간표" }, { t: "수강" }] })),
+  cell("학생 — 이름을 바로 고침", head({ icon: IC(menuIcon("students")), name: "장예린", nameInput: "새 학생 이름", status: [{ t: "등록 중", tone: "green" }], help: "등록상태는 자동이에요", info: ["하다고"], badges: [gchip("고3")], links: [{ t: "주간 시간표" }, { t: "수강" }] })),
   cell("수업 — 날짜·시각은 2줄", head({ name: "초등 영어", dot: "#E88FB5", info: ["2026.11.11(수) 14:30"], badges: [pill({ t: "정규", tone: "blue" })], links: [{ t: "수업" }, { t: "시간표" }, { t: "클래스" }] })),
+  cell("일정 — 제목 앞 = 메뉴 아이콘", head({ icon: IC(menuIcon("events")), name: "기말고사 대비 보충 주간", info: ["일정"] })),
   cell("등록 — 누구의 등록인지", head({ name: "중1 수학", dot: "#B794F6", status: [{ t: "작성 중", tone: "yellow" }], info: ["등록", "장예린", "하다고"], badges: [gchip("고3")] })),
 ].join(""));
 // 2 탭 바
@@ -114,7 +116,7 @@ put("h3", [
 // 4 칸
 const F4 = [{ title: "칸 종류", fields: [
   { label: "글", type: "text", value: "중1 수학" }, { label: "날짜", type: "date", value: "2026-09-01" }, { label: "고르기", type: "select", value: "좋은책신사고", items: [{ v: "좋은책신사고", t: "좋은책신사고", cls: "nc-pink" }, { v: "개념원리", t: "개념원리", cls: "nc-purple" }] },
-  { label: "숫자", type: "num", value: "250000", help: "원" }, { label: "전화", type: "tel", value: "010-0000-1101" }, { label: "등록 안내 메모", type: "text", tip: "알림톡으로 나가요 — 등록 안내 · 클래스 변경 안내 · 시간표 변경 안내의 [전달 사항]", help: "50자까지 — 보낸 뒤 비워져요" },
+  { label: "숫자", type: "num", value: "250000", help: "원" }, { label: "전화", type: "tel", value: "010-0000-1101" }, { label: "등록 안내 메모", type: "text", alim: "enrolls|note", tip: "알림톡으로 나가요 — 등록 안내 · 클래스 변경 안내 · 시간표 변경 안내의 [전달 사항]", help: "50자까지 — 보낸 뒤 비워져요" },
   { label: "메모(내부용)", type: "memo", help: "학부모에게 나가지 않아요" }, { label: "나눔 단추", type: "seg", items: ["교재", "프로그램"], value: "교재" }, { label: "켜기/끄기", type: "sw", value: true },
 ] }];
 document.getElementById("h4").innerHTML = cell("한 상자 안 칸들", F4.map(box).join(""));
@@ -169,5 +171,5 @@ render(ex("클래스 창"), { head: { name: "중1 수학", dot: "#B794F6", statu
 render(ex("학생 창"), { head: { name: "장예린", nameInput: "새 학생 이름", status: [{ t: "등록 중", tone: "green" }], info: ["하다고"], badges: [gchip("고3")], links: [{ t: "주간 시간표" }, { t: "수강" }] }, tabs: [{ id: "i", label: "정보" }, { id: "e", label: "등록", n: 2 }, { id: "c", label: "일정", disabled: true }, { id: "g", label: "성적" }], tab: "i", boxes: [{ title: "문의", fields: [{ label: "문의일시", type: "date", value: "2026-08-29" }, { label: "메모(내부용)", type: "memo" }] }, { title: "기본정보", fields: [{ label: "학교", value: "하다고" }, { label: "학년", value: "고3" }] }], foot: { del: true, save: "학생 저장" } });
 render(ex("수업 창"), { head: { name: "초등 영어", dot: "#E88FB5", info: ["2026.11.11(수) 14:30"], badges: [pill({ t: "정규", tone: "blue" })], links: [{ t: "수업" }, { t: "시간표" }, { t: "클래스" }] }, tabs: [{ id: "a", label: "출결", n: "8/12" }, { id: "l", label: "학습기록", n: 1 }, { id: "r", label: "보고서" }, { id: "i", label: "정보" }], tab: "a", boxes: [{ title: "출결", help: "출석·결석을 눌러 넣어요", right: '<button class="btn sm">모두 출석</button>', rows: [{ t: "신지안", sub: "바다초 초1", tag: "출석" }, { t: "김다은", sub: "푸른중", tag: "결석" }] }], foot: { save: "수업 저장" } });
 document.querySelectorAll(".mp-pn .hname").forEach(i=>i.closest(".mp-pn").classList.add("stpanel"));
-</script>
+</script><script src="module-icons.js"></script>
 </body></html>

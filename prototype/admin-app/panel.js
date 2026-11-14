@@ -9,7 +9,7 @@
 (function () {
   const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const P = '<svg class="i s" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">';
-  const IC = {
+  const IC_ = {
     help: P + '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
     right: P + '<path d="M5 12h14M12 5l7 7-7 7"/></svg>', rightc: P + '<path d="M9 18l6-6-6-6"/></svg>',
     ext: P + '<path d="M7 17 17 7M7 7h10v10"/></svg>', trash: P + '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>',
@@ -17,7 +17,7 @@
     undo: P + '<path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>', check: P + '<path d="M20 6 9 17l-5-5"/></svg>',
     search: P + '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>'
   };
-  const help = t => t ? `<span class="qhelp" tabindex="0" role="note" aria-label="${esc(t)}" data-help="${esc(t)}">${IC.help}</span>` : "";
+  const help = t => t ? `<span class="qhelp" tabindex="0" role="note" aria-label="${esc(t)}" data-help="${esc(t)}">${IC_.help}</span>` : "";
   const pill = s => `<span class="pill nc-${esc(s.tone || "gray")}">${esc(s.t)}</span>`;
 
   // 1. 머리 3줄: 이름 + 상태 배지 / 정보 + 기타 배지 / 바로 가기
@@ -26,7 +26,7 @@
     const name = h.nameInput ? `<input class="hname" value="${esc(h.name || "")}" placeholder="${esc(h.nameInput)}">` : esc(h.name || "");
     const l1 = h.nameHtml != null ? h.nameHtml : `<span class="phn">${h.dot ? `<i class="cdot" style="background:${esc(h.dot)}"></i>` : ""}${name}</span>${(h.status || []).map(pill).join("")}${help(h.help)}`;
     const l2 = h.infoHtml != null ? h.infoHtml : (h.info || []).map((t, i) => `${i ? '<span class="phdot">·</span>' : ""}<small>${esc(t)}</small>`).join("") + (h.badges || []).join("");
-    const l3 = h.linksHtml != null ? h.linksHtml : (h.links || []).map((x, i) => `${i ? " · " : ""}<a class="link" href="#" data-act="${esc(x.act || "")}">${esc(x.t)} ${IC.ext}</a>`).join("");
+    const l3 = h.linksHtml != null ? h.linksHtml : (h.links || []).map((x, i) => `${i ? " · " : ""}<a class="link" href="#" data-act="${esc(x.act || "")}">${esc(x.t)} ${IC_.ext}</a>`).join("");
     const ic = h.icon && !/class="cdot"/.test(l1) ? `<span class="phi">${h.icon}</span>` : "";/* 296판: 제목 앞 화면 아이콘(색 점 있으면 색 점만) */
     return `<div class="phead"><div class="pt"><h2>${ic}${l1}</h2><div class="pinfo">${l2}</div><div class="sub">${l3}</div></div>${h.right ? `<span class="pright">${h.right}</span>` : ""}</div>`;
   }
@@ -44,28 +44,38 @@
   }
   // 6. 줄 목록: 이름 ……… 정보 · 꼬리표 ›
   function rows(rs) {
-    return rs.length ? `<div class="ttrows">${rs.map(r => `<div class="ttrow" ${r.go ? `data-go="${esc(r.go)}"` : ""}>${r.dot ? `<i class="cdot" style="background:${esc(r.dot)}"></i>` : ""}<span class="t">${esc(r.t)}</span>${r.sub ? `<span class="hint">${esc(r.sub)}</span>` : ""}${r.tag ? `<span class="tag">${esc(r.tag)}</span>` : ""}${IC.rightc}</div>`).join("")}</div>` : `<div class="hint">아직 없어요</div>`;
+    return rs.length ? `<div class="ttrows">${rs.map(r => `<div class="ttrow" ${r.go ? `data-go="${esc(r.go)}"` : ""}>${r.dot ? `<i class="cdot" style="background:${esc(r.dot)}"></i>` : ""}<span class="t">${esc(r.t)}</span>${r.sub ? `<span class="hint">${esc(r.sub)}</span>` : ""}${r.tag ? `<span class="tag">${esc(r.tag)}</span>` : ""}${IC_.rightc}</div>`).join("")}</div>` : `<div class="hint">아직 없어요</div>`;
   }
   // 10. 아래 단추줄: 삭제 ……… 되돌리기 · ○○ 저장
   function foot(f) {
     if (!f) return "";
-    const id = f.ids || {}, ic = Object.assign({}, IC, f.icons || {}); const at = (k, t) => `${id[k] ? ` id="${id[k]}"` : ""}${t ? ` title="${esc(t)}"` : ""}`;
+    const id = f.ids || {}, ic = Object.assign({}, IC_, f.icons || {}); const at = (k, t) => `${id[k] ? ` id="${id[k]}"` : ""}${t ? ` title="${esc(t)}"` : ""}`;
     return `<div class="actions">${f.hint ? `<span class="hint">${esc(f.hint)}</span>` : ""}${f.del ? `<button class="btn danger" type="button"${at("del", f.delTitle || "이 줄 삭제(저장 전까지 되돌릴 수 있어요)")}${f.delOff ? " disabled" : ""}>${f.delIcon != null ? f.delIcon : ic.trash}${esc(f.delLabel || "삭제")}</button>` : ""}${f.left || ""}<span class="sp"></span>${f.extra || ""}${f.undo ? `<button class="btn icon" type="button"${at("undo", f.undoTitle || "저장 상태로 되돌리기")}>${ic.undo}</button>` : ""}${f.save ? `<button class="btn big ${f.primary ? "pri" : "rowsave"}" type="button"${at("save", f.saveTitle || "이 줄에서 고친 것만 바로 저장해요. 다른 줄까지 모두 저장하려면 위 [저장]을 눌러요")} ${f.saveOn ? "" : "disabled"}>${ic.save}${esc(f.save)}${f.count ? ` <span class="cnt">${esc(f.count)}</span>` : ""}</button>` : ""}</div>`;
   }
   // 9. 선택 전 = 할 일 창
+  // 9. 선택 전 = 할 일 창(299판 연결: 앱 todoPanel도 이 함수 하나로 그림)
+  //  groups:[{k,name,why,rows:[{id,html}|{t,sub}]}], on, summary:[[이름,값html,cls]], list:{name,rows:[{id,html}],moreHtml|more}, ro, empty
   function todo(t) {
-    const has = (t.groups || []).filter(g => g.rows && g.rows.length); const on = (t.groups || []).find(g => g.k === t.on && g.rows.length) || has[0];
-    const sum = t.summary && t.summary.length ? `<div class="tdsum">${t.summary.map(([n, v, c]) => `<div class="tds ${c || ""}"><span>${esc(n)}</span><b>${esc(v)}</b></div>`).join("")}</div>` : "";
-    const list = t.list && t.list.rows.length ? `<div class="tdlist"><div class="tdh2">${esc(t.list.name)} <span class="hint">${t.list.rows.length}</span></div><div class="tdl">${t.list.rows.map(r => `<button type="button" class="tdr"><span class="tdr2"><span class="tdr2a">${r.dot ? `<i class="cdot" style="background:${esc(r.dot)}"></i>` : ""}<b>${esc(r.t)}</b>${r.badge ? pill({ t: r.badge, tone: r.tone }) : ""}</span><span class="tdr2b">${esc(r.sub || "")}</span></span>${IC.rightc}</button>`).join("")}</div>${t.list.more ? `<button type="button" class="tdmore">${IC.search}${esc(t.list.more)}</button>` : ""}</div>` : "";
-    if (!has.length) return `<div class="tdp"><div class="tdh">${IC.check}지금 할 일이 없어요</div>${sum}${list}</div>`;
-    return `<div class="tdp"><div class="tdh">할 일 <span class="hint">${has.reduce((a, g) => a + g.rows.length, 0)}건</span></div><div class="tdtabs">${t.groups.map(g => `<button type="button" class="tdt ${g === on ? "on" : ""}" ${g.rows.length ? "" : "disabled"}>${esc(g.name)} <span class="n">${g.rows.length}</span></button>`).join("")}</div>${on.why ? `<div class="tdwhy">${esc(on.why)}</div>` : ""}<div class="tdl">${on.rows.map(r => `<button type="button" class="tdr">${esc(r.t)} <small class="hint">${esc(r.sub || "")}</small>${IC.rightc}</button>`).join("")}</div>${sum}${list}</div>`;
+    const ic = n => (typeof IC === "function" && typeof FEATHER !== "undefined" && FEATHER[n]) ? IC(n, "s") : (n === "check" ? IC_.check : IC_.rightc);
+    const ra = t.rowAttr || "todosel", ta = t.tabAttr || "todok";
+    const rowH = r => `<button type="button" class="tdr" ${r.id != null ? `data-${ra}="${esc(r.id)}"` : ""}>${r.html != null ? r.html : `${esc(r.t)} <small class="hint">${esc(r.sub || "")}</small>`}${ic("rightc")}</button>`;
+    const groups = (t.groups || []).map(g => Object.assign({}, g, { rows: g.rows || [] })), has = groups.filter(g => g.rows.length);
+    const sum = t.summary && t.summary.length ? `<div class="tdsum">${t.summary.map(([n, v, c]) => `<div class="tds ${c || ""}"><span>${esc(n)}</span><b>${v}</b></div>`).join("")}</div>` : "";
+    const L = t.list, more = L ? (L.moreHtml != null ? L.moreHtml : (L.more ? `<button type="button" class="tdmore">${IC_.search}${esc(L.more)}</button>` : "")) : "";
+    const list = L && (L.rows.length || more) ? `<div class="tdlist"><div class="tdh2">${esc(L.name)} <span class="hint">${L.rows.length}</span></div><div class="tdl">${L.rows.map(rowH).join("")}</div>${more}</div>` : "";
+    if (!groups.length && t.empty) return `<div class="empty">${esc(t.empty)}</div>`;
+    const foot = t.footHtml || "";
+    if (!has.length && !t.keepTabs) return `<div class="tdp"><div class="tdh">${ic("check")}지금 할 일이 없어요</div>${sum}${list}</div>${foot}`;
+    const on = (t.keepTabs ? groups.find(g => g.k === t.on) : has.find(g => g.k === t.on)) || has[0] || groups[0], max = t.max || 60;
+    return `<div class="tdp"><div class="tdh">할 일${t.help ? help(t.help) : ""} <span class="hint">${has.reduce((a, g) => a + g.rows.length, 0)}건</span></div><div class="tdtabs">${groups.map(g => `<button type="button" class="tdt ${g === on ? "on" : ""}" data-${ta}="${esc(g.k)}" ${g.rows.length || t.keepTabs ? "" : "disabled"}>${esc(g.name)} <span class="n">${g.rows.length}</span></button>`).join("")}</div>
+    ${on.why ? `<div class="tdwhy">${esc(on.why)}</div>` : ""}<div class="tdl">${on.rows.slice(0, max).map(rowH).join("") || `<div class="tdnone">${ic("check")}할 일이 없어요</div>`}${on.rows.length > max ? `<div class="hint">외 ${on.rows.length - max}건 — 표의 거르기 알약으로 모두 봐요</div>` : ""}</div>${sum}${list}</div>${foot}`;
   }
   // 칸 붙이기(입력칸 모듈 field.js)
   function mountFields(root, boxes) {
     if (!window.HF) return;
     (boxes || []).forEach((b, bi) => (b.fields || []).forEach((f, i) => {
       const host = root.querySelectorAll(".box")[bi] && root.querySelectorAll(".box")[bi].querySelector(`[data-pf="${i}"]`); if (!host) return;
-      const o = { label: f.label, help: f.help, value: f.value, tipHtml: f.tip ? help(f.tip) : "" };
+      const o = { label: f.label, help: f.help, value: f.value, tipHtml: f.tip ? help(f.tip) : "", alim: f.alim };
       const T = f.type || "text";
       if (T === "range") HF.dateRange(host, Object.assign(o, { value: f.value || ["", ""] }));
       else if (T === "trange") HF.timeRange(host, Object.assign(o, { value: f.value || ["", ""] }));
@@ -81,5 +91,5 @@
     el.innerHTML = `${head(spec.head)}${tabs(spec.tabs, spec.tab)}<div class="pbody">${(spec.boxes || []).map(box).join("")}</div>${foot(spec.foot)}`;
     mountFields(el, spec.boxes); return el;
   }
-  window.PANEL = { head, tabs, box, rows, foot, todo, render, mountFields, help, pill, IC, esc };
+  window.PANEL = { head, tabs, box, rows, foot, todo, render, mountFields, help, pill, IC: IC_, esc };
 })();
