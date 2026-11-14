@@ -1933,3 +1933,45 @@ table.gt.grid tr.sel td:first-child,table.gt.grid tr:hover td:first-child{backgr
 .spback{flex:none;align-self:flex-start;box-sizing:border-box;margin-top:var(--space-2)}
 .spback svg.i{width:16px;height:16px}
 .spback:hover{background:var(--brand-soft);border-color:var(--brand)}
+
+/* ═════ 202판 ═════ [‹ 할 일] 뒤로가기(대표 261114): 크기는 그대로(32 · 글 13 · 아이콘 16), 테두리 없이 연한 글(이름보다 덜 강조), 이름과의 간격 4 */
+.spback{border:0;background:none;color:var(--muted);padding:0 var(--space-2) 0 0;margin-bottom:0}
+.spback:hover{background:var(--brand-soft);color:var(--ink)}
+.spback+.phead{padding-top:var(--space-1)}
+
+/* ═════ 203판 ═════ 법정 서식 미리보기·인쇄(영수증 원부 · 영수증): 검은 선 표, 화면에서는 대화상자 안에서 스크롤 */
+.dlg.wide{width:min(1040px,94vw);max-width:none}
+.lprev{max-height:56vh;overflow:auto;border:1px solid var(--line);border-radius:var(--radius-md);background:#fff;padding:var(--space-4);margin:var(--space-3) 0}
+.lform h1,.lslip h1{font-size:17px;text-align:center;margin:0 0 var(--space-1);letter-spacing:.2em}
+.lf-sub{text-align:center;font-size:var(--text-label);color:var(--muted);margin-bottom:var(--space-3)}
+.lf-t{width:100%;border-collapse:collapse;font-size:var(--text-label);font-variant-numeric:tabular-nums}
+.lf-t th,.lf-t td{border:1px solid #333;padding:4px 6px;text-align:center;white-space:nowrap}
+.lf-t th{background:#F3F0EC;font-weight:700}.lf-t td.n{text-align:right}.lf-t td.l{text-align:left;white-space:normal}
+.lf-foot{font-size:var(--text-caption);color:var(--muted);margin-top:var(--space-2)}
+.lslips{display:flex;flex-direction:column;gap:var(--space-4)}
+.lslip{border:1px solid #333;padding:var(--space-4);position:relative;break-inside:avoid}
+.lslip .ls-no{position:absolute;right:var(--space-4);top:var(--space-4);font-size:var(--text-label)}
+.lslip p{text-align:center;margin:var(--space-4) 0 var(--space-2);font-size:var(--text-small)}
+.lslip .ls-sign{text-align:right;font-size:var(--text-small);line-height:1.8}
+@media print{#printList.pbook .lf-t,#printList.pslip .lf-t{font-size:10px}#printList .lf-t th{-webkit-print-color-adjust:exact;print-color-adjust:exact}#printList.pslip .lslip{margin-bottom:10mm}#printList.pbook{font-size:10px}}
+
+/* ═════ 204판 ═════ 법정 서식 한 쌍(원부 | 자르는 선 | 영수증) + 학원 도장 */
+.lpairs{display:flex;flex-direction:column;gap:var(--space-5)}
+.lpair{display:grid;grid-template-columns:1fr 1px 1fr;gap:var(--space-4);break-inside:avoid;page-break-inside:avoid}
+.lpair .cut{border-left:1px dashed #888}
+.lfm{font-size:var(--text-label);color:#111;min-width:0}
+.lfm h1{border:1px solid #333;text-align:center;font-size:17px;letter-spacing:.12em;margin:0 0 var(--space-4);padding:var(--space-2) 0}
+.lfm-t{width:100%;border-collapse:collapse;table-layout:fixed}
+.lfm-t td,.lfm-t th{border:1px solid #333;padding:6px 6px;height:38px;text-align:left;font-weight:400;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lfm-t th.v{width:52px;text-align:center}.lfm-t .c{text-align:center}.lfm-t td.n{text-align:right;font-variant-numeric:tabular-nums}
+.lfm-t tr.etc td{height:30px}.lfm-t tr.amt td{height:44px}
+.lfm-b{border:1px solid #333;border-top:0;padding:var(--space-3) var(--space-3) var(--space-4)}
+.lfm-b p{margin:0 0 var(--space-1)}.lfm-b p.c{text-align:center}.lfm-b p.s{font-size:var(--text-caption);color:#333;white-space:normal}.lfm-b p.m{font-weight:700}
+.lfm-b p.d{text-align:right;margin:var(--space-4) var(--space-3) var(--space-5);letter-spacing:.2em}
+.lfm-b .sg{display:flex;align-items:flex-end;gap:var(--space-2);flex-wrap:wrap}.lfm-b .sg b{margin-left:auto}
+.lfm-b .sg .in{position:relative;color:#777;font-size:var(--text-caption)}
+.lfm-b .stamp{position:absolute;right:-4px;bottom:-14px;width:56px;height:56px;object-fit:contain;mix-blend-mode:multiply;opacity:.92;pointer-events:none}
+.stampv{width:48px;height:48px;object-fit:contain;vertical-align:middle;border:1px solid var(--line2);border-radius:var(--radius-sm);background:#fff}
+.lprev .row{display:flex}.dlg .row{display:flex;align-items:center;gap:var(--space-2);margin-top:var(--space-2)}
+@page slip{size:A4 portrait;margin:10mm}
+@media print{#printList.pslip{page:slip}#printList.pslip .lpair{margin-bottom:8mm;gap:6mm}#printList.pslip .lfm{font-size:10px}#printList.pslip .lfm h1{font-size:14px}#printList.pslip .lfm-t td,#printList.pslip .lfm-t th{height:8mm;padding:1mm 1.5mm}#printList.pslip .stamp{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
