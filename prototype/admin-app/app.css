@@ -2140,3 +2140,6 @@ table.stt.gt td[data-mg]{vertical-align:top;padding-top:calc(var(--space-2) + 1p
 .mlpop .mlnew:hover{background:var(--brand-soft)}
 .mlpop .mlnew[hidden]{display:none}
 .hfm .hf-val .hfm-c{flex:0 1 auto;min-width:32px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ═════ 223판 ═════ 맨 위 학원 이름: 아이콘 없이 글만, 길면 말줄임 */
+.headl .brand{min-width:0;flex:0 1 auto;max-width:240px;display:block}
