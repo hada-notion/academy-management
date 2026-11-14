@@ -5,7 +5,7 @@
    목록이 뜨는 칸(드롭다운·요일·날짜·시간·색): 칸과 같은 폭으로 칸 바로 아래 4 띄워 열림(달력·색판은 칸이 좁으면 최소 폭)(아래 자리가 모자라면 위), 한 번에 하나, 바깥 누름·Esc = 닫힘, ↑↓·Enter */
 (function(){
 const P='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">';
-const I={type:P+'<path d="M17 10H3M21 6H3M21 14H3M17 18H3"/></svg>',
+const I={chevc:P+'<circle cx="12" cy="12" r="10"/><path d="m8 10 4 4 4-4"/></svg>',plus:P+'<path d="M12 5v14M5 12h14"/></svg>',droplet:P+'<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>',type:P+'<path d="M17 10H3M21 6H3M21 14H3M17 18H3"/></svg>',
   memo:P+'<path d="M17 10H3M21 6H3M21 14H3M17 18H3"/></svg>',
   hash:P+'<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg>',
   tel:P+'<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.9.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>',
@@ -36,7 +36,7 @@ function pop(box,build,cls){if(OPEN&&OPEN.box===box)return OPEN.pop;close();cons
   OPEN={pop:p,box};box.classList.add("open");p.style.width=box.offsetWidth+"px";build(p);
   const r=box.getBoundingClientRect();let top=box.offsetTop+box.offsetHeight+4;
   const up=r.bottom+4+p.offsetHeight>innerHeight-8&&r.top-4-p.offsetHeight>8,op=p.offsetParent;
-  if(up&&op===box.parentElement)p.style.bottom=(op.clientHeight-box.offsetTop+4)+"px";else p.style.top=(up?box.offsetTop-4-p.offsetHeight:top)+"px";p.style.left=box.offsetLeft+"px";p.style.width=box.offsetWidth+"px";return p}
+  if(up&&op===box.parentElement)p.style.bottom=(op.clientHeight-box.offsetTop+4)+"px";else p.style.top=(up?box.offsetTop-4-p.offsetHeight:top)+"px";p.style.left=box.offsetLeft+"px";p.style.width=box.offsetWidth+"px";/* 293판(대표): 달력처럼 칸보다 넓은 창이 오른쪽 창·화면 밖으로 나가면 칸 오른쪽 끝에 맞춰 안쪽으로 */{const lim=Math.min(innerWidth,(box.closest(".panel,#lp,#sp,.dlg,.mp-pn")||document.documentElement).getBoundingClientRect().right)-8,pr=p.getBoundingClientRect();if(pr.right>lim)p.style.left=(box.offsetLeft-(pr.right-lim))+"px"}return p}
 // 칸 틀: 라벨(칸 위 12/600, 아래 4) · 칸(40) · 알림 글(칸 아래 12)
 const shell=(host,o,inner,cls)=>{host.innerHTML=`<div class="hf ${o.disabled?"dis":""}">${o.label?`<span class="hf-lbl">${esc(o.label)}${o.req?' <i>*</i>':""}${o.tipHtml||""}</span>`:""}<div class="hf-box ${cls||""}">${inner}</div><span class="hf-msg">${esc(o.help||"")}</span></div>`;return host.querySelector(".hf-box")};
 const say=(host,t,err)=>{const m=host.querySelector(".hf-msg");m.textContent=t||"";host.querySelector(".hf").classList.toggle("err",!!(err&&t))};
@@ -45,7 +45,9 @@ const has=(b,v)=>b.classList.toggle("has",!!v);
 // 글자 입력 공통(text·num·tel·memo)
 function typed(host,o,icon,attrs,fmt,check,cls){const tag=cls==="hf-memo"?"textarea":"input";
   const memo=tag==="textarea";const b=shell(host,o,`${memo||icon==="type"?"":I[icon]}<${tag} ${attrs||""} placeholder="${esc(o.placeholder||"")}" ${o.disabled?"disabled":""} ${tag==="input"?`value="${esc(o.value||"")}">`:`rows="1">${esc(o.value||"")}</textarea>`}${o.unit?`<span class="hf-unit">${esc(o.unit)}</span>`:""}${o.disabled||memo?"":X}`,cls);
-  const i=b.querySelector(tag);const grow=()=>{if(memo&&i.scrollHeight>i.clientHeight)i.style.height=i.scrollHeight+"px"};/* 271판: 긴 글은 입력란 자체가 늘어남(손잡이로도) */
+  const i=b.querySelector(tag);if(memo&&!o.disabled){const g=document.createElement("span");g.className="hf-grip";g.title="끌어서 높이 조절";b.appendChild(g);/* 291판(대표): 아래로만 늘림 — 아래 선 어디서든 잡고 끌기 */
+    g.onpointerdown=e=>{e.preventDefault();g.setPointerCapture(e.pointerId);const y0=e.clientY,h0=i.offsetHeight;b.classList.add("drag");g.onpointermove=ev=>{i.style.height=Math.max(64,h0+ev.clientY-y0)+"px"};g.onpointerup=g.onpointercancel=()=>{g.onpointermove=null;b.classList.remove("drag")}}}
+  const grow=()=>{if(memo&&i.scrollHeight>i.clientHeight)i.style.height=i.scrollHeight+"px"};/* 271판: 긴 글은 입력란 자체가 늘어남(손잡이로도) */
   if(fmt&&i.value)i.value=fmt(i.value);has(b,i.value);setTimeout(grow);
   b.onpointerdown=e=>{if(e.target===b||e.target.closest("svg:not(.hf-x svg)")){e.preventDefault();i.focus()}};
   i.oninput=()=>{if(fmt){const n=fmt(i.value);if(n!==i.value)i.value=n}has(b,i.value);grow();say(host,o.help||"");o.onChange&&o.onChange(i.value)};
@@ -148,7 +150,7 @@ function palette(p,v,used,onPick){used=used||{};const custom=!!v&&!COLORS.some(x
   const L=p.querySelector(".hf-custom"),ci=L.querySelector("input");L.onmouseenter=()=>p.querySelector(".hf-swn").textContent="다른 색 직접 고르기 — 목록에 없는 색";ci.onchange=()=>onPick(ci.value.toUpperCase())}
 function color(host,o={}){let v=o.value||null;const used=o.used||{};
   const b=shell(host,o,`<span class="hf-ci"></span><span class="hf-val"></span>${o.disabled||o.clear===false?"":X}`,"hf-btn hf-colbox");if(!o.disabled)b.tabIndex=0;
-  const show=()=>{const c=COLORS.find(x=>x[1]===v);const ci=b.querySelector(".hf-ci");ci.style.background=v||"";ci.classList.toggle("empty",!v);b.querySelector(".hf-val").innerHTML=v?(c?c[0]:`직접 고른 색 <small class="hf-hex">${esc(v)}</small>`):`<span class="ph">${esc(o.placeholder||"색 선택")}</span>`;has(b,v)};
+  const show=()=>{const c=COLORS.find(x=>x[1]===v);const ci=b.querySelector(".hf-ci");ci.style.background=v||"";ci.classList.toggle("empty",!v);ci.innerHTML=v?"":I.droplet;/* 289판: 비면 물방울(입력칸 기준표) */b.querySelector(".hf-val").innerHTML=v?(c?c[0]:`직접 고른 색 <small class="hf-hex">${esc(v)}</small>`):`<span class="ph">${esc(o.placeholder||"색 선택")}</span>`;has(b,v)};
   const open=()=>{if(o.disabled)return;if(OPEN&&OPEN.box===b){close();return}pop(b,p=>palette(p,v,used,c=>{v=c;show();close();b.focus();o.onChange&&o.onChange(v)}),"hf-swpop")};
   const set=c=>{v=c;show();o.onChange&&o.onChange(v)};b.onclick=e=>{if(e.target.closest(".hf-x"))return;open()};b.onkeydown=e=>{if(["Enter"," ","ArrowDown"].includes(e.key)){e.preventDefault();open()}else if((e.key==="Delete"||e.key==="Backspace")&&o.clear!==false)set(null)};
   const x=b.querySelector(".hf-x");if(x)x.onclick=e=>{e.stopPropagation();close();set(null);b.focus()};show();return {get value(){return v}}}
@@ -162,26 +164,19 @@ function seg(host,o={}){let v=o.value??o.items[0];const b=shell(host,o,`<span cl
   const show=()=>b.querySelectorAll("[data-v]").forEach(x=>{x.classList.toggle("on",x.dataset.v===v);x.setAttribute("aria-pressed",x.dataset.v===v)});
   b.querySelectorAll("[data-v]").forEach(x=>x.onclick=()=>{v=x.dataset.v;show();o.onChange&&o.onChange(v)});show();return {get value(){return v}}}
 // 여러 개 고르기(288판, 앱 hfMulti와 같은 모양): 누르면 체크 목록 · 9개 이상이거나 새로 적기면 위에 찾기 · 아래 n개 선택 [비우기][닫기]
-function multi(host,o={}){const items=(o.items||[]).map(x=>typeof x==="string"?{v:x,t:x}:x);const v=new Set(o.value||[]);
-  const b=shell(host,o,`${I[o.icon||"list"]}<span class="hf-val hf-mv"></span>${o.disabled?"":X}`,"hf-btn");if(!o.disabled)b.tabIndex=0;b.setAttribute("role","combobox");
-  const pill=x=>`<span class="spill ${esc(x.cls||"")}">${esc(x.t)}</span>`;
-  const show=()=>{const a=items.filter(x=>v.has(x.v));b.querySelector(".hf-val").innerHTML=a.length?a.map(pill).join(""):`<span class="ph">${esc(o.placeholder||"선택")}</span>`;has(b,a.length)};
+function multi(host,o={}){const ii=k=>(I[k]||"").replace("<svg","<svg class=\"i s\"");const items=(o.items||[]).map(x=>typeof x==="string"?{v:x,t:x}:x);const v=new Set(o.value||[]);/* 292판: 앱 여러 개 고르기(hfMulti)와 같은 모양·반응 */
+  const b=shell(host,o,`${I[o.icon||"chevc"]||I.list}<span class="hf-val"></span>`,"hf-btn hfm");if(!o.disabled)b.tabIndex=0;b.setAttribute("role","combobox");
+  const show=()=>{const a=items.filter(x=>v.has(x.v));b.querySelector(".hf-val").innerHTML=a.length?a.map(x=>`<span class="hfm-c ${esc(x.cls||"")}">${esc(x.t)}</span>`).join(""):`<span class="ph">${esc(o.placeholder||"선택")}</span>`;b.classList.toggle("has",a.length>0)};
   const ch=()=>{show();o.onChange&&o.onChange(items.filter(x=>v.has(x.v)).map(x=>x.v))};
-  const open=()=>{if(o.disabled)return;if(OPEN&&OPEN.box===b){close();return}pop(b,p=>{const sq=items.length>8||o.onAdd;
-    p.innerHTML=`${sq?`<label class="hf-q">${I.search}<input placeholder="${o.onAdd?"찾거나 새로 적기":"찾기"}" autocomplete="off"></label>`:""}<div class="hf-list" role="listbox" aria-multiselectable="true"></div><div class="hf-mf"><span class="n"></span><span class="sp"></span><button type="button" class="hf-mb" data-clr>비우기</button><button type="button" class="hf-mb pri" data-ok>${I.check}닫기</button></div>`;
-    const L=p.querySelector(".hf-list"),q=p.querySelector(".hf-q input");
-    const draw=()=>{const k=q?q.value.trim():"";const xs=items.filter(x=>!k||x.t.includes(k)||v.has(x.v));const nk=o.onAdd&&k&&!items.some(x=>x.t===k)?k:"";
-      L.innerHTML=xs.map(x=>`<div class="hf-opt hf-mo ${v.has(x.v)?"on":""}" data-v="${esc(x.v)}" role="option" aria-selected="${v.has(x.v)}"><span class="hf-cb">${v.has(x.v)?I.check:""}</span><span class="t">${pill(x)}</span>${o.onEdit?`<button type="button" class="hf-del" data-edit="${esc(x.v)}" tabindex="-1" title="이름 · 색 · 삭제">${I.more}</button>`:""}</div>`).join("")+(nk?`<div class="hf-opt hf-add" data-add>${I.plus||"+"}<span class="t">'${esc(nk)}' 추가</span></div>`:"")+(xs.length||nk?"":`<div class="hf-none">없어요</div>`);
-      p.querySelector(".hf-mf .n").textContent=v.size+"개 선택";p.querySelector("[data-clr]").hidden=!v.size;
-      L.querySelectorAll(".hf-mo").forEach(r=>{r.onpointerdown=e=>e.preventDefault();r.onclick=e=>{if(e.target.closest("[data-edit]"))return;const k2=items.find(x=>String(x.v)===r.dataset.v).v;v.has(k2)?v.delete(k2):v.add(k2);ch();draw()}});
-      L.querySelectorAll("[data-edit]").forEach(d=>{d.onpointerdown=e=>{e.preventDefault();e.stopPropagation()};d.onclick=e=>{e.stopPropagation();close();o.onEdit(d.dataset.edit)}});
-      const ad=L.querySelector("[data-add]");if(ad){ad.onpointerdown=e=>e.preventDefault();ad.onclick=()=>{const t=nk;items.push({v:t,t});v.add(t);q.value="";ch();draw();o.onAdd&&o.onAdd(t)}}};
-    p.querySelector("[data-clr]").onclick=()=>{v.clear();ch();draw()};p.querySelector("[data-ok]").onclick=()=>{close();b.focus()};
-    p.querySelectorAll(".hf-mf button").forEach(x=>x.onpointerdown=e=>e.preventDefault());
-    if(q){q.oninput=draw;q.onkeydown=e=>{if(e.key==="Escape"){close();b.focus()}};setTimeout(()=>q.focus())}draw()})};
-  b.onclick=e=>{if(e.target.closest(".hf-x"))return;open()};
-  b.onkeydown=e=>{if(["Enter"," ","ArrowDown"].includes(e.key)){e.preventDefault();open()}};
-  const x=b.querySelector(".hf-x");if(x)x.onclick=e=>{e.stopPropagation();v.clear();ch();b.focus()};
+  const open=()=>{if(o.disabled)return;if(OPEN&&OPEN.box===b){close();return}pop(b,p=>{let q="";
+    const draw=()=>{p.innerHTML=`${o.onAdd||items.length>10?`<span class="searchbox mlq">${ii("search")}<input class="inp" placeholder="${o.onAdd?"찾거나 새로 적기":"찾기"}" autocomplete="off" maxlength="30" aria-label="찾기"></span>`:""}<div class="tsl">${items.map(x=>`<label class="ck2 tso ${v.has(x.v)?"on":""}"><input type="checkbox" value="${esc(x.v)}" ${v.has(x.v)?"checked":""}><b class="${x.cls?"spill "+esc(x.cls):""}">${esc(x.t)}</b>${o.onEdit?`<button type="button" class="mldel" data-mledit="${esc(x.v)}" title="이름 · 색 · 삭제">${ii("more")}</button>`:""}</label>`).join("")}</div>${o.onAdd?`<button type="button" class="mlnew" hidden></button>`:""}<div class="tsf"><span class="lb">${v.size}개 선택</span><span class="sp"></span>${v.size?`<button type="button" class="btn" data-clr>비우기</button>`:""}<button type="button" class="btn pri" data-ok>${ii("check")}닫기</button></div>`;
+      p.querySelectorAll(".tso input").forEach(c=>c.onchange=()=>{const k=items.find(x=>String(x.v)===c.value).v;c.checked?v.add(k):v.delete(k);ch();draw()});
+      const clr=p.querySelector("[data-clr]");if(clr)clr.onclick=()=>{v.clear();ch();draw()};p.querySelector("[data-ok]").onclick=()=>{close();b.focus()};
+      p.querySelectorAll("[data-mledit]").forEach(d=>d.onclick=e=>{e.preventDefault();e.stopPropagation();const x=d.dataset.mledit;close();o.onEdit(x)});
+      const mq=p.querySelector(".mlq input");if(mq){mq.value=q;const ad=p.querySelector(".mlnew");const ft=()=>{q=mq.value.trim();p.querySelectorAll(".tso").forEach(l=>{l.hidden=!!q&&!l.textContent.includes(q)&&!l.querySelector("input").checked});if(ad){const ex=items.some(x=>x.t===q);ad.hidden=!q||ex;ad.innerHTML=ii("plus")+"<span>‘"+esc(q)+"’ 생성</span>"}};ft();mq.oninput=ft;
+        const go=()=>{const t=q;if(!t||!ad||ad.hidden)return;close();o.onAdd(t)};if(ad)ad.onclick=go;mq.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();go()}else if(e.key==="Escape"){close();b.focus()}};setTimeout(()=>{mq.focus();mq.setSelectionRange(q.length,q.length)})}};
+    p.classList.add("mlpop");draw()})};
+  b.onclick=open;b.onkeydown=e=>{if(e.key==="Enter"||e.key===" "||e.key==="ArrowDown"){e.preventDefault();open()}};
   show();return {get value(){return items.filter(x=>v.has(x.v)).map(x=>x.v)}}}
 // 찾기 칸(288판): 돋보기 + 글자 → 아래 결과 줄(두 글자부터). o.find(글자) = [{t, sub, v}] · o.onPick(줄)
 function search(host,o={}){const b=shell(host,o,`${I.search}<input placeholder="${esc(o.placeholder||"찾기")}" autocomplete="off" value="${esc(o.value||"")}">${X}`,"hf-srch");const i=b.querySelector("input");

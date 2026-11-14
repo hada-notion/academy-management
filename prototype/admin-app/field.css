@@ -201,3 +201,16 @@
 .hf-res{display:flex;flex-direction:column;margin-top:6px;border:1px solid var(--divider);border-radius:10px;overflow:hidden}.hf-res:empty{display:none}
 .hf-ri{display:flex;align-items:center;gap:8px;min-height:40px;padding:0 12px;cursor:pointer;border-top:1px solid var(--divider)}.hf-ri:first-child{border-top:0}.hf-ri:hover{background:var(--brand-tint)}
 .hf-ri .t{font-weight:600}.hf-ri small{margin-left:auto;color:var(--text-muted);font-size:var(--text-caption);text-align:right}
+
+/* 289판 색 칸: 비면 물방울 */
+.hf-ci.empty{padding:0!important;text-align:initial;background:none!important;box-shadow:none!important;opacity:1;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;color:var(--text-subtle)}.hf-ci.empty svg{width:16px;height:16px}
+
+/* 291판 긴 글: 아래로만 늘림 — 아래 가운데 = 손잡이, 아래 선 어디서든 끌기 */
+.hf-box.hf-memo{position:relative}.hf-memo textarea{resize:none!important}
+.hf-grip{position:absolute;left:0;right:0;bottom:-6px;height:14px;cursor:ns-resize;display:flex;align-items:center;justify-content:center;touch-action:none;z-index:1}
+.hf-grip::before{content:"";width:14px;height:4px;border-top:1.5px solid var(--text-subtle);border-bottom:1.5px solid var(--text-subtle);background:var(--surface);box-shadow:0 0 0 3px var(--surface);border-radius:1px}
+.hf-grip:hover::before,.hf-memo.drag .hf-grip::before{border-color:var(--brand-deep)}
+.hf-memo.drag{border-color:var(--brand-deep)}
+
+/* 292판 여러 개 고르기 펼침(앱 .mlpop 모양) — 찾기 칸 폭 꽉 */
+.hf-pop.mlpop .mlq{width:auto}.hf-pop.mlpop svg.i{width:16px;height:16px;flex:none}

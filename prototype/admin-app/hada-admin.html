@@ -158,7 +158,15 @@ function addEnroll(studentId,classId,attachGroup,state){
   return en;
 }
 /* ================= 앱 상태 ================= */
-const LS={get(k,d){try{const v=localStorage.getItem('hada_proto_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('hada_proto_'+k,JSON.stringify(v))}catch(e){}}};
+const LS={get(k,d){try{const v=localStorage.getItem('hada_proto_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('hada_proto_'+k,JSON.stringify(v))}catch(e){}}};if(/[?&]cat=/.test(location.search)){LS.get=(k,d)=>d;LS.set=()=>{}}/* 290판: 모음표 미리보기는 저장소를 안 씀 */
+/* 290판(대표 '모음표도 실제로 반응하게'): 모음표 미리보기 ?cat=화면&sub=갈래&tab=n(-1 = 선택 전) — 그 창을 열어 둠. 쓰시던 탭·창 상태(저장소)는 읽지도 쓰지도 않음 */
+if(/[?&]cat=/.test(location.search))addEventListener("load",()=>{const q=new URLSearchParams(location.search),s=q.get("cat"),sub=q.get("sub")||null,k=+(q.get("tab")||0),want=s==="lesson"?"timetable":s;
+  /* 첫 클릭에 앱 기본 화면이 남던 것: 앱이 다 뜬 뒤 열고, 다른 화면이면 다시 엶 */const ok=()=>curScr()===want&&(k<0||!!(activeTab.state.sel||activeTab.state.lsel));
+  const go=()=>{try{document.getElementById("modalRoot").innerHTML="";panelOpen=true;dockOn=true;openScreen(s==="lesson"?"timetable":s,false,{});const st=activeTab.state;if(s==="lesson")st.view="lesson";if(s==="timetable")st.view="tt";if(sub)st.sub=sub;st.sel=null;st.lsel=null;render();
+    if(k>=0){if(s==="timetable"){const bl=DB.blocks.find(x=>x.seasonId===curSeason());st.sel=bl&&bl.id}else if(s==="lesson"){const el=[...document.querySelectorAll("#grid [data-l]")].find(e=>!String(e.dataset.l).startsWith("mk:"))||document.querySelector("#grid [data-l]");st.lsel=el&&el.dataset.l}else if(s==="students"){st.sel=DB.students.find(z=>!z.del).id}else{const L=listOf(s,st);const rows=(L.rows?L.rows():(DB[L.coll]||[])).filter(x=>!x.del);st.sel=rows[0]&&rows[0].id}
+      panelOpen=true;render();setTimeout(()=>{const pn=document.querySelector(".body>.panel")||document.querySelector("#lp")||document.querySelector("#sp");const bt=pn&&pn.querySelectorAll(".ptabs .ptb")[k];if(bt&&!bt.classList.contains("on")&&!bt.disabled)bt.click()},250)}}catch(e){console.error(e)}};
+  setTimeout(go,500);[1300,2300,3500].forEach(t=>setTimeout(()=>{if(!ok())go()},t))});
+
 let SIDE_AUTO=false,SIDE_KEEP=false,sideOpen=LS.get('side',true),panelOpen=LS.get('panel',true),dockOn=LS.get('dock',false);
 const UNLOCKED=new Set();const ORIG=new Map();
 // 시간표 되돌리기(261112 대표): 마지막으로 저장된 시간표 모습
