@@ -1975,3 +1975,13 @@ table.gt.grid tr.sel td:first-child,table.gt.grid tr:hover td:first-child{backgr
 .lprev .row{display:flex}.dlg .row{display:flex;align-items:center;gap:var(--space-2);margin-top:var(--space-2)}
 @page slip{size:A4 portrait;margin:10mm}
 @media print{#printList.pslip{page:slip}#printList.pslip .lpair{margin-bottom:8mm;gap:6mm}#printList.pslip .lfm{font-size:10px}#printList.pslip .lfm h1{font-size:14px}#printList.pslip .lfm-t td,#printList.pslip .lfm-t th{height:8mm;padding:1mm 1.5mm}#printList.pslip .stamp{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+
+/* ═════ 206판 ═════ 표 열 너비(대표 261114): 모든 표가 학생 표처럼 내용에 맞는 너비 — 화면 폭으로 늘리지 않고 남는 폭은 오른쪽에 비움. 긴 글 칸은 320에서 줄임표(…) */
+table.stt.gt{table-layout:auto;width:max-content;min-width:0}
+table.stt.gt td{max-width:320px;overflow:hidden;text-overflow:ellipsis}
+table.stt.gt th{min-width:56px}
+table.gt.grid{min-width:0}
+table.gt.grid th:nth-child(n+3):nth-child(-n+33){min-width:28px}
+table.stt.gt.grid th{min-width:0}
+table.stt.gt.grid th:nth-child(n+3):nth-child(-n+33),table.stt.gt.grid td:nth-child(n+3):nth-child(-n+33){min-width:28px;max-width:none}
+table.stt.gt.grid{width:auto}
