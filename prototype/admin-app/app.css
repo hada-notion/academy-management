@@ -2075,3 +2075,6 @@ table.stt.gt.grid{width:auto}
 .bkcard.bkadd{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;width:100%;margin:0;padding:var(--space-2);border:1px solid transparent;box-sizing:border-box;align-self:start;line-height:inherit}
 .bkcard.bkadd .bkcov{width:100%;box-sizing:border-box}
 .bkgrid>.bkcard{box-sizing:border-box}
+
+/* 212판: 단원 시작 위치가 겹치면 그 칸을 잠깐 빨갛게 */
+.unrow .inp.bad{border-color:var(--danger-ink);background:var(--danger-soft)}
