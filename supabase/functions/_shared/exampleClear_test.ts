@@ -83,9 +83,17 @@ Deno.test("시즌 DB는 학생·수강 묶음에서 시간표 바로 다음에 �
   assert(!buildPlan(new Map([["시간표(학원) DB", ["t"]]])).missing.includes("시즌(학원) DB")) // Notion을 올리기 전 학원에는 없다
 })
 
-Deno.test("남기는 DB는 알림톡 설정·과목과 시스템용 메뉴·웹페이지·학년, 비어 있는 문의·요청뿐", () => {
-  assertEquals([...KEEP_DBS].sort(), ["과목(학원) DB", "메뉴(학원) DB", "문의·요청(학원) DB", "알림톡 설정(학원) DB", "웹페이지(학원) DB", "학년(학원) DB"].sort())
+Deno.test("남기는 DB는 알림톡 설정·과목·영역과 시스템용 메뉴·웹페이지·학년, 비어 있는 문의·요청뿐", () => {
+  assertEquals([...KEEP_DBS].sort(), ["과목(학원) DB", "메뉴(학원) DB", "문의·요청(학원) DB", "알림톡 설정(학원) DB", "영역(학원) DB", "웹페이지(학원) DB", "학년(학원) DB"].sort())
   for (const n of KEEP_DBS) assert(!CLEAR_DBS.includes(n))
+})
+
+Deno.test("영역 DB는 남기고, 아직 없는 학원에서도 못 찾은 DB·모르는 DB로 내지 않는다", () => {
+  const without = buildPlan(new Map([["시간표(학원) DB", ["t"]]]))
+  assert(!without.missing.includes("영역(학원) DB"))
+  const withArea = buildPlan(new Map([["영역(학원) DB", ["a"]], ["시간표(학원) DB", ["t"]]]))
+  assertEquals(withArea.unknown, [])
+  assert(!withArea.plan.some((p) => p.name === "영역(학원) DB"))
 })
 
 Deno.test("계획은 지울 순서대로, 남길 DB·모르는 DB는 넣지 않는다", () => {

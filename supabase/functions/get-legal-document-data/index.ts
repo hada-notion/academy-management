@@ -17,6 +17,7 @@ import { DS_REGISTRATION, DS_CLASS, DS_ATTENDANCE, DS_TUITION, DS_PAYMENT } from
 import { ensureStudentRegistrationNumber, reserveLegalNumber } from "../_shared/legalDocumentNumbers.ts"
 import { mapWithConcurrency } from "../_shared/notionClient.ts"
 import { normalizeStatus } from "../_shared/reportCacheShared.ts"
+import { legalClassSubject } from "../_shared/legalClassSubject.ts"
 
 const PROP_REG_TITLE = "이름" // 등록(학원) DB: 학생 이름이 곧 이 DB의 제목
 const PROP_REG_CLASS = "클래스" // relation, limit 1 -> 클래스(학원) DB
@@ -76,10 +77,13 @@ function makePageCache() {
 // [CHANGED, 2026-09-28] 서류를 조회할 때마다 클래스(학원) DB 전체를 훑는 게 느려서(사용자 체감
 // 로딩 지연 원인), 실제로 등장하는 등록 건들에 연결된 클래스만 getPage로 골라 가져오도록 바꿨다.
 // 클래스 전체 목록은 화면 초기 로딩(action:"classes")에서만 필요하다.
+// 교습과목은 클래스 "영역" 관계(영역(학원) DB 제목)를 먼저, 없으면 옛 "과목" 다중 선택을 읽는다(legalClassSubject.ts).
 type LegalClass = { classId: string; className: string; subject: string }
-function legalClass(page: any): LegalClass {
- return {classId: page?.id ?? "", className: plainText(page?.properties?.["신고 교습과정명"]),
- subject: (page?.properties?.["과목"]?.multi_select ?? []).map((v: any)=>v.name).join(", ")}
+function legalClassName(page: any): string {
+ return plainText(page?.properties?.["신고 교습과정명"])
+}
+async function legalClass(page: any, getCachedPage: (id:string)=>Promise<any>): Promise<LegalClass> {
+ return {classId: page?.id ?? "", className: legalClassName(page), subject: page ? await legalClassSubject(page,getCachedPage) : ""}
 }
 function seoulDate(value: string): string {
  if (!value) return ""
@@ -103,7 +107,7 @@ async function legalRows(body: any, getCachedPage: (id:string)=>Promise<any>) {
   const guardian=sp["우선 연락 대상"]?.select?.name
   const guardianKey=guardian==="아버지"?"아버지 연락처":guardian==="기타 보호자"?"기타 보호자 연락처":"어머니 연락처"
   return {registrationId:reg.id,studentId:sid,studentName:titleOf(student,"학생이름"),
-    ...legalClass(cp),
+    ...await legalClass(cp,getCachedPage),
     registrationNo: sid && reg.properties?.[PROP_REG_ENROLL_DATE]?.date?.start ? await ensureStudentRegistrationNumber(sid,student) : null,
     address:plainText(sp["주소"]),phone:["학생 연락처",guardianKey,"어머니 연락처","아버지 연락처","기타 보호자 연락처"].map(key=>String(sp[key]?.phone_number ?? "").trim()).find(Boolean) || "",
     enrollDate:seoulDate(reg.properties?.[PROP_REG_ENROLL_DATE]?.date?.start ?? ""),
@@ -254,7 +258,7 @@ async function buildReceiptLedger(body: any) {
   const student=sid ? await getCachedPage(sid) : null
   const cid=reg ? firstRelationId(reg,PROP_REG_CLASS) : null
   const cp=cid ? await getCachedPage(cid) : null
-  const course=legalClass(cp)
+  const course=await legalClass(cp,getCachedPage)
   const paid=p.properties?.[PROP_PAYMENT_AMOUNT]?.number ?? null
   const billing=tuition?.properties?.["청구기간"]?.date
   if(tids.length!==1 || rids.length!==1)warnings.add("복수/미연결 수강료 결제: 학생·과목·기간별 금액 배분을 확인해야 합니다. 임의로 첫 등록을 선택하지 않았습니다.")
@@ -301,7 +305,7 @@ async function buildCashJournal(body: any) {
 async function buildClasses() {
   const classes = await queryAllPages(DS_CLASS)
   return {
-    classes: classes.map((c: any) => ({ id: c.id, name: titleOf(c, PROP_CLASS_TITLE), legalName: legalClass(c).className }))
+    classes: classes.map((c: any) => ({ id: c.id, name: titleOf(c, PROP_CLASS_TITLE), legalName: legalClassName(c) }))
       .sort((a, b) => a.name.localeCompare(b.name, "ko")),
   }
 }
