@@ -39,13 +39,13 @@ CLEAR_DBS = [
     "출석(학원) DB",
     "수업(학원) DB",
     "대시보드(학원) DB",
-    "진도교재(학원) DB",
+    "진도관리(학원) DB",
     "보고서(학원) DB",
     "결제(학원) DB",
     "수강료(학원) DB",
-    "교재결제(학원) DB",
-    "교재배부(학원) DB",
-    "교재비(학원) DB",
+    "청구 결제(학원) DB",
+    "청구 항목(학원) DB",
+    "청구(학원) DB",
     "가정통신문(학원) DB",
     "알림톡 발송함(학원) DB",
     "자동화 로그(학원) DB",
@@ -54,6 +54,7 @@ CLEAR_DBS = [
     "시험(학원) DB",
     "일정(학원) DB",
     "시간표(학원) DB",
+    "시즌(학원) DB",  # 시간표를 묶는 상위 DB라 시간표 바로 다음
     "등록(학원) DB",
     "루틴(학원) DB",
     "클래스(학원) DB",
@@ -78,6 +79,17 @@ KEEP_DBS = [
     "학년(학원) DB",
     "문의·요청(학원) DB",  # 원본에서 비어 있는 문의 창구(4주 따라하기 가이드 아래)
 ]
+
+# 원본에서 이름을 바꾼 DB(옛 이름 → 새 이름). 옛 이름으로 찾은 DB도 새 이름 항목으로 다룬다.
+RENAMED_DBS = {
+    "진도교재(학원) DB": "진도관리(학원) DB",
+    "교재배부(학원) DB": "청구 항목(학원) DB",
+    "교재비(학원) DB": "청구(학원) DB",
+    "교재결제(학원) DB": "청구 결제(학원) DB",
+}
+
+# 없어도 "찾지 못한 DB"로 내지 않는 DB: 옛 이름 기록 DB, Notion을 올리기 전 학원에는 없는 시즌 DB.
+OPTIONAL_DBS = [CLEAR_DBS[-1], "시즌(학원) DB"]
 
 
 def request(method, path, token, body=None):
@@ -148,6 +160,7 @@ def main():
     parser.add_argument("--confirm-workspace", default="", help="--apply 때 필수: 이 토큰의 워크스페이스 이름")
     parser.add_argument("--keep", action="append", default=[], help="이번만 남길 비울 DB 이름(여러 번 가능)")
     args = parser.parse_args()
+    args.keep = [RENAMED_DBS.get(n, n) for n in args.keep]
     bad = [n for n in args.keep if n not in CLEAR_DBS]
     if bad:
         raise SystemExit("--keep에 비울 DB 목록에 없는 이름이 있습니다: " + ", ".join(bad))
@@ -170,11 +183,15 @@ def main():
             raise SystemExit("원본 워크스페이스입니다. 지우지 않았습니다.")
 
     by_name = {}
-    for name, ds_id in data_sources(token):
-        by_name.setdefault(name, []).append(ds_id)
+    found = data_sources(token)
+    # 새 이름 것을 먼저, 옛 이름으로 찾은 것은 새 이름 아래에 모은다.
+    for name, ds_id in [f for f in found if f[0] not in RENAMED_DBS] + [f for f in found if f[0] in RENAMED_DBS]:
+        ids = by_name.setdefault(RENAMED_DBS.get(name, name), [])
+        if ds_id not in ids:
+            ids.append(ds_id)
 
     unknown = sorted(n for n in by_name if n not in CLEAR_DBS and n not in KEEP_DBS)
-    missing = [n for n in clear_dbs if n != CLEAR_DBS[-1] and n not in by_name]  # 옛 이름은 없어도 된다
+    missing = [n for n in clear_dbs if n not in OPTIONAL_DBS and n not in by_name]
 
     plan, total = [], 0
     print("\n[비울 DB]")
