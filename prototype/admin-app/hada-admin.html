@@ -267,8 +267,8 @@ function classInSeason(c,s){const st=s.start,en=s.end;return (!c.open||c.open<=e
 function classBadges(c){let h="";if(c.kind==="특강")h+='<span class="tag b">특강</span>';if(c.open&&c.open>"2026-11-11")h+=`<span class="tag">${md(c.open)} 개강</span>`;if(c.close)h+=`<span class="tag w">${md(c.close)} 종료</span>`;return h}
 
 /* ================= 메뉴·탭 ================= */
-const MENU=[["운영",[["today","오늘","home"],["events","일정","calendar"],["letters","가정통신문","mail"],["teachers","선생님","user"]]],["수업",[["lesson","수업","edit3"],["reports","학습 보고서","clip"]]],["학생",[["students","학생","users"]]],["학교",[["schools","학교","school"],["exams","시험","award"]]],["수강관리",[["seasons","시즌","cal"],["classes","클래스","layers"],["enrolls","등록","usercheck"],["timetable","시간표","grid"]]],["교재관리",[["subjects","과목","layers"],["books","라이브러리","shelf"],["progress","진도관리","trendup"]]],["재무",[["tuition","수강료","receipt"],["bookfees","청구","filetext"],["costs","비용","hash"],["profit","손익 분석","activity"],["legal","법정 서류","printer"]]],["설정",[["academy","학원 정보","alertc"],["alims","알림톡 설정","msg"],["admin","관리자 설정","settings"]]],["바로 가기",[["ext:kiosk","키오스크","ext"],["ext:manual","매뉴얼","ext"],["ext:files","자료실","ext"],["ext:pubdb","공개 DB","ext"]]]];
-const TITLES={today:"오늘",timetable:"시간표",students:"학생",classes:"클래스",enrolls:"등록",teachers:"선생님",seasons:"시즌",admin:"관리자 설정",subjects:"과목",books:"라이브러리",progress:"진도관리",events:"일정",reports:"학습 보고서",tuition:"수강료",bookfees:"청구",letters:"가정통신문",schools:"학교",glevels:"학년",areas:"영역",exams:"시험",costs:"비용",alims:"알림톡 설정"};
+const MENU=[["운영",[["today","오늘","home"],["events","일정","calendar"],["letters","가정통신문","mail"],["teachers","선생님","user"]]],["수업",[["lesson","수업","edit3"],["reports","학습 보고서","clip"]]],["학생",[["students","학생","users"]]],["학교",[["schools","학교","school"],["exams","시험","award"]]],["수강",[["seasons","시즌","cal"],["classes","클래스","layers"],["enrolls","등록","usercheck"],["timetable","시간표","grid"]]],["교재",[["subjects","과목","layers"],["books","라이브러리","shelf"],["progress","진도관리","trendup"],["bookfees","교재비","book"]]],["재무",[["tuition","수강료·지출","receipt"],["bill","청구","filetext"],["profit","손익 분석","activity"],["legal","법정 서류","printer"]]],["설정",[["academy","학원 정보","alertc"],["alims","알림톡 설정","msg"],["admin","관리자 설정","settings"]]],["자료·데이터",[["costs","비용","hash"]]],["바로 가기",[["ext:kiosk","키오스크","ext"],["ext:manual","매뉴얼","ext"],["ext:files","자료실","ext"],["ext:pubdb","공개 DB","ext"]]]];
+const TITLES={today:"오늘",timetable:"시간표",students:"학생",classes:"클래스",enrolls:"등록",teachers:"선생님",seasons:"시즌",admin:"관리자 설정",subjects:"과목",books:"라이브러리",progress:"진도관리",events:"일정",reports:"학습 보고서",tuition:"수강료·지출",bookfees:"교재비",bill:"청구",letters:"가정통신문",schools:"학교",glevels:"학년",areas:"영역",exams:"시험",costs:"비용",alims:"알림톡 설정"};
 let navIdx=0;try{history.replaceState({hada:0},"")}catch(e){}
 const navState=x=>{const o=JSON.parse(JSON.stringify(x));delete o.tedit;delete o._seen;delete o._seenK;return o};
 function navSnap(t){return {screen:t.screen,state:navState(t.state)}}
@@ -279,7 +279,7 @@ function navCur(){const t=activeTab;return t?{tab:t.id,screen:t.screen,state:nav
 function navPush(){const c=navCur();if(!c)return;NAVB.push(c);if(NAVB.length>50)NAVB.shift();NAVF=[];try{history.pushState({hada:++navIdx},"")}catch(e){}}
 function navApply(p){const t=tabs.find(x=>x.id===p.tab)||activeTab;activeTab=t;t.screen=p.screen;t.state=p.state;delete t.state.tedit;render()}
 function openScreen(screen,newTab,extra){
-  /* 236판 */if(screen==="charges"){screen="bookfees";extra=Object.assign({},extra,{sub:"l"})}else if(screen==="bookfees"&&extra&&extra.sel&&!extra.sub){const b=DB.bookfees.find(z=>z.id===extra.sel);if(b)extra=Object.assign({},extra,{sub:BF_SUB[bfCat(b)]})}if(extra&&extra.sel)panelOpen=true; /* 242판: 고른 줄을 들고 가면 오른쪽 창을 엶(창을 닫아 둔 뒤에도) */
+  /* 236판 */if(screen==="charges"){screen="bookfees";extra=Object.assign({},extra,{sub:"l"})}else if(screen==="bookfees"&&extra&&extra.sel&&!extra.sub){const b=DB.bookfees.find(z=>z.id===extra.sel);if(b)extra=Object.assign({},extra,{sub:BF_SUB[bfCat(b)]})}/* 246판 */if(screen==="bookfees"&&extra&&(extra.sub==="e"||extra.sub==="l"))screen="bill";if(extra&&extra.sel)panelOpen=true; /* 242판: 고른 줄을 들고 가면 오른쪽 창을 엶(창을 닫아 둔 뒤에도) */
   if(newTab||!activeTab){if(activeTab)navPush();const t={id:uid("tab"),screen,back:[],fwd:[],state:Object.assign({season:"s1",mode:"edit",zoom:2,filter:{},sel:null},extra||{})};tabs.push(t);if(tabs.length>8){tabs.shift()}activeTab=t}
   else{navPush();const t=activeTab;t.screen=screen;t.state=Object.assign({season:t.state.season||"s1",mode:"edit",zoom:t.state.zoom??2,filter:{},sel:null},extra||{});
 }
@@ -2376,7 +2376,7 @@ Object.assign(LISTS,{
   cols:[["학생",x=>nmStu(x.studentId)],["클래스",x=>nmCls(x.classId)],["청구 기간",x=>x.month],["실제 수업량",x=>x.qty+"회","qty"],["조정",x=>x.adj?WON(x.adj):"—","adj"],["청구 금액",x=>WON(tuAmt(x))],["안내",x=>x.sent?"보냄":"보내기 전","sent"],["결제",x=>x.pay,"pay"],["결제일",x=>D10(x.paidOn),"paidOn"]],
   byMonth:x=>x.month,note:rows=>{const u=rows.filter(x=>x.pay==="미납");return u.length?`미납 ${u.length}건 · ${WON(u.reduce((a,x)=>a+tuAmt(x)-(+x.got||0),0))}`:"미납 없음"},filters:[["미납",x=>x.pay==="미납"],["보내기 전",x=>!x.sent&&x.pay!=="완료"]],
   fields:[["qty","실제 수업량",null,"cnt","이 달에 실제로 한 수업 수"],["adj","청구 금액 조정",null,"won","더하면 +, 빼면 −"],["why","조정 사유",null,"text"],["sent","안내",["보냄","보내기 전"],"bool"],["pay","결제",["미납","완료","과오납"]],["paidOn","결제일",null,"date","결제를 받은 날 — 영수증 원부·현금출납부에 이 날짜로 들어가요"],["how","결제 수단",PAY_HOW],["got","받은 금액",null,"won","일부만 받았으면 그 금액(미납 합계에서 빼요)"]]},
- bookfees:{title:"청구",subs:[["b","교재비"],["m","재료비"],["e","기타경비"],["l","전체 줄"]],coll:"bookfees",unit:"건",ph:"학생 찾기",help:"학생에게 나눠 준 교재 값이에요. 진도교재에서 담은 교재가 한 건으로 묶여요.",noAdd:1,noDel:true,
+ bookfees:{title:"교재비",subs:[["b","교재비"],["m","재료비"]],coll:"bookfees",unit:"건",ph:"학생 찾기",help:"학생에게 나눠 준 교재 값이에요. 진도교재에서 담은 교재가 한 건으로 묶여요.",noAdd:1,noDel:true,
   cols:[["학생",x=>nmStu(x.studentId)],["클래스",x=>nmCls(x.classId)],["교재",x=>x.items],["총 금액",x=>WON(x.total)],["결제 금액",x=>WON(x.paid),"paid"],["미납 금액",x=>x.total-x.paid?WON(x.total-x.paid):"—"],["안내",x=>x.sent?"보냄":"보내기 전","sent"]],
   filters:[["미납",x=>x.total-x.paid>0,true],["보내기 전",x=>!x.sent]],
   fields:[["paid","결제 금액",null,"won"],["paidOn","결제일",null,"date","모두 받은 날 — 비워 두면 오늘로 적어요"],["sent","안내",["보냄","보내기 전"],"bool"]]},
@@ -2750,6 +2750,10 @@ LISTS.bookfees_e=bfList("기타경비",{help:"피복비·모의고사비처럼 �
   head:x=>`${esc(nmStu(x.studentId))} <small class="hsub">${esc(bfItem(x))} · ${esc(x.items||"")}</small>`,
   acts:[{id:"aCls",icon:"users",plain:true,name:"클래스 전체에 추가",n:()=>bfClsList().length,tip:n=>n?"클래스 전체에 추가 — 그 클래스를 수강 중인 학생마다 기타경비를 한 건씩 만들어요":"클래스 전체에 추가 — 수강 중인 학생이 있는 클래스가 없어요",run:()=>bfClsDialog()},...bfActs("기타경비")]});
 LISTS.bookfees_l=Object.assign({},LISTS.charges,{title:"청구",_gc:null});
+/* 246판: 청구 = [기타경비 | 전체 줄], 수강료·지출 = [수강료 | 지출](노션 수강료·지출 페이지의 지출내역 보기) */
+LISTS.bill=Object.assign({},LISTS.bookfees,{title:"청구",subs:[["e","기타경비"],["l","전체 줄"]]});LISTS.bill_e=Object.assign({},LISTS.bookfees_e,{title:"청구"});LISTS.bill_l=LISTS.bookfees_l;
+LISTS.tuition_t=Object.assign({},LISTS.tuition);LISTS.tuition.subs=[["t","수강료"],["c","지출"]];LISTS.tuition.title="수강료·지출";
+LISTS.tuition_c=Object.assign({},LISTS.costs,{title:"지출",help:"비용 가운데 지출만 모아 봐요(노션 수강료·지출 페이지의 지출내역 보기). 매출까지 보려면 자료·데이터 > 비용으로 가요.",rows:()=>DB.costs.filter(x=>x.kind==="지출"),filters:[],blank:()=>Object.assign(LISTS.costs.blank(),{kind:"지출"})});
 /* 기타경비 묶음 만들기. 항목으로 재료비를 고르면 재료비 탭의 묶음이 된다(한 묶음 = 한 갈래) */
 function bfNew(e,item,name,amt){return Object.assign({id:uid("bf"),studentId:e.studentId,classId:e.classId,items:name||item,total:amt,paid:0,sent:false,month:thisM(),state:"draft"},item==="재료비"?{cat:"재료비"}:{cat:"기타경비",etcItem:item})}
 const bfClsList=()=>DB.classes.filter(c=>!c.del&&liveCls(c)&&liveEn(c.id).length);
@@ -2761,7 +2765,7 @@ function bfForm(title,help,whoLabel,whoItems,okLabel,done){let who="",item="피�
     HF.text(m.querySelector("#bfN"),{label:"내용",placeholder:"예: 체육복",onChange:v=>{name=v.trim()}});
     HF.num(m.querySelector("#bfA"),{label:"금액",value:"",unit:"원",onChange:v=>{amt=+String(v).replace(/,/g,"")||0;chk()}});
     m.querySelector("#bfC").onclick=close;o.onclick=()=>{if(!(who&&amt>0))return;close();done(who,item,name,amt)}})}
-function bfShow(item,id){const st=activeTab&&activeTab.screen==="bookfees"?activeTab.state:null;if(!st)return;st.sub=item==="재료비"?"m":"e";st.lf={};st.cf={};st.sort=null;st.q="";st.sel=id||null}
+function bfShow(item,id){const scr=item==="재료비"?"bookfees":"bill",sub=item==="재료비"?"m":"e";if(!activeTab||activeTab.screen!==scr){openScreen(scr,false,{sub,sel:id||null,lf:{},cf:{},q:""});return}const st=activeTab.state;st.sub=sub;st.lf={};st.cf={};st.sort=null;st.q="";st.sel=id||null}
 function bfAddDialog(){bfForm("기타경비 추가","학생 한 명에게 한 번 받는 기타경비를 한 건 만들어요. 재료비를 고르면 [재료비] 탭에 들어가요.","학생(등록)",liveEnr().map(e=>({v:e.id,t:nmStu(e.studentId),sub:nmCls(e.classId)})),"추가",(eid,item,name,amt)=>{const e=enr(eid);if(!e)return;
   const n=bfNew(e,item,name,amt);DB.bookfees.unshift(n);bfShow(item,n.id);commit();toast(`${item} 1건을 추가했어요(작성 중)${item==="재료비"?" — [재료비] 탭에 들어갔어요":""}`)})}
 function bfClsDialog(){bfForm("클래스 전체에 추가","고른 클래스를 지금 수강 중인 학생마다 같은 기타경비를 한 건씩 만들어요.","클래스",bfClsList().map(c=>({v:c.id,t:c.name,sub:liveEn(c.id).length+"명"})),"다음",(cid,item,name,amt)=>{const es=liveEn(cid);if(!es.length)return toast("수강 중인 학생이 없어요");
