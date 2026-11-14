@@ -412,10 +412,10 @@ addEventListener("resize",()=>{clearTimeout(window._fbT);window._fbT=setTimeout(
 /* 255판: 표(오른쪽 창 밖) 스크롤 위치도 다시 그리기 전후로 그대로 — 같은 화면·같은 탭일 때(어사이드 점검 9곳) */
 function viewKey(){const t=activeTab;return t?[t.id,t.screen,t.state&&t.state.sub,t.state&&t.state.view,t.state&&t.state.ltab===undefined?"":""].join("|"):""}
 function viewScrollKeep(){const v=document.getElementById("view");if(!v)return null;const out=[];const cnt={};[v,...v.querySelectorAll("*")].forEach(e=>{if(e.closest(".panel"))return;if(!(e.scrollTop>0||e.scrollLeft>0))return;const c=(e.id?"#"+e.id:String(e.className||e.tagName).split(" ")[0]);cnt[c]=(cnt[c]||0)+1;out.push([c,cnt[c],e.scrollTop,e.scrollLeft])});return {k:viewKey(),out}}
-function viewScrollBack(o){if(!o||o.k!==viewKey())return;const v=document.getElementById("view");if(!v)return;const cnt={};const els=[v,...v.querySelectorAll("*")].filter(e=>!e.closest(".panel"));o.out.forEach(([c,i,t,l])=>{let n=0;const e=els.find(e=>(e.id?"#"+e.id:String(e.className||e.tagName).split(" ")[0])===c&&++n===i);if(!e)return;if(t&&Math.abs(e.scrollTop-t)>1)e.scrollTop=t;if(l&&Math.abs(e.scrollLeft-l)>1)e.scrollLeft=l})}
+function viewScrollBack(o,late){/* 269판: 두 번째(다음 프레임) 복원은 그 사이 코드·사람이 옮긴 스크롤을 덮지 않음 */if(!o||o.k!==viewKey())return;const v=document.getElementById("view");if(!v)return;const cnt={};const els=[v,...v.querySelectorAll("*")].filter(e=>!e.closest(".panel"));o.out.forEach(([c,i,t,l])=>{let n=0;const e=els.find(e=>(e.id?"#"+e.id:String(e.className||e.tagName).split(" ")[0])===c&&++n===i);if(!e)return;if(late&&e._vsAt&&(Math.abs(e.scrollTop-e._vsAt[0])>1||Math.abs(e.scrollLeft-e._vsAt[1])>1))return;if(t&&Math.abs(e.scrollTop-t)>1)e.scrollTop=t;if(l&&Math.abs(e.scrollLeft-l)>1)e.scrollLeft=l;e._vsAt=[e.scrollTop,e.scrollLeft]})}
 function render(){const KS=scrollKeep(),VS=viewScrollKeep();panelSync();queueMicrotask(modeBar);setTimeout(fitBars,0);{const vw=document.getElementById("view");if(vw)vw.classList.toggle("tedit-on",!!(activeTab&&activeTab.screen==="students"&&activeTab.state.tedit))}setTimeout(saveTabs,0);applyDock();setTimeout(syncHead,0);const sd=document.getElementById("side");const wm=WMODE();document.body.dataset.w=wm;
   if(wm==="tabv"){sd.hidden=!drawerOpen;sd.classList.toggle("drawer",true)}else{sd.hidden=!sideOpen;sd.classList.remove("drawer");drawerOpen=false}renderSide();renderTabs();const v=document.getElementById("view");const t=activeTab;
-  if(t.screen==="timetable")renderTimetable(v,t);else if(t.screen==="admin")renderAdmin(v);else if(t.screen==="academy")renderAcademy(v);else if(t.screen==="today")renderToday(v,t);else renderList(v,t);panelAnim();scrollBack(KS);viewScrollBack(VS);requestAnimationFrame(()=>viewScrollBack(VS))}
+  if(t.screen==="timetable")renderTimetable(v,t);else if(t.screen==="admin")renderAdmin(v);else if(t.screen==="academy")renderAcademy(v);else if(t.screen==="today")renderToday(v,t);else renderList(v,t);panelAnim();scrollBack(KS);viewScrollBack(VS);requestAnimationFrame(()=>viewScrollBack(VS,1))}
 // 오른쪽 창 움직임(261112 대표): 새로 열릴 때 오른쪽에서 밀려 들어옴, 고정·띄우기 바뀔 때 살짝, 닫을 때 오른쪽으로 빠짐. 다시 그릴 때마다는 안 움직임
 const RMO=()=>window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;let pPrev={open:false,dock:false};
 function panelAnim(){const pn=document.querySelector(".body>.panel");const now={open:!!pn,dock:!!dockOn};if(pn&&!RMO()){if(!pPrev.open)pn.classList.add("p-in");else if(pPrev.dock!==now.dock)pn.classList.add("p-sw")}pPrev=now}
@@ -3294,7 +3294,10 @@ const tuMon=st=>DB.tuition.filter(x=>!x.del&&x.month===tMon(st));
 LISTS.tuition.todo=st=>{const m=tuMon(st);return [
   {k:"send",name:"보내기 전",why:"안내문을 아직 보내지 않은 수강료예요. 위 [안내 전송]으로 한꺼번에 보내요.",rows:m.filter(x=>!x.sent&&x.pay!=="완료"),lab:x=>`${esc(nmStu(x.studentId))} <small class="hint">${esc(nmCls(x.classId))} · ${WON(tuAmt(x))}</small>`},
   {k:"due",name:"미납",why:"안내는 나갔는데 아직 받지 못한 수강료예요.",rows:m.filter(x=>x.pay==="미납"&&x.sent),lab:x=>`${esc(nmStu(x.studentId))} <small class="hint">${esc(nmCls(x.classId))} · ${WON(tuAmt(x)-(+x.got||0))}</small>`},
-  {k:"over",name:"과오납",why:"청구보다 많이 받은 수강료예요. 돌려줄지 다음 달에 뺄지 정해요.",rows:m.filter(x=>x.pay==="과오납"),lab:x=>`${esc(nmStu(x.studentId))} <small class="hint">${esc(nmCls(x.classId))}</small>`}]};
+  {k:"over",name:"과오납",why:"청구보다 많이 받은 수강료예요. 돌려줄지 다음 달에 뺄지 정해요.",rows:m.filter(x=>x.pay==="과오납"),lab:x=>`${esc(nmStu(x.studentId))} <small class="hint">${esc(nmCls(x.classId))}</small>`},
+  /* 269판(매뉴얼 대조): 매뉴얼이 직접 적은 점검 */
+  {k:"zero",name:"0원 청구",why:"청구 금액이 0원인 수강료예요. 수업량·조정 금액이 맞는지 봐요.",rows:m.filter(x=>!tuAmt(x)),lab:x=>`${esc(nmStu(x.studentId))} <small class="hint">${esc(nmCls(x.classId))}</small>`},
+  {k:"gen",name:"생성 빠진 클래스",why:"수강 중인 학생이 있는데 이 달 수강료가 하나도 없는 클래스예요. 위 [월 수강료 생성]으로 만들어요.",rows:DB.classes.filter(c=>!c.del&&liveCls(c)&&liveEn(c.id).length&&!m.some(x=>x.classId===c.id)),lab:c=>`<i class="cdot" style="background:${clsHex(c)}"></i>${esc(c.name)}`}]};
 LISTS.tuition.todoSum=st=>{const m=tuMon(st);const all=m.reduce((a,x)=>a+tuAmt(x),0),got=m.filter(x=>x.pay==="완료").reduce((a,x)=>a+tuAmt(x),0);return [[tMon(st)+" 청구",WON(all)],["받은 금액",WON(got)],["미납률",all?Math.round((all-got)/all*100)+"%":"—",all-got>0?"w":""]]};
 const bfTodo=cat=>st=>{const r=DB.bookfees.filter(b=>!b.del&&bfCat(b)===cat);return [
   {k:"send",name:"보내기 전",why:`안내문을 아직 보내지 않은 ${cat}예요. 위 [안내 전송]으로 보내요.`,rows:r.filter(b=>!b.sent),lab:b=>`${esc(nmStu(b.studentId))} <small class="hint">${esc(b.items||"")} · ${WON(b.total)}</small>`},
@@ -3309,13 +3312,15 @@ LISTS.classes.todo=()=>{const L=DB.classes.filter(c=>!c.del&&liveCls(c));return 
   {k:"tt",name:"시간표 없음",why:"이번 시즌 시간표가 없는 클래스예요. 수업이 만들어지지 않아요 — 창 [시간표]에서 넣어요.",rows:L.filter(c=>!DB.blocks.some(b=>b.classId===c.id&&b.seasonId===curSeason())),lab:clsLab},
   {k:"stu",name:"학생 없음",why:"수강 중인 학생이 없는 클래스예요. 학생 창 [등록]에서 넣거나, 안 쓰면 종강일을 넣어요.",rows:L.filter(c=>!liveEn(c.id).length),lab:clsLab},
   {k:"end",name:"종강 임박",why:"2주 안에 끝나는 클래스예요. 이어서 열 클래스·수료 보고서를 챙겨요.",rows:L.filter(c=>dIn(c.close,14)),lab:c=>`${clsLab(c)} <small class="hint">${D10(c.close)} 종강</small>`},
-  {k:"pg",name:"진행 중 교재 없음",why:"지금 쓰는 교재(진도관리 진행 중)가 없는 클래스예요. 창 [교재]에서 시작해요.",rows:L.filter(c=>liveEn(c.id).length&&!DB.progress.some(p=>!p.del&&p.classId===c.id&&p.stat==="진행 중")),lab:clsLab}]};
+  {k:"pg",name:"진행 중 교재 없음",why:"지금 쓰는 교재(진도관리 진행 중)가 없는 클래스예요. 창 [교재]에서 시작해요.",rows:L.filter(c=>liveEn(c.id).length&&!DB.progress.some(p=>!p.del&&p.classId===c.id&&p.stat==="진행 중")),lab:clsLab},
+  {k:"fee",name:"수강료 빈칸",why:"수강료가 비어 있으면 [월 수강료 생성]이 멈춰요. 창 [정보]에서 넣어요.",rows:L.filter(c=>!+c.fee),lab:clsLab}]};
 LISTS.classes.todoSum=()=>{const L=DB.classes.filter(c=>!c.del&&liveCls(c));return [["운영 중 클래스",L.length+"개"],["수강 학생",new Set(DB.enrolls.filter(e=>!e.ended&&enStat(e)==="on").map(e=>e.studentId)).size+"명"]]};
 const enLab=e=>`${esc(nmStu(e.studentId))} <small class="hint"><i class="cdot" style="background:${clsHex(cls(e.classId)||{})}"></i>${esc(nmCls(e.classId))}</small>`;
 LISTS.enrolls.todo=()=>{const L=DB.enrolls.filter(e=>!e.del&&!e.ended&&enStat(e)!=="end");return [
   {k:"tt",name:"시간표 없음",why:"이 등록이 들어간 시간표가 없어요. 수업·출석이 생기지 않아요 — 창 [시간표]에서 체크해요.",rows:L.filter(e=>!DB.blocks.some(b=>b.regs.includes(e.id)&&b.seasonId===curSeason())),lab:enLab},
   {k:"pre",name:"등록 전",why:"등록일이 아직 안 된 등록이에요. 시작하는 날 시간표·교재가 준비됐는지 봐요.",rows:L.filter(e=>enStat(e)==="pre"),lab:e=>`${enLab(e)} <small class="hint">${D10(e.start)} 시작</small>`},
-  {k:"end",name:"종료 예정",why:"한 달 안에 끝나는 등록이에요. 연장할지 물어봐요.",rows:L.filter(e=>dIn(e.end,30)),lab:e=>`${enLab(e)} <small class="hint">${D10(e.end)} 종료</small>`}]};
+  {k:"end",name:"종료 예정",why:"한 달 안에 끝나는 등록이에요. 연장할지 물어봐요.",rows:L.filter(e=>dIn(e.end,30)),lab:e=>`${enLab(e)} <small class="hint">${D10(e.end)} 종료</small>`},
+  {k:"past",name:"종료일 지남",why:"종료일이 지났는데 아직 등록 중이에요. 종료 처리하거나 종료일을 고쳐요.",rows:L.filter(e=>e.end&&e.end<TODAY),lab:e=>`${enLab(e)} <small class="hint">${D10(e.end)} 종료</small>`}]};
 LISTS.enrolls.todoSum=()=>{const m=thisM().replace(".","-");return [["등록 중",DB.enrolls.filter(e=>!e.del&&!e.ended&&enStat(e)==="on").length+"건"],["이번 달 새 등록",DB.enrolls.filter(e=>!e.del&&String(e.start||"").startsWith(m)).length+"건"],["이번 달 종료",DB.enrolls.filter(e=>!e.del&&String(e.end||"").startsWith(m)).length+"건"]]};
 const pgLab=p=>`${esc((DB.books.find(b=>b.id===p.bookId)||{}).name||"교재")} <small class="hint"><i class="cdot" style="background:${clsHex(cls(p.classId)||{})}"></i>${esc(nmCls(p.classId))}${p.studentId?" · "+esc(nmStu(p.studentId)):""}</small>`;
 LISTS.progress.todo=()=>{const L=DB.progress.filter(p=>!p.del);const live=p=>!DB.progress.some(q=>!q.del&&q!==p&&q.classId===p.classId&&(q.studentId||"")===(p.studentId||"")&&q.stat==="진행 중");return [
@@ -3331,7 +3336,7 @@ LISTS.events.todo=()=>{const L=DB.events.filter(e=>!e.del);const end=e=>e.end||e
 LISTS.events.todoSum=()=>{const m=thisM().replace(".","-");const L=DB.events.filter(e=>!e.del&&String(e.start||"").startsWith(m));return [["이번 달 일정",L.length+"건"],["휴원",L.filter(e=>/휴원/.test(e.kind||"")).length+"일"]]};
 LISTS.letters.todo=st=>{const L=DB.letters.filter(x=>!x.del&&x.month===tMon(st));const lab=x=>`<i class="cdot" style="background:${clsHex(cls(x.classId)||{})}"></i>${esc(nmCls(x.classId))} <small class="hint">${esc(x.month)}</small>`;return [
   {k:"send",name:"보내기 전",why:"아직 보내지 않은 가정통신문이에요.",rows:L.filter(x=>!x.sent),lab},
-  {k:"note",name:"전달사항 빈칸",why:"알림톡 첫머리에 나갈 전달사항이 비어 있어요(50자 안쪽).",rows:L.filter(x=>!x.note),lab}]};
+  {k:"note",name:"전달사항 빈칸",why:"꼭 채울 칸은 아니에요 — 비우면 알림톡 맨 아래에 '없음'으로 나가요. 알릴 게 있으면 50자 안쪽으로 적어요.",rows:L.filter(x=>!x.note&&!x.sent),lab}]};
 LISTS.letters.todoSum=st=>{const L=DB.letters.filter(x=>!x.del&&x.month===tMon(st));return [[tMon(st)+" 가정통신문",L.length+"건"],["보냄",L.filter(x=>x.sent).length+"건"]]};
 LISTS.teachers.todo=()=>{const L=DB.teachers.filter(x=>!x.del);return [
   {k:"cls",name:"맡은 클래스 없음",why:"이번 시즌에 맡은 클래스가 없는 선생님이에요.",rows:L.filter(t=>!DB.classes.some(c=>!c.del&&liveCls(c)&&c.teacherId===t.id)),lab:nm1},
@@ -3347,16 +3352,19 @@ LISTS.schools.todo=()=>{const L=DB.schools.filter(x=>!x.del);return [
 LISTS.schools.todoSum=()=>[["학교",DB.schools.filter(x=>!x.del).length+"곳"],["학교 코드 있음",DB.schools.filter(x=>!x.del&&x.code).length+"곳"]];
 LISTS.schools_g.todo=()=>[];LISTS.schools_g.todoSum=()=>[["켜진 학년",DB.glevels.filter(g=>g.on!==false).length+"개"],["학생 있는 학년",DB.glevels.filter(g=>DB.students.some(z=>!z.del&&z.grade===g.name)).length+"개"]];
 LISTS.exams.todo=()=>{const L=DB.exams.filter(x=>!x.del);return [
+  {k:"date",name:"시험일 빈칸",why:"시험일은 자동으로 계산되지 않아요. 넣어야 다가오는 시험·D-day에 보여요.",rows:L.filter(x=>!x.date),lab:nm1},
   {k:"units",name:"범위 빈칸",why:"다가오는 시험인데 시험 범위가 비어 있어요.",rows:L.filter(x=>x.date>=TODAY&&!x.units),lab:x=>`${nm1(x)} <small class="hint">${esc(x.school||"")} ${esc(x.grade||"")} · ${D10(x.date)}</small>`},
   {k:"score",name:"점수 넣을 시험",why:"지난 시험인데 점수를 넣지 않은 학생이 있어요. 창 [성적]에서 넣어요.",rows:L.filter(x=>x.date&&x.date<TODAY&&exTodo(x).length),lab:x=>`${nm1(x)} <small class="hint">${exTodo(x).length}명 남음</small>`}]};
 LISTS.exams.todoSum=()=>{const up=DB.exams.filter(x=>!x.del&&x.date>=TODAY).sort((a,b)=>a.date<b.date?-1:1).slice(0,3);return up.length?up.map(x=>[x.name+" "+(x.school||""),"D-"+Math.round((new Date(x.date)-new Date(TODAY))/864e5)]):[["다가오는 시험","없음"]]};
 LISTS.subjects.todo=()=>{const L=DB.subjects.filter(x=>!x.del);return [
   {k:"book",name:"교재 없는 과목",why:"라이브러리에 이 과목 교재가 없어요.",rows:L.filter(x=>!DB.books.some(b=>!b.del&&b.subjectId===x.id)),lab:nm1},
-  {k:"grade",name:"학년 빈칸",why:"학년을 정하면 리포트·시험에서 맞는 과목만 보여요.",rows:L.filter(x=>!(x.grades||[]).length),lab:nm1}]};
+  {k:"grade",name:"학년 빈칸",why:"학년을 정하면 리포트·시험에서 맞는 과목만 보여요.",rows:L.filter(x=>!(x.grades||[]).length),lab:nm1},
+  {k:"area",name:"영역 빈칸",why:"시험정보와 성적은 영역으로 묶여요. 창 [정보]에서 영역을 골라요.",rows:L.filter(x=>!x.area),lab:nm1}]};
 LISTS.subjects.todoSum=()=>DB.areas.filter(a=>!a.del).map(a=>[a.name,DB.subjects.filter(z=>!z.del&&z.area===a.name).length+"개"]);
 LISTS.books.todo=()=>{const L=DB.books.filter(x=>!x.del&&x.using!==false);return [
   {k:"price",name:"가격 없음",why:"가격이 없으면 교재비·재료비를 담을 수 없어요.",rows:L.filter(x=>!+x.price),lab:nm1},
   {k:"unit",name:"단원 없음",why:"단원이 있어야 학습기록에서 범위를 고를 수 있어요.",rows:L.filter(x=>x.kind!=="프로그램"&&!(x.units||[]).length),lab:nm1},
+  {k:"total",name:"전체 분량 빈칸",why:"진행도는 범위 끝 ÷ 전체 분량으로 계산해요. 비어 있으면 진행도·수료할 교재가 안 나와요.",rows:L.filter(x=>!+x.total),lab:nm1},
   {k:"subj",name:"과목 없음",rows:L.filter(x=>!x.subjectId),lab:nm1}]};
 LISTS.books.todoSum=()=>[["쓰는 교재",DB.books.filter(x=>!x.del&&x.using!==false).length+"권"],["학생이 쓰는 교재",DB.books.filter(x=>!x.del&&bookUsers(x).length).length+"권"]];
 LISTS.costs.todo=()=>{const L=DB.costs.filter(x=>!x.del);return [
@@ -3364,7 +3372,7 @@ LISTS.costs.todo=()=>{const L=DB.costs.filter(x=>!x.del);return [
 LISTS.costs.todoSum=st=>{const L=DB.costs.filter(x=>!x.del&&mKey(x.date)===tMon(st)&&x.kind==="지출");return [[tMon(st)+" 지출",WON(L.reduce((a,x)=>a+x.amount,0))],["건수",L.length+"건"]]};
 LISTS.alims.todo=()=>{const L=DB.alims.filter(x=>!x.del);return [
   {k:"tpl",name:"켜졌는데 템플릿 없음",why:"켜져 있어도 템플릿이 없으면 나가지 않아요.",rows:L.filter(x=>x.on&&!x.tpl),lab:nm1},
-  {k:"off",name:"꺼져 있음",rows:L.filter(x=>!x.on),lab:nm1}]};
+  {k:"off",name:"꺼져 있음",why:"꺼지면 ⚠️가 나는 행(수업·일정 안내)만 보여요. 시간표 변경·등록·클래스 변경 안내 등은 꺼 둔 채가 정상이에요.",rows:L.filter(x=>!x.on&&/^(수업 일정|월간 일정|일정) 안내$/.test(x.name||"")),lab:nm1}]};
 LISTS.alims.todoSum=()=>[["켜진 알림톡",DB.alims.filter(x=>!x.del&&x.on).length+"종"]];
 LISTS.seasons.todo=()=>[];LISTS.seasons.todoSum=()=>{const c=seasonOf(curSeason())||{};const left=c.end?Math.max(0,Math.round((new Date(c.end)-new Date(TODAY))/864e5)):null;return [["지금 시즌",esc(c.name||"—")],["남은 날",left==null?"—":left+"일"],["이 시즌 시간표",DB.blocks.filter(b=>b.seasonId===curSeason()).length+"개"]]};
 LISTS.profit.todoSum=st=>{const pr=LISTS.profit.rows?LISTS.profit.rows():[];const cur=pr.find(r=>r.m===tMon(st))||pr[0]||{};return [[(cur.m||"")+" 손익",cur.any?WON(cur.net):"자료 없음",cur.net<0?"w":""]]};LISTS.profit.todo=()=>[];
