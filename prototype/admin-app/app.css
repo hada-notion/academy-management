@@ -2060,3 +2060,18 @@ table.stt.gt.grid{width:auto}
 /* 210판 보완: 단원 줄의 진도 단위 글(P. · 쪽 · UNIT) */
 .unrow .unu{flex:none;font-size:var(--text-label);color:var(--muted);white-space:nowrap}
 .unrow .unp{width:56px}
+
+/* ═════ 211판 ═════ 단원 줄: 평소 = 글 한 줄(이름 … 시작 + 단위, 번호 없음), 올리면 뒤에 [편집][x], 편집 줄만 입력칸 */
+.unrows{gap:0}
+.unrow{min-height:36px;padding:0 var(--space-2);border-radius:var(--radius-sm);gap:var(--space-2)}
+.unrow:not(.ed):hover{background:var(--brand-tint,#FBF8F4)}
+.unrow .unt{flex:1;min-width:0;font-size:var(--text-small);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.unrow .unv{flex:none;font-size:var(--text-label);color:var(--muted);font-variant-numeric:tabular-nums}
+.unrow .unx{display:inline-flex;flex:none;opacity:0}
+.unrow:hover .unx,.unrow:focus-within .unx{opacity:1}
+.unrow.ed{padding:var(--space-1) 0;min-height:40px}
+@media (hover:none){.unrow .unx{opacity:1}}
+/* 211판: 카드 끝 [+] 칸을 다른 카드와 같은 상자로(단추 기본 여백·가운데 맞춤 때문에 아래로 밀리던 것) */
+.bkcard.bkadd{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;width:100%;margin:0;padding:var(--space-2);border:1px solid transparent;box-sizing:border-box;align-self:start;line-height:inherit}
+.bkcard.bkadd .bkcov{width:100%;box-sizing:border-box}
+.bkgrid>.bkcard{box-sizing:border-box}
