@@ -1927,3 +1927,9 @@ table.gt.grid th:nth-child(n+3):nth-child(-n+33),table.gt.grid td:nth-child(n+3)
 table.gt.grid td:nth-child(n+3):nth-child(-n+33){font-size:var(--text-body);border-left:1px solid var(--line2)}
 table.gt.grid th:first-child,table.gt.grid td:first-child{position:sticky;left:0;z-index:2;background:var(--surface);box-shadow:1px 0 0 var(--line)}
 table.gt.grid tr.sel td:first-child,table.gt.grid tr:hover td:first-child{background:var(--brand-tint,#FBF8F4)}
+
+/* ═════ 201판 ═════ 창 맨 위 뒤로가기([‹ 할 일]): 높이 32 단추(테두리 · 글 13/700 · 아이콘 16) — 작은 회색 글이라 안 보이던 것 */
+.spback{height:32px;padding:0 var(--space-3) 0 var(--space-2);margin:0 0 var(--space-3);border:1px solid var(--line);background:var(--surface);font-size:var(--text-label);font-weight:700;color:var(--ink);border-radius:var(--radius-md);gap:var(--space-1)}
+.spback{flex:none;align-self:flex-start;box-sizing:border-box;margin-top:var(--space-2)}
+.spback svg.i{width:16px;height:16px}
+.spback:hover{background:var(--brand-soft);border-color:var(--brand)}
