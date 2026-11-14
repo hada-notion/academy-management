@@ -14,8 +14,7 @@ main{padding:8px 24px 80px;max-width:1500px}
 .mp-cell{display:flex;flex-direction:column;gap:6px}.mp-cell>.lab{font-size:12px;font-weight:700;color:var(--text-subtle)}
 /* 모듈 페이지 안의 창 = 앱 오른쪽 창과 같은 폭, 화면에 붙지 않고 놓임 */
 .mp-pn{position:static!important;width:360px;max-height:none;height:auto;border:1px solid var(--line2,#E5DED4);border-radius:var(--radius-lg,14px);background:var(--surface,#fff);box-shadow:0 1px 4px rgba(25,31,40,.06);overflow:visible;display:flex;flex-direction:column;padding:0 var(--space-4,16px)!important;overflow:visible!important}
-.mp-pn .actions{position:static;margin:12px -16px 0;padding:12px 16px;border-top:1px solid var(--divider,#EEE7DD)}
-.mp-pn>.phead:last-child{margin-bottom:0;border-bottom:0;border-radius:var(--radius-lg,14px)}
+/* 아래 단추줄 = 앱 그대로(붙는 위치만 창 안 흐름으로) */.mp-pn>.actions{position:static;border-radius:0 0 var(--radius-lg) var(--radius-lg)}
 /* 칸 간격 = 앱 #lp 와 같게(app.css #lp .hfgrid) */.mp-pn .hfgrid{display:flex;flex-direction:column;gap:12px}
 .mp-skel{width:360px;border:2px dashed #CFC2B2;border-radius:14px;background:#fff;font-size:13px}
 .mp-skel>div{padding:10px 14px;border-bottom:1px dashed #E2D8CC}.mp-skel>div:last-child{border-bottom:0}.mp-skel b{color:var(--brand-deep)}.mp-skel small{display:block;color:var(--text-subtle)}
@@ -58,7 +57,37 @@ main{padding:8px 24px 80px;max-width:1500px}
 
 <section class="mp-sec" id="s11"><h2>전체 예시 — 정의 하나로 그린 창</h2><p class="d">같은 함수(PANEL.render)로 그린 클래스 · 학생 · 수업 창. 지금 앱은 이 셋이 서로 다른 코드라 모양이 조금씩 달라요(모음표 참고).</p><div class="mp-row" id="h11"></div></section>
 </main>
+<div id="modalRoot"></div>
 <script>
+/* 앱과 같은 반응(시제품 앱 optAdd·optEdit·modal·toast를 모듈 페이지용으로 그대로 옮김) — 새로 생성 · ⋯ 이름·색·삭제 */
+const NC_COLORS = [["default", "기본"], ["gray", "회색"], ["brown", "갈색"], ["orange", "주황"], ["yellow", "노랑"], ["green", "초록"], ["blue", "파랑"], ["purple", "보라"], ["pink", "분홍"], ["red", "빨강"]];
+function toast(msg) { document.querySelectorAll(".toast").forEach(x => x.remove()); const t = document.createElement("div"); t.className = "toast"; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2600) }
+function modal(html, bind) { const r = document.getElementById("modalRoot"); r.innerHTML = `<div class="modal"><div class="dlg">${html}</div></div>`; const m = r.firstChild; m.onclick = e => { if (e.target === m) close() }; const close = () => r.innerHTML = ""; bind(m, close); return close }
+const IC2 = n => ({ trash: PANEL.IC.trash, check: PANEL.IC.check }[n] || "");
+/* 옵션 칸 하나: nm = 옵션 이름(출판사·과목), opts = [{t, c}], multi = 여러 개 */
+function demoOpt(h, o) {
+  const st = { v: o.value };
+  const draw = () => {
+    const items = o.opts.map(x => ({ v: x.t, t: x.t, cls: "nc-" + x.c }));
+    const add = t => { t = String(t || "").trim().slice(0, 30); if (!t) return; if (!o.opts.some(x => x.t === t)) o.opts.push({ t, c: "default" }); st.v = o.multi ? [...new Set([...(st.v || []), t])] : t; draw(); toast(o.multi ? `${o.nm} '${t}'을(를) 생성했어요` : `${o.nm} '${t}'을(를) 생성했어요 — 다른 줄에서도 고를 수 있어요`) };
+    const edit = v => { const x = o.opts.find(z => z.t === v); if (!x) return; let col = x.c; const used = (o.multi ? (st.v || []).includes(v) : st.v === v) ? 1 : 0;
+      modal(`<h2>${o.nm} 옵션${PANEL.help("이름을 바꾸면 이 옵션을 쓰는 줄이 모두 같이 바뀌어요. 삭제하면 쓰는 줄에서 이 값이 비워져요. 노션 선택 속성의 옵션 고치기와 같아요.")}</h2>
+  <div class="field"><span class="lbl">이름</span><input class="inp" id="oeN" value="${PANEL.esc(v)}" maxlength="30" style="width:100%"></div>
+  <div class="field"><span class="lbl">색</span><div class="oecols">${NC_COLORS.map(([c, t]) => `<button type="button" class="oec ${c === col ? "on" : ""}" data-oec="${c}" title="${t}"><span class="spill nc-${c}">${t}</span></button>`).join("")}</div></div>
+  <div class="hint">쓰는 줄 ${used}개</div>
+  <div class="actions"><button class="btn danger" id="oeDel">${IC2("trash")}삭제</button><span class="sp"></span><button class="btn" id="oeC">취소</button><button class="btn pri" id="oeOk">${IC2("check")}적용</button></div>`, (m, close) => {
+        m.querySelectorAll("[data-oec]").forEach(b => b.onclick = () => { col = b.dataset.oec; m.querySelectorAll(".oec").forEach(z => z.classList.toggle("on", z === b)) });
+        m.querySelector("#oeC").onclick = close;
+        m.querySelector("#oeOk").onclick = () => { const n = m.querySelector("#oeN").value.trim().slice(0, 30); if (!n) { toast("이름을 적어 주세요"); return } if (n !== v && o.opts.some(z => z.t === n)) { toast(`'${n}'은(는) 이미 있어요`); return }
+          x.t = n; x.c = col; if (n !== v) st.v = o.multi ? (st.v || []).map(z => z === v ? n : z) : (st.v === v ? n : st.v); close(); draw(); toast(n !== v ? `${o.nm} '${v}' → '${n}' — 쓰는 줄 ${used}개가 같이 바뀌었어요(작성 중)` : `${o.nm} '${v}' 색을 바꿨어요`) };
+        m.querySelector("#oeDel").onclick = () => { close(); o.opts.splice(o.opts.indexOf(x), 1); st.v = o.multi ? (st.v || []).filter(z => z !== v) : (st.v === v ? "" : st.v); draw(); toast(`${o.nm} '${v}'을(를) 삭제했어요${used ? ` — ${used}줄에서 비웠어요(작성 중, 되돌리기로 되살려요)` : ""}`) };
+        setTimeout(() => m.querySelector("#oeN").select(), 0) }) };
+    const base = { label: o.label, help: o.help, items, onAdd: add, onEdit: x => edit(typeof x === "string" ? x : x.v), onChange: v => st.v = v };
+    o.multi ? HF.multi(h, Object.assign(base, { value: st.v || [] })) : HF.select(h, Object.assign(base, { value: st.v || null }));
+  };
+  draw();
+}
+
 const { head, tabs, box, rows, foot, todo, render, mountFields, pill } = PANEL;
 const cell = (lab, html, w) => `<div class="mp-cell"><span class="lab">${lab}</span><div class="panel mp-pn" style="${w ? "width:" + w + "px" : ""}">${html}</div></div>`;
 const put = (id, html) => document.getElementById(id).innerHTML = html;
@@ -100,23 +129,15 @@ mountFields(document.querySelector("#h4 .mp-pn"), F4);
     ["날짜+시각", h => HF.datetime(h, { label: "날짜+시각", value: "2026-11-11T14:30" })],
     ["색", h => HF.color(h, { label: "색", value: "#E88FB5" })],
     ["고르기 — 항목이 많을 때", h => HF.select(h, { label: "학교(고르기, 항목 8개 넘으면 목록 위에 찾기)", value: "하다중", items: sch })],
-    ["고르기 — 새로 적기", h => HF.select(h, { label: "출판사(찾거나 새로 적기)", value: "", items: [{ v: "좋은책신사고", t: "좋은책신사고" }], add: true })],
-    ["여러 개 고르기", h => { h.innerHTML = `<div class="hf"><span class="hf-lbl">과목(여러 개 고르기)</span><div class="hf-box hf-btn hfm has" tabindex="0"><span class="hf-val"><span class="hfm-c">수학</span><span class="hfm-c">영어</span></span></div><span class="hf-msg">지금은 앱(hfMulti)에만 있어요 — field.js로 옮길 대상</span></div>` }],
-    ["찾기 칸(돋보기)", h => { h.innerHTML = `<div class="hf"><span class="hf-lbl">찾기 칸(돋보기)</span><span class="searchbox">${PANEL.IC.search}<input class="inp" placeholder="학교 이름 두 글자 이상" autocomplete="off"></span><span class="hf-msg">표 위 찾기 · 새 학교 · 교재 찾기에서 써요</span></div>` }],
+    ["고르기 — 새로 적기", h => demoOpt(h, { nm: "출판사", label: "출판사(찾거나 새로 적기)", value: "", opts: [["비상교육","red"],["천재교과서","green"],["천재교육","green"],["동아출판","blue"],["미래엔","purple"],["NE능률","pink"],["YBM","yellow"],["좋은책신사고","pink"],["개념원리","purple"]].map(([t, c]) => ({ t, c })) })],
+    ["여러 개 고르기", h => demoOpt(h, { nm: "과목", multi: true, label: "과목(여러 개 고르기)", value: ["수학", "영어"], help: "눌러 보세요 — 체크 목록이 펼쳐져요", opts: [["국어","red"],["수학","blue"],["영어","purple"],["과학","green"],["사회","orange"]].map(([t, c]) => ({ t, c })) })],
+    ["찾기 칸(돋보기)", h => HF.search(h, { label: "찾기 칸(돋보기)", placeholder: "학교 이름 두 글자 이상", help: "'하다'를 적어 보세요 — 아래에 결과 줄", find: k => ["초등학교 · 경기도 김포시 운양동", "중학교 · 경기도 김포시 장기동 · 이미 있음", "고등학교 · 경기도 김포시 구래동"].map((sub, i) => ({ t: k + "초중고"[i], sub })) })],
+    ["켜기/끄기", h => HF.sw(h, { label: "알림톡 보내기", value: true })],
   ];
   const el = document.createElement("div"); el.className = "mp-cell";
   el.innerHTML = `<span class="lab">더 있는 칸</span><div class="panel mp-pn"><div class="box"><h3>칸 종류 2<span class="sp"></span></h3><div class="hfgrid">${K.map((_, i) => `<div class="hfh" data-k2="${i}"></div>`).join("")}</div></div></div>`;
   document.getElementById("h4").appendChild(el);
   K.forEach(([, f], i) => { try { f(el.querySelector(`[data-k2="${i}"]`)) } catch (e) { el.querySelector(`[data-k2="${i}"]`).textContent = K[i][0] + " — " + e.message } });
-}
-/* 4번 칸 — 펼친 모습(앱과 같은 부품: 여러 개 고르기 = .spick.ddpop.mlpop, 찾기 칸 결과 = .ttrows) */
-{
-  const chk = (t, on) => `<label class="ck2 tso ${on ? "on" : ""}"><input type="checkbox" ${on ? "checked" : ""}><b>${t}</b><button type="button" class="mldel" title="이름 · 색 · 삭제">${PANEL.IC.help.replace(/<circle[\s\S]*<\/svg>/, '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>')}</button></label>`;
-  const multiOpen = `<div class="spick ddpop mlpop" style="position:static;width:auto;max-height:none;box-shadow:0 8px 24px rgba(25,31,40,.12);border:1px solid var(--line2);border-radius:12px;background:var(--surface)"><span class="searchbox mlq">${PANEL.IC.search}<input class="inp" placeholder="찾거나 새로 적기" autocomplete="off"></span><div class="tsl">${chk("수학", 1)}${chk("영어", 1)}${chk("국어", 0)}${chk("과학", 0)}${chk("사회", 0)}</div><div class="tsf"><span class="lb">2개 선택</span><span class="sp"></span><button type="button" class="btn">비우기</button><button type="button" class="btn pri">${PANEL.IC.check}닫기</button></div></div>`;
-  const searchOpen = `<span class="searchbox">${PANEL.IC.search}<input class="inp" value="하다" autocomplete="off"></span><div class="ttrows" style="margin-top:8px">${[["하다초", "초등학교 · 경기도 김포시 운양동"], ["하다중", "중학교 · 경기도 김포시 장기동 · 이미 있음"], ["하다고", "고등학교 · 경기도 김포시 구래동"]].map(([t, s]) => `<div class="ttrow" style="cursor:pointer"><span class="t">${t}</span><span class="hint">${s}</span></div>`).join("")}</div>`;
-  const el = document.createElement("div"); el.className = "mp-cell";
-  el.innerHTML = `<span class="lab">펼친 모습</span><div class="panel mp-pn"><div class="box"><h3>과목 — 여러 개 고르기를 눌렀을 때<span class="sp"></span></h3>${multiOpen}<p class="mp-rule" style="margin-top:8px">항목마다 체크 · 위에 찾거나 새로 적기 · ⋯ = 이름·색·삭제 · 아래 선택 수와 [비우기]·[닫기]</p></div><div class="box"><h3>찾기 칸 — 글자를 적었을 때<span class="sp"></span></h3>${searchOpen}<p class="mp-rule" style="margin-top:8px">두 글자부터 결과 줄이 아래에 나와요 · 누르면 그 항목을 골라요</p></div></div>`;
-  document.getElementById("h4").appendChild(el);
 }
 
 // 5 날짜·시각 한 줄

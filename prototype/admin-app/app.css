@@ -2427,3 +2427,5 @@ table.stt tr[data-id].sel:not(.sdel):hover td{background:var(--sel-bg)}
 .hfpair-row>.hfh{min-width:0}.hfpair-row .hf-box{min-width:0}
 .hfpair-row .hf-dw{display:none} /* 대표: 시작·끝 한 줄에서는 요일 안 보임 */
 .hfpair-row .hf-box{padding-left:10px;padding-right:6px;gap:6px;overflow:hidden}.hfpair-row .hf-box input{min-width:0}
+/* 288판(대표 '등록 중 앞 점 제거' · '운영 중도 점 빼줘'): 상태 배지 앞 점 없앰 — 학생·등록 상태(.stp) · 머리 운영 중 · 시즌 고르기 운영 중 · 미리보기 카드 */
+.stp i{display:none}.phead h2 .pill.on::before,.hovercard .pill.on::before,.spill.run::before{content:none}

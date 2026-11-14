@@ -153,12 +153,44 @@ function color(host,o={}){let v=o.value||null;const used=o.used||{};
   const set=c=>{v=c;show();o.onChange&&o.onChange(v)};b.onclick=e=>{if(e.target.closest(".hf-x"))return;open()};b.onkeydown=e=>{if(["Enter"," ","ArrowDown"].includes(e.key)){e.preventDefault();open()}else if((e.key==="Delete"||e.key==="Backspace")&&o.clear!==false)set(null)};
   const x=b.querySelector(".hf-x");if(x)x.onclick=e=>{e.stopPropagation();close();set(null);b.focus()};show();return {get value(){return v}}}
 // 켜고 끄기: 칸 안 왼쪽 글 · 오른쪽 스위치(칸 어디를 눌러도 바뀜)
-function sw(host,o={}){let v=!!o.value;const b=shell(host,o,`${I.toggle}<span class="hf-val">${esc(o.text||"")}</span><span class="hf-tg" role="switch"></span>`,"hf-btn hf-swbox");if(!o.disabled)b.tabIndex=0;
-  const show=()=>{b.classList.toggle("on",v);b.querySelector(".hf-tg").setAttribute("aria-checked",v)};const tg=()=>{if(o.disabled)return;v=!v;show();o.onChange&&o.onChange(v)};
+function sw(host,o={}){let v=!!o.value;/* 288판 A안(대표): 이름 ……… 켜짐/꺼짐 · 스위치 한 줄, 테두리 없음. 줄 아무 데나 누르면 바뀜 */
+  host.innerHTML=`<div class="hf hf-sw1 ${o.disabled?"dis":""}"><div class="hf-swrow" ${o.disabled?"":'tabindex="0"'} role="switch"><span class="hf-lbl">${esc(o.label||"")}${o.req?' <i>*</i>':""}${o.tipHtml||""}</span><span class="hf-swst"></span><span class="hf-tg"></span></div>${o.help?`<span class="hf-msg">${esc(o.help)}</span>`:""}</div>`;const b=host.querySelector(".hf-swrow");
+  const show=()=>{b.classList.toggle("on",v);b.setAttribute("aria-checked",v);b.querySelector(".hf-swst").textContent=v?(o.on||"켜짐"):(o.off||"꺼짐")};const tg=e=>{if(o.disabled||(e&&e.target.closest(".qhelp")))return;v=!v;show();o.onChange&&o.onChange(v)};
   b.onclick=tg;b.onkeydown=e=>{if(e.key===" "||e.key==="Enter"){e.preventDefault();tg()}};show();return {get value(){return v}}}
 // 구분(2~4개 중 하나, 시제품 [정규|휴강]과 같은 모양): 칸 전체 = 옅은 바탕 칸 나눔(아이콘·테두리 없음), 고른 칸 = 흰 바탕 + 그림자 + 그 항목 색 글(colors{항목: 색}, 없으면 갈색)
 function seg(host,o={}){let v=o.value??o.items[0];const b=shell(host,o,`<span class="hf-seg">${o.items.map(x=>`<button type="button" data-v="${esc(x)}" ${o.disabled?"disabled":""} ${o.colors&&o.colors[x]?`style="--on:${o.colors[x]}"`:""}>${esc(x)}</button>`).join("")}</span>`,"hf-segbox");
   const show=()=>b.querySelectorAll("[data-v]").forEach(x=>{x.classList.toggle("on",x.dataset.v===v);x.setAttribute("aria-pressed",x.dataset.v===v)});
   b.querySelectorAll("[data-v]").forEach(x=>x.onclick=()=>{v=x.dataset.v;show();o.onChange&&o.onChange(v)});show();return {get value(){return v}}}
-window.HF={palette,toNotion,text,memo,num,tel,select,day,days,date,time,datetime,dateRange,timeRange,color,sw,seg,close,COLORS};
+// 여러 개 고르기(288판, 앱 hfMulti와 같은 모양): 누르면 체크 목록 · 9개 이상이거나 새로 적기면 위에 찾기 · 아래 n개 선택 [비우기][닫기]
+function multi(host,o={}){const items=(o.items||[]).map(x=>typeof x==="string"?{v:x,t:x}:x);const v=new Set(o.value||[]);
+  const b=shell(host,o,`${I[o.icon||"list"]}<span class="hf-val hf-mv"></span>${o.disabled?"":X}`,"hf-btn");if(!o.disabled)b.tabIndex=0;b.setAttribute("role","combobox");
+  const pill=x=>`<span class="spill ${esc(x.cls||"")}">${esc(x.t)}</span>`;
+  const show=()=>{const a=items.filter(x=>v.has(x.v));b.querySelector(".hf-val").innerHTML=a.length?a.map(pill).join(""):`<span class="ph">${esc(o.placeholder||"선택")}</span>`;has(b,a.length)};
+  const ch=()=>{show();o.onChange&&o.onChange(items.filter(x=>v.has(x.v)).map(x=>x.v))};
+  const open=()=>{if(o.disabled)return;if(OPEN&&OPEN.box===b){close();return}pop(b,p=>{const sq=items.length>8||o.onAdd;
+    p.innerHTML=`${sq?`<label class="hf-q">${I.search}<input placeholder="${o.onAdd?"찾거나 새로 적기":"찾기"}" autocomplete="off"></label>`:""}<div class="hf-list" role="listbox" aria-multiselectable="true"></div><div class="hf-mf"><span class="n"></span><span class="sp"></span><button type="button" class="hf-mb" data-clr>비우기</button><button type="button" class="hf-mb pri" data-ok>${I.check}닫기</button></div>`;
+    const L=p.querySelector(".hf-list"),q=p.querySelector(".hf-q input");
+    const draw=()=>{const k=q?q.value.trim():"";const xs=items.filter(x=>!k||x.t.includes(k)||v.has(x.v));const nk=o.onAdd&&k&&!items.some(x=>x.t===k)?k:"";
+      L.innerHTML=xs.map(x=>`<div class="hf-opt hf-mo ${v.has(x.v)?"on":""}" data-v="${esc(x.v)}" role="option" aria-selected="${v.has(x.v)}"><span class="hf-cb">${v.has(x.v)?I.check:""}</span><span class="t">${pill(x)}</span>${o.onEdit?`<button type="button" class="hf-del" data-edit="${esc(x.v)}" tabindex="-1" title="이름 · 색 · 삭제">${I.more}</button>`:""}</div>`).join("")+(nk?`<div class="hf-opt hf-add" data-add>${I.plus||"+"}<span class="t">'${esc(nk)}' 추가</span></div>`:"")+(xs.length||nk?"":`<div class="hf-none">없어요</div>`);
+      p.querySelector(".hf-mf .n").textContent=v.size+"개 선택";p.querySelector("[data-clr]").hidden=!v.size;
+      L.querySelectorAll(".hf-mo").forEach(r=>{r.onpointerdown=e=>e.preventDefault();r.onclick=e=>{if(e.target.closest("[data-edit]"))return;const k2=items.find(x=>String(x.v)===r.dataset.v).v;v.has(k2)?v.delete(k2):v.add(k2);ch();draw()}});
+      L.querySelectorAll("[data-edit]").forEach(d=>{d.onpointerdown=e=>{e.preventDefault();e.stopPropagation()};d.onclick=e=>{e.stopPropagation();close();o.onEdit(d.dataset.edit)}});
+      const ad=L.querySelector("[data-add]");if(ad){ad.onpointerdown=e=>e.preventDefault();ad.onclick=()=>{const t=nk;items.push({v:t,t});v.add(t);q.value="";ch();draw();o.onAdd&&o.onAdd(t)}}};
+    p.querySelector("[data-clr]").onclick=()=>{v.clear();ch();draw()};p.querySelector("[data-ok]").onclick=()=>{close();b.focus()};
+    p.querySelectorAll(".hf-mf button").forEach(x=>x.onpointerdown=e=>e.preventDefault());
+    if(q){q.oninput=draw;q.onkeydown=e=>{if(e.key==="Escape"){close();b.focus()}};setTimeout(()=>q.focus())}draw()})};
+  b.onclick=e=>{if(e.target.closest(".hf-x"))return;open()};
+  b.onkeydown=e=>{if(["Enter"," ","ArrowDown"].includes(e.key)){e.preventDefault();open()}};
+  const x=b.querySelector(".hf-x");if(x)x.onclick=e=>{e.stopPropagation();v.clear();ch();b.focus()};
+  show();return {get value(){return items.filter(x=>v.has(x.v)).map(x=>x.v)}}}
+// 찾기 칸(288판): 돋보기 + 글자 → 아래 결과 줄(두 글자부터). o.find(글자) = [{t, sub, v}] · o.onPick(줄)
+function search(host,o={}){const b=shell(host,o,`${I.search}<input placeholder="${esc(o.placeholder||"찾기")}" autocomplete="off" value="${esc(o.value||"")}">${X}`,"hf-srch");const i=b.querySelector("input");
+  const L=document.createElement("div");L.className="hf-res";b.after(L);const min=o.min||2;
+  const draw=()=>{const k=i.value.trim();has(b,k);if(k.length<min){L.innerHTML=k?`<div class="hf-none">${min}글자부터 찾아요</div>`:"";return}const rs=(o.find?o.find(k):[]);
+    L.innerHTML=rs.length?rs.map((r,j)=>`<div class="hf-ri" data-j="${j}"><span class="t">${esc(r.t)}</span><small>${esc(r.sub||"")}</small></div>`).join(""):`<div class="hf-none">찾는 것이 없어요</div>`;
+    L.querySelectorAll(".hf-ri").forEach(d=>d.onclick=()=>{const r=rs[+d.dataset.j];i.value=r.t;L.innerHTML="";has(b,1);o.onPick&&o.onPick(r)})};
+  b.onpointerdown=e=>{if(e.target===b||e.target.closest("svg:not(.hf-x svg)")){e.preventDefault();i.focus()}};i.oninput=draw;
+  const x=b.querySelector(".hf-x");x.onpointerdown=e=>e.preventDefault();x.onclick=()=>{i.value="";draw();i.focus()};draw();return {el:i,get value(){return i.value}}}
+
+window.HF={palette,toNotion,text,memo,num,tel,select,multi,search,day,days,date,time,datetime,dateRange,timeRange,color,sw,seg,close,COLORS};
 })();
