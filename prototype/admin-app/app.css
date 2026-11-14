@@ -2123,3 +2123,9 @@ table.stt.gt td[data-mg]{vertical-align:top;padding-top:calc(var(--space-2) + 1p
 .mlpop .tso{position:relative}.mlpop .mldel{margin-left:auto;width:28px;height:28px;border:0;background:none;border-radius:var(--radius-sm);color:var(--subtle);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;opacity:0}
 .mlpop .tso:hover .mldel{opacity:1}.mlpop .mldel:hover{background:var(--brand-soft);color:var(--brand-deep)}.mlpop .mldel svg.i{width:14px;height:14px}
 @media (hover:none){.mlpop .mldel{opacity:1}}
+
+/* ═════ 219판 ═════ 수강료 조정 고치는 줄: 두 줄(할인·추가 + 금액 + 원 + [v] / 사유), 고르기 칸 글자가 화살표와 겹치지 않게 */
+.unrow.ed[data-ar]{flex-wrap:wrap;row-gap:var(--space-1);padding:var(--space-1) 0}
+.unrow.ed[data-ar] .unn{order:9;flex:1 0 100%}
+.unrow.ed[data-ar] .adja{flex:1 1 84px;width:auto}
+.unrow select.adjk{width:76px;padding:0 24px 0 var(--space-2)!important;background:var(--surface) var(--icon-chevron-down) no-repeat right 6px center/14px 14px!important}
