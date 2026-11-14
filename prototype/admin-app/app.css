@@ -2279,3 +2279,7 @@ td.pgc .pgp{display:inline-block;min-width:4ch;text-align:right;font-variant-num
 .efl{margin-top:10px;padding:10px 12px;border-radius:10px;background:#FBF8F3;display:flex;flex-direction:column;gap:6px;font-size:13px}
 .efl .pgrd{display:inline-block;width:76px}
 .evwrap{contain:inline-size;width:100%}
+
+/* ═════ 248판 ═════ 등록 표 학생·학교 바로 가기 글: 평소엔 글처럼, 올리면 밑줄 */
+a.golink{color:inherit;text-decoration:none;border-radius:4px}
+a.golink:hover{text-decoration:underline;text-underline-offset:3px;color:var(--ink,#3D3530)}
