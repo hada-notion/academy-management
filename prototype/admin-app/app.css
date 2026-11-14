@@ -2304,3 +2304,7 @@ a.golink:hover{text-decoration:underline;text-underline-offset:3px;color:var(--i
 .tchip.dfri{background:#E3E2E0;color:#32302C}.mwk-hd .dfri{color:#787774}
 .tchip.dsat{background:#EEE0DA;color:#442A1E}.mwk-hd .dsat{color:#9F6B53}
 .tchip.dsun{background:#E8DEEE;color:#412454}.mwk-hd .dsun{color:#9065B0}
+/* ═════ 256판 ═════ 줄 끝 휴지통 칸이 고른 줄·올린 줄에서 마지막 값을 가리지 않게: 칸은 투명, 단추만 작은 바탕(어사이드 점검) */
+table.stt tr[data-id]:not(.sdel):hover td.op,table.stt tr.sel td.op{background:transparent!important;box-shadow:none!important}
+table.stt tr:hover .rowdel,table.stt tr.sel .rowdel{background:var(--surface,#fff);box-shadow:0 1px 3px rgba(61,53,48,.18)}
+table.stt tr:hover .rowdel:hover,table.stt tr.sel .rowdel:hover{background:var(--danger-soft,#FDECEA)}
