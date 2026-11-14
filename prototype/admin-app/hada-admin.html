@@ -1823,7 +1823,7 @@ function confirmSeasonDialog(sid){const s=seasonOf(sid);const all=DB.blocks.filt
 function finishDialog(){modal(`<h2>마무리${HELP("관리 앱 버튼은 서버 동작 함수를 바로 불러요(진행률 표시). 시제품은 표시만.")}</h2><div class="box">① 등록마다 [학생 페이지 동기화] — 리포트 링크 ${DB.enrolls.filter(e=>!e.ended).length}개 한 번에<br>② [다음 주 수업 일괄 생성]</div><div class="actions"><span class="sp"></span><button class="btn" id="x1">닫기</button><button class="btn pri" id="x2">실행</button></div>`,(m,close)=>{m.querySelector("#x1").onclick=close;m.querySelector("#x2").onclick=()=>{close();toast("서버에 보냄: 링크 발급 · 다음 주 수업 (시제품)")}})}
 
 /* ================= 과목·교재(164판, 261113 밤 — 노션 과목(학원) DB · 라이브러리(학원) DB와 같은 칸) ================= */
-const AREAS=["국어","수학","영어","과학"];const LIB_GRADES=["미취학","초1","초2","초3","초4","초5","초6","중1","중2","중3","고1","고2","고3"];
+const AREAS=["국어","수학","영어","과학"];const ALL_GRADES=["4세","5세","6세","7세","초1","초2","초3","초4","초5","초6","중1","중2","중3","고1","고2","고3","N수"];const gradeOff=()=>LS.get("gradeOff",[])||[];const gradesOn=keep=>ALL_GRADES.filter(g=>!gradeOff().includes(g)||[].concat(keep||[]).includes(g));const LIB_GRADES=ALL_GRADES;
 const PUBS=["비상교육","천재교과서","천재교육","동아출판","미래엔","NE능률","YBM","지학사","좋은책신사고","개념원리","디딤돌교육","이투스북","쎄듀","마더텅","수경출판사","키출판사","창비교육","해냄에듀","금성출판사","한국교육방송공사","에듀원"];
 const SERIES=["RPM","개념원리","쎈","라이트쎈"],BTYPES=["개념","유형","심화","내신","기출","수능","교과서"],CURRS=["2015 개정","2022 개정"],UNITS=["P.-","-쪽","-차시","UNIT -","DAY -","Lesson -","-회"];
 function seedLib(){const S=[["sb1","중등수학 1-1","1️⃣","수학",["중1"]],["sb2","중등수학 1-2","1️⃣","수학",["중1"]],["sb3","중등수학 2-1","2️⃣","수학",["중2"]],["sb4","중등수학 2-2","2️⃣","수학",["중2"]],["sb5","중등수학 3-2","3️⃣","수학",["중3"]],["sb6","대수","➗","수학",["고1"]],["sb7","미적분1","📈","수학",["고2"]],["sb8","미적분2","📉","수학",["고3"]],["sb9","기하","📐","수학",["고2","고3"]],["sb10","초등수학 3-1","☘️","수학",["초3"]],
@@ -1840,7 +1840,7 @@ function seedLib(){const S=[["sb1","중등수학 1-1","1️⃣","수학",["중1"
 const subj=id=>DB.subjects.find(x=>x.id===id)||{name:"—",emoji:"",area:"",grades:[]};
 const bookUnit=b=>{if(!b.total)return "—";const u=b.unit||(b.kind==="프로그램"?"-차시":"P.-");return u==="P.-"||u==="-쪽"?`${b.total}쪽`:u.startsWith("-")?`${b.total}${u.slice(1)}`:`${b.total} ${u.replace(" -","")}`};
 const bookUsers=b=>{const s=new Set(DB.enrolls.filter(e=>!e.ended&&(e.books||[]).includes(b.name)));(DB.progress||[]).filter(x=>!x.del&&x.bookId===b.id&&x.stat==="진행 중").forEach(x=>DB.enrolls.filter(e=>!e.ended&&e.classId===x.classId&&(x.mode!=="개별"||e.studentId===x.studentId)).forEach(e=>s.add(e)));return [...s]};
-const schoolKind=gs=>[...new Set((gs||[]).map(g=>g==="미취학"?"미취학":g[0]==="초"?"초등":g[0]==="중"?"중등":"고등"))].join("·");
+const schoolKind=gs=>[...new Set((gs||[]).map(g=>/세$/.test(g)?"미취학":g[0]==="초"?"초등":g[0]==="중"?"중등":"고등"))].join("·");
 const gradeShort=gs=>{gs=(gs||[]).slice().sort((a,b)=>LIB_GRADES.indexOf(a)-LIB_GRADES.indexOf(b));return gs.length>3?`${gs[0]}-${gs[gs.length-1]}`:gs.join("·")};
 // 여러 개 고르기 칸(학년·교재 유형): 입력칸 모듈과 같은 틀(왼쪽 아이콘 40), 누르면 체크 목록
 function hfMulti(h,o){const v=new Set(o.value||[]);const lb=o.lab||(x=>x);h.innerHTML=`<div class="hf">${o.label?`<span class="hf-lbl">${esc(o.label)}</span>`:""}<div class="hf-box hf-btn hfm" tabindex="0" role="combobox">${IC(o.icon||"chevc")}<span class="hf-val"></span></div><span class="hf-msg">${esc(o.help||"")}</span></div>`;
@@ -1854,13 +1854,13 @@ function schNames(){return [...new Set([...DB.schools.filter(x=>!x.del).map(x=>x
 function schEnsure(n){n=String(n||"").trim().slice(0,30);if(!n)return "";if(!DB.schools.some(x=>!x.del&&x.name===n)){const k=schKind(n);DB.schools.push({id:uid("sc"),name:n,kind:k&&k[0]!=="미취학"?k[0]:"중학교",addr:"",code:false,sync:"",state:"draft"});toast(`학교 화면에도 '${n}' 줄을 만들었어요 — [학교 찾기]로 학교 코드를 붙이면 학사일정을 가져와요`)}return n}
 function subjNew(t,g){t=String(t||"").trim().slice(0,30);if(!t)return null;let x=DB.subjects.find(z=>!z.del&&z.name===t);if(!x){x={id:uid("sb"),name:t,emoji:"",area:"",grades:g?[g]:[],memo:"",state:"draft"};DB.subjects.push(x)}return x}
 const exSubj=x=>(x.subjectIds||[]).map(i=>(DB.subjects.find(z=>z.id===i)||{}).name).filter(Boolean).join(", ");
-const exMis=x=>{const sc=DB.schools.find(z=>!z.del&&z.name===x.school);return !!(sc&&x.grade&&sc.kind&&sc.kind[0]!==x.grade[0])};
+const exMis=x=>{const sc=DB.schools.find(z=>!z.del&&z.name===x.school);return !!(sc&&x.grade&&sc.kind&&sc.kind[0]!==(x.grade==="N수"?"고":x.grade[0]))};
 const REL_NEW={exams:{school:t=>schEnsure(t),subjectIds:(t,r)=>{const x=subjNew(t,r.grade);return x&&x.id}},books:{subjectId:t=>{const x=subjNew(t);return x&&x.id}}};
 const REL_NAME={school:"학교",subjectIds:"과목",subjectId:"과목"};
 const PAY_HOW=["계좌이체","카드","현금","기타"],EV_GUIDE=["상담","테스트","휴강","휴원"];
 const LISTS={
  students:{title:"학생",coll:"students",banner:"시작하기 · 학생 — 지금 다니는 학생과 대기 학생을 넣어요. 엑셀 명단이 있으면 [엑셀에서 붙여넣기].",
-  cols:[["이름",s=>s.name],["학교",s=>s.school],["학년",s=>!s.grade?"!학년 빈칸":/^(초[1-6]|중[1-3]|고[1-3]|재수|N수)$/.test(s.grade)?"@g:"+s.grade:"!"+s.grade+" (예: 중2)"],["등록상태",s=>STU_ST[stuStat(s)][0]],["보호자 연락처",s=>s.mom?"어머니 "+s.mom:s.dad?"아버지 "+s.dad:"!연락처 없음"],["다니는 클래스",s=>DB.enrolls.filter(e=>e.studentId===s.id&&!e.ended).map(e=>cls(e.classId).name).join(", ")||"—"]],
+  cols:[["이름",s=>s.name],["학교",s=>s.school],["학년",s=>!s.grade?"!학년 빈칸":ALL_GRADES.includes(s.grade)?"@g:"+s.grade:"!"+s.grade+" (예: 중2)"],["등록상태",s=>STU_ST[stuStat(s)][0]],["보호자 연락처",s=>s.mom?"어머니 "+s.mom:s.dad?"아버지 "+s.dad:"!연락처 없음"],["다니는 클래스",s=>DB.enrolls.filter(e=>e.studentId===s.id&&!e.ended).map(e=>cls(e.classId).name).join(", ")||"—"]],
   filters:[["클래스 없는 학생",s=>stuStat(s)==="new"],["빈칸 있음",s=>!s.grade||(!s.mom&&!s.dad)]],
   fields:[["name","이름"],["school","학교(짧게: 운양중)"],["grade","학년 (예: 중2)"],["mom","어머니 연락처"],["dad","아버지 연락처"]],
   blank:()=>({id:uid("st"),name:"새 학생",school:"",grade:"",pre:"어머니",hold:false,memo:"",mom:"",dad:"",inq:nowStamp()}),
@@ -1886,7 +1886,7 @@ const LISTS={
  subjects:{title:"과목",coll:"subjects",unit:"개",ph:"과목 찾기",help:"노션 과목(학원) DB와 같은 칸이에요. 교재(라이브러리)는 과목에 붙고, 학년은 리포트·교재 고르기에서 써요.",
   cols:[["과목",x=>x.name,"name"],["영역",x=>x.area||"—","area"],["학년",x=>gradeShort(x.grades)||"—","grades"],["학교",x=>schoolKind(x.grades)||"—"],["교재",x=>DB.books.filter(b=>b.subjectId===x.id).length+"권"],["학생이 쓰는 교재",x=>DB.books.filter(b=>b.subjectId===x.id&&bookUsers(b).length).length+"권"]],
   filters:[["교재 없는 과목",x=>!DB.books.some(b=>b.subjectId===x.id)],["학년 빈칸",x=>!(x.grades||[]).length],["예체능(영역 없음)",x=>!x.area]],
-  fields:[["name","과목 이름"],["emoji","노션 이모지",null,"text","노션 과목 페이지 앞에만 보여요(앱에서는 안 씀)"],["area","영역",()=>optItems("area"),"opt","예체능 과목은 비워요"],["grades","학년",LIB_GRADES,"multi","여러 학년이면 모두 골라요"],["memo","비고",null,"memo"]],
+  fields:[["name","과목 이름"],["emoji","노션 이모지",null,"text","노션 과목 페이지 앞에만 보여요(앱에서는 안 씀)"],["area","영역",()=>optItems("area"),"opt","예체능 과목은 비워요"],["grades","학년",r=>gradesOn(r.grades),"multi","여러 학년이면 모두 골라요"],["memo","비고",null,"memo"]],
   blank:()=>({id:uid("sb"),name:"새 과목",emoji:"",area:"",grades:[],memo:""}),
   extra:x=>{const bs=DB.books.filter(b=>b.subjectId===x.id);return `<div class="box"><h3>이 과목 교재 <span class="hint">${bs.length}권</span><span class="sp"></span><button class="lnk" data-act="addBook">${IC("plus","s")}교재 추가</button></h3>${bs.length?`<div class="ttrows">${bs.map(b=>`<div class="ttrow" data-gobook="${b.id}" title="라이브러리에서 열기"><span class="t">${esc(b.name)}</span><span class="hint">${esc(bookUnit(b))}</span>${b.using?"":`<span class="tag">안 씀</span>`}${IC("right","s")}</div>`).join("")}</div>`:'<div class="hint">아직 교재가 없어요</div>'}</div>`}},
  books:{title:"라이브러리",coll:"books",unit:"권",subs:[["b","교재"],["p","프로그램"],["s","시리즈"]],ph:"교재 찾기",addLabel:"교재 추가",help:"노션 라이브러리(학원) DB와 같은 칸이에요. 여기 교재가 등록 카드 [교재] 칸과 클래스별 진도교재의 목록이 돼요. 북커버·PDF는 노션에서 올려요.",
@@ -1899,7 +1899,7 @@ const LISTS={
   fields:[["name","이름"],["start","기본 시작일",null,"date"],["end","기본 종료일",null,"date"]],help:"상태는 준비 중 → [운영 시작] → 운영 중. 끝난 날이 지나면 끝남으로 보여요.",extra:x=>`<div class="row"><button class="btn sm" data-act="ttS">시간표 열기${IC("right","s")}</button>${x.state!=="확정"?'<button class="btn sm" data-act="confirmS">운영 시작…</button>':''}</div>`}
 };
 // 학생(261112 대표, 원본 구조): 기본 정보는 표에서 바로(이름·학교·학년·우선 연락), 등록상태는 자동 표시, 등록·보류·연락처·메모는 오른쪽 창
-const GRADES=["초1","초2","초3","초4","초5","초6","중1","중2","중3","고1","고2","고3"];
+const GRADES=ALL_GRADES;
 function purgeDeleted(){RV_COLLS.forEach(c=>{DB[c]=(DB[c]||[]).filter(x=>!x.del)});const gone=new Set(DB.students.filter(x=>x.del).map(x=>x.id));if(!gone.size)return;const ens=new Set(DB.enrolls.filter(e=>gone.has(e.studentId)).map(e=>e.id));DB.blocks.forEach(b=>{b.regs=b.regs.filter(r=>!ens.has(r))});DB.enrolls=DB.enrolls.filter(e=>!ens.has(e.id));DB.students=DB.students.filter(x=>!gone.has(x.id))}
 // 행 삭제(261112 대표): 줄 끝 휴지통 · 고른 줄 Delete · 창 아래 [삭제]. 바로 지우지 않고 '삭제 예정'(작성 중) → [저장] 때 지움, Ctrl+Z·[되살리기]로 취소
 function stuDel(x,on){if(!x)return;if(on===undefined)on=!x.del;if(on){if(x.state!=="draft"||!x._o)x._o=stuSnapO(x)}x.del=on;x.state="draft";if(!on&&x._o&&Object.keys(x._o).every(k=>JSON.stringify(x._o[k]??"")===JSON.stringify((k==="del"?!!x[k]:x[k])??"")||(k==="del"&&!x._o[k]))){x.state="saved";delete x._o}if(on&&activeTab.state.sel===x.id)activeTab.state.sel=null;commit();toast(on?`${x.name} 삭제 예정 — [저장]하면 삭제돼요 · Ctrl+Z로 되돌려요`:`${x.name} 되살렸어요`)}
@@ -2092,7 +2092,7 @@ const STK=["name","school","grade","pre"];
 function stuCellEdit(v,t,id,k){const x=byId(DB.students,id);const td=v.querySelector(`td.se[data-se="${id}"][data-k="${k}"]`);if(!x||!td)return;v.querySelectorAll("td.se.cur").forEach(c=>c.classList.remove("cur"));td.classList.add("cur");
   const next=(dir)=>{const i=STK.indexOf(k)+dir;if(i>=0&&i<STK.length)setTimeout(()=>stuCellEdit(document.getElementById("view"),t,id,STK[i]),0)};
   const down=()=>{const trs=[...v.querySelectorAll("tr[data-id]")];const i=trs.findIndex(r=>r.dataset.id===id);const n=trs[i+1];if(n)setTimeout(()=>stuCellEdit(document.getElementById("view"),t,n.dataset.id,k),0)};
-  if(k==="school"||k==="grade"){const list=k==="grade"?GRADES:schNames();
+  if(k==="school"||k==="grade"){const list=k==="grade"?gradesOn(x.grade):schNames();
     const pop=document.createElement("div");pop.className="spick";pop.innerHTML=`<span class="searchbox">${IC("search")}<input class="inp" placeholder="${k==="grade"?"학년 찾기":"학교 찾기"}"></span><div class="sl"></div>`;td.appendChild(pop);const inp=pop.querySelector("input"),sl=pop.querySelector(".sl");let hi=0;
     const draw=()=>{const qv=inp.value.trim();const items=list.filter(o=>!qv||o.includes(qv));if(k==="school"&&qv&&!list.includes(qv))items.push("+"+qv);hi=Math.min(hi,Math.max(0,items.length-1));
       sl.innerHTML=items.map((o,i)=>`<div class="so ${i===hi?"hi":""} ${o===x[k]?"on":""}" data-v="${esc(o)}">${o[0]==="+"?`${IC("plus","s")} ‘${esc(o.slice(1))}’ 생성`:k==="grade"?gchip(o):k==="school"?`<span class="snm">${esc(o)}</span>${schChip(o)}`:esc(o)}</div>`).join("")||'<div class="hint">없어요</div>';
@@ -2111,7 +2111,7 @@ function stuCellEdit(v,t,id,k){const x=byId(DB.students,id);const td=v.querySele
 // 새 학생은 이름을 넣기 전엔 표에 없음(닫으면 아무것도 안 남음). 이름을 넣는 순간 '작성 중' 학생이 되고, 아래 [저장]·[저장하고 다음]
 const ROUTES=["지인 소개","형제·재원생 소개","블로그·검색","전단·현수막","상담 신청서","기타"];
 const BRANCHES=["본관","운양관"];
-const ddOpts=k=>k==="pre"?["학생","어머니","아버지","기타 보호자"]:k==="gender"?["여학생","남학생"]:k==="sib"?DB.students.filter(s=>!s.del).map(s=>s.id):k==="branch"?BRANCHES:k==="school"?schNames():k==="grade"?GRADES:k==="route"?ROUTES:[];
+const ddOpts=k=>k==="pre"?["학생","어머니","아버지","기타 보호자"]:k==="gender"?["여학생","남학생"]:k==="sib"?DB.students.filter(s=>!s.del).map(s=>s.id):k==="branch"?BRANCHES:k==="school"?schNames():k==="grade"?gradesOn():k==="route"?ROUTES:[];
 const ddBox=(k,val,ph,cls2="")=>`<button type="button" class="inp pdd ${cls2}" data-dd="${k}">${val?(k==="grade"?gchip(val):esc(val)):`<span class="ph">${ph}</span>`}</button>`;
 let ddPop=null;function ddClose(){if(ddPop){ddPop.remove();ddPop=null}}
 // 163판: 떠 있는 목록 자리 = 고르기 모듈과 같은 규칙(아래 → 위 → 넓은 쪽에 그 높이만큼, 칸은 가리지 않음, 위로 열면 아래 끝을 칸 위 4에 붙임)
@@ -2385,7 +2385,7 @@ Object.assign(LISTS,{
  exams:{title:"시험",coll:"exams",unit:"건",ph:"시험·학교 찾기",help:"학교·학년·과목별 시험 정보예요. 창의 [성적] 탭에서 [응시학생 등록] 뒤 학생 점수·등수를 넣어요.",
   cols:[["시험",x=>x.name,"name"],["학교",x=>x.school||"—","school"],["학년",x=>!x.grade?"—":exMis(x)?"!"+x.grade+" · 학교와 다름":"@g:"+x.grade,"grade"],["과목",x=>{const a=exSubj(x).split(", ").filter(Boolean);return a.length>2?a.slice(0,2).join(", ")+" 외 "+(a.length-2)+"개":a.join(", ")||"—"}],["시험일",x=>D10(x.date),"date"],["시험 범위",x=>x.units||"—","units"],["응시 학생",x=>{const g=exGr(x).length,t=exTodo(x).length;return g||t?`${g}/${g+t}명`:"—"}],["평균",x=>{const sc=exGr(x).filter(g=>g.score!==""&&g.score!=null);return sc.length?Math.round(sc.reduce((a,g)=>a+ +g.score,0)/sc.length*10)/10+"점":"—"}]],
   filters:[["다가오는 시험",x=>x.date>=TODAY,true],["범위 빈칸",x=>!x.units]],
-  fields:[["name","시험 이름"],["school","학교",()=>DB.schools.filter(x=>!x.del).map(x=>({v:x.name,t:x.name,sub:x.kind})),"opt","없는 학교는 이름을 적어 만들어요 — 학교 화면에 줄이 생겨요"],["grade","학년",()=>GRADES.map(g=>({v:g,t:g}))],["subjectIds","과목",()=>DB.subjects.filter(x=>!x.del).map(x=>x.id),"multi","시험에 드는 과목을 모두 골라요 · 없는 과목은 적어서 만들어요 — 과목 화면에 줄이 생겨요",x=>(DB.subjects.find(z=>z.id===x)||{}).name||x],["date","시험일",null,"date"],["units","시험 범위",null,"text","예: 1단원-3단원"],["total","응시 인원",null,"num","학교 전체 응시 인원 — 성적 백분율 계산에 써요","명"]],
+  fields:[["name","시험 이름"],["school","학교",()=>DB.schools.filter(x=>!x.del).map(x=>({v:x.name,t:x.name,sub:x.kind})),"opt","없는 학교는 이름을 적어 만들어요 — 학교 화면에 줄이 생겨요"],["grade","학년",r=>gradesOn(r.grade).map(g=>({v:g,t:g}))],["subjectIds","과목",()=>DB.subjects.filter(x=>!x.del).map(x=>x.id),"multi","시험에 드는 과목을 모두 골라요 · 없는 과목은 적어서 만들어요 — 과목 화면에 줄이 생겨요",x=>(DB.subjects.find(z=>z.id===x)||{}).name||x],["date","시험일",null,"date"],["units","시험 범위",null,"text","예: 1단원-3단원"],["total","응시 인원",null,"num","학교 전체 응시 인원 — 성적 백분율 계산에 써요","명"]],
   blank:()=>({id:uid("ex"),name:"새 시험",school:"",grade:"",subjectIds:[],date:"",units:"",total:""})},
  costs:{title:"비용",coll:"costs",unit:"건",ph:"내용 찾기",help:"학원의 지출과 수강료·교재비가 아닌 매출이에요. 손익 분석이 이 표와 수강료·교재비 결제를 더해 계산해요.",
   cols:[["내용",x=>x.name,"name"],["구분",x=>x.kind,"kind"],["결제일",x=>D10(x.date),"date"],["결제 수단",x=>x.how,"how"],["금액",x=>WON(x.amount),"amount"],["비고",x=>x.memo||"—","memo"]],
@@ -2475,6 +2475,7 @@ Object.assign(LISTS,{
 LISTS.legal_rcpt.form={name:"서식(원부 + 영수증)",desc:"한 건마다 한 쌍 · A4 세로에 두 쌍 · 도장",run:(rows,st)=>rcptPreview(rows)};LISTS.legal_rcpt.xlForm={name:(x,i)=>`${i+1} ${nmStu(x.t.studentId)}`,sheet:rcptSheet};TITLES.profit="손익 분석";TITLES.legal="법정 서류";TITLES.academy="학원 정보";NOTION.profit="손익 분석";NOTION.academy="매뉴얼";
 /* 카드 화면(E = 묶음 카드): 표·캘린더가 아닌 설정 화면. C 제목 줄 + 카드(폭 720)만, D 위 줄 없음 */
 function cardScreen(v,o){v.innerHTML=`<div class="top pg-ttl"><h1>${o.title}</h1>${o.help?HELP(o.help):""}${notionBtn(o.scr)}</div><div class="body"><div class="list cards">${o.boxes.map(b=>`<section class="cbox"><h3>${IC(b.icon,"l")}${b.title}${b.help?HELP(b.help):""}</h3>${b.rows.map(r=>`<div class="crow"><span class="cl">${r[0]}</span><span class="cv">${r[1]}</span><span class="ca">${r[2]||""}</span></div>`).join("")}</section>`).join("")}</div></div>`}
+const grTog=gs=>`<span class="gtogs">${gs.map(g=>{const on=!gradeOff().includes(g);return `<button type="button" class="btn sm gtog ${on?"on":""}" data-cact="gr:${g}" aria-pressed="${on}" title="${on?"켜짐 — 누르면 꺼요":"꺼짐 — 누르면 켜요"}">${g}</button>`}).join("")}</span>`;
 const cbtn=(act,label,icon,cls)=>`<button type="button" class="btn sm ${cls||""}" data-cact="${act}">${icon?IC(icon,"s"):""}${label}</button>`;
 /* 199판: 오늘(노션 대시보드 "하루 한 장") — 카드 화면. 제목 줄에 날 이동(‹ › [오늘] 날짜), 하루 요약 · 그날 수업(시간순, 누르면 수업 화면) · 일정·시험. 보기만 하는 화면(고치는 것은 수업·일정 화면에서) */
 function dayItems(d){const out=[];DB.blocks.filter(b=>!b.del).forEach(b=>{for(let i=-6;i<=6;i++){const d0=dPlus(d,i);if(dow(d0)!==b.day||!lessonMade(b,d0))continue;const e=lessonEff(b,d0);if(e.d===d)out.push({b,d0,e,k:lkey(b,d0)})}});return out.sort((a,b)=>a.e.start-b.e.start)}
@@ -2527,6 +2528,7 @@ function renderAcademy(v){cardScreen(v,{title:"학원 정보",scr:"academy",help
   {icon:"link",title:"웹 화면 주소",rows:[["관리 앱","이 화면",cbtn("copy:관리 앱","주소 복사","copy")],["키오스크","등·하원 체크 — 학원 입구 기기에서 열어요",cbtn("open:키오스크","열기","ext")],["학부모 리포트","학생마다 주소가 달라요 — 수강 창 [리포트 열기]",""]]},
   {icon:"award",title:"학원 도장",help:"영수증의 (서명 또는 인) 자리에 찍히는 도장 그림이에요. 배경이 투명한 PNG가 가장 깔끔해요. 이 기기에만 저장돼요(시제품).",rows:[["도장",stampOf()?`<img class="stampv" alt="학원 도장" src="${stampOf()}">`:'<span class="hint">아직 올린 도장이 없어요</span>',cbtn("stampUp",stampOf()?"바꾸기":"올리기","ul")+(stampOf()?cbtn("stampRm","지우기","trash"):"")]]},
   {icon:"filetext",title:"법정 서류",help:"영수증 원부·영수증에 무엇을 넣을지 정해요. 기타경비는 클래스 창의 \"신고한 기타경비\"가 기본으로 들어가요.",rows:[["교재비를 기타경비에 포함",etcBookOn()?'<span class="tag w">켜짐</span> 그 달 결제한 교재비가 영수증 기타경비에 들어가요':'<span class="hint">꺼짐(권장) — 영수증에는 교습비와 신고한 기타경비만</span>',cbtn("etcBook",etcBookOn()?"끄기":"켜기","")]]},
+  {icon:"users",title:"받는 학년",help:"꺼 둔 학년은 학생·시험·과목의 학년 목록에 안 보여요. 노션 학년 DB의 [사용] 체크와 같아요. 줄을 삭제하지 않아서 언제든 다시 켤 수 있어요. 그 학년 학생이 있으면 끌 수 없어요.",rows:[["미취학",grTog(["4세","5세","6세","7세"]),""],["초등",grTog(ALL_GRADES.filter(g=>g[0]==="초")),""],["중등",grTog(ALL_GRADES.filter(g=>g[0]==="중")),""],["고등",grTog(["고1","고2","고3","N수"]),""]]},
   {icon:"info",title:"버전",rows:[["지금 버전","v2.8.0",cbtn("ver","업데이트 확인","rotc")],["마지막 업데이트","2026.11.10",""]]},
   {icon:"notion",title:"노션 연결",rows:[["워크스페이스","하다 예시 학원",""],["연결 상태",'<span class="tag g">연결됨</span>',cbtn("ping","다시 확인","rotc")]]}]})}
 const ADM={pwDays:42,rot:null,cleared:false,sec:false};const HOOKS=[["교재 생성","등록","자동화"],["대시보드 연결","대시보드","자동화"],["리포트 반영","등록","자동화"],["보고서 전송(일일)","출석","자동화"],["보고서 전송(주간·월간)","보고서","자동화"],["삭제 체크","7개 DB","자동화"],["수업 날짜 이동","수업","자동화"],["수업 안내","출석","자동화"],["접수안내 전송","학생","자동화"],["출석 조정","수업","자동화"],["다음 주 수업 일괄 생성","메뉴","버튼"],["보고서 생성","클래스","버튼"],["가정통신문 생성","클래스","버튼"],["종료 처리","등록","버튼"]];
@@ -2537,6 +2539,7 @@ function renderAdmin(v){const r=ADM.rot;cardScreen(v,{title:"관리자 설정",s
   {icon:"activity",title:"연결",rows:[["서버·노션",'<span class="tag g">연결됨</span>',cbtn("ping","다시 확인","rotc")]]}]})}
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-cact]");if(!b)return;const a=b.dataset.cact;
   if(a.startsWith("copy:"))return toast(`${a.slice(5)} 주소를 복사했어요(시제품: 주소 없음)`);if(a.startsWith("open:"))return toast(`${josa(a.slice(5),"을","를")} 새 탭으로 열어요 — 시제품에는 주소가 없어요`);
+  if(a.startsWith("gr:")){const g=a.slice(3),off=gradeOff();if(off.includes(g)){LS.set("gradeOff",off.filter(x=>x!==g));toast(`${g} 켜짐 — 학년 목록에 보여요`)}else{const n=DB.students.filter(z=>!z.del&&z.grade===g).length;if(n)return toast(`끌 수 없어요 — ${g} 학생이 ${n}명 있어요`);LS.set("gradeOff",[...off,g]);toast(`${g} 꺼짐 — 학년 목록에서 숨겨요(노션 줄은 그대로)`)}return render()}
   if(a==="etcBook"){if(etcBookOn()){LS.set("etcBook",false);toast("교재비를 기타경비에서 뺐어요");return render()}return askRun("교재비를 기타경비에 넣을까요?",`<div class="warnbox">교육지원청 안내: 학원은 교재를 판매할 수 없어 <b>교재비를 기타경비로 받으면 안 돼요</b>. 기타경비는 교습비 변경 신고로 등록한 항목만 받을 수 있고, 등록한 금액보다 많이 받으면 초과 징수로 행정처분 대상이에요.</div><div class="hint">관할 교육지원청에 확인한 경우에만 켜 주세요. 켜면 그 달 결제한 교재비가 영수증 원부·영수증의 기타경비 칸에 "교재비"로 들어가요.</div>`,"확인하고 켜기",()=>{LS.set("etcBook",true);toast("교재비를 기타경비에 포함해요");render()})}
   if(a==="stampUp")return stampPick();if(a==="stampRm"){LS.set("stamp","");toast("학원 도장을 삭제했어요");return render()}
   if(a==="ver")return toast("지금 버전이 가장 새 버전이에요");if(a==="ping")return toast("서버와 노션 연결을 확인했어요 — 정상");if(a==="logout")return toast("시제품에는 로그인이 없어요 — 원본에서는 로그인 화면으로 가요");
