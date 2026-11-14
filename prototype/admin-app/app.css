@@ -2040,3 +2040,23 @@ table.stt.gt.grid{width:auto}
 .pch{display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-1);padding:var(--space-4);border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);cursor:pointer;font:inherit;color:var(--ink);text-align:left;min-height:96px}
 .pch:hover{border-color:var(--brand);background:var(--brand-soft)}.pch:disabled{opacity:.45;cursor:default}
 .pch svg.i{width:20px;height:20px;color:var(--brand)}.pch b{font-size:var(--text-body)}.pch span{font-size:var(--text-label);color:var(--muted)}
+
+/* ═════ 210판 ═════ 책 찾기를 오른쪽 창에서(결과 줄 두 줄 글), 카드 끝 [+] 칸, 단원 줄 = 번호 · 이름 칸 · 시작 - 끝 · 지우기 */
+#lp .bfq{flex-direction:column;align-items:stretch}#lp .bfq .btn{align-self:flex-end}
+#lp .bfl{max-height:none}#lp .bfr .bft .hint{font-size:var(--text-caption)}
+.bkcard.bkadd{border:0;background:none;font:inherit;color:var(--muted);text-align:left;display:block}
+.bkcard.bkadd .bkcov{display:flex;align-items:center;justify-content:center;border:1px dashed var(--line);background:none;color:var(--subtle)}
+.bkcard.bkadd .bkcov svg.i{width:28px;height:28px}
+.bkcard.bkadd:hover .bkcov{border-color:var(--brand);color:var(--brand);background:var(--brand-soft)}
+.bkcard.bkadd .bkn{display:block;color:var(--muted);font-weight:600}
+.unrows{display:flex;flex-direction:column;gap:var(--space-1);margin-bottom:var(--space-3)}
+.unrow{display:flex;align-items:center;gap:var(--space-1);min-height:40px}
+.unrow .un{width:20px;flex:none;text-align:right;color:var(--muted);font-size:var(--text-label);font-variant-numeric:tabular-nums}
+.unrow .inp{height:32px;border:1px solid var(--line);border-radius:var(--radius-sm);padding:0 var(--space-2);font-size:var(--text-small);background:var(--surface);color:var(--ink);box-sizing:border-box;min-width:0}
+.unrow .unn{flex:1}.unrow .unp{width:52px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+.unrow .inp:focus{outline:2px solid var(--brand-deep);outline-offset:-1px}
+.unrow .anb{width:28px;height:28px;border:0;background:none;border-radius:var(--radius-sm);color:var(--subtle);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none}.unrow .anb:hover{background:var(--brand-soft);color:var(--brand)}.unrow .anb svg.i{width:14px;height:14px}
+
+/* 210판 보완: 단원 줄의 진도 단위 글(P. · 쪽 · UNIT) */
+.unrow .unu{flex:none;font-size:var(--text-label);color:var(--muted);white-space:nowrap}
+.unrow .unp{width:56px}
