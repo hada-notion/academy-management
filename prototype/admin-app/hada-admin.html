@@ -624,7 +624,7 @@ function lSaveOne(k){const n=lCount(k)+lxRows(k).length;lxSave(k);LDIRTY.delete(
 function lName(k){if(k.startsWith("mk:")){const m=DB.mk.find(x=>"mk:"+x.id===k);return m?{name:mkName(m),d:m.d,bar:mkCol(m).bar}:null}const [bid,d]=k.split("|");const b=byId(DB.blocks,bid);return b?{name:cls(b.classId).name,d,bar:classBar(cls(b.classId))}:null}
 // 다른 수업으로 옮길 때 저장 안 한 것 묻기
 // 수업 창 아래 [되돌리기] [저장 n]
-const lsFoot=(k,extra)=>{const n=lCount(k)+lxRows(k).length;return `<div class="actions">${extra||""}<span class="sp"></span>${n?`<button class="btn icon" id="lsRev" title="저장 상태로 되돌리기 — 이 수업에서 고친 것 모두">${IC("undo")}</button>`:""}<button class="btn pri big" id="lsSave" ${n?"":"disabled"} title="고친 것을 노션에 보내요(Ctrl+Enter)">${IC("save","s")}저장${n?` <span class="cnt">${n}</span>`:""}</button></div>`};
+const lsFoot=(k,extra,nm)=>{const n=lCount(k)+lxRows(k).length;/* 287판: 수업·보강 아래 단추 = 오른쪽 창 모듈 */return PANEL.foot({left:extra||"",undo:!!n,save:nm||"수업 저장",saveOn:!!n,count:n||"",ids:{undo:"lsRev",save:"lsSave"},icons:{trash:IC("trash","s"),undo:IC("undo"),save:IC("save","s")},undoTitle:"저장 상태로 되돌리기 — 이 수업에서 고친 것 모두",saveTitle:"고친 것을 노션에 보내요(Ctrl+Enter)"})};
 const lsBind=(p,k)=>{const r=p.querySelector("#lsRev");if(r)r.onclick=()=>{lRevert(k);lxRevert(k);commit();toast("이 수업에서 고친 것을 되돌렸어요")};const sv=p.querySelector("#lsSave");if(sv)sv.onclick=()=>lSaveDialog(k)};
 const lTabDirty=(key,t)=>{const c=lChanges(key);if(t==="att"&&(DB.anotes||[]).some(r=>r.key===key&&r.state==="draft"))return true;return !!c&&(t==="att"?c.att.length>0:t==="info"?c.other.length>0:false)||(t==="log"&&(DB.recs||[]).some(r=>r.key===key&&r.state==="draft"))};
 const draftPill=k=>LDIRTY.has(k)&&lCount(k)?' <span class="pill w">작성 중</span>':"";
@@ -947,7 +947,7 @@ function panelMk(p,t,id){const st=t.state;const m=DB.mk.find(x=>x.id===id);if(!m
   const mk="mk:"+m.id,ml=!LUN.has(mk);const lt=st.ltab||"att";
   const mw=Object.assign(st.mkW&&st.mkW.id===m.id?st.mkW:{id:m.id},{d:m.d,start:m.start,end:m.end,classId:m.classId,sids:m.sids.slice()});st.mkW=mw;const off=!!m.off;const ss=m.sids.map(stu).filter(Boolean);const pres=m.sids.filter(x=>m.att[x]==="출석").length,ab=m.sids.filter(x=>m.att[x]==="결석").length;
   p.innerHTML=`${phead(`${esc(mkTitle(m))} <small class="pid">${mdw(m.d)} ${fmt(m.start)}</small> ${m.classId||off?kindPill(off?"휴강":"보강"):""}${draftPill(mk)}`,"",`<button class="lockbtn ${ml?"":"open"}" id="mLock" title="${ml?"잠금 풀기 — 끌어서 옮기거나 위아래 끝으로 늘릴 수 있어요":"다시 잠그기"}">${IC(ml?"lock":"unlock")}</button>`)}
-  <div class="ptabs">${[["att","출결",off?"":`${pres}/${m.sids.length}`],["log","학습기록",recsOf(mk).length?String(recsOf(mk).length):""],["info","정보",off?"휴강":""]].map(([k2,n2,sub])=>`<button type="button" class="ptb ${lt===k2?"on":""}" data-lt2="${k2}">${n2}${lTabDirty(typeof mk==="string"?mk:k,k2)?'<i class="tdot"></i>':""}${sub?` <span class="sm">${sub}</span>`:""}</button>`).join("")}</div>
+  ${PANEL.tabs([["att","출결",off?"":`${pres}/${m.sids.length}`],["log","학습기록",recsOf(mk).length?String(recsOf(mk).length):""],["info","정보",off?"휴강":""]].map(([k2,n2,sub])=>({id:k2,label:n2,n:sub,dot:lTabDirty(typeof mk==="string"?mk:k,k2)?'<i class="tdot"></i>':""})),lt,"lt2")}
   <section class="ptab ${lt==="att"?"on":""}">${off?`<div class="offbox">취소한 보강이에요. 휴강 안내 보내기는 다음 업데이트에서 들어가요.<br>되돌리거나 다시 잡으려면 [정보] 탭.</div>`:""}
   <div class="box ${off?"dis":""}"><h3>${IC("users","l")}출결${HELP("보강 수업 = 보강·결석(노션 수업 출결 값과 같음). 같은 칸을 한 번 더 누르면 미입력.")}<span class="sp"></span>${off?"":`<button class="btn sm" id="mAll" ${pres+ab<m.sids.length?"":"disabled"}>모두 보강</button>`}</h3>
     <div class="attlist">${ss.map(x=>{const a=m.att[x.id];const w0=lWas(mk,x.id),ch=w0!==undefined&&w0!==(a||null);return `<div class="attrow ${ch?"ch":""}">${stuHtml(x)}${ch?`<span class="was">${w0==="출석"?"보강":w0||"미입력"}</span>`:""}${anBtn(mk,x,st)}<span class="attseg" data-s="${x.id}">${[["출석","보강","a3"],["결석","결석","a2"]].map(([v2,l,cl])=>`<button class="${!off&&a===v2?"on "+cl:""}" data-a="${v2}" ${off?"disabled":""}>${l}</button>`).join("")}</span></div>${anBox(mk,x,st)}`}).join("")||'<div class="empty">학생이 없어요</div>'}</div></div></section>
@@ -958,7 +958,7 @@ function panelMk(p,t,id){const st=t.state;const m=DB.mk.find(x=>x.id===id);if(!m
     <h3 class="h3s">${IC("layers","l")}클래스${HELP("고르지 않아도 돼요. 비워 두면 여러 클래스 학생이 함께하는 보강이에요.")}</h3>
     ${off?`<div class="valline">${c?`<span class="dotc" style="background:${classBar(c)}"></span>${esc(c.name)} · ${esc(tch(c.teacherId).name)}`:"클래스 없음"}</div>`:'<div class="hpm" id="hpMC"></div>'}
     </div>${off?"":mkPicker(mw,m.d,st.season)}</section>
-  ${lsFoot(mk,`<button class="btn danger" id="mkDel">${IC("trash","s")}보강 삭제</button>`)}`;
+  ${lsFoot(mk,`<button class="btn danger" id="mkDel">${IC("trash","s")}보강 삭제</button>`,"보강 저장")}`;
   bindPhead(p,t);
   p.querySelectorAll("[data-lt2]").forEach(bt=>bt.onclick=()=>{st.ltab=bt.dataset.lt2;render()});if(lt==="log")recsBind(p,mk,{classId:m.classId},m.d,ss,st);
   bindKind(p,st,o=>{if(o===off)return;lBase(mk);m.off=o;commit();toast(o?"보강을 휴강(취소)으로 바꿨어요":"보강으로 되돌렸어요")},()=>({classId:m.classId,sids:m.sids.slice()}));
@@ -1066,7 +1066,7 @@ function panelLesson(p,t,items){const st=t.state;if(st.mkNew)return panelMakeup(
     const doAdd=()=>{let made2=0;w.sids.forEach(id=>{let en=DB.enrolls.find(x=>x.classId===b.classId&&!x.ended&&x.studentId===id);if(!en){en={id:uid("e"),studentId:id,classId:b.classId,start:w.from,discount:0};DB.enrolls.push(en);made2++}if(!b.regs.includes(en.id))b.regs.push(en.id)});
       const n=w.sids.length;st.addStu=null;st.addW=null;commit();toast(`${n}명을 시간표에 넣었어요 — ${md(w.from)} 수업부터${made2?` · 수강 등록 ${made2}건`:""} (시제품: 노션에 쓰지 않음)`)};return}
   p.innerHTML=`${phead(`${esc(c.name)} <small class="pid">${mdw(d)} ${fmt(b.start)}</small> ${kindPill(e.off?"휴강":"정규")}${draftPill(k)}`,`<div class="nlk2"><span class="link">수업 ${IC("ext","s")}</span> · <span class="link">시간표 ${IC("ext","s")}</span> · <span class="link">클래스 ${IC("ext","s")}</span></div>`,lockBtn)}
-  <div class="ptabs">${[["att","출결",e.off?"":`${sm.출석+sm.보강}/${studs.length}`],["log","학습기록",nLog?String(nLog):""],["rep","보고서",(()=>{const n=Object.keys(lrepOf(k).sent).length;return n?String(n):""})()],["info","정보",e.moved?"옮김":e.off?"휴강":""]].map(([k2,n2,sub])=>`<button type="button" class="ptb ${lt===k2?"on":""}" data-lt2="${k2}">${n2}${lTabDirty(typeof mk==="string"?mk:k,k2)?'<i class="tdot"></i>':""}${sub?` <span class="sm">${sub}</span>`:""}</button>`).join("")}</div>
+  ${PANEL.tabs([["att","출결",e.off?"":`${sm.출석+sm.보강}/${studs.length}`],["log","학습기록",nLog?String(nLog):""],["rep","보고서",(()=>{const n=Object.keys(lrepOf(k).sent).length;return n?String(n):""})()],["info","정보",e.moved?"옮김":e.off?"휴강":""]].map(([k2,n2,sub])=>({id:k2,label:n2,n:sub,dot:lTabDirty(typeof mk==="string"?mk:k,k2)?'<i class="tdot"></i>':""})),lt,"lt2")}
   <section class="ptab ${lt==="att"?"on":""}">
   ${e.off?`<div class="offbox">휴강한 수업이에요. 출결은 받지 않아요.<br>되돌리려면 [정보] 탭의 [정규].</div>`:(()=>{const n=studs.length,hw=hwSum(b,d),ev=evalAvg(b,d);const tl=[`<div class="tl"><div class="k">출석</div><div class="v">${sm.출석+sm.보강}<small> / ${n}</small></div>${segBar([["ok",sm.출석],["mk",sm.보강],["ab",sm.결석],["no",sm.미입력]])}</div>`];
     if(hw)tl.push(`<div class="tl"><div class="k">과제</div><div class="v">${hw["완료"]}<small> / ${n}</small></div>${segBar([["hs",hw["완료"]],["hp",hw["일부 완료"]],["hn",hw["미제출"]]])}</div>`);
@@ -1275,7 +1275,7 @@ function pheadSplit(title){const t=document.createElement("template");t.innerHTM
   inf.sort((x,y)=>(y.includes('class="ptype"')?1:0)-(x.includes('class="ptype"')?1:0));
   const q=a.findIndex(z=>z.includes('class="qhelp"'));const qh=q>-1?a.splice(q,1)[0]:"";
   return [`<span class="phn">${a.join("").trim()}</span>${st.join("")}${qh}`,`${inf.join('<span class="phdot">·</span>')}${bd.join("")}`]}
-function phead(title,sub,right){const [t1,t2]=pheadSplit(title);return `<div class="phead"><div class="pt"><h2>${t1}</h2><div class="pinfo">${t2}</div><div class="sub">${sub||""}</div></div>${right?`<span class="pright">${right}</span>`:""}</div>`}
+function phead(title,sub,right){const [t1,t2]=pheadSplit(title);return PANEL.head({nameHtml:t1,infoHtml:t2,linksHtml:sub||"",right})}/* 285판: 시간표·수업 창 머리도 오른쪽 창 모듈 */
 // 오른쪽 창 닫기(261112 대표): ✕ 또는 창 바깥을 누르면 완전히 닫힘(다른 창으로 바뀌지 않음)
 // 시제품 오류는 화면에 바로 알림(원인 찾기용)
 window.addEventListener("error",e=>{try{/* 282판: 어디서 났는지(함수·파일 줄) 같이 — 다시 못 만들 때 원인 찾기용 */const NL=String.fromCharCode(10);const lines=String((e.error&&e.error.stack)||"").split(NL).slice(1,3).map(l=>{const m=l.trim().match(/^at\s+(\S+)?.*?([^\/\s:()]+):(\d+):\d+/);return m?((m[1]&&m[1]!=="HTMLDocument.<anonymous>"?m[1]+" ":"")+m[2]+":"+m[3]):""}).filter(Boolean);window._lastErr={msg:e.message,stack:String((e.error&&e.error.stack)||""),screen:activeTab&&activeTab.screen};toast("시제품 오류: "+(e.message||"알 수 없음")+(lines.length?" ["+lines.join(" ← ")+"]":"")+" — 캡처해서 알려 주세요")}catch(_){}});
@@ -1401,7 +1401,7 @@ function panelBlock(p,t,all,o,isNew){
   const cblocks=c?all.filter(x=>x.classId===c.id).sort((a,b)=>a.day-b.day||a.start-b.start):[];
   const pt=st.ptab&&!(isNew&&!c&&st.ptab!=="cls")?st.ptab:(isNew?"cls":"sch");
   p.innerHTML=`${phead(`${isNew?"새 시간표":esc(c.name)} <small class="pid">${DAYS[o.day]} ${fmt(o.start)}</small> ${status}`,`<div class="nlk2">${links}</div>`,lockBtn)}
-  <div class="ptabs" role="tablist">${[["sch","수업 일정",""],["cls","클래스",""],["stu","학생",c?`${chk.size}/${eligible.length}`:""]].map(([k,n,sub])=>`<button type="button" class="ptb ${pt===k?"on":""}" data-pt="${k}">${n}${sub?` <span class="sm">${sub}</span>`:""}${k==="stu"&&busyN?'<i class="pdot" title="이 시간에 다른 수업이 있는 학생이 있어요"></i>':""}${k==="cls"&&!c?'<i class="pdot w"></i>':""}</button>`).join("")}</div>
+  ${PANEL.tabs([["sch","수업 일정",""],["cls","클래스",""],["stu","학생",c?`${chk.size}/${eligible.length}`:""]].map(([k,n,sub])=>({id:k,label:n,n:sub,mark:(k==="stu"&&busyN?'<i class="pdot" title="이 시간에 다른 수업이 있는 학생이 있어요"></i>':"")+(k==="cls"&&!c?'<i class="pdot w"></i>':"")})),pt,"pt")}
   <section class="ptab ${pt==="sch"?"on":""}" data-sec="sch">
   <div class="box"><h3>${IC("clock","l")}수업 일정${HELP(locked?"운영 중이라 잠겨 있어요. 위 자물쇠를 풀면 바꿀 수 있어요.":hasL?"요일·시간·기간을 바꾸면 \"언제부터\" 물어보고, 그날부터 새 시간으로 적용해요. 지난 수업은 그대로 남아요.":"칸을 눌러 요일·시간·날짜를 골라요.")}</h3>
     <div class="field"><span class="lbl">수업 요일</span><div class="trow"><input class="inp timebtn" id="fDay" data-v="${o.day}" value="${DAYS[o.day]}요일" readonly ${dis} title="눌러서 요일 고르기"></div></div>
@@ -1423,8 +1423,11 @@ function panelBlock(p,t,all,o,isNew){
 <table class="t"><tr><th>학생</th>${cblocks.map(x=>`<th title="${DAYS[x.day]} ${fmt(x.start)}-${fmt(x.end)}">${DAYS[x.day]}<span class="thsub">${fmt(x.start)}</span></th>`).join("")}</tr>
     ${classEnrolls.map(e=>{const sx=stu(e.studentId);return `<tr><td draggable="true" data-ds="${sx.id}" title="끌어서 이 클래스의 다른 시간표에 놓기">${stuHtml(sx)}${cblocks.some(x=>x.regs.includes(e.id))?"":' <span class="tag w">시간표 없음</span>'}</td>${cblocks.map(x=>`<td data-tg="${x.id}|${e.id}" class="mark ${x.regs.includes(e.id)?"":"off"}">${x.regs.includes(e.id)?IC("check"):IC("minus","s")}</td>`).join("")}</tr>`}).join("")}</table></div>`:""}
   </section>
-  <div class="actions">${isNew?`<button class="btn" id="nCancel">취소</button><span class="sp"></span><button class="btn" id="nDraft" ${c&&chk.size?"":"disabled"}>임시저장</button><button class="btn pri big" id="nOk" ${c&&chk.size?"":"disabled"} title="Ctrl+Enter">${IC("save","s")}저장</button>`
-    :`<button class="btn danger" id="pDel" ${o.lessons&&locked?"disabled":""} title="${o.lessons?(locked?"운영 중이라 잠겨 있어요 — 위 자물쇠를 풀면 종료할 수 있어요":"날짜를 골라 이 시간표를 종료해요"):o.del?"삭제 취소":"아직 수업이 없어 삭제할 수 있어요(저장할 때 삭제해요)"}">${o.lessons?IC("stop","s")+"종료":o.del?IC("undo","s")+"삭제 취소":IC("trash","s")+"삭제"}</button><span class="sp"></span>${(()=>{const n=DB.blocks.filter(x=>x.classId===o.classId&&x.seasonId===o.seasonId&&(x.state==="draft"||x.del)).length;return `${n?`<button class="btn icon" id="pRev" title="저장 상태로 되돌리기 — 이 클래스 시간표에서 고친 것 모두">${IC("undo")}</button>`:""}<button class="btn pri big" id="pSave" ${n?"":"disabled"} title="Ctrl+Enter — 같은 클래스의 작성 중 시간표를 한 번에">${IC("save","s")}저장${n?` <span class="cnt">${n}</span>`:""}</button>`})()}`}</div>`;
+  ${(()=>{const SI={trash:IC("trash","s"),undo:IC("undo"),save:IC("save","s")};
+    if(isNew)return PANEL.foot({left:'<button class="btn" id="nCancel">취소</button>',extra:`<button class="btn" id="nDraft" ${c&&chk.size?"":"disabled"}>임시저장</button>`,save:"시간표 저장",primary:true,saveOn:!!(c&&chk.size),ids:{save:"nOk"},icons:SI,saveTitle:"Ctrl+Enter"});
+    const n=DB.blocks.filter(x=>x.classId===o.classId&&x.seasonId===o.seasonId&&(x.state==="draft"||x.del)).length;
+    return PANEL.foot({del:true,delOff:!!(o.lessons&&locked),delLabel:o.lessons?"종료":o.del?"삭제 취소":"삭제",delIcon:o.lessons?IC("stop","s"):o.del?IC("undo","s"):IC("trash","s"),delTitle:o.lessons?(locked?"운영 중이라 잠겨 있어요 — 위 자물쇠를 풀면 종료할 수 있어요":"날짜를 골라 이 시간표를 종료해요"):o.del?"삭제 취소":"아직 수업이 없어 삭제할 수 있어요(저장할 때 삭제해요)",
+      undo:!!n,save:"시간표 저장",saveOn:!!n,count:n||"",ids:{del:"pDel",undo:"pRev",save:"pSave"},icons:SI,undoTitle:"저장 상태로 되돌리기 — 이 클래스 시간표에서 고친 것 모두",saveTitle:"Ctrl+Enter — 같은 클래스의 작성 중 시간표를 한 번에"})})()}`;
   // ---- 연결 ----
   const reRender=()=>isNew?renderPanel(p,t,all,[]):render();
   const keepFocus=(id,v)=>{const pos=v.selectionStart;renderPanel(p,t,all,[]);const n=p.querySelector(id);if(n){n.focus();n.setSelectionRange(pos,pos)}};
@@ -2221,9 +2224,9 @@ function stuPanel(x,st){const isNew=stuIsNew(x);const k=isNew?"new":stuStat(x);c
   const nEnC=isNew?0:DB.enrolls.filter(e=>e.studentId===x.id&&e.state==="draft").length;const nChg=(!isNew&&x.state==="draft"&&x._o?Object.keys(x._o).filter(f=>x._o[f]!==x[f]).length||1:0)+nEnC;
   const dirtyCls=f=>!isNew&&stuDirty(x,f)?"chg":"";
   const live=es.filter(e=>!(e.ended&&!(e.end&&e.end>=TODAY))&&enStat(e)!=="end");
-  const head=phead(`<input class="hname ${x.name?"":"empty"} ${dirtyCls("name")}" data-sk="name" value="${esc(x.name||"")}" placeholder="새 학생 이름" title="눌러서 이름 고치기" autocomplete="off"> ${stPill(k)}${isNew?"":`<small class="hsub">${esc(x.school||"학교 빈칸")}</small>${gchip(x.grade)||'<span class="tag">학년 빈칸</span>'}`}${HELP("등록상태는 자동이에요. "+why+" 손으로 바꾸는 것은 [등록 보류]뿐이에요.")}`,
-    isNew?`문의 ${inqS(x.inq)} · 이름을 넣으면 표에 생겨요`:`<span class="nlk"><a class="link" data-go="tt">주간 시간표 ↗</a> · <a class="link" data-go="en">수강 ↗</a></span>`);
-  const tabs=`<div class="ptabs">${[["info","정보",""],["en","등록",String(live.length)],["sch","일정","",1],["gr","성적",isNew?"":String((DB.grades||[]).filter(g=>g.sid===x.id&&!g.del).length||"")]].map(([k2,n2,sub,later])=>`<button type="button" class="ptb ${tab===k2?"on":""} ${later?"later":""}" ${later?`disabled title="${n2} — 준비 중"`:`data-stab="${k2}"`}>${n2}${sub?` <span class="sm">${sub}</span>`:""}${later?`<span class="soon">준비 중</span>`:""}</button>`).join("")}</div>`;
+  /* 284판(대표 '학생 창도 옮겨'): 머리·탭·아래 단추 = 오른쪽 창 모듈(panel.js) */const [sh1,sh2]=pheadSplit(`<input class="hname ${x.name?"":"empty"} ${dirtyCls("name")}" data-sk="name" value="${esc(x.name||"")}" placeholder="새 학생 이름" title="눌러서 이름 고치기" autocomplete="off"> ${stPill(k)}${isNew?"":`<small class="hsub">${esc(x.school||"학교 빈칸")}</small>${gchip(x.grade)||'<span class="tag">학년 빈칸</span>'}`}${HELP("등록상태는 자동이에요. "+why+" 손으로 바꾸는 것은 [등록 보류]뿐이에요.")}`);
+  const head=PANEL.head({nameHtml:sh1,infoHtml:sh2,linksHtml:isNew?`문의 ${inqS(x.inq)} · 이름을 넣으면 표에 생겨요`:`<span class="nlk"><a class="link" data-go="tt">주간 시간표 ↗</a> · <a class="link" data-go="en">수강 ↗</a></span>`});
+  const tabs=PANEL.tabs([["info","정보",""],["en","등록",String(live.length)],["sch","일정","",1],["gr","성적",isNew?"":String((DB.grades||[]).filter(g=>g.sid===x.id&&!g.del).length||"")]].map(([k2,n2,sub,later])=>({id:k2,label:n2,n:sub,later})),tab,"stab");
 
   const ctRow=(f,n,lab)=>`<div class="ct"><span class="cl">${lab||n}</span><input class="inp ${dirtyCls(f)}" data-sk="${f}" value="${esc(x[f]||"")}" placeholder="010-0000-0000" autocomplete="off">${n?`<button type="button" class="prb ${x.pre===n?"on":""}" data-pre="${n}" ${!x[f]&&x.pre!==n?"disabled":""} title="${x.pre===n?"우선 연락처":!x[f]?"번호를 넣으면 우선 연락처로 정할 수 있어요":"이 번호를 우선 연락처로"}">우선</button>`:"<span></span>"}</div>`;
   const infoTab=`<section class="box"><h3>${IC("calendar","l")}문의</h3>
@@ -2257,8 +2260,9 @@ function stuPanel(x,st){const isNew=stuIsNew(x);const k=isNew?"new":stuStat(x);c
     :`<button type="button" class="enadd" id="nOpen">${IC("plus","s")}등록 추가</button>`;
   const enTab=`<section class="box"><h3>${IC("usercheck","l")}등록 <span class="hint" style="font-weight:400">${es.length}</span><span class="sp"></span>${x.hold?'<span class="tag">등록 보류 중 — 정보 탭에서 바꿔요</span>':""}</h3>
     <div class="enlist">${esS.map(enCard).join("")}${newCard}</div></section>`;
-  const foot=x._fresh?`<div class="actions"><span class="hint">${isNew?"이름을 먼저 입력해 주세요":"작성 중"}</span><span class="sp"></span><button class="btn pri big" id="spSave">${IC("save","s")}저장</button></div>`
-    :`<div class="actions"><button class="btn danger" id="spDel">${IC("trash","s")}삭제</button><span class="sp"></span>${nChg?`<button class="btn icon" id="spRev" title="저장 상태로 되돌리기 — 이 학생에서 고친 것 모두">${IC("undo")}</button>`:""}<button class="btn big rowsave" id="spSave" ${nChg?"":"disabled"} title="이 학생(과 이 학생 등록)에서 고친 것만 바로 저장해요. 모두 저장하려면 위 [저장]을 눌러요">${IC("save","s")}학생 저장${nChg?` <span class="cnt">${nChg}</span>`:""}</button></div>`;
+  const SI={trash:IC("trash","s"),undo:IC("undo"),save:IC("save","s")};
+  const foot=x._fresh?PANEL.foot({hint:isNew?"이름을 먼저 입력해 주세요":"작성 중",save:"저장",saveOn:true,primary:true,ids:{save:"spSave"},icons:SI,saveTitle:"이 학생을 저장해요"})
+    :PANEL.foot({del:true,undo:!!nChg,save:"학생 저장",saveOn:!!nChg,count:nChg||"",ids:{del:"spDel",undo:"spRev",save:"spSave"},icons:SI,delTitle:"이 학생 삭제",undoTitle:"저장 상태로 되돌리기 — 이 학생에서 고친 것 모두",saveTitle:"이 학생(과 이 학생 등록)에서 고친 것만 바로 저장해요. 모두 저장하려면 위 [저장]을 눌러요"});
   return `${head}${tabs}${tab==="info"?infoTab:tab==="gr"?stuGrTab(x):enTab}${foot}`}
 function bindStuPanel(p,x,t){const st=t.state;const isNew=stuIsNew(x);
   const focusName=()=>setTimeout(()=>{const n=document.querySelector("#sp .hname");if(n)n.focus()},0);

@@ -16,6 +16,7 @@ main{padding:8px 24px 80px;max-width:1500px}
 .mp-pn{position:static!important;width:360px;max-height:none;height:auto;border:1px solid var(--line2,#E5DED4);border-radius:var(--radius-lg,14px);background:var(--surface,#fff);box-shadow:0 1px 4px rgba(25,31,40,.06);overflow:visible;display:flex;flex-direction:column;padding:0 var(--space-4,16px)!important;overflow:visible!important}
 .mp-pn .actions{position:static;margin:12px -16px 0;padding:12px 16px;border-top:1px solid var(--divider,#EEE7DD)}
 .mp-pn>.phead:last-child{margin-bottom:0;border-bottom:0;border-radius:var(--radius-lg,14px)}
+/* 칸 간격 = 앱 #lp 와 같게(app.css #lp .hfgrid) */.mp-pn .hfgrid{display:flex;flex-direction:column;gap:12px}
 .mp-skel{width:360px;border:2px dashed #CFC2B2;border-radius:14px;background:#fff;font-size:13px}
 .mp-skel>div{padding:10px 14px;border-bottom:1px dashed #E2D8CC}.mp-skel>div:last-child{border-bottom:0}.mp-skel b{color:var(--brand-deep)}.mp-skel small{display:block;color:var(--text-subtle)}
 .mp-code{font:12px/1.5 ui-monospace,Consolas,monospace;background:#FBF8F3;border:1px solid #EEE7DD;border-radius:10px;padding:10px 12px;white-space:pre;overflow:auto;max-width:560px;color:#4E5968}
@@ -65,7 +66,7 @@ const gchip = g => `<span class="gchip ${/^초/.test(g) ? "elem" : /^중/.test(g
 // 1 머리
 put("h1", [
   cell("클래스", head({ name: "중1 수학", dot: "#B794F6", status: [{ t: "운영 중", tone: "green" }], info: ["클래스", "이하다"], links: [{ t: "시간표" }, { t: "수업" }] })),
-  cell("학생 — 이름을 바로 고침", head({ name: "장예린", nameInput: "새 학생 이름", status: [{ t: "● 등록 중", tone: "green" }], help: "등록상태는 자동이에요", info: ["하다고"], badges: [gchip("고3")], links: [{ t: "주간 시간표" }, { t: "수강" }] })),
+  cell("학생 — 이름을 바로 고침", head({ name: "장예린", nameInput: "새 학생 이름", status: [{ t: "등록 중", tone: "green" }], help: "등록상태는 자동이에요", info: ["하다고"], badges: [gchip("고3")], links: [{ t: "주간 시간표" }, { t: "수강" }] })),
   cell("수업 — 날짜·시각은 2줄", head({ name: "초등 영어", dot: "#E88FB5", info: ["2026.11.11(수) 14:30"], badges: [pill({ t: "정규", tone: "blue" })], links: [{ t: "수업" }, { t: "시간표" }, { t: "클래스" }] })),
   cell("등록 — 누구의 등록인지", head({ name: "중1 수학", dot: "#B794F6", status: [{ t: "작성 중", tone: "yellow" }], info: ["등록", "장예린", "하다고"], badges: [gchip("고3")] })),
 ].join(""));
@@ -108,6 +109,15 @@ mountFields(document.querySelector("#h4 .mp-pn"), F4);
   document.getElementById("h4").appendChild(el);
   K.forEach(([, f], i) => { try { f(el.querySelector(`[data-k2="${i}"]`)) } catch (e) { el.querySelector(`[data-k2="${i}"]`).textContent = K[i][0] + " — " + e.message } });
 }
+/* 4번 칸 — 펼친 모습(앱과 같은 부품: 여러 개 고르기 = .spick.ddpop.mlpop, 찾기 칸 결과 = .ttrows) */
+{
+  const chk = (t, on) => `<label class="ck2 tso ${on ? "on" : ""}"><input type="checkbox" ${on ? "checked" : ""}><b>${t}</b><button type="button" class="mldel" title="이름 · 색 · 삭제">${PANEL.IC.help.replace(/<circle[\s\S]*<\/svg>/, '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>')}</button></label>`;
+  const multiOpen = `<div class="spick ddpop mlpop" style="position:static;width:auto;max-height:none;box-shadow:0 8px 24px rgba(25,31,40,.12);border:1px solid var(--line2);border-radius:12px;background:var(--surface)"><span class="searchbox mlq">${PANEL.IC.search}<input class="inp" placeholder="찾거나 새로 적기" autocomplete="off"></span><div class="tsl">${chk("수학", 1)}${chk("영어", 1)}${chk("국어", 0)}${chk("과학", 0)}${chk("사회", 0)}</div><div class="tsf"><span class="lb">2개 선택</span><span class="sp"></span><button type="button" class="btn">비우기</button><button type="button" class="btn pri">${PANEL.IC.check}닫기</button></div></div>`;
+  const searchOpen = `<span class="searchbox">${PANEL.IC.search}<input class="inp" value="하다" autocomplete="off"></span><div class="ttrows" style="margin-top:8px">${[["하다초", "초등학교 · 경기도 김포시 운양동"], ["하다중", "중학교 · 경기도 김포시 장기동 · 이미 있음"], ["하다고", "고등학교 · 경기도 김포시 구래동"]].map(([t, s]) => `<div class="ttrow" style="cursor:pointer"><span class="t">${t}</span><span class="hint">${s}</span></div>`).join("")}</div>`;
+  const el = document.createElement("div"); el.className = "mp-cell";
+  el.innerHTML = `<span class="lab">펼친 모습</span><div class="panel mp-pn"><div class="box"><h3>과목 — 여러 개 고르기를 눌렀을 때<span class="sp"></span></h3>${multiOpen}<p class="mp-rule" style="margin-top:8px">항목마다 체크 · 위에 찾거나 새로 적기 · ⋯ = 이름·색·삭제 · 아래 선택 수와 [비우기]·[닫기]</p></div><div class="box"><h3>찾기 칸 — 글자를 적었을 때<span class="sp"></span></h3>${searchOpen}<p class="mp-rule" style="margin-top:8px">두 글자부터 결과 줄이 아래에 나와요 · 누르면 그 항목을 골라요</p></div></div>`;
+  document.getElementById("h4").appendChild(el);
+}
 
 // 5 날짜·시각 한 줄
 const F5 = [{ title: "기간", fields: [{ label: "등록일 – 종료일", type: "range", value: ["2026-09-01", ""], help: "종료일을 비워 두면 계속 다녀요" }, { label: "기본 시작일 – 기본 종료일", type: "range", value: ["2026-09-01", "2026-12-19"] }, { label: "수업 시간", type: "trange", value: ["14:30", "15:30"] }] }];
@@ -119,7 +129,7 @@ put("h6", [
   cell("교재 쓰는 곳", box({ title: "쓰는 곳", rows: [{ t: "중1 수학", sub: "그룹 · 7명", tag: "진행 중" }, { t: "장예린", sub: "개별", tag: "다음 교재" }] })),
 ].join(""));
 // 7 카드
-const card = (t, s, b) => `<div class="encard" style="border:1px solid var(--divider);border-radius:12px;padding:10px 12px;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><i class="cdot" style="background:${b}"></i><b>${t}</b><span class="sp" style="flex:1"></span><span class="pill nc-green">등록 중</span></div><div class="hint" style="margin-top:4px">${s}</div></div>`;
+const card = (t, s, b) => `<div class="encard" style="border:1px solid var(--divider);border-radius:12px;padding:10px 12px;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><i class="cdot" style="background:${b}"></i><b>${t}</b><span class="sp" style="flex:1"></span><span class="stp s-on">등록 중</span></div><div class="hint" style="margin-top:4px">${s}</div></div>`;
 put("h7", cell("등록 카드", box({ title: "등록 클래스", body: card("중1 수학", "2026.09.01 - · 월 16:00 · 수 16:00", "#B794F6") + card("초등 영어", "2026.09.01 - · 월 · 수 · 금 14:30", "#E88FB5") })));
 // 8 미니 부품
 const week = `<div class="mwk2"><div class="mwk" style="--mwk-h:30px;--mwk-n:5"><div class="mwk-hd"><span></span>${"월화수목금".split("").map(d => `<span>${d}</span>`).join("")}</div><div class="mwk-sc"><div class="mwk-bd" style="height:120px"><div class="mwk-ax">${[15, 16, 17, 18].map((h, i) => `<span style="top:${i * 30}px">${h}</span>`).join("")}</div>${[0, 1, 2, 3, 4].map(d => `<div class="mwk-col">${d % 2 === 0 ? `<button class="mwk-blk" style="top:30px;height:28px;left:0;width:calc(100% - 3px);background:#EFE7FB;border-left-color:#B794F6"><b>16:00</b></button>` : ""}</div>`).join("")}</div></div></div></div>`;
@@ -135,7 +145,7 @@ put("h10", [cell("고친 게 없을 때", foot({ del: true, save: "클래스 저
 // 전체 예시
 const ex = id => { const d = document.createElement("div"); d.className = "mp-cell"; d.innerHTML = `<span class="lab">${id}</span><div class="panel mp-pn"></div>`; document.getElementById("h11").appendChild(d); return d.querySelector(".mp-pn") };
 render(ex("클래스 창"), { head: { name: "중1 수학", dot: "#B794F6", status: [{ t: "운영 중", tone: "green" }], info: ["클래스", "이하다"], links: [{ t: "시간표" }, { t: "수업" }] }, tabs: [{ id: "i", label: "정보" }, { id: "t", label: "시간표", n: 2 }, { id: "s", label: "학생", n: 7 }, { id: "b", label: "교재", n: 3 }], tab: "i", boxes: [{ title: "기본", fields: [{ label: "클래스 이름", value: "중1 수학" }, { label: "개강일 – 종강일", type: "range", value: ["", ""], help: "모르면 비워 두세요" }, { label: "수강료", type: "num", value: "250000" }] }], foot: { del: true, save: "클래스 저장" } });
-render(ex("학생 창"), { head: { name: "장예린", nameInput: "새 학생 이름", status: [{ t: "● 등록 중", tone: "green" }], info: ["하다고"], badges: [gchip("고3")], links: [{ t: "주간 시간표" }, { t: "수강" }] }, tabs: [{ id: "i", label: "정보" }, { id: "e", label: "등록", n: 2 }, { id: "c", label: "일정", disabled: true }, { id: "g", label: "성적" }], tab: "i", boxes: [{ title: "문의", fields: [{ label: "문의일시", type: "date", value: "2026-08-29" }, { label: "메모(내부용)", type: "memo" }] }, { title: "기본정보", fields: [{ label: "학교", value: "하다고" }, { label: "학년", value: "고3" }] }], foot: { del: true, save: "학생 저장" } });
+render(ex("학생 창"), { head: { name: "장예린", nameInput: "새 학생 이름", status: [{ t: "등록 중", tone: "green" }], info: ["하다고"], badges: [gchip("고3")], links: [{ t: "주간 시간표" }, { t: "수강" }] }, tabs: [{ id: "i", label: "정보" }, { id: "e", label: "등록", n: 2 }, { id: "c", label: "일정", disabled: true }, { id: "g", label: "성적" }], tab: "i", boxes: [{ title: "문의", fields: [{ label: "문의일시", type: "date", value: "2026-08-29" }, { label: "메모(내부용)", type: "memo" }] }, { title: "기본정보", fields: [{ label: "학교", value: "하다고" }, { label: "학년", value: "고3" }] }], foot: { del: true, save: "학생 저장" } });
 render(ex("수업 창"), { head: { name: "초등 영어", dot: "#E88FB5", info: ["2026.11.11(수) 14:30"], badges: [pill({ t: "정규", tone: "blue" })], links: [{ t: "수업" }, { t: "시간표" }, { t: "클래스" }] }, tabs: [{ id: "a", label: "출결", n: "8/12" }, { id: "l", label: "학습기록", n: 1 }, { id: "r", label: "보고서" }, { id: "i", label: "정보" }], tab: "a", boxes: [{ title: "출결", help: "출석·결석을 눌러 넣어요", right: '<button class="btn sm">모두 출석</button>', rows: [{ t: "신지안", sub: "바다초 초1", tag: "출석" }, { t: "김다은", sub: "푸른중", tag: "결석" }] }], foot: { save: "수업 저장" } });
 document.querySelectorAll(".mp-pn .hname").forEach(i=>i.closest(".mp-pn").classList.add("stpanel"));
 </script>
