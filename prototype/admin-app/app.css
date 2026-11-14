@@ -2174,3 +2174,59 @@ table.stt.gt td[data-mg]{vertical-align:top;padding-top:calc(var(--space-2) + 1p
 .pgadd{display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;margin-top:var(--space-2)}
 .pgadd .hfh{flex:1 1 200px;min-width:0}
 .pgadd .hf-msg{display:none}
+
+/* ═════ 237판 ═════ 합친 칸도 고른 줄과 같은 표시 */
+table.stt.gt td[data-mg].mgsel,table.stt.gt tr:hover td[data-mg].mgsel{background:var(--sel-bg)}
+table.stt td.mgsel.mgfirst{box-shadow:inset 3px 0 0 var(--brand-deep)}
+table.stt tr.sel.mgcov td:first-child:not(.mgsel){box-shadow:none}
+
+/* ═════ 238판 ═════ 합친 칸 아래쪽에 마우스 = 그 줄이 밝아짐 · 진행도 막대 왼쪽 정렬 */
+table.t tr.mghov td:not([data-mg]){background:var(--brand-tint)}
+table.t tr.mgnohov:not(.sel):not(.draft):hover td:not([data-mg]){background:transparent}
+td.pgc{text-align:left;white-space:nowrap}
+td.pgc .pgp{display:inline-block;min-width:4ch;text-align:right;font-variant-numeric:tabular-nums}
+
+/* ═════ 239판 ═════ 진도방식 칩: 반별 = 여러 사람·파랑, 개별 = 한 사람·보라 */
+.mchip{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.mchip svg.i{width:14px;height:14px}
+.mchip.grp{background:#E6F1FB;color:#185FA5}
+.mchip.ind{background:#EEEDFE;color:#534AB7}
+.mwho{margin-left:var(--space-2);font-size:var(--text-small);color:var(--ink)}
+.pgam button{display:inline-flex;align-items:center;gap:4px}
+.pgam button svg.i{width:14px;height:14px}
+
+/* ═════ 240판 ═════ [교재] 탭: 진행상태별 묶음 + 그 자리에서 상태 바꾸기 */
+.pgsecs{display:flex;flex-direction:column;gap:var(--space-3)}
+.pgsh{display:flex;align-items:center;gap:var(--space-2);width:100%;border:0;background:none;padding:0;margin:0 0 var(--space-2);font:inherit;cursor:pointer;color:var(--muted)}
+.pgsh .sp{flex:1}
+.pgst{flex:none;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:0;background:none;border-radius:var(--radius-sm);color:var(--subtle);cursor:pointer;margin-left:calc(-1 * var(--space-1))}
+.pgst:hover{background:var(--brand-soft);color:var(--brand-deep)}
+.pgstm{display:flex;flex-wrap:wrap;gap:var(--space-2);padding:var(--space-2) var(--space-3);border:1px solid var(--line);border-top:0;background:var(--surface)}
+.pgstm .spill{border:0;cursor:pointer;height:28px;padding:0 var(--space-3);font-size:var(--text-small)}
+.pgstm .spill.cur{box-shadow:inset 0 0 0 2px currentColor}
+
+/* ═════ 241판 ═════ 창 [시간표] 탭의 작은 주간 시간표 */
+.mwk{margin:0 0 var(--space-3);padding:var(--space-3);border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface)}
+.mwk-hd{display:grid;grid-template-columns:24px repeat(auto-fit,minmax(0,1fr));gap:4px;margin-bottom:var(--space-2);font-size:var(--text-caption,12px);font-weight:700;color:var(--muted);text-align:center}
+.mwk-bd{position:relative;display:grid;grid-template-columns:24px repeat(auto-fit,minmax(0,1fr));gap:4px;background:repeating-linear-gradient(to bottom,var(--line) 0 1px,transparent 1px var(--mwk-h));background-position:28px 0;background-size:calc(100% - 28px) var(--mwk-h);background-repeat:repeat-y}
+.mwk-ax{position:relative}
+.mwk-ax span{position:absolute;right:2px;transform:translateY(-50%);font-size:11px;color:var(--subtle);line-height:1}
+.mwk-ax span:first-child{transform:none}
+.mwk-col{position:relative}
+.mwk-blk{position:absolute;box-sizing:border-box;border:0;border-left:3px solid;border-radius:4px;padding:2px 4px;font:inherit;font-size:11px;line-height:1.2;text-align:left;color:var(--ink);overflow:hidden;white-space:nowrap;cursor:pointer}
+.mwk-blk b{font-weight:700}
+.mwk-blk.dim{opacity:.35}
+.mwk-blk:hover{filter:brightness(.96)}
+
+/* ═════ 243판 ═════ 진도관리 창 [기록]·[수료] 탭 */
+.pgrec{gap:var(--space-2)}
+.pgrd{flex:none;width:72px;font-size:var(--text-small);color:var(--muted);font-variant-numeric:tabular-nums}
+.pgrk{flex:none;display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--muted)}
+.pgrk svg.i{width:14px;height:14px}
+.pgfin{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3);border:1px solid var(--line);border-radius:var(--radius-md);margin-bottom:var(--space-3)}
+.pgfin .sp{flex:1}
+.pgfin.done{background:var(--brand-tint,#FBF8F4)}
+.pgfin svg.i{flex:none;color:var(--brand-deep)}
+
+/* ═════ 236판 ═════ 재무 > 청구: 탭 넷(교재비 · 재료비 · 기타경비 · 전체 줄). 기존 부품(.vseg.subseg · .hfgrid.nc · .svl)만 쓴다 */
+.subseg button{white-space:nowrap}
