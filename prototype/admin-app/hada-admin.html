@@ -1849,6 +1849,7 @@ function hfMulti(h,o){const v=new Set(o.value||[]);h.innerHTML=`<div class="hf">
   b.onclick=open;b.onkeydown=e=>{if(e.key==="Enter"||e.key===" "||e.key==="ArrowDown"){e.preventDefault();open()}};show()}
 
 /* ================= 목록 화면 ================= */
+const PAY_HOW=["계좌이체","카드","현금","기타"],EV_GUIDE=["상담","테스트","휴강","휴원"];
 const LISTS={
  students:{title:"학생",coll:"students",banner:"시작하기 · 학생 — 지금 다니는 학생과 대기 학생을 넣어요. 엑셀 명단이 있으면 [엑셀에서 붙여넣기].",
   cols:[["이름",s=>s.name],["학교",s=>s.school],["학년",s=>!s.grade?"!학년 빈칸":/^(초[1-6]|중[1-3]|고[1-3]|재수|N수)$/.test(s.grade)?"@g:"+s.grade:"!"+s.grade+" (예: 중2)"],["등록상태",s=>STU_ST[stuStat(s)][0]],["보호자 연락처",s=>s.mom?"어머니 "+s.mom:s.dad?"아버지 "+s.dad:"!연락처 없음"],["다니는 클래스",s=>DB.enrolls.filter(e=>e.studentId===s.id&&!e.ended).map(e=>cls(e.classId).name).join(", ")||"—"]],
@@ -2348,9 +2349,9 @@ Object.assign(LISTS,{
   fields:[["bookId","교재",oBook,"req","라이브러리에서 사용 중인 교재"],["classId","클래스",oCls,"req"],["mode","진도방식",["반별","개별"],"seg"],["studentId","학생(개별일 때)",oStu],["stat","진행상태",["다음 교재","진행 중","완료","미사용"]],["topic","주제",null,"text","같은 교재를 다시 할 때 회차 이름 — 리포트·수료 보고서 제목 앞에 붙어요"],["done","수료일",null,"date","[수료]를 누르면 오늘로 들어가요"]],
   blank:()=>({id:uid("pg"),bookId:(DB.books[0]||{}).id,classId:(DB.classes[0]||{}).id,mode:"반별",studentId:"",stat:"다음 교재",range:"",pct:"",done:""})},
  events:{title:"일정",coll:"events",unit:"건",ph:"일정 찾기",help:"학원 일정·학사 일정·휴원·상담·할 일이에요. 휴원은 수업 만들기에서 그날을 건너뛰고, 학부모 공개를 켠 일정만 리포트·가정통신문에 나가요.",
-  cols:[["일정",x=>x.name,"name"],["구분",x=>x.kind,"kind"],["날짜",x=>x.end&&x.end!==x.start?D10(x.start)+"-"+D10(x.end):D10(x.start)],["담당자",x=>x.who?tch(x.who).name:"—","who"],["진행상태",x=>x.stat,"stat"],["학부모 공개",x=>x.pub?"공개":"—","pub"]],
-  filters:[["다가오는 일정",x=>(x.end||x.start)>=TODAY,true],["휴원",x=>x.kind==="휴원"],["상담",x=>x.kind==="상담"],["학부모 공개",x=>x.pub]],
-  fields:[["name","일정 이름"],["kind","구분",["학원 일정","학사 일정","휴원","상담","할일"]],["start","시작일",null,"date"],["end","끝나는 날",null,"date","하루면 비워 두세요"],["who","담당자",oTch],["stat","진행상태",["예정","진행 중","완료"]],["pub","학부모 공개",["공개","공개 안 함"],"bool"],["memo","메모",null,"memo"]],
+  cols:[["일정",x=>x.name,"name"],["구분",x=>x.kind,"kind"],["안내 구분",x=>x.guide||"—","guide"],["날짜",x=>x.end&&x.end!==x.start?D10(x.start)+"-"+D10(x.end):D10(x.start)],["담당자",x=>x.who?tch(x.who).name:"—","who"],["진행상태",x=>x.stat,"stat"],["학부모 공개",x=>x.pub?"공개":"—","pub"]],
+  filters:[["다가오는 일정",x=>(x.end||x.start)>=TODAY,true],["휴원",x=>x.kind==="휴원"],["상담",x=>x.guide==="상담"],["학부모 공개",x=>x.pub]],
+  fields:[["name","일정 이름"],["kind","구분",["학원 일정","학사 일정","휴원","할일"]],["guide","안내 구분",()=>EV_GUIDE.map(v=>({v,t:v})),"opt","학부모 안내에 쓰는 갈래(상담 · 테스트 · 휴강 · 휴원). 비워 둬도 돼요"],["start","시작일",null,"date"],["end","끝나는 날",null,"date","하루면 비워 두세요"],["who","담당자",oTch],["stat","진행상태",["예정","진행 중","완료"]],["pub","학부모 공개",["공개","공개 안 함"],"bool"],["memo","메모",null,"memo"]],
   blank:()=>({id:uid("ev"),name:"새 일정",kind:"학원 일정",start:TODAY,end:"",who:"",stat:"예정",pub:false,memo:""})},
  reports:{title:"학습 보고서",coll:"reports",unit:"건",ph:"클래스 찾기",help:"클래스별 보고서 묶음(발송함)이에요. 일일은 수업 창에서, 주간·월간은 여기서 [보고서 생성] 뒤 [일괄 전송]해요. 보고서 본문은 노션에서 써요.",noAdd:1,noDel:true,
   cols:[["클래스",x=>nmCls(x.classId),"classId"],["보고서 구분",x=>x.kind,"kind"],["기간",x=>D10(x.from)+"-"+D10(x.to)],["대상",x=>x.n+"명"],["보내기 전",x=>x.sent&&!x.left?"—":(x.left||x.n)+"명"],["상태",x=>x.left?"보내는 중":x.sent?"모두 보냄":"만듦","stat"]],
@@ -2359,7 +2360,7 @@ Object.assign(LISTS,{
  tuition:{title:"수강료",coll:"tuition",unit:"건",ph:"학생·클래스 찾기",help:"달마다 등록 하나에 수강료 하나예요. 청구 금액 = 클래스 수강료 × 실제 수업량 ÷ 한 달 수업량 + 조정. 안내문은 학생마다 한 통(여러 클래스 합산)으로 나가요.",noAdd:1,noDel:true,
   cols:[["학생",x=>nmStu(x.studentId)],["클래스",x=>nmCls(x.classId)],["청구 기간",x=>x.month],["실제 수업량",x=>x.qty+"회","qty"],["조정",x=>x.adj?WON(x.adj):"—","adj"],["청구 금액",x=>WON(tuAmt(x))],["안내",x=>x.sent?"보냄":"보내기 전","sent"],["결제",x=>x.pay,"pay"],["결제일",x=>D10(x.paidOn),"paidOn"]],
   byMonth:x=>x.month,note:rows=>{const u=rows.filter(x=>x.pay==="미납");return u.length?`미납 ${u.length}건 · ${WON(u.reduce((a,x)=>a+tuAmt(x)-(+x.got||0),0))}`:"미납 없음"},filters:[["미납",x=>x.pay==="미납"],["보내기 전",x=>!x.sent&&x.pay!=="완료"]],
-  fields:[["qty","실제 수업량",null,"cnt","이 달에 실제로 한 수업 수"],["adj","청구 금액 조정",null,"won","더하면 +, 빼면 −"],["why","조정 사유",null,"text"],["sent","안내",["보냄","보내기 전"],"bool"],["pay","결제",["미납","완료","과오납"]],["paidOn","결제일",null,"date","결제를 받은 날 — 영수증 원부·현금출납부에 이 날짜로 들어가요"],["how","결제 수단",["계좌이체","카드","현금"]],["got","받은 금액",null,"won","일부만 받았으면 그 금액(미납 합계에서 빼요)"]]},
+  fields:[["qty","실제 수업량",null,"cnt","이 달에 실제로 한 수업 수"],["adj","청구 금액 조정",null,"won","더하면 +, 빼면 −"],["why","조정 사유",null,"text"],["sent","안내",["보냄","보내기 전"],"bool"],["pay","결제",["미납","완료","과오납"]],["paidOn","결제일",null,"date","결제를 받은 날 — 영수증 원부·현금출납부에 이 날짜로 들어가요"],["how","결제 수단",PAY_HOW],["got","받은 금액",null,"won","일부만 받았으면 그 금액(미납 합계에서 빼요)"]]},
  bookfees:{title:"교재비",coll:"bookfees",unit:"건",ph:"학생 찾기",help:"학생에게 나눠 준 교재 값이에요. 진도교재에서 담은 교재가 한 건으로 묶여요.",noAdd:1,noDel:true,
   cols:[["학생",x=>nmStu(x.studentId)],["클래스",x=>nmCls(x.classId)],["교재",x=>x.items],["총 금액",x=>WON(x.total)],["결제 금액",x=>WON(x.paid),"paid"],["미납 금액",x=>x.total-x.paid?WON(x.total-x.paid):"—"],["안내",x=>x.sent?"보냄":"보내기 전","sent"]],
   filters:[["미납",x=>x.total-x.paid>0,true],["보내기 전",x=>!x.sent]],
@@ -2381,7 +2382,7 @@ Object.assign(LISTS,{
  costs:{title:"비용",coll:"costs",unit:"건",ph:"내용 찾기",help:"학원의 지출과 수강료·교재비가 아닌 매출이에요. 손익 분석이 이 표와 수강료·교재비 결제를 더해 계산해요.",
   cols:[["내용",x=>x.name,"name"],["구분",x=>x.kind,"kind"],["결제일",x=>D10(x.date),"date"],["결제 수단",x=>x.how,"how"],["금액",x=>WON(x.amount),"amount"],["비고",x=>x.memo||"—","memo"]],
   byMonth:x=>mKey(x.date),note:rows=>`지출 ${WON(rows.filter(x=>x.kind==="지출").reduce((a,x)=>a+x.amount,0))}`,filters:[["지출",x=>x.kind==="지출"],["매출",x=>x.kind==="매출"]],
-  fields:[["name","내용"],["kind","구분",["지출","매출"],"seg"],["date","결제일",null,"date"],["how","결제 수단",["카드","계좌이체","현금"]],["amount","금액",null,"won"],["memo","비고",null,"memo"]],
+  fields:[["name","내용"],["kind","구분",["지출","매출"],"seg"],["date","결제일",null,"date"],["how","결제 수단",PAY_HOW],["amount","금액",null,"won"],["memo","비고",null,"memo"]],
   blank:()=>({id:uid("co"),name:"새 비용",kind:"지출",date:TODAY,how:"카드",amount:0,memo:""})},
  alims:{title:"알림톡 설정",coll:"alims",unit:"개",ph:"발송 구분 찾기",help:"알림톡 종류마다 한 줄이에요. 사용을 끄면 그 알림톡은 나가지 않아요. 코드는 서버가 찾는 이름이라 바꿀 수 없어요.",noAdd:1,noDel:true,
   cols:[["발송 구분",x=>x.name,"name"],["코드",x=>x.code],["사용",x=>x.on?"켜짐":"꺼짐","on"],["템플릿",x=>x.tpl?"있음":"!없음"],["발신번호",x=>x.from||"!없음","from"],["받는 사람",x=>x.target,"target"]],
@@ -2987,7 +2988,7 @@ document.addEventListener("keydown",e=>{const tag=(e.target.tagName||"").toLower
 });
 window.addEventListener("beforeunload",e=>{if(dirtyCount()){e.preventDefault();e.returnValue=""}});
 /* 시작 */
-seed();seedLib();clsColorSeed();seedX();seedRecs();if(window.HP)HP.today=TODAY;DB.blocks.forEach(tSnap);lastSnap=snapshot();
+seed();seedLib();clsColorSeed();seedX();DB.events.forEach(e=>{if(e.kind==="상담"){e.kind="학원 일정";e.guide="상담"}});seedRecs();if(window.HP)HP.today=TODAY;DB.blocks.forEach(tSnap);lastSnap=snapshot();
 // 새로고침해도 보던 탭·화면 그대로(261112 대표). 시제품은 데이터가 새로 만들어져서 고친 내용·고른 시간표는 안 남음(학생 고른 것은 남김)
 DB.students.forEach((x,i)=>{const g=x.grade||"";const m=g.match(/^(초|중|고)(\d)/);if(m&&!x.birth&&i%4!==3){const y=2026-({초:6,중:12,고:15}[m[1]])-(+m[2]);x.birth=`${y}-${String(1+i%12).padStart(2,"0")}-${String(1+(i*7)%28).padStart(2,"0")}`}if(!x.gender&&i%5!==4)x.gender=i%2?"남학생":"여학생";if(!x.addr&&i%3!==2)x.addr=["운양동 하다아파트","장기동 푸른마을","구래동 바다빌라","마산동 하늘채"][i%4]+" "+(101+i%5)+"동"});
 (()=>{const sv=LS.get("tabs2",null);if(sv&&Array.isArray(sv.list)&&sv.list.length){sv.list.forEach(x=>{const ex=Object.assign({},x.state);if(ex.sel&&!(x.screen==="students"&&DB.students.some(s=>s.id===ex.sel)))delete ex.sel;openScreen(x.screen,true,ex)});activeTab=tabs[Math.min(sv.act||0,tabs.length-1)]}else{openScreen("timetable",true);openScreen("students",true);activeTab=tabs[0]}})();NAVB=[];NAVF=[];render();
