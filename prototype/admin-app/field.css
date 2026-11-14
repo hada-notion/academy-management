@@ -1,0 +1,176 @@
+/* 입력칸 모듈(field) — 왼쪽 아이콘 16 + 왼쪽 정렬, 바깥 높이 40, 선 1 · 모서리 10 (고르기 칸 .hp-sfld와 같은 틀) */
+.hf{position:relative;display:flex;flex-direction:column;gap:4px;min-width:0;font-size:var(--text-small);color:var(--text-ink)}
+.hf-lbl{font-size:var(--text-caption);font-weight:600;color:var(--text-muted);line-height:16px}
+.hf-lbl i{font-style:normal;color:var(--danger)}
+.hf-box{display:flex;align-items:center;gap:var(--space-2);height:40px;padding:0 var(--space-2) 0 var(--space-3);border:1px solid var(--control-border);border-radius:var(--radius-md);background:var(--surface);box-sizing:border-box;min-width:0;cursor:text}
+.hf-box>svg{width:16px;height:16px;flex:none;color:var(--text-subtle)}
+.hf-box:hover{border-color:var(--brand-mid)}
+.hf-box:focus-within,.hf-box.open,.hf-btn:focus-visible{border-color:var(--brand-deep);outline:0}
+.hf-box input,.hf-box textarea{flex:1;min-width:0;height:100%;padding:0;border:0;outline:0;background:none;font:inherit;font-size:var(--text-small);color:inherit}
+.hf-box input::placeholder,.hf-box textarea::placeholder,.hf-val .ph{color:var(--text-subtle)}
+.hf-btn{cursor:pointer;user-select:none}
+.hf-val{flex:1;min-width:0;display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hf-unit{flex:none;color:var(--text-muted)}
+.hf-dot{width:10px;height:10px;border-radius:50%;flex:none}
+/* 비우기 x: 값이 있을 때 마우스를 올리거나 입력 중이면 · 둥근 사각 24 */
+.hf-x{display:inline-flex;visibility:hidden;align-items:center;justify-content:center;flex:none;width:24px;height:24px;padding:0;border:0;border-radius:6px;background:none;color:var(--text-muted);cursor:pointer}
+.hf-x svg{width:14px;height:14px}
+.hf-x:hover{background:var(--brand-light);color:var(--text-ink)}
+.hf-box.has:hover .hf-x,.hf-box.has:focus-within .hf-x,.hf-box.has.open .hf-x{visibility:visible}
+.hf-box:not(:has(.hf-x)){padding-right:var(--space-3)}
+/* 알림 글(칸 아래 12) · 틀림 = 빨간 테두리 · 못 고침 = 옅은 바탕 */
+.hf-msg{font-size:var(--text-caption);line-height:16px;color:var(--text-muted)}
+.hf-msg:empty{display:none}
+.hf.err .hf-box{border-color:var(--danger)}
+.hf.err .hf-msg{color:var(--danger-ink)}
+.hf.dis .hf-box{background:var(--brand-tint);color:var(--text-subtle);cursor:default}
+.hf.dis .hf-box:hover{border-color:var(--control-border)}
+/* 메모: 아래로만 늘어남 */
+.hf-memo{height:auto;min-height:40px;align-items:flex-start;padding-top:9px;padding-bottom:9px}
+.hf-memo>svg{margin-top:2px}
+.hf-memo textarea{height:20px;line-height:20px;resize:none;overflow:hidden}
+.hf-memo .hf-x{margin-top:-2px}
+/* 떠 있는 목록(칸 아래 4) */
+.hf-pop{position:absolute;z-index:70;padding:6px;border:1px solid var(--brand-border);border-radius:var(--radius-lg);background:var(--surface);box-shadow:var(--shadow-float);box-sizing:border-box}
+.hf-list{max-height:260px;overflow:auto;outline:0;scrollbar-width:thin}
+.hf-q{display:flex;align-items:center;gap:8px;height:36px;margin-bottom:4px;padding:0 10px;border:1px solid var(--control-border);border-radius:8px}
+.hf-q svg{width:14px;height:14px;color:var(--text-subtle)}
+.hf-q input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:var(--text-small)}
+.hf-opt{display:flex;align-items:center;gap:8px;height:36px;padding:0 6px 0 10px;border-radius:6px;cursor:pointer;font-size:var(--text-small)}
+.hf-opt .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hf-opt small{font-size:var(--text-caption);color:var(--text-muted)}
+.hf-opt .ck{display:inline-flex;width:24px;justify-content:center;color:var(--brand-deep)}
+.hf-opt .ck svg{width:16px;height:16px}
+.hf-opt.act{background:var(--brand-tint)}
+.hf-opt.on{font-weight:700}
+.hf-none{padding:10px;color:var(--text-subtle);font-size:var(--text-caption)}
+.hf-tpop{width:140px}
+/* 요일 여러 개 */
+.hf-daysbox{cursor:default;gap:var(--space-2)}
+.hf-days{display:flex;gap:2px}
+.hf-days button{width:28px;height:28px;padding:0;border:0;border-radius:6px;background:none;font:inherit;font-size:var(--text-label);color:var(--text-muted);cursor:pointer}
+.hf-days button:hover{background:var(--brand-light);color:var(--text-ink)}
+.hf-days button.on{background:var(--brand-deep);color:#fff;font-weight:700}
+.hf-cnt{margin-left:auto;padding-right:4px;font-size:var(--text-caption);color:var(--text-muted);white-space:nowrap}
+/* 날짜·시간 */
+.hf-dt input.hf-d{flex:0 0 auto;width:8.8ch}
+.hf-dt input.hf-t{flex:0 0 auto;width:6ch}
+.hf-t input.hf-t{flex:1}
+.hf-dw{color:var(--text-muted);margin-left:-4px}
+.hf-dt .hf-x{margin-left:auto}
+.hf-sep{width:1px;height:16px;background:var(--divider);flex:none}
+
+.hf-calh{display:flex;align-items:center;justify-content:space-between;height:32px;margin-bottom:4px;font-size:var(--text-label)}
+.hf-ib{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:0;border-radius:6px;background:none;color:var(--text-muted);cursor:pointer}
+.hf-ib:hover{background:var(--brand-light)}.hf-ib svg{width:16px;height:16px}
+.hf-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.hf-cal .dw{height:24px;line-height:24px;text-align:center;font-size:var(--text-micro);color:var(--text-subtle)}
+.hf-cal button{height:32px;padding:0;border:0;border-radius:6px;background:none;font:inherit;font-size:var(--text-label);color:var(--text-ink);cursor:pointer}
+.hf-cal button.sun{color:var(--day-sun)}.hf-cal button.sat{color:var(--day-sat)}
+.hf-cal button:hover:not([disabled]){background:var(--brand-light)}
+.hf-cal button.today{box-shadow:inset 0 0 0 1px var(--brand-mid);font-weight:700}
+.hf-cal button.on{background:var(--brand-deep);color:#fff;font-weight:700}
+.hf-cal button[disabled]{color:var(--text-subtle);opacity:.4;cursor:default}
+.hf-calf{display:flex;justify-content:flex-end;margin-top:4px}
+.hf-link{height:28px;padding:0 10px;border:0;border-radius:6px;background:none;font:inherit;font-size:var(--text-caption);font-weight:700;color:var(--brand-deep);cursor:pointer}
+.hf-link:hover{background:var(--brand-light)}
+/* 기간 = 두 칸 사이 "-" */
+.hf-range{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:var(--space-2)}
+.hf-dash{color:var(--text-muted)}
+.hf-range .hf-msg{display:none}
+/* 색판 */
+
+.hf-sw{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;padding:4px}
+.hf-sw button{position:relative;width:28px;height:28px;padding:0;border:0;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:#fff}
+.hf-sw button svg{width:16px;height:16px}
+.hf-sw button:hover{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--brand-mid)}
+.hf-sw button.on{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--brand-deep)}
+.hf-sw button i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.9)}
+.hf-swn{padding:6px 4px 2px;font-size:var(--text-caption);color:var(--text-muted)}
+/* 켜고 끄기 */
+.hf-tg{position:relative;flex:none;width:36px;height:20px;border-radius:10px;background:var(--control-border);transition:background .15s}
+.hf-tg::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:left .15s}
+.hf-swbox.on .hf-tg{background:var(--brand-deep)}
+.hf-swbox.on .hf-tg::after{left:18px}
+.hf-swbox{padding-right:var(--space-3)}
+/* 구분 */
+.hf-segbox{cursor:default}
+.hf-seg{flex:1;display:flex;gap:2px;height:30px;padding:2px;border-radius:8px;background:var(--brand-tint)}
+.hf-seg button{flex:1;padding:0 8px;border:0;border-radius:6px;background:none;font:inherit;font-size:var(--text-label);color:var(--text-muted);cursor:pointer}
+.hf-seg button.on{background:var(--surface);color:var(--brand-deep);font-weight:700;box-shadow:0 1px 2px rgba(60,45,30,.12)}
+/* 기간 칸은 좁아서 x가 자리를 차지하지 않음(오른쪽에 겹쳐 뜸) · 글자는 남은 폭을 다 씀 */
+.hf-range .hf-box{position:relative;padding-right:var(--space-3)}
+.hf-range .hf-x{position:absolute;right:6px;top:7px;background:var(--surface)}
+.hf-range .hf-dt input.hf-d,.hf-range .hf-dt input.hf-t{flex:1 1 auto;width:auto;min-width:0}
+
+/* 떠 있는 목록 = 칸과 같은 폭(달력 260 · 색판 232보다 좁으면 그만큼) */
+.hf-tpop{width:auto}
+.hf-calpop{min-width:260px}
+.hf-swpop{min-width:232px}
+.hf-calpop,.hf-swpop{max-width:none}
+
+/* v3 구분 = 시제품 [정규|휴강] 모양: 칸 전체 옅은 바탕(테두리·아이콘 없음) 40, 안쪽 3, 단추 34 · 모서리 8 · 14/700, 고른 칸 흰 바탕 + 그림자 + 항목 색 글 */
+.hf-segbox{padding:3px;border:0;background:var(--brand-soft)}
+.hf-segbox:hover{border:0}
+.hf-seg{height:100%;padding:0;gap:0;background:none;border-radius:0}
+.hf-seg button{height:100%;border-radius:8px;font-size:var(--text-small);font-weight:700;color:var(--text-muted)}
+.hf-seg button:hover:not(.on){color:var(--text-ink)}
+.hf-seg button.on{background:var(--surface);color:var(--on,var(--brand-deep));box-shadow:0 1px 3px rgba(0,0,0,.08)}
+/* 날짜·시간 글자가 잘리지 않게: 비었을 때(자리 글 YYYY.MM.DD · HH:mm)는 그만큼 넓게 */
+.hf-dt input.hf-d{width:9.4ch}
+.hf-dt input.hf-d:placeholder-shown{width:11.6ch}
+.hf-dt input.hf-t{width:5.4ch}
+.hf-dt input.hf-t:placeholder-shown{width:6.4ch}
+/* 색 = 색 자체가 아이콘 */
+.hf-ci{width:16px;height:16px;border-radius:50%;flex:none}
+.hf-ci.empty{box-shadow:inset 0 0 0 1.5px var(--text-subtle);opacity:.6}
+.hf-range .hf-dt input.hf-d,.hf-range .hf-dt input.hf-t,.hf-range .hf-dt input:placeholder-shown{flex:1 1 auto;width:auto;min-width:0}
+
+/* v4 색 비었을 때 = 무지개 동그라미 */
+.hf-ci.empty{box-shadow:none;opacity:1;background:conic-gradient(#E5484D,#F0A35E,#E8C547,#5BBF8A,#6FB7C9,#7FA6D9,#B794F6,#E5484D)!important}
+
+/* v36 메모 = 위아래로 늘렸다 줄였다(오른쪽 아래 손잡이) */
+.hf-memo textarea{resize:vertical;min-height:20px;max-height:480px;overflow:auto}
+
+/* 색판 = 12색 + 무지개 동그라미(직접 고르기) · 7칸 */
+.hf-sw{grid-template-columns:repeat(7,1fr);gap:6px}
+.hf-swpop,.hp-colpop{min-width:260px}
+.hf-custom{position:relative;width:28px;height:28px;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:#fff;background:conic-gradient(#E5484D,#F0A35E,#E8C547,#5BBF8A,#6FB7C9,#7FA6D9,#B794F6,#E5484D)}
+.hf-custom.on{background:var(--cv);box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--brand-deep)}
+.hf-custom:hover{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--brand-mid)}
+.hf-custom svg{width:16px;height:16px}
+.hf-custom input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
+.hf-hex{color:var(--text-muted);font-size:var(--text-caption)}
+/* v37 글자 높이 가운데: 한글 글꼴은 글자 몸통이 줄 가운데보다 1px 아래에 앉아 처져 보임 → 칸 안 글자만 1px 올림(아이콘·칸 높이는 그대로) */
+.hf-box input,.hf-val,.hf-unit,.hf-dw,.hf-cnt,.hf-seg button,.hf-days button,.hp-sfld input,.hp-cardfld .nm,.hp-cardfld .hp-rt{position:relative;top:-1px}
+.hf-days button,.hf-seg button{top:0;padding-bottom:2px}
+/* v38 날짜 시간 한 칸: 날짜를 적는 동안 시간 칸이 움직이지 않게 — 날짜 칸·요일 칸 폭 고정 */
+.hf-box:has(.hf-d):has(.hf-t) input.hf-d,.hf-box:has(.hf-d):has(.hf-t) input.hf-d:placeholder-shown{flex:0 0 auto;width:11.2ch}
+.hf-box:has(.hf-d):has(.hf-t) .hf-dw{flex:0 0 auto;width:3.4ch;margin-left:-1.6ch}
+/* v38 메모: 오른쪽 아래 손잡이(기본 모양)를 끌어 늘렸다 줄였다 */
+.hf-memo textarea{resize:vertical;min-height:20px}
+
+/* v39 날짜 자리 기준(날짜만 · 날짜 시간 같음): 날짜 글 + 4 + 요일, 자리 폭 고정(13ch) — 빈 칸 자리 글도 이 안에 다 보이고, 적는 동안 뒤 칸이 안 움직임 */
+.hf-dwrap{position:relative;flex:0 0 13ch;display:flex;align-items:center;height:100%}
+.hf-dwrap.nodw{flex-basis:10.6ch}
+.hf-box .hf-dwrap input.hf-d,.hf-box .hf-dwrap input.hf-d:placeholder-shown{flex:1 1 auto;width:100%;font-variant-numeric:tabular-nums}
+.hf-dwrap .hf-dw{position:absolute;left:calc(var(--dw-x,8.9ch) + 4px);top:50%;transform:translateY(calc(-50% - 1px));margin:0;width:auto;pointer-events:none;font-size:var(--text-small)}
+.hf-dwrap input.hf-d:placeholder-shown+.hf-dw{display:none}
+.hf-range .hf-dwrap{flex:1 1 auto}
+.hf-box:has(.hf-d):has(.hf-t) .hf-dwrap input.hf-d,.hf-box:has(.hf-d):has(.hf-t) .hf-dwrap input.hf-d:placeholder-shown{flex:1 1 auto;width:100%}
+.hf-box:has(.hf-d):has(.hf-t) .hf-dwrap .hf-dw{width:auto;margin-left:0}
+.hf-dw:empty{display:none}
+
+/* v40 메모 = 칸 자체가 늘어남(손잡이 = 칸 오른쪽 아래 모서리), 안쪽은 글만(아이콘·x 없음) */
+.hf-box.hf-memo{display:flex;flex-direction:column;align-items:stretch;height:auto;min-height:40px;padding:9px var(--space-3);resize:vertical;overflow:hidden}
+.hf-memo textarea{flex:1 1 auto;width:100%;height:auto;min-height:20px;max-height:none;resize:none;overflow:auto;top:0}
+/* 색판 = 노션 10색 + 무지개 · 6칸 2줄 */
+.hf-sw{grid-template-columns:repeat(6,1fr);gap:8px}
+.hf-cal .dw.sat{color:var(--day-sat,#3B6FD8)}.hf-cal .dw.sun{color:var(--day-sun,#D9534F)}
+
+/* 고르기 목록: 새 항목 더하기 줄 · 항목 지우기(올리면 보임) */
+.hf-opt.hf-add{color:var(--brand-deep);font-weight:700}
+.hf-opt .hf-del{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:0;background:none;border-radius:6px;color:var(--text-subtle);cursor:pointer;opacity:0;flex:none}
+.hf-opt:hover .hf-del,.hf-opt.act .hf-del{opacity:1}.hf-opt .hf-del:hover{background:var(--brand-soft);color:var(--brand-deep)}
+.hf-opt .hf-del svg{width:14px;height:14px}
+@media (hover:none){.hf-opt .hf-del{opacity:1}}
