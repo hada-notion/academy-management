@@ -2230,3 +2230,52 @@ td.pgc .pgp{display:inline-block;min-width:4ch;text-align:right;font-variant-num
 
 /* ═════ 236판 ═════ 재무 > 청구: 탭 넷(교재비 · 재료비 · 기타경비 · 전체 줄). 기존 부품(.vseg.subseg · .hfgrid.nc · .svl)만 쓴다 */
 .subseg button{white-space:nowrap}
+
+/* ═════ 244판 ═════ 클래스·등록 창 [시간표]·[교재] 같은 모양: 시즌 고르기 + 보기 전환 */
+.ptool{display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-3)}
+.ptool .pss{flex:1 1 auto;min-width:0}
+.ptool .pss .hf-msg,.ptool .pss .hf-lbl{display:none}
+.seg.ptv{flex:none;display:inline-flex}
+.seg.ptv button{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;padding:0}
+.pgcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:var(--space-3)}
+.pgcard .bks{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted)}
+.pgcard .bks .pgbar{width:40px;margin-right:2px}
+.pgcard .pgst{width:24px;height:24px;margin-left:-4px}
+.pgcard .pgstm{padding:var(--space-2) 0 0;border:0;background:none}
+
+/* ═════ 245판 ═════ 등록 창 [현황] = 학부모 리포트 모양(student_report 값 그대로) */
+.seg-toggle{display:inline-flex;gap:2px;padding:4px;border-radius:999px;background:#F5EFE7}
+.seg-toggle button{border:0;background:none;padding:6px 14px;border-radius:999px;font:inherit;font-size:12px;font-weight:700;color:#4E5968;cursor:pointer}
+.seg-toggle button.on{background:#fff;color:#6B5D4D;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.ecbar{display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-3)}
+.ecs{display:flex;align-items:center;font-size:13px}.ecs .sp{flex:1}.ecn{font-size:15px;font-weight:700;color:#6B5D4D}
+.ecchips{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:6px;margin:8px 0 12px}
+.ecchips span{display:flex;flex-direction:column;align-items:center;padding:6px 0;border-radius:10px;background:#FBF8F3;font-size:11px;color:var(--muted)}
+.ecchips b{font-size:16px;font-weight:800;color:var(--ink)}
+.ecnav{display:grid;grid-template-columns:32px 1fr 32px auto;align-items:center;gap:8px;margin-bottom:8px;text-align:center;font-size:14px}
+.ecnb{width:32px;height:32px;border-radius:50%;border:0;background:#F5EFE7;color:#6B5D4D;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.ectd{border:0;border-radius:999px;background:#F5EFE7;color:#6B5D4D;font:inherit;font-size:12px;font-weight:700;padding:4px 12px;min-height:32px;cursor:pointer}
+.ecg{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.ecw{text-align:center;font-size:12px;font-weight:600;color:var(--muted);padding-bottom:2px}.ecw.sat{color:#1D5BBF}.ecw.sun{color:#B42318}
+.ecd{height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--muted)}
+.ecd.blank{visibility:hidden}
+.ecd.g{background:#E8F7F0;color:#0F7B4E;font-weight:700}.ecd.r{background:#FDEBEC;color:#B42318;font-weight:700}.ecd.b{background:#EAF2FF;color:#1D5BBF;font-weight:700}.ecd.y{background:#FFF5D9;color:#7A5200;font-weight:700}
+.ecd.plan{box-shadow:inset 0 0 0 1.5px #DED1C0}.ecd.today{box-shadow:inset 0 0 0 2px #B42318}
+.ecleg{display:flex;justify-content:center;gap:16px;margin-top:8px;font-size:11px;color:var(--muted)}
+.ecleg i,.evleg i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:0}
+.ecleg i.g{background:#0F7B4E}.ecleg i.r{background:#B42318}.ecleg i.b{background:#1D5BBF}.ecleg i.y{background:#C27E00}
+.evc{width:100%;height:auto;display:block}
+.evleg{display:flex;justify-content:center;gap:16px;font-size:12px;color:var(--muted)}
+.evleg i.me{background:#6b5d4d}.evleg i.av{background:none;box-shadow:inset 0 0 0 1.5px #b9ab98}
+.efk{margin-bottom:var(--space-3)}
+.efeed{display:flex;flex-direction:column;gap:8px}
+.efc{border-radius:14px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.06);border:1px solid var(--line);padding:12px 14px;cursor:pointer}
+.efc:hover{border-color:var(--line2,#DED1C0)}.efc.on{border-color:#6B5D4D}
+.efh{display:flex;align-items:center;gap:8px;font-size:14px}.efh .sp{flex:1}
+.efs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
+.badge.t-g{background:#E8F7F0;color:#0F7B4E}.badge.t-y{background:#FFF5D9;color:#7A5200}.badge.t-o{background:#FDEEE3;color:#9A4B12}.badge.t-r{background:#FDEBEC;color:#B42318}.badge.t-none{background:#F5EFE7;color:var(--muted)}
+.efsay{display:flex;gap:6px;margin-top:8px;font-size:13px;line-height:1.6;color:var(--ink)}.efsay svg.i{flex:none;margin-top:3px;color:var(--muted)}
+.efl{margin-top:10px;padding:10px 12px;border-radius:10px;background:#FBF8F3;display:flex;flex-direction:column;gap:6px;font-size:13px}
+.efl .pgrd{display:inline-block;width:76px}
+.evwrap{contain:inline-size;width:100%}
