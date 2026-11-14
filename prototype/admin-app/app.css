@@ -2316,3 +2316,6 @@ table.stt tr:hover .rowdel:hover,table.stt tr.sel .rowdel:hover{background:var(-
 #lp .hint .cdot{width:8px;height:8px;margin:0 4px 0 2px}
 /* ═════ 264판 ═════ 창 탭: 글이 긴 탭(정보 · 휴강 등)은 그만큼 넓게 — 똑같이 나눠 잘리던 것 */
 .ptabs .ptb{flex:1 1 auto}.ptabs .ptb .sm{white-space:nowrap;overflow:visible}
+/* ═════ 265판 ═════ 아래 줄에 올려도 합친 칸이 같이 밝아짐 */
+table.t td[data-mg].mghl{background:var(--brand-tint)}
+table.stt.gt td[data-mg].mgsel.mghl{background:var(--sel-bg)}
