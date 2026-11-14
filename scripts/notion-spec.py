@@ -21,6 +21,7 @@ from pathlib import Path
 HOST = re.compile(r"[A-Za-z0-9-]+\.supabase\.co")
 # 학원마다 다른 GitHub Pages 주소(학교 검색·학생 페이지 링크 수식)
 UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+HEX32 = re.compile(r"[0-9a-f]{32}")
 PAGES = re.compile(r"https?://[A-Za-z0-9-]+\.github\.io/[A-Za-z0-9._-]+")
 # 학원 환경마다 다른 DB: 모양만 기준, 행 데이터는 학원별
 CONFIG_DBS = {"웹페이지(학원) DB", "알림톡 설정(학원) DB", "자동화 로그(학원) DB"}
@@ -58,6 +59,9 @@ def norm_query(q):
             return {k: strip(v) for k, v in o.items() if k not in ("id",)}
         if isinstance(o, list):
             return [strip(v) for v in o]
+        # 보기 필터 값으로 고른 페이지(예: 영역 페이지)는 학원마다 id가 달라 비교에서 뺀다(v2.8.0 항목 63)
+        if isinstance(o, str):
+            return HEX32.sub("(페이지 지정)", UUID.sub("(페이지 지정)", o))
         return o
     return strip(q or {})
 
