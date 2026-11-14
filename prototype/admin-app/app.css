@@ -2151,3 +2151,13 @@ table.stt.gt td[data-mg]{vertical-align:top;padding-top:calc(var(--space-2) + 1p
 .gtogs{display:inline-flex;flex-wrap:wrap;gap:var(--space-2)}
 .gtog{min-width:48px;justify-content:center;color:var(--subtle)}
 .gtog.on{background:var(--brand-soft);border-color:var(--brand-deep);color:var(--ink);font-weight:700}
+
+/* ═════ 228판 ═════ 열 끌기: 끄는 열의 칸을 옅게 칠해 지금 어디에 있는지 보이게 */
+#view td.cdrag{background:var(--brand-soft)}
+
+/* ═════ 230판 ═════ 머리 메뉴 [제외] 줄의 모두 선택·선택 해제 */
+.colpop .cph{display:flex;align-items:center;gap:var(--space-2)}
+.colpop .cph .sp{flex:1}
+.colpop .cph .lnk{font-size:var(--text-caption,12px)}
+
+/* 227판: 받는 학년은 학교 화면 [학년] 탭으로 옮김(.gtog 규칙은 안 씀) */

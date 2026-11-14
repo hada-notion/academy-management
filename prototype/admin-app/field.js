@@ -43,7 +43,7 @@ const X=`<button type="button" class="hf-x" tabindex="-1" aria-label="비우기"
 const has=(b,v)=>b.classList.toggle("has",!!v);
 // 글자 입력 공통(text·num·tel·memo)
 function typed(host,o,icon,attrs,fmt,check,cls){const tag=cls==="hf-memo"?"textarea":"input";
-  const memo=tag==="textarea";const b=shell(host,o,`${memo?"":I[icon]}<${tag} ${attrs||""} placeholder="${esc(o.placeholder||"")}" ${o.disabled?"disabled":""} ${tag==="input"?`value="${esc(o.value||"")}">`:`rows="1">${esc(o.value||"")}</textarea>`}${o.unit?`<span class="hf-unit">${esc(o.unit)}</span>`:""}${o.disabled||memo?"":X}`,cls);
+  const memo=tag==="textarea";const b=shell(host,o,`${memo||icon==="type"?"":I[icon]}<${tag} ${attrs||""} placeholder="${esc(o.placeholder||"")}" ${o.disabled?"disabled":""} ${tag==="input"?`value="${esc(o.value||"")}">`:`rows="1">${esc(o.value||"")}</textarea>`}${o.unit?`<span class="hf-unit">${esc(o.unit)}</span>`:""}${o.disabled||memo?"":X}`,cls);
   const i=b.querySelector(tag);const grow=()=>{if(memo&&i.scrollHeight>i.clientHeight)b.style.height=(b.offsetHeight+i.scrollHeight-i.clientHeight)+"px"};
   if(fmt&&i.value)i.value=fmt(i.value);has(b,i.value);setTimeout(grow);
   b.onpointerdown=e=>{if(e.target===b||e.target.closest("svg:not(.hf-x svg)")){e.preventDefault();i.focus()}};
