@@ -25,13 +25,13 @@ export const CLEAR_DBS = [
   "출석(학원) DB",
   "수업(학원) DB",
   "대시보드(학원) DB",
-  "진도교재(학원) DB",
+  "진도관리(학원) DB",
   "보고서(학원) DB",
   "결제(학원) DB",
   "수강료(학원) DB",
-  "교재결제(학원) DB",
-  "교재배부(학원) DB",
-  "교재비(학원) DB",
+  "청구 결제(학원) DB",
+  "청구 항목(학원) DB",
+  "청구(학원) DB",
   "가정통신문(학원) DB",
   "알림톡 발송함(학원) DB",
   "자동화 로그(학원) DB",
@@ -40,6 +40,7 @@ export const CLEAR_DBS = [
   "시험(학원) DB",
   "일정(학원) DB",
   "시간표(학원) DB",
+  "시즌(학원) DB", // 시간표를 묶는 상위 DB라 시간표 바로 다음
   "등록(학원) DB",
   "루틴(학원) DB",
   "클래스(학원) DB",
@@ -68,10 +69,10 @@ export const KEEP_DBS = [
 
 // 화면 묶음. required = 예시 학생·업무 기록이라 꼭 비울 것, 아니면 그대로 써도 되는 기준 자료(선택).
 export const GROUPS: { name: string; required: boolean; dbs: string[] }[] = [
-  { name: "학생·수강", required: true, dbs: ["학생(학원) DB", "등록(학원) DB", "클래스(학원) DB", "시간표(학원) DB"] },
-  { name: "수업·학습", required: true, dbs: ["수업(학원) DB", "출석(학원) DB", "학습기록(학원) DB", "학습활동(학원) DB", "루틴 체크(학원) DB", "진도교재(학원) DB", "대시보드(학원) DB"] },
+  { name: "학생·수강", required: true, dbs: ["학생(학원) DB", "등록(학원) DB", "클래스(학원) DB", "시간표(학원) DB", "시즌(학원) DB"] },
+  { name: "수업·학습", required: true, dbs: ["수업(학원) DB", "출석(학원) DB", "학습기록(학원) DB", "학습활동(학원) DB", "루틴 체크(학원) DB", "진도관리(학원) DB", "대시보드(학원) DB"] },
   { name: "보고서·알림", required: true, dbs: ["보고서(학원) DB", "알림톡 발송함(학원) DB", "가정통신문(학원) DB", "자동화 로그(학원) DB"] },
-  { name: "수납", required: true, dbs: ["수강료(학원) DB", "결제(학원) DB", "교재비(학원) DB", "교재배부(학원) DB", "교재결제(학원) DB"] },
+  { name: "수납", required: true, dbs: ["수강료(학원) DB", "결제(학원) DB", "청구(학원) DB", "청구 항목(학원) DB", "청구 결제(학원) DB"] },
   { name: "시험·일정", required: true, dbs: ["시험(학원) DB", "시험정보(학원) DB", "성적(학원) DB", "일정(학원) DB"] },
   { name: "직원", required: true, dbs: ["강사(학원) DB", "근무(학원) DB"] },
   { name: "기준 자료", required: false, dbs: ["학교(학원) DB", "교시(학원) DB", "루틴(학원) DB", "라이브러리(학원) DB", "단원목록(학원) DB", "자료(학원) DB"] },
@@ -80,6 +81,25 @@ export const GROUPS: { name: string; required: boolean; dbs: string[] }[] = [
 export const groupOf = (name: string) => GROUPS.find((g) => g.dbs.includes(name))
 
 const OLD_NAME = CLEAR_DBS[CLEAR_DBS.length - 1]
+// (11/14) 원본에서 이름을 바꾼 DB(옛 이름 → 새 이름). 아직 Notion을 올리지 않은 학원은 옛 이름이라, 옛 이름으로 찾은 DB도
+// 새 이름 항목으로 다룬다(같은 묶음, 한 번만 세고, "목록에 없는 DB"로 내지 않는다). scripts/clear-example-data.py의 RENAMED_DBS와 같다.
+export const RENAMED_DBS: Record<string, string> = {
+  "진도교재(학원) DB": "진도관리(학원) DB",
+  "교재배부(학원) DB": "청구 항목(학원) DB",
+  "교재비(학원) DB": "청구(학원) DB",
+  "교재결제(학원) DB": "청구 결제(학원) DB",
+}
+export const currentName = (name: string) => RENAMED_DBS[name] ?? name
+// 없어도 "찾지 못한 DB"로 내지 않는 DB: 옛 이름 기록 DB, 그리고 Notion을 올리기 전 학원에는 없는 시즌 DB.
+const OPTIONAL_DBS = [OLD_NAME, "시즌(학원) DB"]
+// 옛 이름으로 찾은 데이터 소스를 새 이름 아래로 모은다(새 이름 것이 앞, 같은 id는 한 번만).
+export function mergeRenamed(sources: Map<string, string[]>): Map<string, string[]> {
+  const out = new Map<string, string[]>()
+  const add = (name: string, ids: string[]) => out.set(name, [...new Set([...(out.get(name) ?? []), ...ids])])
+  for (const [name, ids] of sources) if (!(name in RENAMED_DBS)) add(name, ids)
+  for (const [name, ids] of sources) if (name in RENAMED_DBS) add(RENAMED_DBS[name], ids)
+  return out
+}
 // 한 큐 항목이 지우는 최대 건수와 시간. 건마다 PAUSE_MS를 쉬어 Notion 평균 초당 3회 한도 안에 둔다.
 // 수업처럼 관계가 많은 페이지는 휴지통으로 보내는 데 몇 초씩 걸려, 60건이면 함수 실행 시간 한도를 넘겨 끊겼다(11/2).
 // 그래서 건수를 줄이고 ITEM_BUDGET_MS가 지나면 그 자리에서 멈추고 같은 단계를 다시 넣는다.
@@ -232,17 +252,19 @@ export async function dataSources(): Promise<Map<string, string[]>> {
 // 화면에서 고른 DB만 남긴다. 비울 DB 목록에 없는 이름(남기는 DB 등)은 받지 않는다.
 export function selectionKeep(selected: unknown): string[] {
   if (!Array.isArray(selected) || !selected.length) throw new ClearError(400, "비울 DB를 하나 이상 고르세요.")
-  const names = selected.map(String)
+  const names = selected.map((n) => currentName(String(n)))
   const bad = names.filter((n) => !CLEAR_DBS.includes(n))
   if (bad.length) throw new ClearError(400, `비울 수 없는 DB입니다: ${bad.join(", ")}`)
   return CLEAR_DBS.filter((n) => !names.includes(n))
 }
 
 export function buildPlan(sources: Map<string, string[]>, keep: string[] = []): { plan: PlanItem[]; missing: string[]; unknown: string[] } {
+  sources = mergeRenamed(sources)
+  keep = keep.map(currentName)
   const plan: PlanItem[] = []
   const clear = CLEAR_DBS.filter((n) => !keep.includes(n))
   for (const name of clear) for (const ds of sources.get(name) ?? []) plan.push({ name, ds })
-  const missing = clear.filter((n) => n !== OLD_NAME && !sources.has(n))
+  const missing = clear.filter((n) => !OPTIONAL_DBS.includes(n) && !sources.has(n))
   const unknown = [...sources.keys()].filter((n) => !CLEAR_DBS.includes(n) && !KEEP_DBS.includes(n)).sort()
   return { plan, missing, unknown }
 }
@@ -287,9 +309,10 @@ export async function countPlan(
 }
 
 export async function status(): Promise<ClearStatus> {
-  const [{ value, updatedAt }, workspace, sources] = await Promise.all([readFlag(), workspaceName(), dataSources()])
-  // 지난번에 남긴 DB(원본 리허설의 업데이트 DB 등)는 처음부터 체크를 풀어 둔다.
-  const keep = value?.keep ?? []
+  const [{ value, updatedAt }, workspace, found] = await Promise.all([readFlag(), workspaceName(), dataSources()])
+  const sources = mergeRenamed(found)
+  // 지난번에 남긴 DB(원본 리허설의 업데이트 DB 등)는 처음부터 체크를 풀어 둔다. 옛 이름으로 적혀 있어도 새 이름으로 본다.
+  const keep = (value?.keep ?? []).map(currentName)
   const { plan, missing, unknown } = buildPlan(sources)
   // 이미 끝났거나 잠긴 뒤에는 세지 않는다(화면은 잠김만 보여 준다).
   const counts = canStart(value, updatedAt) ? await countPlan(plan) : new Map<string, { count: number; capped: boolean }>()

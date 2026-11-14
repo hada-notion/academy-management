@@ -16,6 +16,7 @@ import { queryAllPages, getPage, mapWithConcurrency, selectName, formulaString, 
 import { text, dateStartOf, relationIds, numberOf, fetchSupabaseWithRetry } from "./reportCacheShared.ts"
 import { DS_CLASS_SESSION, DS_ATTENDANCE, DS_LEARNING_RECORD, DS_STUDY_ACTIVITY } from "./constants.ts"
 import { runInBackground } from "./backgroundTask.ts"
+import { attMemoKey } from "./attendanceMemo.ts"
 import { isMakeupSession } from "./sessionKind.ts"
 import { unitNamesOf, unitTextOf, unitIdsOf } from "./selectedUnits.ts"
 
@@ -76,7 +77,7 @@ export function attendanceRow(p: Page): Row {
 		class_label: formulaString(p, "클래스(알림톡)") ?? "",
 		arrived_at: iso(dateStartOf(prop(p, "등원스템프"))),
 		left_at: iso(dateStartOf(prop(p, "하원스템프"))),
-		memo: raw(p, "메모"),
+		memo: raw(p, attMemoKey(p)), // `메모(내부용)`, 아직 안 바꾼 학원은 `메모`(v2.8.0 항목 62)
 		comment: raw(p, "선생님 한마디"),
 		due_activity_ids: rel(p, "과제"),
 		notion_edited_at: p.last_edited_time,

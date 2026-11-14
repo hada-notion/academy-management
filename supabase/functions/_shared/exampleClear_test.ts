@@ -1,6 +1,6 @@
 import { assert, assertEquals } from "jsr:@std/assert@1"
 import { assertThrows } from "jsr:@std/assert@1"
-import { buildPlan, canStart, CLEAR_DBS, ClearError, countPlan, GROUPS, iconOf, KEEP_DBS, selectionKeep, STALE_MS } from "./exampleClear.ts"
+import { buildPlan, canStart, CLEAR_DBS, ClearError, countPlan, groupOf, GROUPS, iconOf, KEEP_DBS, mergeRenamed, RENAMED_DBS, selectionKeep, STALE_MS } from "./exampleClear.ts"
 
 // scripts/clear-example-data.py의 목록과 같아야 한다(PC 스크립트와 화면이 같은 DB를 지운다).
 function pyList(src: string, name: string): string[] {
@@ -12,6 +12,75 @@ Deno.test("지울·남길 DB 목록이 PC 스크립트와 같다", async () => {
   const src = await Deno.readTextFile(new URL("../../../scripts/clear-example-data.py", import.meta.url))
   assertEquals(CLEAR_DBS, pyList(src, "CLEAR_DBS"))
   assertEquals(KEEP_DBS, pyList(src, "KEEP_DBS"))
+  const renamed = src.split("RENAMED_DBS = {")[1].split("\n}")[0]
+  assertEquals(RENAMED_DBS, Object.fromEntries([...renamed.matchAll(/^\s*"([^"]+)": "([^"]+)",/gm)].map((m) => [m[1], m[2]])))
+})
+
+// (11/14) 원본에서 진도교재→진도관리, 교재배부→청구 항목, 교재비→청구, 교재결제→청구 결제로 이름을 바꿨다. 옛 이름 학원도 비울 수 있어야 한다.
+const RENAMES = [
+  ["진도교재(학원) DB", "진도관리(학원) DB", "수업·학습"],
+  ["교재배부(학원) DB", "청구 항목(학원) DB", "수납"],
+  ["교재비(학원) DB", "청구(학원) DB", "수납"],
+  ["교재결제(학원) DB", "청구 결제(학원) DB", "수납"],
+]
+
+Deno.test("바뀐 이름 표: 새 이름만 비울 목록·화면 묶음에 있고 옛 이름은 표에만 있다", () => {
+  assertEquals(RENAMED_DBS, Object.fromEntries(RENAMES.map(([o, n]) => [o, n])))
+  for (const [oldName, newName, group] of RENAMES) {
+    assert(CLEAR_DBS.includes(newName) && !CLEAR_DBS.includes(oldName))
+    assert(!KEEP_DBS.includes(oldName) && !KEEP_DBS.includes(newName))
+    assertEquals(groupOf(newName)?.name, group)
+    assertEquals(groupOf(oldName), undefined)
+  }
+})
+
+Deno.test("새 이름 DB는 그대로 계획에 들어간다", () => {
+  const sources = new Map(RENAMES.map(([, n], i) => [n, [`n${i}`]]))
+  const { plan, missing, unknown } = buildPlan(sources)
+  assertEquals(plan.map((p) => p.name), ["진도관리(학원) DB", "청구 결제(학원) DB", "청구 항목(학원) DB", "청구(학원) DB"])
+  assertEquals(unknown, [])
+  for (const [, n] of RENAMES) assert(!missing.includes(n))
+})
+
+Deno.test("옛 이름 DB는 새 이름 항목으로 계획에 들어가고 모르는 DB·못 찾은 DB로 내지 않는다", () => {
+  const sources = new Map(RENAMES.map(([o], i) => [o, [`o${i}`]]))
+  const { plan, missing, unknown } = buildPlan(sources)
+  assertEquals(plan, [
+    { name: "진도관리(학원) DB", ds: "o0" }, { name: "청구 결제(학원) DB", ds: "o3" },
+    { name: "청구 항목(학원) DB", ds: "o1" }, { name: "청구(학원) DB", ds: "o2" },
+  ])
+  assertEquals(unknown, [])
+  for (const [o, n] of RENAMES) assert(!missing.includes(n) && !missing.includes(o))
+})
+
+Deno.test("옛 이름과 새 이름이 함께 있으면 한 항목으로 모으고 같은 소스는 한 번만", async () => {
+  const sources = new Map([["교재비(학원) DB", ["old", "same"]], ["청구(학원) DB", ["new", "same"]]])
+  assertEquals(mergeRenamed(sources), new Map([["청구(학원) DB", ["new", "same", "old"]]]))
+  const { plan } = buildPlan(sources)
+  assertEquals(plan, [{ name: "청구(학원) DB", ds: "new" }, { name: "청구(학원) DB", ds: "same" }, { name: "청구(학원) DB", ds: "old" }])
+  const counts = await countPlan(plan, async () => ["p1", "p2"])
+  assertEquals([...counts.keys()], ["청구(학원) DB"])
+  assertEquals(counts.get("청구(학원) DB"), { count: 6, capped: false })
+})
+
+Deno.test("옛 이름으로 고르거나 남겨도 새 이름으로 받는다", () => {
+  assertEquals(selectionKeep(["교재비(학원) DB"]), selectionKeep(["청구(학원) DB"]))
+  assert(!selectionKeep(["진도교재(학원) DB"]).includes("진도관리(학원) DB"))
+  const sources = new Map([["교재비(학원) DB", ["c"]], ["출석(학원) DB", ["a"]]])
+  assertEquals(buildPlan(sources, ["교재비(학원) DB"]).plan.map((p) => p.name), ["출석(학원) DB"])
+  assertEquals(buildPlan(sources, ["청구(학원) DB"]).plan.map((p) => p.name), ["출석(학원) DB"])
+})
+
+Deno.test("시즌 DB는 학생·수강 묶음에서 시간표 바로 다음에 비우고, 없어도 못 찾은 DB로 내지 않는다", () => {
+  assertEquals(CLEAR_DBS.indexOf("시즌(학원) DB"), CLEAR_DBS.indexOf("시간표(학원) DB") + 1)
+  const g = groupOf("시즌(학원) DB")
+  assertEquals(g?.name, "학생·수강")
+  assertEquals(g?.required, true)
+  assertEquals(g, groupOf("시간표(학원) DB"))
+  const { plan, unknown } = buildPlan(new Map([["시즌(학원) DB", ["z"]], ["시간표(학원) DB", ["t"]], ["등록(학원) DB", ["r"]]]))
+  assertEquals(plan.map((p) => p.name), ["시간표(학원) DB", "시즌(학원) DB", "등록(학원) DB"])
+  assertEquals(unknown, [])
+  assert(!buildPlan(new Map([["시간표(학원) DB", ["t"]]])).missing.includes("시즌(학원) DB")) // Notion을 올리기 전 학원에는 없다
 })
 
 Deno.test("남기는 DB는 알림톡 설정·과목과 시스템용 메뉴·웹페이지·학년, 비어 있는 문의·요청뿐", () => {

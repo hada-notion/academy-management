@@ -50,6 +50,7 @@ import { runInBackground } from "./backgroundTask.ts"
 import { mirrorJobs, mirrorPageIds, mirrorSaved, removePages } from "./classRoomCopy.ts"
 import { libraryIds } from "./libraryProp.ts"
 import { isMakeupSession, SESSION_KIND_MAKEUP, SESSION_KIND_PROP } from "./sessionKind.ts"
+import { attMemoKey, withAttMemoName } from "./attendanceMemo.ts"
 
 type Page = Record<string, any>
 
@@ -506,7 +507,7 @@ export async function loadSession(sessionId: string) {
 			status: selectName(a, "출석 상태") ?? "",
 			arrivedAt: dateStart(a, "등원스템프"),
 			leftAt: dateStart(a, "하원스템프"),
-			memo: plain(a, "메모"),
+			memo: plain(a, attMemoKey(a)), // 출석 메모: `메모(내부용)`, 아직 안 바꾼 학원은 `메모`(v2.8.0 항목 62)
 			comment: plain(a, "선생님 한마디"),
 			dueActivityIds: rel(a, "과제"),
 		}))
@@ -693,11 +694,11 @@ export async function loadStudent(registrationId: string) {
 	if (!isId(registrationId)) throw new ClassRoomError(400, "학생 형식이 올바르지 않습니다.")
 	const [acts, memos] = await Promise.all([
 		queryDataSource(DS_STUDY_ACTIVITY, { filter: { property: "등록", relation: { contains: registrationId } }, sorts: [{ timestamp: "created_time", direction: "descending" }], page_size: 40 }),
-		queryDataSource(DS_ATTENDANCE, {
-			filter: { and: [{ property: "등록", relation: { contains: registrationId } }, { property: "메모", rich_text: { is_not_empty: true } }] },
+		withAttMemoName((memoProp) => queryDataSource(DS_ATTENDANCE, {
+			filter: { and: [{ property: "등록", relation: { contains: registrationId } }, { property: memoProp, rich_text: { is_not_empty: true } }] },
 			sorts: [{ property: "수업일시", direction: "descending" }],
 			page_size: 10,
-		}),
+		})),
 	])
 	const activities = ((acts as any).results ?? []) as Page[]
 	const recordIds = dedupe(activities.flatMap((a) => rel(a, "학습기록")))
@@ -707,7 +708,7 @@ export async function loadStudent(registrationId: string) {
 	return {
 		homework: activities.filter((a) => kindOf(a) === "과제").slice(0, 8).map((a) => ({ id: a.id as string, ...named(a), due: formulaDate(a, "과제 마감일"), submitted: selectName(a, "과제상태") === HOMEWORK_SUBMITTED })),
 		tests: activities.filter((a) => kindOf(a) === "평가" && numberOf(a, "전체 문항")).slice(0, 5).map((a) => ({ id: a.id as string, ...named(a), correct: numberOf(a, "정답 문항"), total: numberOf(a, "전체 문항") })),
-		memos: (((memos as any).results ?? []) as Page[]).map((m) => ({ attendanceId: m.id as string, date: dateStart(m, "수업일시"), memo: plain(m, "메모") })),
+		memos: (((memos as any).results ?? []) as Page[]).map((m) => ({ attendanceId: m.id as string, date: dateStart(m, "수업일시"), memo: plain(m, attMemoKey(m)) })),
 	}
 }
 
@@ -721,11 +722,13 @@ export async function saveAttendance(items: unknown) {
 			if (it.status !== "" && !(ATTENDANCE_STATUSES as readonly string[]).includes(it.status)) throw new ClassRoomError(400, "출석 상태가 올바르지 않습니다.")
 			props["출석 상태"] = { select: it.status ? { name: it.status } : null }
 		}
-		if (it.memo !== undefined) props["메모"] = richText(String(it.memo))
 		if (it.comment !== undefined) props["선생님 한마디"] = richText(String(it.comment))
-		return { id: it.attendanceId as string, props }
+		return { id: it.attendanceId as string, props, memo: it.memo === undefined ? undefined : richText(String(it.memo)) }
 	})
-	const saved = await mapWithConcurrency(updates, 3, (u) => updatePageProperties(u.id, u.props)) as Page[]
+	// 출석 메모는 `메모(내부용)`으로 쓰고, 아직 안 바꾼 학원이면 `메모`로 다시 쓴다(v2.8.0 항목 62).
+	const saved = await mapWithConcurrency(updates, 3, (u) => u.memo === undefined
+		? updatePageProperties(u.id, u.props)
+		: withAttMemoName((memoProp) => updatePageProperties(u.id, { ...u.props, [memoProp]: u.memo }))) as Page[]
 	await mirrorSaved("cr_attendance", saved) // 복사본 함께 쓰기(v2.5.115, v2.5.116부터 Notion 수정 응답을 그대로)
 	return { saved: updates.length }
 }

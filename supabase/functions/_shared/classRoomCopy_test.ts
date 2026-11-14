@@ -82,6 +82,14 @@ Deno.test("rows: session, attendance, record, activity carry what the class mana
  assert(k.record_id === "r1" && k.attendance_id === "a1" && k.homework_status === "🔵 제출" && k.due_on === "2026-10-16" && k.due_at === "2026-10-15T15:00:00.000Z" && k.correct === null, JSON.stringify(k))
  assert(copy.seoulDay("2026-10-15T15:30:00.000Z") === "2026-10-16" && copy.seoulDay("2026-10-16") === "2026-10-16" && copy.seoulDay(null) === null)
 })
+Deno.test("v2.8.0 항목 62 attendance row: memo from 메모(내부용), old 메모 still read", () => {
+ const f = fixture(), p = f.pages.a1.properties
+ assert(copy.attendanceRow(f.pages.a1).memo === "집중 좋음", "old name")
+ p["메모(내부용)"] = p["메모"]; delete p["메모"]
+ assert(copy.attendanceRow(f.pages.a1).memo === "집중 좋음", "new name")
+ delete p["메모(내부용)"]
+ assert(copy.attendanceRow(f.pages.a1).memo === "", "neither")
+})
 
 Deno.test("reconcile: fills a table for the window, removes rows Notion no longer has, sets the first cursor", () => withMock(async (f) => {
  f.db.cr_sessions.set("gone", { id: "gone", starts_at: "2026-10-13T08:00:00.000Z" })
