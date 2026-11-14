@@ -2333,3 +2333,8 @@ table.stt.gt td[data-mg].mgsel.mghl{background:var(--sel-bg)}
 .tdr:last-child{border-bottom:0}.tdr:hover{background:var(--brand-tint,#FBF8F4)}.tdr small{margin-left:4px}.tdr svg{margin-left:auto;color:var(--subtle)}
 .tdsum{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
 .tds{border:1px solid var(--line2,#E8E2DA);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}.tds span{font-size:12px;color:var(--subtle)}.tds b{font-size:16px;color:var(--ink)}.tds.w b{color:var(--danger-ink,#B42318)}
+
+/* ═════ 270판 ═════ 창 아래 [이 ○○만 저장] = 한 단계 약한 단추(흰 바탕·테두리), 위 [저장 n]만 진한 색 */
+.panel .btn.rowsave{background:var(--surface,#fff);color:var(--ink,#3D3530);border:1px solid var(--line-strong,#CFC6BD)}
+.panel .btn.rowsave:not(:disabled):hover{background:var(--hover,#F5F1EC)}
+.panel .btn.rowsave:disabled{opacity:.45}
