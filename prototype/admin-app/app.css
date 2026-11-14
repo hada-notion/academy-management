@@ -2321,3 +2321,15 @@ table.t td[data-mg].mghl{background:var(--brand-tint)}
 table.stt.gt td[data-mg].mgsel.mghl{background:var(--sel-bg)}
 /* ═════ 266판 ═════ 표 열 머리는 숫자 열도 왼쪽 정렬(대표 후순위 요청) — 값 칸(숫자)은 오른쪽 그대로 */
 #view table.t th.n,table.stt.gt th.n,table.stt th{text-align:left}
+/* ═════ 267판 ═════ 오른쪽 창 기본 = [할 일] */
+.tdp{display:flex;flex-direction:column;gap:12px;padding:4px 0}
+.tdh{font-size:15px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:6px}
+.tdtabs{display:flex;flex-wrap:wrap;gap:6px}
+.tdt{height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line2,#E8E2DA);background:var(--surface,#fff);color:var(--ink);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.tdt .n{color:var(--subtle);font-weight:700;margin-left:2px}.tdt.on{background:var(--ink);color:#fff;border-color:var(--ink)}.tdt.on .n{color:#fff}.tdt:disabled{opacity:.45;cursor:default}
+.tdwhy{font-size:12.5px;color:var(--subtle);line-height:1.5}
+.tdl{display:flex;flex-direction:column;border:1px solid var(--line2,#E8E2DA);border-radius:12px;overflow:hidden}
+.tdr{display:flex;align-items:center;gap:8px;min-height:44px;padding:8px 12px;border:0;border-bottom:1px solid var(--line2,#EFE9E1);background:var(--surface,#fff);text-align:left;font:inherit;font-size:13.5px;color:var(--ink);cursor:pointer}
+.tdr:last-child{border-bottom:0}.tdr:hover{background:var(--brand-tint,#FBF8F4)}.tdr small{margin-left:4px}.tdr svg{margin-left:auto;color:var(--subtle)}
+.tdsum{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.tds{border:1px solid var(--line2,#E8E2DA);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}.tds span{font-size:12px;color:var(--subtle)}.tds b{font-size:16px;color:var(--ink)}.tds.w b{color:var(--danger-ink,#B42318)}
