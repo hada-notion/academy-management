@@ -2012,3 +2012,31 @@ table.stt.gt.grid{width:auto}
 .bfe{padding:var(--space-5) 0;text-align:center}
 .ttrow .anb{width:28px;height:28px;border:0;background:none;border-radius:var(--radius-sm);color:var(--subtle);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none}.ttrow .anb:hover{background:var(--brand-soft);color:var(--brand)}.ttrow .anb svg.i{width:14px;height:14px}
 .box h3 .lnk+.lnk{margin-left:0}
+
+/* ═════ 208판 ═════ 영수증 서식 인쇄(대표 261114): 화면 미리보기와 같은 모양(머리 칸 색 없음 · 금액 안 잘림), A4 세로 한 장에 두 쌍 = 네 조각. 자르는 선이 종이 한가운데 가로·세로에 오도록 한 쌍이 정확히 반 장 */
+@media print{
+  #printList.pslip{font-size:10px;color:#111}
+  #printList.pslip .lpairs{display:block}
+  #printList.pslip .lpair{display:grid;grid-template-columns:1fr 1px 1fr;gap:0;height:138mm;box-sizing:border-box;margin:0;break-inside:avoid;page-break-inside:avoid}
+  #printList.pslip .lpair:nth-child(odd){border-bottom:1px dashed #888}
+  #printList.pslip .lpair:nth-child(even){break-after:page;page-break-after:always}
+  #printList.pslip .lpair:last-child{break-after:auto;page-break-after:auto}
+  #printList.pslip .lpair .lfm{padding:7mm 6mm;box-sizing:border-box;font-size:10px;display:flex;flex-direction:column}
+  #printList.pslip .lpair .cut{border-left:1px dashed #888}
+  #printList.pslip .lfm h1{font-size:14px;margin:0 0 4mm;padding:2mm 0;border:1px solid #333;color:#111}
+  #printList.pslip .lfm-t{font-size:10px;table-layout:fixed;width:100%}
+  #printList.pslip .lfm-t th,#printList.pslip .lfm-t td{background:none;color:#111;border:1px solid #333;padding:1mm 1.5mm;height:9mm;font-weight:400;text-align:left;white-space:nowrap;overflow:visible;text-overflow:clip}
+  #printList.pslip .lfm-t th.v{width:11mm;text-align:center}#printList.pslip .lfm-t .c{text-align:center}#printList.pslip .lfm-t td.n{text-align:right}
+  #printList.pslip .lfm-t tr.etc td{height:7mm}#printList.pslip .lfm-t tr.amt td{height:10mm}
+  #printList.pslip .lfm-t b{font-weight:700}
+  #printList.pslip .lfm-b{border:1px solid #333;border-top:0;padding:3mm;flex:1;display:flex;flex-direction:column}
+  #printList.pslip .lfm-b p.d{margin:5mm 3mm 5mm;margin-top:auto}
+  #printList.pslip .lfm-b .stamp{width:14mm;height:14mm;right:-1mm;bottom:-4mm}
+}
+@media print{#printList.pslip .lfm-b p,#printList.pslip .lfm-b .sg{font-size:10px}#printList.pslip .lfm-b p.s,#printList.pslip .lfm-b .sg .in{font-size:9px}}
+
+/* ═════ 209판 ═════ 인쇄 고르기 창: 큰 선택 단추 둘(아이콘 · 이름 · 설명) */
+.pask{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);margin:var(--space-4) 0}
+.pch{display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-1);padding:var(--space-4);border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);cursor:pointer;font:inherit;color:var(--ink);text-align:left;min-height:96px}
+.pch:hover{border-color:var(--brand);background:var(--brand-soft)}.pch:disabled{opacity:.45;cursor:default}
+.pch svg.i{width:20px;height:20px;color:var(--brand)}.pch b{font-size:var(--text-body)}.pch span{font-size:var(--text-label);color:var(--muted)}
