@@ -51,6 +51,7 @@ import { mirrorJobs, mirrorPageIds, mirrorSaved, removePages } from "./classRoom
 import { libraryIds } from "./libraryProp.ts"
 import { isMakeupSession, SESSION_KIND_MAKEUP, SESSION_KIND_PROP } from "./sessionKind.ts"
 import { attMemoKey, withAttMemoName } from "./attendanceMemo.ts"
+import { ACTIVITY_MEMO, nameLearner, propKey } from "./propAlias.ts"
 
 type Page = Record<string, any>
 
@@ -674,7 +675,7 @@ export async function loadActivities(recordId: string) {
 					status: homeworkState(selectName(a, "과제상태")),
 					correct: numberOf(a, "정답 문항"),
 					total: numberOf(a, "전체 문항"),
-					memo: plain(a, "메모"),
+					memo: plain(a, propKey(a, ACTIVITY_MEMO)), // 학습활동 메모: `메모(내부용)`, 아직 안 바꾼 학원은 `메모`(v2.8.0 항목 64)
 				}
 			})
 			.sort((x, y) => x.name.localeCompare(y.name, "ko")),
@@ -733,6 +734,9 @@ export async function saveAttendance(items: unknown) {
 	return { saved: updates.length }
 }
 
+const activityMemoName = nameLearner(ACTIVITY_MEMO)
+export function resetActivityMemoName() { activityMemoName.reset() }
+
 export async function saveActivities(items: unknown) {
 	if (!Array.isArray(items) || items.length === 0 || items.length > MAX_ITEMS) throw new ClassRoomError(400, "저장할 내용이 없습니다.")
 	const updates = items.map((it: any) => {
@@ -743,9 +747,10 @@ export async function saveActivities(items: unknown) {
 			props["과제상태"] = { select: it.status ? { name: HOMEWORK_OPTION[it.status] } : null }
 		} else if (it.submitted !== undefined) props["과제상태"] = { select: { name: it.submitted ? HOMEWORK_SUBMITTED : HOMEWORK_MISSING } }
 		// 학습활동 메모(v2.6.9, 내부용 — 학부모 리포트에 보이지 않음)
+		let memo: unknown = undefined
 		if (it.memo !== undefined) {
 			if (typeof it.memo !== "string") throw new ClassRoomError(400, "메모 형식이 올바르지 않습니다.")
-			props["메모"] = richText(it.memo.trim().slice(0, 2000))
+			memo = richText(it.memo.trim().slice(0, 2000))
 		}
 		for (const [key, prop] of [["correct", "정답 문항"], ["total", "전체 문항"]] as const) {
 			if (it[key] === undefined) continue
@@ -754,9 +759,12 @@ export async function saveActivities(items: unknown) {
 			props[prop] = { number: v }
 		}
 		if (typeof it.correct === "number" && typeof it.total === "number" && it.correct > it.total) throw new ClassRoomError(400, "맞힌 문항이 전체 문항보다 많습니다.")
-		return { id: it.activityId as string, props }
+		return { id: it.activityId as string, props, memo }
 	})
-	const saved = await mapWithConcurrency(updates, 3, (u) => updatePageProperties(u.id, u.props)) as Page[]
+	// 학습활동 메모는 `메모(내부용)`으로 쓰고, 아직 안 바꾼 학원이면 `메모`로 다시 쓴다(v2.8.0 항목 64).
+	const saved = await mapWithConcurrency(updates, 3, (u) => u.memo === undefined
+		? updatePageProperties(u.id, u.props)
+		: activityMemoName.run((memoProp) => updatePageProperties(u.id, { ...u.props, [memoProp]: u.memo }))) as Page[]
 	await mirrorSaved("cr_activities", saved) // 복사본 함께 쓰기(v2.5.115, v2.5.116부터 Notion 수정 응답을 그대로)
 	return { saved: updates.length }
 }

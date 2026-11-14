@@ -66,6 +66,8 @@ function fixture() {
   if (id) {
    if (!pages[id]) return reply({ message: "missing " + id }, 404)
    if (init.method === "PATCH" && pages[id].db === "attendance" && body.properties?.[otherMemo] !== undefined) return reply({ message: `${otherMemo} is not a property that exists.` }, 400)
+   // 학습활동 메모 이름(v2.8.0 항목 64): pages.__actMemo(기본 예전 이름 `메모`). 다른 이름이면 400.
+   { const am = pages.__actMemo ?? "메모", ao = am === "메모" ? "메모(내부용)" : "메모"; if (init.method === "PATCH" && pages[id].db === "activities" && body.properties?.[ao] !== undefined) return reply({ message: `${ao} is not a property that exists.` }, 400) }
    if (init.method === "PATCH") { writes.push({ id, body }); Object.assign(pages[id].properties, body.properties ?? {}); if (body.archived) pages[id].archived = true }
    return reply(pages[id])
   }
@@ -355,6 +357,19 @@ Deno.test("v2.8.0 항목 62 attendance memo: old 메모 still works, renamed 메
  // 학습활동 메모는 이름이 그대로 `메모`
  await room.saveActivities([{ activityId: "hw2", memo: "활동 메모" }])
  const wa = f.writes.at(-1)!.body.properties; assert(wa["메모"].rich_text[0].text.content === "활동 메모" && wa["메모(내부용)"] === undefined)
+}))
+
+Deno.test("v2.8.0 항목 64 activity memo: renamed 메모(내부용) is written and read, old 메모 still works", () => withMock(async (f) => {
+ room.resetActivityMemoName()
+ await room.saveActivities([{ activityId: "hw1", memo: "예전" }])
+ assert(f.writes.at(-1)!.body.properties["메모"].rich_text[0].text.content === "예전", "old name")
+ room.resetActivityMemoName()
+ f.pages.__actMemo = "메모(내부용)"
+ for (const id of ["hw1", "hw2"]) { const p = f.pages[id].properties; delete p["메모"] }
+ await room.saveActivities([{ activityId: "hw2", memo: "새 이름" }])
+ const w = f.writes.at(-1)!.body.properties
+ assert(w["메모(내부용)"].rich_text[0].text.content === "새 이름" && w["메모"] === undefined, JSON.stringify(w))
+ room.resetActivityMemoName()
 }))
 
 // v2.5.126: 학습기록 "선택 단원"

@@ -9,6 +9,7 @@
 //   학생·반에 연결된 일정은 Notion 수식이 모으고, 연결 안 된 일정(학원 전체, 학생의 학교·학년)은 서버가 `학원 일정`에 넣는다
 //   (만들 때 한 번, 보내기 직전에 다시). 보내기는 수강료와 같은 큐(_shared/noticeQueue.ts, kind "letter")다.
 import { getScheduleConfig } from "./adminShared.ts"
+import { LETTER_NOTICE_MEMO, propRich } from "./propAlias.ts"
 import { getRollupText, syncStudentReport } from "./alimtalkShared.ts"
 import { anyTitleText, createPage, fetchWithRetry, fullRelationIds, getPage, notionHeaders, queryAllPages, relIds, updatePageProperties } from "./notionClient.ts"
 import { DS_REGISTRATION, DS_SCHEDULE_EVENT, DS_TUITION, NOTION_API, PROP_LAST_ERROR } from "./constants.ts"
@@ -50,7 +51,6 @@ const PROP_TUITION_SIBLINGS = "같은 달 수강료"
 // 클래스(학원) DB: [가정통신문 생성]이 만든(또는 찾은) 이 반의 가정통신문 발송함.
 const PROP_CLASS_LETTER_MAILBOX = "가정통신문 생성 대상"
 // 알림톡 발송함(학원) DB: 가정통신문 발송함의 반 전달사항(그 반 학생 모두, 그 달만). (10/29) 클래스 '안내 메모'를 대신한다.
-const PROP_BOX_LETTER_NOTE = "가정통신문 전달사항"
 // 알림톡 발송함(학원) DB: 이 발송함의 가정통신문(가정통신문 DB '알림톡 발송함'의 짝). 가정통신문 DB id를 여기서 찾는다.
 const PROP_MAILBOX_LETTERS = "가정통신문"
 // 가정통신문(학원) DB: 등록 × 달 한 장
@@ -440,7 +440,7 @@ export async function letterNote(letter: any, regs: any[]): Promise<string> {
 		if (!name || !boxId || seen.has(key(boxId))) continue
 		seen.add(key(boxId))
 		const box: any = await monthlyDeps.getPage(boxId).catch(() => null)
-		const memo = textOf(box?.properties?.[PROP_BOX_LETTER_NOTE]?.rich_text).trim()
+		const memo = textOf(propRich(box, LETTER_NOTICE_MEMO)).trim()
 		if (memo) perClass.push([name, noteText(memo)])
 	}
 	perClass.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
