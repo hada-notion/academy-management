@@ -2913,7 +2913,7 @@ const LTABS={
   progress:x=>[["rec",pgIsProg(x)?"기록":"기록",pgRecsAll(x).length,pgRecBox(x)],["fin","수료",x.stat==="완료"?"완료":"",pgFinBox(x)]]
 };
 /* 261판: 창 제목 — 클래스 창은 클래스 색 점과 같이 */
-function pHeadOf(L,r){/* 262판: 등록 창 제목은 어디서 열든 같게 — 클래스(색 점·크게) + 학생 이름·학교·학년(작게) */if(L.coll==="enrolls"){const c=cls(r.classId)||{},s0=stu(r.studentId)||{};return `<i class="cdot" style="background:${clsHex(c)}"></i>${esc(c.name||"")} <small class="hsub">${esc(s0.name||"")}${s0.school?" · "+esc(s0.school):""}${s0.grade?" · "+esc(s0.grade):""}</small>`}const h=L.head?L.head(r):esc(L.cols[0][1](r));return L.coll==="classes"?`<i class="cdot" style="background:${clsHex(r)}"></i>${h}`:h}
+function pHeadOf(L,r){/* 262판: 등록 창 제목은 어디서 열든 같게 — 클래스(색 점·크게) + 학생 이름·학교·학년(작게) */if(L.coll==="enrolls"){const c=cls(r.classId)||{},s0=stu(r.studentId)||{};return `<i class="cdot" style="background:${clsHex(c)}"></i>${esc(c.name||"")} <small class="hsub">${esc(s0.name||"")}${s0.school?" · "+esc(s0.school):""}</small>${s0.grade?" "+gchip(s0.grade):""}`}const h=L.head?L.head(r):esc(L.cols[0][1](r));return L.coll==="classes"?`<i class="cdot" style="background:${clsHex(r)}"></i>${h}`:h}
 function detailHtml(L,r){const tf=LTABS[L.coll];const tabs=tf?tf(r):null;const st=activeTab.state;let tab=st.ltab||"info";if(!tabs||!tabs.some(t=>t[0]===tab))tab="info";
   const tabBar=tabs?`<div class="ptabs">${[["info","정보",""],...tabs].map(([k,n,sub])=>`<button type="button" class="ptb ${tab===k?"on":""}" data-ltab="${k}">${n}${sub!==""&&sub!=null?` <span class="sm">${sub}</span>`:""}</button>`).join("")}</div>`:"";
   const drill=st.backName&&st.sel===r.id;/* 260판: 학생에서 들어온 등록 창 — 맨 위 "‹ 학생", 제목은 클래스(크게)·학생 이름(작게) */
