@@ -2078,3 +2078,33 @@ table.stt.gt.grid{width:auto}
 
 /* 212판: 단원 시작 위치가 겹치면 그 칸을 잠깐 빨갛게 */
 .unrow .inp.bad{border-color:var(--danger-ink);background:var(--danger-soft)}
+
+/* ═════ 213판 ═════ 카드 정렬 칩, 책 찾기 과목 칸, 학습기록 범위 아래 단원 글 */
+.chip.csort{display:inline-flex;align-items:center;gap:var(--space-1)}.chip.csort svg.i{width:14px;height:14px}
+.xlpop .so.on{background:var(--brand-soft)}
+.bfsub{margin-top:var(--space-3)}
+.recun{font-size:var(--text-label);color:var(--muted);min-height:0;margin-top:calc(-1*var(--space-2))}
+.recun:empty{display:none}
+
+/* ═════ 214판 ═════ 등록 화면: 요일·시간 칩, 합친 학생 칸, 창 [현황](출결 점 · 과제 띠 · 평가 막대), 수강료 조정 줄 · 좁을 때 찾기 칸이 줄어 단추가 잘리지 않게 */
+#view .pg-bar.compact .searchbox{flex:0 1 184px;min-width:112px}
+:root{--brand:var(--brand-deep)}
+.cchips{display:inline-flex;flex-wrap:nowrap;gap:var(--space-1)}
+.tchip{display:inline-flex;align-items:center;height:20px;padding:0 var(--space-2);border-radius:var(--radius-pill);background:var(--brand-soft);color:var(--ink);font-size:var(--text-micro);font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+table.stt.gt td[data-mg]{vertical-align:top;padding-top:var(--space-3);background:var(--surface)}
+.phead h2 .hint{font-weight:400;font-size:var(--text-small)}
+.ensum .enkp{display:flex;gap:var(--space-6);margin-bottom:var(--space-3)}
+.ensum .enkp span{display:flex;flex-direction:column;font-size:var(--text-caption);color:var(--muted)}
+.ensum .enkp b{font-size:17px;color:var(--ink);font-variant-numeric:tabular-nums}
+.endots{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.endot{display:inline-flex;flex-direction:column;align-items:center;gap:var(--space-1);font-size:11px;color:var(--subtle);font-variant-numeric:tabular-nums}
+.endot i{width:12px;height:12px;border-radius:50%;background:var(--line)}
+.endot.ok i,.enbar i.ok{background:#3E9B5C}.endot.no i,.enbar i.no{background:#C8553D}.endot.mk i,.enbar i.mk{background:#D9A441}
+.enbar{display:flex;height:8px;border-radius:var(--radius-pill);overflow:hidden;background:var(--line)}.enbar i{display:block;height:100%}
+.enspark{display:flex;align-items:flex-end;gap:var(--space-2);min-height:64px;margin-bottom:var(--space-3)}
+.enspark span{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:var(--space-1);font-size:11px;color:var(--subtle);font-variant-numeric:tabular-nums}
+.enspark i{display:block;width:16px;background:var(--brand-deep,#6B5D4D);border-radius:var(--radius-sm) var(--radius-sm) 0 0}
+.adjsum{display:flex;justify-content:space-between;align-items:center;min-height:32px;font-size:var(--text-small)}
+.adjsum.tot{border-top:1px solid var(--line);margin-top:var(--space-2);padding-top:var(--space-2)}
+.adjsum b{font-variant-numeric:tabular-nums}
+.unrow select.adjk{width:68px;flex:none;padding:0 var(--space-1)}.unrow .adja{width:84px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
