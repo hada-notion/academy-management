@@ -135,6 +135,7 @@ mountFields(document.querySelector("#h4 .mp-pn"), F4);
     ["여러 개 고르기", h => demoOpt(h, { nm: "과목", multi: true, label: "과목(여러 개 고르기)", value: ["수학", "영어"], help: "눌러 보세요 — 체크 목록이 펼쳐져요", opts: [["국어","red"],["수학","blue"],["영어","purple"],["과학","green"],["사회","orange"]].map(([t, c]) => ({ t, c })) })],
     ["찾기 칸(돋보기)", h => HF.search(h, { label: "찾기 칸(돋보기)", placeholder: "학교 이름 두 글자 이상", help: "'하다'를 적어 보세요 — 아래에 결과 줄", find: k => ["초등학교 · 경기도 김포시 운양동", "중학교 · 경기도 김포시 장기동 · 이미 있음", "고등학교 · 경기도 김포시 구래동"].map((sub, i) => ({ t: k + "초중고"[i], sub })) })],
     ["켜기/끄기", h => HF.sw(h, { label: "알림톡 보내기", value: true })],
+    ["고르기 단추 칸", h => HF.pick(h, { label: "시간표(고르기 단추 칸)", icon: menuIcon("timetable"), valueHtml: "월 16:00 · 수 16:00", help: "모양은 고르기 칸 · 누르면 펼치는 목록은 화면이 정해요(HF.pick)", onOpen: b => toast("화면이 정한 목록이 열려요(예: 등록 카드 시간표 고르기)") })],
   ];
   const el = document.createElement("div"); el.className = "mp-cell";
   el.innerHTML = `<span class="lab">더 있는 칸</span><div class="panel mp-pn"><div class="box"><h3>칸 종류 2<span class="sp"></span></h3><div class="hfgrid">${K.map((_, i) => `<div class="hfh" data-k2="${i}"></div>`).join("")}</div></div></div>`;

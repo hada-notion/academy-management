@@ -40,10 +40,14 @@ function pop(box,build,cls){if(OPEN&&OPEN.box===box)return OPEN.pop;close();cons
 // 칸 틀: 라벨(칸 위 12/600, 아래 4) · 칸(40) · 알림 글(칸 아래 12)
 /* 302판(대표): 알림톡으로 나가는 칸 = 칸 옵션 alim:"화면|칸" 하나 → 라벨 오른쪽 [알림톡 미리보기] 버튼, 누르면 칸 아래에 실제 알림톡 모양(입력하면 바로 바뀜). 모양·템플릿은 alim-preview.js 한 곳 */
 const alimOf=o=>o&&o.alim&&window.ALIMV&&ALIMV.forField(o.alim);
-function alimBind(host,o){const a=alimOf(o);if(!a)return;const bt=host.querySelector(".alv-btnq");if(!bt)return;let box=null;
-  const cur=()=>{const i=host.querySelector("textarea,input");return i?i.value:""};const draw=()=>{if(box)box.innerHTML=ALIMV.render(a[0],cur(),a[1],a[2])};
-  bt.onclick=e=>{e.preventDefault();e.stopPropagation();if(box){box.remove();box=null;bt.setAttribute("aria-expanded","false");return}box=document.createElement("div");box.className="alv-wrap";host.querySelector(".hf").appendChild(box);bt.setAttribute("aria-expanded","true");draw()};
-  host.addEventListener("input",draw)}
+function alimBind(host,o){const a=alimOf(o);if(!a)return;const bt=host.querySelector(".alv-btnq");if(!bt)return;let box=null;/* 307판(대표): 칸 아래 펼침 대신 팝업 — 좁은 창에서도 한눈에 */
+  const cur=()=>{const i=host.querySelector("textarea,input");return i?i.value:""};const draw=()=>{if(box){if(!host.isConnected){shut();return}box.querySelector(".alv-popin").innerHTML=ALIMV.render(a[0],cur(),a[1],a[2])}};
+  const place=()=>{if(!box)return;const r=bt.getBoundingClientRect(),w=box.offsetWidth,h=box.offsetHeight;let x=r.left-w-12;if(x<8)x=Math.min(innerWidth-w-8,Math.max(8,r.right-w));let y=Math.min(Math.max(8,r.top-40),innerHeight-h-8);if(x+w>r.left-4&&x<r.right){y=r.bottom+6;if(y+h>innerHeight-8)y=Math.max(8,r.top-h-6)}box.style.left=x+"px";box.style.top=y+"px"};
+  const shut=()=>{if(!box)return;box.remove();box=null;bt.setAttribute("aria-expanded","false");removeEventListener("pointerdown",out,true);removeEventListener("keydown",esc1,true)};
+  const out=e=>{if(box&&!box.contains(e.target)&&!bt.contains(e.target)&&!host.contains(e.target))shut()};const esc1=e=>{if(e.key==="Escape"&&box){e.stopPropagation();shut()}};
+  bt.onpointerdown=e=>e.preventDefault();/* 누를 때 칸에서 커서가 떠나지 않게(떠나면 저장·다시 그리기로 버튼이 바뀜) */
+  bt.onclick=e=>{e.preventDefault();e.stopPropagation();if(box){shut();return}box=document.createElement("div");box.className="alv-pop";box.innerHTML=`<div class="alv-poph"><b>알림톡 미리보기</b><span class="alv-pops">칸에 쓰면 바로 바뀌어요</span><button type="button" class="alv-popx" aria-label="닫기">${I.x}</button></div><div class="alv-popin"></div>`;document.body.appendChild(box);box.querySelector(".alv-popx").onclick=shut;bt.setAttribute("aria-expanded","true");draw();place();addEventListener("pointerdown",out,true);addEventListener("keydown",esc1,true)};
+  host.addEventListener("input",()=>{draw();place()})}
 const shell=(host,o,inner,cls)=>{host.innerHTML=`<div class="hf ${o.disabled?"dis":""}">${o.label?`<span class="hf-lbl${alimOf(o)?" alv-row":""}">${esc(o.label)}${o.req?' <i>*</i>':""}${o.tipHtml||""}${alimOf(o)?`<button type="button" class="alv-btnq" aria-expanded="false" title="이 칸이 들어가는 알림톡을 실제 모양으로 봐요">${icn("msg")}알림톡 미리보기</button>`:""}</span>`:""}<div class="hf-box ${cls||""}">${inner}</div><span class="hf-msg">${esc(o.help||"")}</span></div>`;alimBind(host,o);return host.querySelector(".hf-box")};
 const say=(host,t,err)=>{const m=host.querySelector(".hf-msg");m.textContent=t||"";host.querySelector(".hf").classList.toggle("err",!!(err&&t))};
 const X=`<button type="button" class="hf-x" tabindex="-1" aria-label="비우기" title="비우기">${I.x}</button>`;

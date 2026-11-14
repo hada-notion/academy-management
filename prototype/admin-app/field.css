@@ -219,3 +219,7 @@
 .hf-box.hf-memo{padding-bottom:16px}
 .hf-grip{bottom:0;height:14px;align-items:flex-end;padding-bottom:4px;box-sizing:border-box;border-radius:0 0 var(--radius-md) var(--radius-md)}
 .hf-grip::before{width:12px;height:3px;border-top-width:1.5px;border-bottom-width:1.5px;background:none;box-shadow:none}
+
+/* 307판: 좁은 칸(등록 카드 등)에서 날짜 한 줄이 잘리면 두 줄로 — 칸 폭 기준 */
+.hf:has(>.hf-range){container-type:inline-size}
+@container (max-width:300px){.hf-range{grid-template-columns:minmax(0,1fr)}.hf-range>.hf-dash{display:none}}

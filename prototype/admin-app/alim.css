@@ -19,3 +19,9 @@
 .alv-time{font-size:11px;color:#45525e;flex:none}
 .alv-me{background:#fff3b0;color:#191919;border-radius:3px;padding:0 1px}
 .alv-cap{margin-top:6px;font-size:11px;color:var(--muted,#5d6763)}
+
+/* 307판 미리보기 팝업 */
+.alv-pop{position:fixed;z-index:90;width:330px;max-height:calc(100vh - 16px);overflow:auto;background:var(--surface,#fff);border:1px solid var(--line2,#E5DED4);border-radius:14px;box-shadow:0 12px 32px rgba(25,31,40,.18),0 2px 6px rgba(25,31,40,.08);padding:10px 10px 12px}
+.alv-poph{display:flex;align-items:center;gap:8px;padding:2px 4px 8px}.alv-poph b{font-size:13px}.alv-pops{font-size:11.5px;color:var(--muted,#6b6b6b)}
+.alv-popx{margin-left:auto;width:28px;height:28px;border:0;border-radius:8px;background:none;color:var(--muted,#6b6b6b);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}.alv-popx:hover{background:var(--brand-tint,#F5EFE7)}.alv-popx svg{width:14px;height:14px}
+.alv-dlg{max-width:330px;margin:0 auto 8px}

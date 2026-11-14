@@ -2438,3 +2438,6 @@ table.stt tr[data-id].sel:not(.sdel):hover td{background:var(--sel-bg)}
 
 /* 299판 학생 할 일 줄(모듈 할 일 창 안): 이름·학교·학년 간격, 오른쪽 글 */
 .tdr .nm{display:inline-flex;align-items:center;gap:6px;min-width:0}.tdr .nm .sc{color:var(--muted)}.tdr .r{margin-left:8px;color:var(--muted);font-size:var(--text-small)}.tdr .r.w{color:var(--warning-ink)}.tdnone{display:flex;align-items:center;gap:6px;padding:12px;color:var(--subtle)}
+
+/* 305~306판: 등록 카드 안 칸 묶음 = 위 정보 줄과 12 띄움 · 등록 안내 줄 */
+.encard>.hfgrid{margin-top:12px}.encard .engd{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.encard .engd .btn svg.i{width:14px;height:14px}

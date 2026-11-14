@@ -18,9 +18,9 @@
     });
   }
   /* 미리보기 하나 — 도구와 같은 모양(보조 문구 · 강조 제목 · 줄 · 본문 · 부가정보 · 버튼) */
-  function render(name, mine, mark, inSay) {
+  function render(name, mine, mark, inSay, over) {
     const t = PRESETS[name]; if (!t) return "";
-    const v = t.vals || {}, f = s => String(s || "").replace(VAR_RE, (_, k) => v[k] || "");
+    const v = Object.assign({}, t.vals || {}, over || {}), f = s => String(s || "").replace(VAR_RE, (_, k) => v[k] || "");
     const parts = [];
     if (t.sub) parts.push(`<div class="alv-sub">${esc(f(t.sub))}</div>`);
     if (t.ttl) parts.push(`<div class="alv-ttl">${esc(f(t.ttl))}</div>`);
@@ -28,7 +28,7 @@
     parts.push(`<div class="alv-body">${body(t.body, v, mark, inSay, mine)}</div>`);
     if (t.extra) parts.push(`<div class="alv-extra">${esc(t.extra)}</div>`);
     (t.btns || []).forEach(b => b.trim() && parts.push(`<span class="alv-kb">${esc(f(b))}</span>`));
-    return `<div class="alv-phone"><div class="alv-ch"><div class="alv-avatar" aria-hidden="true"></div><div class="alv-col"><div class="alv-chname">하다 학원(채널명)</div><div class="alv-msg"><div class="alv-bubble"><div class="alv-top">알림톡 도착</div><div class="alv-in">${parts.join("")}</div></div><span class="alv-time">오후 4:47</span></div></div></div></div><div class="alv-cap">${esc(name)} · 하다 알림톡 미리보기 도구의 템플릿(예시 값) · <mark class="alv-me">노란 글</mark> = 이 칸</div>`;
+    return `<div class="alv-phone"><div class="alv-ch"><div class="alv-avatar" aria-hidden="true"></div><div class="alv-col"><div class="alv-chname">하다 학원(채널명)</div><div class="alv-msg"><div class="alv-bubble"><div class="alv-top">알림톡 도착</div><div class="alv-in">${parts.join("")}</div></div><span class="alv-time">오후 4:47</span></div></div></div></div><div class="alv-cap">${esc(name)} · ${over ? "이 학생 값" : "하다 알림톡 미리보기 도구의 템플릿(예시 값)"} · <mark class="alv-me">노란 글</mark> = 이 칸</div>`;
   }
   const forField = k => FIELD[k] || null;
   window.ALIMV = { render, forField, PRESETS, FIELD };
