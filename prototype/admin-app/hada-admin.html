@@ -167,7 +167,9 @@ function tRevert(cid,sid){const ids=DB.blocks.filter(x=>x.classId===cid&&x.seaso
   ids.forEach(id=>{const i=DB.blocks.findIndex(x=>x.id===id);const sv=TSAVED.get(id);if(sv)DB.blocks[i]=JSON.parse(sv);else DB.blocks.splice(i,1);UNLOCKED.delete(id)});
   const used=new Set(DB.blocks.flatMap(x=>x.regs));for(let i=DB.enrolls.length-1;i>=0;i--){const e=DB.enrolls[i];if(e.state==="draft"&&!used.has(e.id))DB.enrolls.splice(i,1)}return ids.length}
 let tabs=[],activeTab=null,tourOpen=false,clip=null,mkClip=null,undoStack=[],redoStack=[],hoverDay=0;
-const curSeason=()=> (activeTab&&activeTab.state.season)||"s1";
+/* 282판(대표 캡처 '수업 · undefined'): 탭에 남은 시즌이 지금 자료에 없으면(지운 시즌·새로고침 전 새 시즌) 오늘이 든 시즌으로 */
+const seaToday=()=>{const xs=DB.seasons.filter(z=>!z.del&&z.start&&z.start<=TODAY&&(!z.end||TODAY<=z.end));return (xs.find(z=>z.state==="확정")||xs[0]||DB.seasons.find(z=>!z.del)||{id:"s1"}).id};
+const curSeason=()=>{const id=activeTab&&activeTab.state.season;if(id&&DB.seasons.some(z=>z.id===id&&!z.del))return id;if(activeTab&&id)activeTab.state.season=seaToday();return id?activeTab.state.season:seaToday()};
 const byId=(arr,id)=>arr.find(x=>x.id===id);
 const cls=id=>byId(DB.classes,id),stu=id=>byId(DB.students,id),tch=id=>byId(DB.teachers,id),enr=id=>byId(DB.enrolls,id);
 const fmt=m=>String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
@@ -413,7 +415,7 @@ addEventListener("resize",()=>{clearTimeout(window._fbT);window._fbT=setTimeout(
 function viewKey(){const t=activeTab;return t?[t.id,t.screen,t.state&&t.state.sub,t.state&&t.state.view,t.state&&t.state.ltab===undefined?"":""].join("|"):""}
 function viewScrollKeep(){const v=document.getElementById("view");if(!v)return null;const out=[];const cnt={};[v,...v.querySelectorAll("*")].forEach(e=>{if(e.closest(".panel"))return;if(!(e.scrollTop>0||e.scrollLeft>0))return;const c=(e.id?"#"+e.id:String(e.className||e.tagName).split(" ")[0]);cnt[c]=(cnt[c]||0)+1;out.push([c,cnt[c],e.scrollTop,e.scrollLeft])});return {k:viewKey(),out}}
 function viewScrollBack(o,late){/* 269판: 두 번째(다음 프레임) 복원은 그 사이 코드·사람이 옮긴 스크롤을 덮지 않음 */if(!o||o.k!==viewKey())return;const v=document.getElementById("view");if(!v)return;const cnt={};const els=[v,...v.querySelectorAll("*")].filter(e=>!e.closest(".panel"));o.out.forEach(([c,i,t,l])=>{let n=0;const e=els.find(e=>(e.id?"#"+e.id:String(e.className||e.tagName).split(" ")[0])===c&&++n===i);if(!e)return;if(late&&e._vsAt&&(Math.abs(e.scrollTop-e._vsAt[0])>1||Math.abs(e.scrollLeft-e._vsAt[1])>1))return;if(t&&Math.abs(e.scrollTop-t)>1)e.scrollTop=t;if(l&&Math.abs(e.scrollLeft-l)>1)e.scrollLeft=l;e._vsAt=[e.scrollTop,e.scrollLeft]})}
-function render(){const KS=scrollKeep(),VS=viewScrollKeep();panelSync();queueMicrotask(modeBar);setTimeout(fitBars,0);{const vw=document.getElementById("view");if(vw)vw.classList.toggle("tedit-on",!!(activeTab&&activeTab.screen==="students"&&activeTab.state.tedit))}setTimeout(saveTabs,0);applyDock();setTimeout(syncHead,0);const sd=document.getElementById("side");const wm=WMODE();document.body.dataset.w=wm;
+function render(){/* 282판: 열린 탭 모두 — 없는 시즌을 붙든 탭은 오늘이 든 시즌으로 */(typeof tabs!=="undefined"?tabs:[]).concat(activeTab?[activeTab]:[]).forEach(t=>{if(!t||!t.state)return;const bad=t.state.season&&!DB.seasons.some(z=>z.id===t.state.season&&!z.del);const need=t.screen==="timetable"&&!t.state.season;if(bad||need)t.state.season=seaToday()});const KS=scrollKeep(),VS=viewScrollKeep();panelSync();queueMicrotask(modeBar);setTimeout(fitBars,0);{const vw=document.getElementById("view");if(vw)vw.classList.toggle("tedit-on",!!(activeTab&&activeTab.screen==="students"&&activeTab.state.tedit))}setTimeout(saveTabs,0);applyDock();setTimeout(syncHead,0);const sd=document.getElementById("side");const wm=WMODE();document.body.dataset.w=wm;
   if(wm==="tabv"){sd.hidden=!drawerOpen;sd.classList.toggle("drawer",true)}else{sd.hidden=!sideOpen;sd.classList.remove("drawer");drawerOpen=false}renderSide();renderTabs();const v=document.getElementById("view");const t=activeTab;
   if(t.screen==="timetable")renderTimetable(v,t);else if(t.screen==="admin")renderAdmin(v);else if(t.screen==="academy")renderAcademy(v);else if(t.screen==="today")renderToday(v,t);else renderList(v,t);panelAnim();scrollBack(KS);viewScrollBack(VS);requestAnimationFrame(()=>viewScrollBack(VS,1))}
 // 오른쪽 창 움직임(261112 대표): 새로 열릴 때 오른쪽에서 밀려 들어옴, 고정·띄우기 바뀔 때 살짝, 닫을 때 오른쪽으로 빠짐. 다시 그릴 때마다는 안 움직임
@@ -778,7 +780,7 @@ function bindTitle(v,t){const st=t.state;
       const ns={id:uid("s"),name:"새 시즌",start:lo,end:hi,state:"초안"};DB.seasons.push(ns);st.season=ns.id;st.sel=null;commit();toast(`새 시즌 ${md(lo)}-${md(hi)}(준비 중) — 이름은 아래 고치기 줄에서 바꿔요`)};
     document.addEventListener("pointermove",mv);document.addEventListener("pointerup",up)}}
 // 시즌 타임라인은 바깥을 눌러도 닫지 않음 — 시즌 칩(또는 "시즌" 글자)을 다시 눌러야 닫힘(261112 대표)
-function renderLessons(v,t){const st=t.state;const s=seasonOf(st.season);const all=seasonBlocks(t);const wk=weekOf(st);
+function renderLessons(v,t){const st=t.state;if(!seasonOf(st.season))st.season=seaToday();const s=seasonOf(st.season);const all=seasonBlocks(t);const wk=weekOf(st);
   if(st.weekend==null)st.weekend=all.some(b=>b.day>=5)&&innerWidth>=1024;const NDAYS=st.weekend?7:5;const [pph]=ZOOM[st.zoom];
   const f=st.filter;const match=b=>{if(f.cls&&b.classId!==f.cls)return false;if(f.tch&&cls(b.classId).teacherId!==f.tch)return false;if(f.stu&&!studentsOfBlock(b).some(x=>x.id===f.stu))return false;return true};const anyFilter=f.cls||f.tch||f.stu;
   const items=all.filter(b=>b.day<NDAYS).map(b=>({b,d:lessonDate(b,wk)})).filter(x=>inPer(effPeriod(x.b),x.d));
@@ -1109,7 +1111,7 @@ function renderTimetable(v,t){
   if(t.state.view==="lesson")return renderLessons(v,t);
   const st0=t.state;const allS=DB.blocks.filter(b=>b.seasonId===st0.season);if(st0.weekend==null)st0.weekend=allS.some(b=>b.day>=5)&&innerWidth>=1024;
   const NDAYS=st0.weekend?7:5;const showPanel=panelOpen||!!st0.pending||!!st0.sel;
-  const st=t.state,[pph,snap]=ZOOM[st.zoom];const s=seasonOf(st.season);const all=seasonBlocks(t);
+  const st=t.state,[pph,snap]=ZOOM[st.zoom];if(!seasonOf(st.season))st.season=seaToday();const s=seasonOf(st.season);const all=seasonBlocks(t);
   const f=st.filter;const sel=st.sel?byId(DB.blocks,st.sel):null;
   const match=b=>{if(f.cls&&b.classId!==f.cls)return false;if(f.tch&&cls(b.classId).teacherId!==f.tch)return false;if(f.stu&&!studentsOfBlock(b).some(x=>x.id===f.stu))return false;return true};
   const anyFilter=f.cls||f.tch||f.stu;
@@ -1276,7 +1278,7 @@ function pheadSplit(title){const t=document.createElement("template");t.innerHTM
 function phead(title,sub,right){const [t1,t2]=pheadSplit(title);return `<div class="phead"><div class="pt"><h2>${t1}</h2><div class="pinfo">${t2}</div><div class="sub">${sub||""}</div></div>${right?`<span class="pright">${right}</span>`:""}</div>`}
 // 오른쪽 창 닫기(261112 대표): ✕ 또는 창 바깥을 누르면 완전히 닫힘(다른 창으로 바뀌지 않음)
 // 시제품 오류는 화면에 바로 알림(원인 찾기용)
-window.addEventListener("error",e=>{try{toast("시제품 오류: "+(e.message||"알 수 없음")+" — 캡처해서 알려 주세요")}catch(_){}});
+window.addEventListener("error",e=>{try{/* 282판: 어디서 났는지(함수·파일 줄) 같이 — 다시 못 만들 때 원인 찾기용 */const NL=String.fromCharCode(10);const lines=String((e.error&&e.error.stack)||"").split(NL).slice(1,3).map(l=>{const m=l.trim().match(/^at\s+(\S+)?.*?([^\/\s:()]+):(\d+):\d+/);return m?((m[1]&&m[1]!=="HTMLDocument.<anonymous>"?m[1]+" ":"")+m[2]+":"+m[3]):""}).filter(Boolean);window._lastErr={msg:e.message,stack:String((e.error&&e.error.stack)||""),screen:activeTab&&activeTab.screen};toast("시제품 오류: "+(e.message||"알 수 없음")+(lines.length?" ["+lines.join(" ← ")+"]":"")+" — 캡처해서 알려 주세요")}catch(_){}});
 // 오른쪽 창 고정(261112 대표): 위쪽 [창][고정] 묶음. 고정하면 창이 시간표 옆에 붙고(가리지 않음) 바깥을 눌러도 안 닫힘
 // 창 단추 하나로 돌아가며(261112 대표): 닫힘 → 띄우기 → 옆에 고정 → 닫기 → …
 document.addEventListener("click",e=>{const d=e.target.closest&&e.target.closest("#panelT");if(!d||!activeTab)return;e.stopImmediatePropagation();e.preventDefault();
@@ -1769,7 +1771,8 @@ function pickStudents(title,classId,block,done){
 }
 function copyDaysDialog(b,all){modal(`<h2>다른 요일에도 같은 시간 — ${esc(cls(b.classId).name)} ${fmt(b.start)}-${fmt(b.end)}${HELP("같은 시간으로 만들 요일을 골라요. 겹치는 요일은 건너뛰어요.")}</h2><div class="daypick">${DAYS.map((d,i)=>i===b.day?`<span class="ckchip off">${d}<small>지금</small></span>`:`<label class="ckchip"><input type="checkbox" value="${i}">${d}</label>`).join("")}</div><div class="actions"><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">만들기</button></div>`,(m,close)=>{m.querySelector("#cc").onclick=close;m.querySelector("#co").onclick=()=>{let n=0,skip=0;m.querySelectorAll("input:checked").forEach(x=>{const nb=Object.assign(JSON.parse(JSON.stringify(b)),{id:uid("b"),day:+x.value,state:"draft",lessons:false});if(blockConflicts(nb,all))skip++;else{DB.blocks.push(nb);n++}});close();commit();toast(`${n}개 만듦(작성 중)${skip?` · 겹쳐서 건너뜀 ${skip}`:""}`)}})}
 /* 270판(대표 261115 D안 — Make 모듈 [OK]·시나리오 저장처럼 두 단계): 창 아래 = 이 줄만 바로 저장(목록 창 없음), 위 [저장 n] = 작성 중 모두 */
-function rowSaveOne(L,r){if(!r||r.state!=="draft")return;if(r.del){const a=DB[L.coll],i=a.indexOf(r);if(i>-1)a.splice(i,1)}else r.state="saved";const left=dirtyCount();commit();toast(`저장했어요${left?` · 작성 중 ${left}개 남음(위 [저장])`:""} (시제품: 노션에 쓰지 않음)`)}
+const rowDirty=(L,r)=>!!r&&(L.coll==="seasons"?!!r.dirty:r.state==="draft");
+function rowSaveOne(L,r){if(!rowDirty(L,r))return;if(L.coll==="seasons"){delete r.dirty;const left0=dirtyCount();commit();toast(`저장했어요${left0?` · 작성 중 ${left0}개 남음(위 [저장])`:""} (시제품: 노션에 쓰지 않음)`);return}if(r.del){const a=DB[L.coll],i=a.indexOf(r);if(i>-1)a.splice(i,1)}else r.state="saved";const left=dirtyCount();commit();toast(`저장했어요${left?` · 작성 중 ${left}개 남음(위 [저장])`:""} (시제품: 노션에 쓰지 않음)`)}
 function saveDialog(only){
   const blocks=(only||DB.blocks.filter(b=>b.state==="draft"));const deps=new Set();
   blocks.forEach(b=>{const c=cls(b.classId);if(c&&c.state==="draft")deps.add("클래스 "+c.name);b.regs.forEach(r=>{const e=enr(r);if(e&&e.state==="draft")deps.add("수강 "+studentLabel(stu(e.studentId))+" · "+cls(e.classId).name)})});
@@ -1920,7 +1923,7 @@ const LISTS={
   blank:()=>({id:uid("bk"),name:"새 교재",subjectId:(DB.subjects[0]||{}).id,kind:"교재",series:"",types:[],curr:"",pub:"",total:"",unit:"",price:0,using:true,isbn:""}),
   extra:b=>{const us=bookUsers(b);const byC={},cid={};us.forEach(e=>{const n=cls(e.classId).name;cid[n]=e.classId;(byC[n]=byC[n]||[]).push(stu(e.studentId).name)});return `<div class="box"><h3>쓰는 곳 <span class="hint">${us.length}명</span></h3>${us.length?`<div class="ttrows">${Object.entries(byC).map(([c,ns])=>`<div class="ttrow" data-gocls="${cid[c]}" title="${esc(ns.join(", "))} — 누르면 클래스 화면"><span class="t">${esc(c)} <span class="hint">${ns.length}명</span></span><span class="hint">${esc(ns.slice(0,3).join(", "))}${ns.length>3?` 외 ${ns.length-3}명`:""}</span>${IC("right","s")}</div>`).join("")}</div>`:'<div class="hint">아직 이 교재를 쓰는 등록이 없어요 — [진도교재로 쓰기]로 클래스에 이어요</div>'}<div class="row"><button class="btn sm" data-act="bkUse" title="이 교재로 진도교재를 만들어요 — 다음 화면에서 클래스를 골라요">${IC("plus","s")}진도교재로 쓰기</button></div></div>`}},
  seasons:{title:"시즌",coll:"seasons",unit:"개",add:()=>newSeasonDialog(),addLabel:"시즌 추가",cols:[["시즌",x=>x.name,"name"],["기본 기간",x=>md(x.start)+"-"+md(x.end)],["상태",x=>x.state==="확정"?(x.end<"2026-11-11"?"끝남":"운영 중"):"준비 중"],["시간표",x=>DB.blocks.filter(b=>b.seasonId===x.id).length+"개"]],filters:[],
-  fields:[["name","이름"],["start","기본 시작일",null,"date"],["end","기본 종료일",null,"date"]],help:"상태는 준비 중 → [운영 시작] → 운영 중. 끝난 날이 지나면 끝남으로 보여요.",extra:x=>`<div class="row"><button class="btn sm" data-act="ttS">시간표 열기${IC("right","s")}</button>${x.state!=="확정"?'<button class="btn sm" data-act="confirmS">운영 시작…</button>':''}</div>`}
+  fields:[["name","이름"],["start","기본 시작일",null,"date"],["end","기본 종료일",null,"date"],["color","색",()=>SEA_COLORS.map(([c,t])=>({v:c,t,cls:"nc-"+c})),"opt","캘린더 띠 색이에요"]],help:"상태는 준비 중 → [운영 시작] → 운영 중. 끝난 날이 지나면 끝남으로 보여요.",extra:x=>`<div class="row"><button class="btn sm" data-act="ttS">시간표 열기${IC("right","s")}</button>${x.state!=="확정"?'<button class="btn sm" data-act="confirmS">운영 시작…</button>':''}</div>`}
 };
 // 학생(261112 대표, 원본 구조): 기본 정보는 표에서 바로(이름·학교·학년·우선 연락), 등록상태는 자동 표시, 등록·보류·연락처·메모는 오른쪽 창
 const GRADES=ALL_GRADES;
@@ -2351,7 +2354,7 @@ function renderList(v,t){v.classList.toggle("tedit-on",!!(t.state&&t.state.tedit
   <div class="top pg-ttl ttl"><h1>${L.title}</h1>${monthNav(L,st)}<span class="pg-cnt">${rows.length}${L.unit||"개"}</span>${L.note?`<span class="pg-note">${L.note(rows)}</span>`:""}${L.help?HELP(L.help):""}${notionBtn(t.screen)}${st.tedit?`<span class="tedtag">${IC("pen","s")}표 편집 중 — 칸을 눌러 고쳐요</span>`:""}${Object.keys(st.cf||{}).length||st.sort?`<span class="cfbar">${IC("filter","s")}${[...Object.keys(st.cf||{}).map(k=>(listCols(L).find(z=>z.k===k)||{}).l+(Array.isArray(st.cf[k])?" 제외":" 찾기")),st.sort?`${(listCols(L).find(z=>z.k===st.sort.k)||{}).l} ${st.sort.d==="desc"?"내림차순":"오름차순"}`:""].filter(Boolean).join(" · ")}<button type="button" class="linkbtn" id="cfClr">풀기</button></span>`:""}</div>
   <div class="pg-bar">${LISTS[t.screen].subs?`<span class="vseg subseg">${LISTS[t.screen].subs.map(([k,n])=>`<button class="${st.sub===k?"on":""}" data-sub="${k}">${n}</button>`).join("")}</span>`:""}${L.card&&st.vw==="c"?`<button type="button" class="chip csort" id="cSort" title="카드 정렬">${IC("aup","s")}${({name:"이름순",subj:"과목순",series:"시리즈순",use:"쓰는 학생순"})[st.csort]||"넣은 순"}</button>`:""}${L.card?`<span class="vseg vwseg"><button class="${st.vw==="c"?"":"on"}" data-vw="t" title="표로 보기">${IC("menu")}</button><button class="${st.vw==="c"?"on":""}" data-vw="c" title="카드로 보기 — 표지가 보여요">${IC("grid")}</button></span>`:""}<span class="searchbox">${IC("search")}<input class="inp" id="lq" placeholder="${L.ph||"찾기"}" value="${esc(st.q||"")}"></span>${L.filters.map(([n,,,key])=>`<span class="chip ${st.lf[key||n]?"on":""}" data-f="${key||n}">${n}</span>`).join("")}<span class="sp"></span>${st.tedit?"":actsHtml(L)}${tbSlots(st,{add:!!(L.blank||L.add),addTitle:`${L.addLabel||L.title+" 추가"} — 오른쪽 창에 새 줄`,noAddWhy:L.ro?"보기만 하는 화면이에요":L.noAddWhy,up:!!(L.blank||L.upBlank),hid:stuColsCfg().hidden.length,ro:L.ro})}<span class="tb-grp"><button class="btn icon tb-ic" id="undoB" title="실행 취소 Ctrl+Z">${IC("cul")}</button><button class="btn icon tb-ic" id="redoB" title="다시 실행 Ctrl+Y">${IC("cur")}</button></span>${rvBtn()}<button class="btn pri tb-num" id="saveAll" ${dirtyCount()?"":"disabled"} title="${dirtyTitle()}">${IC("save","s")}저장 <span class="num">${dirtyCount()}</span></button><button class="btn icon tb-ic" id="panelT" title="${!(panelOpen||st.sel)?"오른쪽 창 띄우기":!dockOn?"옆에 고정 — 표를 가리지 않게":"창 닫기"} (])">${IC("panel")}</button></div>
   <div class="body"><div class="list">
-  ${L.card&&st.vw==="c"?bookCards(L,rows,st):gtTable(L,rows,st)}
+  ${L.cal?seasonCal(L,st):L.card&&st.vw==="c"?bookCards(L,rows,st):gtTable(L,rows,st)}
   ${rows.length?"":`<div class="empty">${/* 260판: 거른 것이 없으면 "이 달에는 없음", 거른 게 있으면 "맞는 줄 없음" */(st.q||Object.values(st.lf||{}).some(Boolean)||Object.keys(st.cf||{}).length)?(L.empty||"맞는 줄이 없어요")+" — 거르기를 풀면 더 보여요":L.byMonth?`${st.month||thisM()}에는 ${L.title}${/[가-힣]$/.test(L.title)&&((L.title.charCodeAt(L.title.length-1)-0xAC00)%28)?"이":"가"} 없어요 — ‹ › 로 다른 달을 봐요`:(L.empty||`아직 ${L.title} 줄이 없어요`)}</div>`}</div>
   ${panelOpen||sel?`<div class="panel" id="lp">${st.bfind&&!sel?bookFindHtml(st):sel?detailHtml(L,sel):todoPanel(L,st)}</div>`:''}</div>`;
   const bn=v.querySelector("#bnX");if(bn)bn.onclick=()=>{st.banner=false;render()};
@@ -2771,7 +2774,7 @@ LISTS.tuition.infoX=x=>chBillBox("tuition",x);
 function todoPanel(L,st){const P=LISTS[activeTab.screen]||{};const tf=L.todo||P.todo,sf=L.todoSum||P.todoSum;
   if(!tf)return `<div class="empty">${L.ro?"보기만 하는 화면이에요 — 값은 원래 화면에서 고쳐요":"줄을 누르면 여기서 고쳐요"}</div>`;
   const items=tf(st).map(t=>Object.assign({},t,{rows:(t.rows||[]).filter(x=>!x.del)}));const has=items.filter(t=>t.rows.length);
-  const sum=sf?sf(st):[];const sumH=sum.length?`<div class="tdsum">${sum.map(([n,v,c])=>`<div class="tds ${c||""}"><span>${esc(n)}</span><b>${v}</b></div>`).join("")}</div>`:"";
+  const sum=sf?sf(st):[];const lf=L.todoList||P.todoList,tl=lf?lf(st):null;if(tl&&!tl.rows.length&&tl.more)tl.rows=[];const sumH=(sum.length?`<div class="tdsum">${sum.map(([n,v,c])=>`<div class="tds ${c||""}"><span>${esc(n)}</span><b>${v}</b></div>`).join("")}</div>`:"")+(tl&&(tl.rows.length||tl.more)?`<div class="tdlist"><div class="tdh2">${esc(tl.name)} <span class="hint">${tl.rows.length}</span></div><div class="tdl">${tl.rows.map(x=>`<button type="button" class="tdr" data-todosel="${x.id}">${tl.lab(x)}${IC("rightc","s")}</button>`).join("")}</div>${tl.more||""}</div>`:"");
   if(!has.length)return `<div class="tdp"><div class="tdh">${IC("check","s")}지금 할 일이 없어요</div>${sumH}</div>`;
   let k=st.todoK;if(!has.some(t=>t.k===k))k=has[0].k;const cur=items.find(t=>t.k===k);const lab=cur.lab||(x=>pHeadOf(L,x));
   return `<div class="tdp"><div class="tdh">할 일 <span class="hint">${has.reduce((a,t)=>a+t.rows.length,0)}건</span></div><div class="tdtabs">${items.map(t=>`<button type="button" class="tdt ${t.k===k?"on":""}" data-todok="${t.k}" ${t.rows.length?"":"disabled"}>${esc(t.name)} <span class="n">${t.rows.length}</span></button>`).join("")}</div>
@@ -2961,7 +2964,7 @@ function pHeadOf(L,r){/* 262판: 등록 창 제목은 어디서 열든 같게 �
 function detailHtml(L,r){const tf=LTABS[L.coll];const tabs=tf?tf(r):null;const st=activeTab.state;let tab=st.ltab||"info";if(!tabs||!tabs.some(t=>t[0]===tab))tab="info";
   const tabBar=tabs?`<div class="ptabs">${[["info","정보",""],...tabs].map(([k,n,sub])=>`<button type="button" class="ptb ${tab===k?"on":""}" data-ltab="${k}">${n}${sub!==""&&sub!=null?` <span class="sm">${sub}</span>`:""}</button>`).join("")}</div>`:"";
   const drill=st.backName&&st.sel===r.id;/* 260판: 학생에서 들어온 등록 창 — 맨 위 "‹ 학생", 제목은 클래스(크게)·학생 이름(작게) */
-  return `${!drill&&st.fromTodo===r.id?`<button type="button" class="spback" data-totodo title="할 일로 돌아가기">${IC("left")}할 일</button>`:""}${drill?`<button type="button" class="spback" data-goback title="${esc(st.backName)} 학생으로 돌아가기 (Alt+←)">${IC("left")}학생</button>`:""}${phead(`${pHeadOf(L,r)} <span class="ptype">${esc(L.title)}</span> ${isDirty(L,r)?'<span class="pill w">작성 중</span>':""}`,"")}${tabBar}${tab==="info"?`${lFields(L,r).length?`<div class="box"><h3>기본${L.help?HELP(L.help):""}</h3><div class="hfgrid">${lFields(L,r).map(([k])=>`<div class="hfh" data-hf="${k}"></div>`).join("")}</div></div>`:""}${L.infoX?L.infoX(r):""}${!tabs&&L.extra?L.extra(r):""}`:tabs.find(t=>t[0]===tab)[3]}<div class="actions">${L.noDel?"":`<button class="btn danger" id="rowDel" title="이 줄 삭제(저장 전까지 되돌릴 수 있어요)">${IC("trash","s")}삭제</button>`}<span class="sp"></span>${isDirty(L,r)&&SAVEDC[L.coll]&&SAVEDC[L.coll].has(r.id)?`<button class="btn icon" id="rowRev" title="저장 상태로 되돌리기 — 이 줄에서 고친 것 모두">${IC("undo")}</button>`:""}<button class="btn big rowsave" id="rowSave" ${r.state==="draft"?"":"disabled"} title="이 줄에서 고친 것만 바로 저장해요. 다른 줄까지 모두 저장하려면 위 [저장]을 눌러요">${IC("save","s")}${esc(L.coll==="books"&&r.kind==="프로그램"?"프로그램":({books:"교재",progress:"진도",reports:"보고서",alims:"알림톡",glevels:"학년"})[L.coll]||COLLNAME[L.coll]||"")} 저장</button></div>`}
+  return `${!drill&&st.fromTodo===r.id?`<button type="button" class="spback" data-totodo title="할 일로 돌아가기">${IC("left")}할 일</button>`:""}${drill?`<button type="button" class="spback" data-goback title="${esc(st.backName)} 학생으로 돌아가기 (Alt+←)">${IC("left")}학생</button>`:""}${phead(`${pHeadOf(L,r)} <span class="ptype">${esc(L.title)}</span> ${isDirty(L,r)?'<span class="pill w">작성 중</span>':""}`,"")}${tabBar}${tab==="info"?`${lFields(L,r).length?`<div class="box"><h3>기본${L.help?HELP(L.help):""}</h3><div class="hfgrid">${lFields(L,r).map(([k])=>`<div class="hfh" data-hf="${k}"></div>`).join("")}</div></div>`:""}${L.infoX?L.infoX(r):""}${!tabs&&L.extra?L.extra(r):""}`:tabs.find(t=>t[0]===tab)[3]}<div class="actions">${L.noDel?"":`<button class="btn danger" id="rowDel" title="이 줄 삭제(저장 전까지 되돌릴 수 있어요)">${IC("trash","s")}삭제</button>`}<span class="sp"></span>${isDirty(L,r)&&SAVEDC[L.coll]&&SAVEDC[L.coll].has(r.id)?`<button class="btn icon" id="rowRev" title="저장 상태로 되돌리기 — 이 줄에서 고친 것 모두">${IC("undo")}</button>`:""}<button class="btn big rowsave" id="rowSave" ${rowDirty(L,r)?"":"disabled"} title="이 줄에서 고친 것만 바로 저장해요. 다른 줄까지 모두 저장하려면 위 [저장]을 눌러요">${IC("save","s")}${esc(L.coll==="books"&&r.kind==="프로그램"?"프로그램":({books:"교재",progress:"진도",reports:"보고서",alims:"알림톡",glevels:"학년"})[L.coll]||COLLNAME[L.coll]||"")} 저장</button></div>`}
 // 163판: 목록 창 칸 붙이기(입력칸 모듈). 종류: text·date·won·cnt·tel·days·seg, 선택지 배열·"teachers" = 드롭다운
 const DAYS7="월화수목금토일";const daysArr=v=>{v=(v||"").replace(/\s/g,"");const m=v.match(/^([월화수목금토일])~([월화수목금토일])$/);if(m)return DAYS7.slice(DAYS7.indexOf(m[1]),DAYS7.indexOf(m[2])+1).split("");return DAYS7.split("").filter(d=>v.includes(d))};
 const isDirty=(L,r)=>L.coll==="seasons"?!!r.dirty:r.state==="draft";const markDirty=(L,r)=>{if(L.coll==="seasons")r.dirty=true;else r.state="draft"};
@@ -3002,6 +3005,10 @@ function optEdit(k,v){const nm=OPT_NAME[k]||"옵션";const used=optUsed(k,v);let
       if(used)askRun(`${esc(nm)} '${esc(shown)}' 삭제`,`이 옵션을 쓰는 줄 <b>${used}개</b>에서 값이 비워져요. 저장 전에는 되돌릴 수 있어요.`,"삭제",go);else go()};
     setTimeout(()=>{const i=m.querySelector("#oeN");i.focus();i.select()})})}
 
+/* 280판: 시즌 색 — 비우면 운영 중 초록·준비 중 보라 */
+const SEA_COLORS=[["green","초록"],["blue","파랑"],["purple","보라"],["pink","분홍"],["orange","주황"],["yellow","노랑"],["red","빨강"],["brown","갈색"],["gray","회색"]];
+const SEA_HEX={green:"#9BD3AE",blue:"#9CC3EC",purple:"#C9C0E8",pink:"#F2B8CF",orange:"#F5C08A",yellow:"#F2DC8A",red:"#F2A7A0",brown:"#D5BFA8",gray:"#C9C5C0"};
+const sHex=s=>SEA_HEX[s&&s.color]||(s&&s.state==="확정"?SEA_HEX.green:SEA_HEX.purple);
 function hfField(h,L,r,spec,set,extra){const [k,label,opts,type,help]=spec;if(!h||!window.HF)return;const o=Object.assign({label,help,tipHtml:alimTip(L.coll+"|"+k),onChange:v=>set(k,v)},extra||{});
   if(type==="clscolor"){const used={};DB.classes.forEach(x=>{if(x.id!==r.id&&liveCls(x))used[clsHex(x)]=x.name});return HF.color(h,Object.assign(o,{value:clsHex(r),used,clear:false,onChange:v=>{if(v)set(k,v)}}))}
   if(opts==="teachers")return HF.select(h,Object.assign(o,{icon:"search",value:r[k],clear:false,items:DB.teachers.map(x=>({v:x.id,t:x.name,sub:x.role}))}));
@@ -3021,7 +3028,12 @@ function hfField(h,L,r,spec,set,extra){const [k,label,opts,type,help]=spec;if(!h
   return HF.text(h,Object.assign(o,{value:r[k]||""}))}
 const lFields=(L,r)=>L.fieldsOf?L.fieldsOf(r):(L.fields||[]);
 function mountDetail(p,L,r){const set=(k,val)=>{if(r[k]===val)return;r[k]=val;if(L.onSet)L.onSet(r,k);markDirty(L,r);commitQuiet();refreshListQuiet(p,L,r);chgMark(p,L,r)};
-  lFields(L,r).forEach(spec=>hfField(p.querySelector(`[data-hf="${spec[0]}"]`),L,r,spec,set));chgMark(p,L,r)}
+  lFields(L,r).forEach(spec=>hfField(p.querySelector(`[data-hf="${spec[0]}"]`),L,r,spec,set));pairDates(p,L);chgMark(p,L,r)}
+/* 278판(대표 261115 '시작일 - 종료일 같은 세트는 한 단에'): 시작·끝 날짜 칸이 붙어 있으면 한 줄로 — 이름 하나(시작 – 끝), 두 칸 사이 '-', 도움말은 아래 한 줄 */
+const DATE_PAIRS=[["start","end"],["open","close"],["from","to"]];
+function pairDates(p,L){const F=(L.fields||[]);DATE_PAIRS.forEach(([a,b])=>{const fa=F.find(f=>f[0]===a),fb=F.find(f=>f[0]===b);if(!fa||!fb||fa[3]!=="date"||fb[3]!=="date")return;const ha=p.querySelector(`[data-hf="${a}"]`),hb=p.querySelector(`[data-hf="${b}"]`);if(!ha||!hb||ha.closest(".hfpair"))return;
+  const w=document.createElement("div");w.className="hfpair";const la=(ha.querySelector(".hf-lbl")||{}).textContent||fa[1],lb=(hb.querySelector(".hf-lbl")||{}).textContent||fb[1];const msg=[fa[4],fb[4]].filter(Boolean).join(" · ");
+  w.innerHTML=`<span class="hf-lbl">${esc(la)} – ${esc(lb)}</span><div class="hfpair-row"></div>${msg?`<span class="hf-msg">${esc(msg)}</span>`:""}`;ha.parentNode.insertBefore(w,ha);const row=w.querySelector(".hfpair-row");row.appendChild(ha);const dash=document.createElement("span");dash.className="hfpair-dash";dash.textContent="-";row.appendChild(dash);row.appendChild(hb)})}
 /* 창에서 고친 칸 = 노란 띠(저장한 값과 다를 때) */
 function chgMark(p,L,r){const S=SAVEDC[L.coll],raw=S&&S.get(r.id);const sv=raw?JSON.parse(raw):null;lFields(L,r).forEach(([k])=>{const h=p&&p.querySelector(`[data-hf="${k}"]`);if(h)h.classList.toggle("chg",!!sv&&JSON.stringify(sv[k]??"")!==JSON.stringify(r[k]??""))})}
 
@@ -3030,7 +3042,7 @@ let quietTimer=null;function commitQuiet(){clearTimeout(quietTimer);/* 264판: �
 function refreshListQuiet(p,L,r){const v=document.getElementById("view");const t=activeTab;const tr=v.querySelector(`tr[data-id="${r.id}"]`);
   if(tr){tr.classList.add("draft");tr.innerHTML=gtRowCells(L,r,L.merge?(tr.querySelector("td[data-mg]")?{span:tr.querySelector("td[data-mg]").rowSpan}:{skip:true}):null)}
   rvSync();const sv=v.querySelector("#saveAll");if(sv){sv.disabled=!dirtyCount();const n=sv.querySelector(".num");if(n)n.textContent=dirtyCount();sv.title=dirtyTitle()}
-  const h2=p.querySelector(".phead h2");if(h2)h2.innerHTML=`${pHeadOf(L,r)} <span class="pill w">작성 중</span>`;const rs=p.querySelector("#rowSave");if(rs)rs.disabled=r.state!=="draft";renderTabs()}
+  const h2=p.querySelector(".phead h2");if(h2)h2.innerHTML=`${pHeadOf(L,r)} <span class="pill w">작성 중</span>`;const rs=p.querySelector("#rowSave");if(rs)rs.disabled=!rowDirty(L,r);renderTabs()}
 function bindDetail(p,L,r,t){mountDetail(p,L,r);
   // 칸을 옮겨도 창을 다시 그리지 않는다: 값만 바꾸고 표·숫자만 새로 고침(커서 유지)
   p.querySelectorAll("[data-k]").forEach(i=>{const upd=()=>{let val=i.value;if(["fee","discount"].includes(i.dataset.k))val=+val||0;if(r[i.dataset.k]===val)return;r[i.dataset.k]=val;r.state="draft";commitQuiet();refreshListQuiet(p,L,r)};i.oninput=upd;i.onchange=upd});
@@ -3429,7 +3441,8 @@ LISTS.alims.todo=()=>{const L=DB.alims.filter(x=>!x.del);return [
   {k:"tpl",name:"켜졌는데 템플릿 없음",why:"켜져 있어도 템플릿이 없으면 나가지 않아요.",rows:L.filter(x=>x.on&&!x.tpl),lab:nm1},
   {k:"off",name:"꺼져 있음",why:"꺼지면 ⚠️가 나는 행(수업·일정 안내)만 보여요. 시간표 변경·등록·클래스 변경 안내 등은 꺼 둔 채가 정상이에요.",rows:L.filter(x=>!x.on&&/^(수업 일정|월간 일정|일정) 안내$/.test(x.name||"")),lab:nm1}]};
 LISTS.alims.todoSum=()=>[["켜진 알림톡",DB.alims.filter(x=>!x.del&&x.on).length+"종"]];
-LISTS.seasons.todo=()=>[];LISTS.seasons.todoSum=()=>{const c=seasonOf(curSeason())||{};const left=c.end?Math.max(0,Math.round((new Date(c.end)-new Date(TODAY))/864e5)):null;return [["지금 시즌",esc(c.name||"—")],["남은 날",left==null?"—":left+"일"],["이 시즌 시간표",DB.blocks.filter(b=>b.seasonId===curSeason()).length+"개"]]};
+LISTS.seasons.todo=()=>[];/* 281판(대표): 지금 시즌 = 오늘이 든 운영 중 시즌(없으면 오늘이 든 시즌), 시간표 칸 뺌 */const seaNow=()=>{const xs=DB.seasons.filter(z=>!z.del&&z.start&&z.start<=TODAY&&(!z.end||TODAY<=z.end));return xs.find(z=>z.state==="확정")||xs[0]||null};
+LISTS.seasons.todoSum=()=>{const c=seaNow()||{};const left=c.end?Math.max(0,Math.round((new Date(c.end)-new Date(TODAY))/864e5)):null;return [["지금 시즌",esc(c.name||"—")],["남은 날",left==null?"—":left+"일"]]};
 LISTS.profit.todoSum=st=>{const pr=LISTS.profit.rows?LISTS.profit.rows():[];const cur=pr.find(r=>r.m===tMon(st))||pr[0]||{};return [[(cur.m||"")+" 손익",cur.any?WON(cur.net):"자료 없음",cur.net<0?"w":""]]};LISTS.profit.todo=()=>[];
 </script>
 <script>/* 271판(대표 261115): 긴 글 메모에 노션 글 규칙 — 줄 처음 "- " → "• " 글머리, "1. " 번호 목록. Enter = 같은 목록 다음 줄(번호는 하나 늘림), 빈 목록 줄에서 Enter = 목록 끝 */
@@ -3443,6 +3456,50 @@ LISTS.profit.todoSum=st=>{const pr=LISTS.profit.rows?LISTS.profit.rows():[];cons
     const {st,txt}=lineAt(t.value,pos);const m=txt.match(/^(\s*)(• |(\d+)\. )(.*)$/);if(!m)return;e.preventDefault();
     if(!m[4].trim()){t.value=t.value.slice(0,st)+t.value.slice(pos);t.selectionStart=t.selectionEnd=st;fire(t);return}
     const pre=m[1]+(m[3]?(+m[3]+1)+". ":"• ");t.value=t.value.slice(0,pos)+NL+pre+t.value.slice(pos);t.selectionStart=t.selectionEnd=pos+1+pre.length;fire(t)},true);
+})();
+</script>
+<script>/* 277판(대표 261115 '표와 캘린더 두 탭, 캘린더는 학생 리포트 일정 캘린더 디자인'): 시즌 [표 | 캘린더]. 캘린더 = 3달 나란히, 날짜 칸 아래 색 띠 = 시즌 기간, 점 = 일정(학원·학사·방학·시험·휴원), 날짜를 누르면 아래에 그날 일정 */
+(function(){
+  /* 시제품 예시: 학교 방학(나이스 학사일정 — 수업공제일명 '휴업일'·이름에 '방학') */
+  if(!DB.events.some(e=>e._vac))[["하다고","겨울방학","2026-12-24","2027-02-28"],["푸른중","겨울방학","2026-12-31","2027-02-28"],["하다중","겨울방학","2026-12-30","2027-02-26"],["바다초","겨울방학","2027-01-06","2027-02-27"],["","개천절","2026-10-03",""],["","한글날","2026-10-09",""]].forEach(([sc,n,a,b],i)=>DB.events.push({id:"evv"+i,name:(sc?sc+" ":"")+n,kind:"학사 일정",school:sc,start:a,end:b,offday:"휴업일",pub:true,stat:"예정",state:"saved",_vac:1}));
+  const CAT={acad:["학원 일정","#337ea9"],school:["학사 일정","#e03e3e"],vac:["방학","#0F9B8E"],exam:["시험","#D9730D"],off:["휴원","#9b9a97"]};
+  const isVac=e=>/학사/.test(e.kind||"")&&(e.offday==="휴업일"||/방학/.test(e.name||""));
+  const evCat=e=>/휴원/.test(e.kind||"")?"off":isVac(e)?"vac":/학사/.test(e.kind||"")?(/고사|시험/.test(e.name||"")?"exam":"school"):/학원/.test(e.kind||"")?"acad":null;
+  const ymd=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  const addD=(s,n)=>{const d=new Date(s+"T00:00:00");d.setDate(d.getDate()+n);return ymd(d)};
+  function items(st){const on=st.calF||{acad:1,school:1,vac:1,exam:1,off:1};const sc=st.calSc||"";const out={};const put=(d,x)=>{(out[d]||(out[d]=[])).push(x)};
+    DB.events.filter(e=>!e.del&&e.start).forEach(e=>{const c=evCat(e);if(!c||!on[c])return;if(sc&&e.school&&e.school!==sc)return;const end=e.end||e.start;for(let d=e.start,i=0;d<=end&&i<120;d=addD(d,1),i++)put(d,{c,t:e.name,id:e.id})});
+    if(on.exam)(DB.exams||[]).filter(x=>!x.del&&x.date&&(!sc||x.school===sc)).forEach(x=>put(x.date,{c:"exam",t:`${x.school} ${x.grade} ${x.name}`,exam:x.id}));return out}
+  const seasonsAt=d=>DB.seasons.filter(s=>!s.del&&s.start&&s.start<=d&&(!s.end||d<=s.end)).sort((a,b)=>String(a.start).localeCompare(String(b.start)));const seasonAt=d=>seasonsAt(d)[0];
+  const sCol=s=>sHex(s);
+  window.seasonCal=function(L,st){const base=st.calM||TODAY.slice(0,7);const [y0,m0]=base.split("-").map(Number);const it=items(st);const on=st.calF||{acad:1,school:1,vac:1,exam:1,off:1};
+    const month=(y,m)=>{const f=new Date(y,m-1,1),lead=(f.getDay()+6)%7,dim=new Date(y,m,0).getDate(),n=Math.ceil((lead+dim)/7)*7;let c="";
+      for(let i=0;i<n;i++){const d=new Date(y,m-1,1-lead+i),k=ymd(d),out=d.getMonth()!==m-1,dw=(i%7),ev=out?null:it[k],s=out?null:seasonAt(k);
+        c+=`<div class="cal-cell ${ev?"has-event":""} ${out?"outside":""} ${dw===5?"sat":dw===6?"sun":""} ${k===TODAY?"today":""} ${st.calDay===k?"picked":""}" ${out?"":`data-calday="${k}"`} title="${out?"":seasonsAt(k).map(z=>esc(z.name)).join(" · ")}"><span>${d.getDate()}</span>${ev?`<span class="cal-dots">${[...new Set(ev.map(x=>x.c))].slice(0,4).map(c2=>`<span class="cal-dot" style="background:${CAT[c2][1]}"></span>`).join("")}</span>`:""}${out?"":seasonsAt(k).map((z,j)=>`<i class="cal-sbar" style="background:${sCol(z)};bottom:${4+j*6}px"></i>`).join("")}</div>`}
+      return `<div class="cal-month"><div class="cal-month-title">${y}년 ${m}월</div><div class="cal-weekdays">${"월화수목금토일".split("").map((x,i)=>`<div class="${i===5?"sat":i===6?"sun":""}">${x}</div>`).join("")}</div><div class="cal-grid">${c}</div></div>`};
+    const ms=[0,1,2].map(k=>{const d=new Date(y0,m0-1+k,1);return month(d.getFullYear(),d.getMonth()+1)}).join("");
+    const schools=[...new Set([...DB.schools.filter(x=>!x.del).map(x=>x.name)])];
+    const day=st.calDay?`<div class="scal-day"><h3>${mdw(st.calDay)} 일정 ${(()=>{const ss=seasonsAt(st.calDay);return ss.length?`<span class="hint">· ${ss.map(z=>esc(z.name)).join(" · ")}</span>`:""})()}</h3>${(it[st.calDay]||[]).length?(it[st.calDay]).map(x=>`<div class="scal-row" ${x.id?`data-goev="${x.id}"`:x.exam?`data-goex="${x.exam}"`:""}><span class="cal-dot" style="background:${CAT[x.c][1]}"></span><b>${esc(x.t)}</b><span class="hint">${CAT[x.c][0]}</span>${IC("right","s")}</div>`).join(""):'<div class="hint">이 날은 일정이 없어요</div>'}</div>`:"";
+    return `<div class="scal"><div class="scal-bar"><button class="cal-nav-btn" data-calnav="-1" title="이전 3달">‹</button><b class="scal-rng">${y0}.${String(m0).padStart(2,"0")} – ${(()=>{const d=new Date(y0,m0+1,1);return d.getFullYear()+"."+String(d.getMonth()+1).padStart(2,"0")})()}</b><button class="cal-nav-btn" data-calnav="1" title="다음 3달">›</button><button class="cal-today-btn" data-calnav="0">오늘</button>
+      <span class="scal-lg">${/* 279판(대표): 보이는 3달과 겹치는 시즌만 범례에 */DB.seasons.filter(s=>{if(s.del||!s.start)return false;const w0=`${y0}-${String(m0).padStart(2,"0")}-01`,e=new Date(y0,m0+2,0),w1=ymd(e);return s.start<=w1&&(!s.end||s.end>=w0)}).map(s=>`<button type="button" class="scal-sea ${String(st.sel)===String(s.id)?"on":""}" data-calsea="${s.id}" title="이 시즌 열기"><i style="background:${sCol(s)}"></i>${esc(s.name)}</button>`).join("")}</span><span class="sp"></span>
+      ${Object.entries(CAT).map(([k,[n,c]])=>`<button type="button" class="chip scal-f ${on[k]?"on":""}" data-calf="${k}"><span class="cal-dot" style="background:${c}"></span>${n}</button>`).join("")}
+      <select class="inp scal-sc" data-calsc title="학교 일정만"><option value="">학교: 전체</option>${schools.map(n=>`<option ${st.calSc===n?"selected":""}>${esc(n)}</option>`).join("")}</select></div>
+      <div class="scal-ms">${ms}</div>${day}<div class="hint scal-src">학사일정 출처: 나이스 교육정보 개방 포털 · 방학 = 학사 일정 중 수업공제일(휴업일)이거나 이름에 '방학'</div></div>`};
+  document.addEventListener("click",e=>{const v=e.target.closest("#view .scal");if(!v||!activeTab)return;const st=activeTab.state;
+    const nv=e.target.closest("[data-calnav]");if(nv){const k=+nv.dataset.calnav;if(!k)st.calM=TODAY.slice(0,7);else{const [y,m]=(st.calM||TODAY.slice(0,7)).split("-").map(Number);const d=new Date(y,m-1+3*k,1);st.calM=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")}render();return}
+    const f=e.target.closest("[data-calf]");if(f){st.calF=Object.assign({acad:1,school:1,vac:1,exam:1,off:1},st.calF);st.calF[f.dataset.calf]=st.calF[f.dataset.calf]?0:1;render();return}
+    const d=e.target.closest("[data-calday]");if(d){st.calDay=st.calDay===d.dataset.calday?null:d.dataset.calday;render();return}
+    const g=e.target.closest("[data-goev]");if(g){openScreen("events",e.ctrlKey,{sel:g.dataset.goev,lf:{}});return}
+    const x=e.target.closest("[data-goex]");if(x){openScreen("exams",e.ctrlKey,{sel:x.dataset.goex,lf:{}});return}},true);
+  /* 범례 칩 = 시즌 열기: 바깥 누르기(창 닫기)보다 먼저 받음 */
+  window.addEventListener("pointerdown",e=>{const se=e.target.closest&&e.target.closest("#view [data-calsea]");if(!se||!activeTab)return;e.stopPropagation();e.preventDefault();activeTab.state.sel=se.dataset.calsea;panelOpen=true;window._calseaT=Date.now();render()},true);
+  /* 누른 뒤 다시 그려져 손을 뗀 클릭이 바깥 클릭(창 닫기)으로 가지 않게 */
+  window.addEventListener("click",e=>{if(window._calseaT&&Date.now()-window._calseaT<800){window._calseaT=0;e.stopPropagation();e.preventDefault()}},true);
+  document.addEventListener("change",e=>{const s=e.target.closest("#view [data-calsc]");if(!s||!activeTab)return;activeTab.state.calSc=s.value;render()},true);
+  /* 280판(대표): 표 탭 없이 캘린더 하나 — 시즌 열기는 범례 칩, 목록은 오른쪽 할 일 창 아래 */LISTS.seasons.cal=true;const seaSt=z=>{if(z.end&&z.end<TODAY)return ["끝남","gray"];if(z.start<=TODAY)return z.state==="확정"?["운영 중","green"]:["준비 중","gray"];const nx=DB.seasons.filter(y=>!y.del&&y.start>TODAY).sort((a,b)=>a.start<b.start?-1:1)[0];return nx&&nx.id===z.id?["다음 시즌","blue"]:["준비 중","gray"]};
+const seaRng=z=>{const a=D10(z.start),b=D10(z.end);return b&&a.slice(0,4)===b.slice(0,4)?`${a} - ${b.slice(5)}`:`${a} - ${b||"…"}`};
+LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del).slice().sort((a,b)=>String(a.start).localeCompare(String(b.start)));const past=all.filter(z=>z.end&&z.end<TODAY);return {name:"시즌",rows:st&&st.pastSea?all:all.filter(z=>!past.includes(z)),more:past.length?`<button type="button" class="tdmore" data-pastsea>${IC("search","s")}${st&&st.pastSea?"지난 시즌 숨기기":`지난 시즌 보기 <span class="hint">${past.length}</span>`}</button>`:"",lab:z=>{const [t,c]=seaSt(z);return `<span class="tdr2"><span class="tdr2a"><i class="cdot" style="background:${sHex(z)}"></i><b>${esc(z.name)}</b><span class="pill nc-${c}">${t}</span></span><span class="tdr2b">${seaRng(z)}</span></span>`}}};
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
 </body>

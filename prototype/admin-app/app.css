@@ -2378,3 +2378,52 @@ table.stt tr[data-id].sel:not(.sdel):hover td{background:var(--sel-bg)}
 .mwk2 .mwk-hd .wk-sat{color:#2F6FD1}.mwk2 .mwk-hd .wk-sun{color:#D14B3F}
 .mwk2 .mwk-col[data-mwday]{cursor:cell}
 .mwk2 .mwk-col[data-mwday]:hover{background:color-mix(in srgb,var(--brand-tint,#FBF8F4) 70%,transparent)}
+
+/* ═════ 277판 ═════ 시즌 캘린더 — 학생 리포트 일정 캘린더(cal-month · cal-cell · cal-dot)와 같은 모양, 3달 나란히 */
+.scal{padding:var(--space-3) 0}
+.scal-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.scal .cal-nav-btn{background:var(--brand-soft,#F1E8DC);border:none;width:36px;height:36px;border-radius:50%;color:var(--brand-deep,#6B4F3A);font-size:18px;font-weight:700;cursor:pointer}
+.scal .cal-today-btn{background:var(--brand-soft,#F1E8DC);border:none;color:var(--brand-deep,#6B4F3A);font-size:12px;font-weight:700;padding:0 12px;height:32px;border-radius:999px;cursor:pointer}
+.scal-rng{font-size:15px;min-width:150px;text-align:center}
+.scal-lg{display:inline-flex;gap:12px;margin-left:8px;font-size:12px;color:var(--text-muted,#7A6E66)}.scal-lg i{display:inline-block;width:14px;height:6px;border-radius:3px;margin-right:4px;vertical-align:2px}
+.scal-f{display:inline-flex;align-items:center;gap:6px;opacity:.55}.scal-f.on{opacity:1}
+.scal-sc{height:36px;width:auto;min-width:120px}
+.scal-ms{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.scal .cal-month{background:#fff;border-radius:14px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.06);border:1px solid var(--line,#E8E1D9)}
+.scal .cal-month-title{font-size:17px;font-weight:700;text-align:center;margin:0 0 10px}
+.scal .cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);font-size:12px;font-weight:600;color:var(--text-subtle,#9A8F86);text-align:center;margin-bottom:4px}
+.scal .cal-weekdays .sat{color:#2F6FD1}.scal .cal-weekdays .sun{color:#D14B3F}
+.scal .cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.scal .cal-cell{height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:15px;border-radius:10px;position:relative;cursor:pointer;overflow:hidden}
+.scal .cal-cell.has-event{background:var(--brand-tint,#FBF8F4);font-weight:700}
+.scal .cal-cell.sat:not(.has-event){color:#2F6FD1}.scal .cal-cell.sun:not(.has-event){color:#D14B3F}
+.scal .cal-cell.outside{color:#cbc6bc;cursor:default}
+.scal .cal-cell.today{box-shadow:inset 0 0 0 2px #D14B3F;font-weight:800}
+.scal .cal-cell.picked{outline:2px solid var(--brand-deep,#6B4F3A);outline-offset:1px}
+.scal .cal-dots{display:flex;gap:3px;margin-top:3px}.scal .cal-dot{width:6px;height:6px;border-radius:50%;flex:none;display:inline-block}
+.scal .cal-sbar{position:absolute;left:6px;right:6px;bottom:4px;height:4px;border-radius:2px}
+.scal-day{margin-top:16px;background:#fff;border:1px solid var(--line,#E8E1D9);border-radius:14px;padding:14px 16px}.scal-day h3{margin:0 0 8px;font-size:15px}
+.scal-row{display:flex;align-items:center;gap:10px;min-height:40px;border-top:1px solid var(--line,#E8E1D9);cursor:pointer}.scal-row:first-of-type{border-top:0}.scal-row .hint{margin-left:auto}
+.scal-src{margin-top:8px}
+
+/* ═════ 278판 ═════ 시작–끝 날짜 한 줄(시간표 창 '수업 시간'·'적용 기간'과 같은 모양) */
+.hfpair{display:flex;flex-direction:column;gap:6px}
+.hfpair-row{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px}
+.hfpair-row .hfh .hf-lbl,.hfpair-row .hfh .hf-msg{display:none}
+.hfpair-dash{color:var(--text-subtle,#9A8F86)}
+
+/* ═════ 280판 ═════ 시즌 범례 = 시즌 버튼 · 할 일 창 아래 목록 */
+.scal-sea{display:inline-flex;align-items:center;gap:6px;border:1px solid transparent;background:none;border-radius:999px;padding:0 10px;height:30px;font:inherit;font-size:12px;color:var(--text-muted,#7A6E66);cursor:pointer}
+.scal-sea:hover{border-color:var(--line,#E8E1D9);background:#fff}.scal-sea.on{border-color:var(--brand-deep,#6B4F3A);color:var(--ink,#3D3530);font-weight:700;background:#fff}
+.scal-sea i{display:inline-block;width:14px;height:6px;border-radius:3px}
+.scal .cal-sbar{height:4px}
+.tdlist{margin-top:var(--space-4,16px)}.tdh2{font-weight:700;margin:0 0 6px}
+
+/* ═════ 281판 ═════ 할 일 창 시즌 목록 2줄 · 지난 시즌 보기 · 날짜 한 줄 칸 넘침 막기 */
+.tdr .tdr2{display:flex;flex-direction:column;gap:2px;align-items:flex-start;min-width:0;flex:1 1 auto;text-align:left}
+.tdr .tdr2a{display:flex;align-items:center;gap:8px}.tdr .tdr2b{font-size:12px;color:var(--text-muted,#7A6E66);padding-left:16px}
+.tdr .tdr2 .pill{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:600}
+.tdmore{display:flex;align-items:center;gap:6px;width:100%;min-height:40px;margin-top:6px;padding:0 4px;border:0;border-top:1px solid var(--line,#E8E1D9);background:none;font:inherit;font-size:13px;color:var(--text-muted,#7A6E66);cursor:pointer}
+.hfpair-row>.hfh{min-width:0}.hfpair-row .hf-box{min-width:0}
+.hfpair-row .hf-dw{display:none} /* 대표: 시작·끝 한 줄에서는 요일 안 보임 */
+.hfpair-row .hf-box{padding-left:10px;padding-right:6px;gap:6px;overflow:hidden}.hfpair-row .hf-box input{min-width:0}
