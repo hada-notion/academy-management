@@ -2161,3 +2161,7 @@ table.stt.gt td[data-mg]{vertical-align:top;padding-top:calc(var(--space-2) + 1p
 .colpop .cph .lnk{font-size:var(--text-caption,12px)}
 
 /* 227판: 받는 학년은 학교 화면 [학년] 탭으로 옮김(.gtog 규칙은 안 씀) */
+
+/* ═════ 231판 ═════ 등록 창 수강료 조정: 추가 줄의 기타경비 항목 고르기(사유 아래 한 줄) */
+.unrow.ed[data-ar] select.adji{order:10;flex:1 0 100%;padding:0 24px 0 var(--space-2)!important;background:var(--surface) var(--icon-chevron-down) no-repeat right 6px center/14px 14px!important}
+.unrow.ed[data-ar] select.adji[hidden]{display:none}
