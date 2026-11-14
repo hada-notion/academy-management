@@ -2311,3 +2311,6 @@ table.stt tr:hover .rowdel:hover,table.stt tr.sel .rowdel:hover{background:var(-
 /* ═════ 259판 ═════ 학생 표 등록 클래스 칩 = 그 등록으로 들어가기(노션 관계 칩처럼) · 학생 창 등록 카드 [열기] */
 .cc.engo{cursor:pointer}.cc.engo:hover{text-decoration:underline;text-underline-offset:3px}
 .enin{border:0;background:none;color:var(--subtle);font:inherit;font-size:12px;display:inline-flex;align-items:center;gap:2px;margin-left:6px;padding:2px 6px;border-radius:6px;cursor:pointer}.enin:hover{background:var(--brand-tint,#FBF8F4);color:var(--ink)}
+/* ═════ 261판 ═════ 오른쪽 창 제목의 클래스 색 점(표의 점과 같은 크기) */
+#lp .phead h2 .cdot,#lp h2 .cdot,.phead .cdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle;flex:none}
+#lp .hint .cdot{width:8px;height:8px;margin:0 4px 0 2px}
