@@ -2091,7 +2091,7 @@ table.stt.gt.grid{width:auto}
 :root{--brand:var(--brand-deep)}
 .cchips{display:inline-flex;flex-wrap:nowrap;gap:var(--space-1)}
 .tchip{display:inline-flex;align-items:center;height:20px;padding:0 var(--space-2);border-radius:var(--radius-pill);background:var(--brand-soft);color:var(--ink);font-size:var(--text-micro);font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
-table.stt.gt td[data-mg]{vertical-align:top;padding-top:var(--space-3);background:var(--surface)}
+table.stt.gt td[data-mg]{vertical-align:top;padding-top:calc(var(--space-2) + 1px);background:var(--surface)}
 .phead h2 .hint{font-weight:400;font-size:var(--text-small)}
 .ensum .enkp{display:flex;gap:var(--space-6);margin-bottom:var(--space-3)}
 .ensum .enkp span{display:flex;flex-direction:column;font-size:var(--text-caption);color:var(--muted)}
@@ -2108,3 +2108,9 @@ table.stt.gt td[data-mg]{vertical-align:top;padding-top:var(--space-3);backgroun
 .adjsum.tot{border-top:1px solid var(--line);margin-top:var(--space-2);padding-top:var(--space-2)}
 .adjsum b{font-variant-numeric:tabular-nums}
 .unrow select.adjk{width:68px;flex:none;padding:0 var(--space-1)}.unrow .adja{width:84px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+
+/* ═════ 215판 ═════ 진도교재: 진행도 막대, 단원 진행 알약 */
+.pgbar{display:inline-block;width:48px;height:6px;border-radius:var(--radius-pill);background:var(--line);margin-right:var(--space-2);vertical-align:middle;overflow:hidden}
+.pgbar i{display:block;height:100%;background:var(--brand-deep)}
+.spill.none{background:transparent;color:var(--subtle)}
+.unrow .spill{flex:none}
