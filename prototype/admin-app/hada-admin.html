@@ -2962,7 +2962,7 @@ function mountDetail(p,L,r){const set=(k,val)=>{if(r[k]===val)return;r[k]=val;if
 function chgMark(p,L,r){const S=SAVEDC[L.coll],raw=S&&S.get(r.id);const sv=raw?JSON.parse(raw):null;lFields(L,r).forEach(([k])=>{const h=p&&p.querySelector(`[data-hf="${k}"]`);if(h)h.classList.toggle("chg",!!sv&&JSON.stringify(sv[k]??"")!==JSON.stringify(r[k]??""))})}
 
 /* 화면을 다시 그리지 않고 되돌리기 기록만 남기기(입력 중 커서 유지) */
-let quietTimer=null;function commitQuiet(){clearTimeout(quietTimer);setTimeout(rvSync,0);quietTimer=setTimeout(()=>{quietTimer=null;undoStack.push(lastSnap);if(undoStack.length>80)undoStack.shift();redoStack=[];lastSnap=snapshot()},400)}
+let quietTimer=null;function commitQuiet(){clearTimeout(quietTimer);/* 264판: 고친 값을 원래대로 돌리면 작성 중을 풀어 [저장] 수에서 뺌(칸에 바로 칠 때도) */setTimeout(()=>{tAutoClean();rvSync();document.querySelectorAll("#view tr.draft[data-id]").forEach(tr=>{const id=tr.dataset.id;const x=RV_COLLS.map(c=>(DB[c]||[]).find(z=>z.id===id)).find(Boolean);if(x&&x.state!=="draft")tr.classList.remove("draft")})},0);quietTimer=setTimeout(()=>{quietTimer=null;undoStack.push(lastSnap);if(undoStack.length>80)undoStack.shift();redoStack=[];lastSnap=snapshot()},400)}
 function refreshListQuiet(p,L,r){const v=document.getElementById("view");const t=activeTab;const tr=v.querySelector(`tr[data-id="${r.id}"]`);
   if(tr){tr.classList.add("draft");tr.innerHTML=gtRowCells(L,r,L.merge&&!activeTab.state.tedit?(tr.querySelector("td[data-mg]")?{span:tr.querySelector("td[data-mg]").rowSpan}:{skip:true}):null)}
   rvSync();const sv=v.querySelector("#saveAll");if(sv){sv.disabled=!dirtyCount();const n=sv.querySelector(".num");if(n)n.textContent=dirtyCount();sv.title=dirtyTitle()}

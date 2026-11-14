@@ -2314,3 +2314,5 @@ table.stt tr:hover .rowdel:hover,table.stt tr.sel .rowdel:hover{background:var(-
 /* ═════ 261판 ═════ 오른쪽 창 제목의 클래스 색 점(표의 점과 같은 크기) */
 #lp .phead h2 .cdot,#lp h2 .cdot,.phead .cdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle;flex:none}
 #lp .hint .cdot{width:8px;height:8px;margin:0 4px 0 2px}
+/* ═════ 264판 ═════ 창 탭: 글이 긴 탭(정보 · 휴강 등)은 그만큼 넓게 — 똑같이 나눠 잘리던 것 */
+.ptabs .ptb{flex:1 1 auto}.ptabs .ptb .sm{white-space:nowrap;overflow:visible}
