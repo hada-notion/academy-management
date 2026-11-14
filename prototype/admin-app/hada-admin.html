@@ -1683,7 +1683,7 @@ const CP={html:(id,sel,o={})=>{const end=!!CPST[id];const recent=LS.get("recentC
     L.querySelectorAll("[data-cp]").forEach(r=>r.onclick=()=>{const id2=r.dataset.cp||null;const x=id2&&cls(id2);if(x&&x.close&&x.close<TODAY){if(!confirm(`${x.name}은(는) ${x.close}에 끝난 클래스예요.\n종강일을 비우고 다시 열까요?`))return;x.close="";x.state="draft"}CPST[id]=false;if(id2){const rc=LS.get("recentCls",[]).filter(z=>z!==id2);rc.unshift(id2);LS.set("recentCls",rc.slice(0,8))}fn(id2)});
     const ce=root.querySelector("#"+id+"End");if(ce)ce.onclick=()=>{ddClose();clsEndModal({list:DB.classes.filter(x=>x.close&&x.close<TODAY),onPick:cid=>{const x=cls(cid);if(!confirm(`${x.name}은(는) ${md(x.close)}에 끝난 클래스예요.
 종강일을 비우고 다시 열까요?`))return;x.close="";x.state="draft";const rc=LS.get("recentCls",[]).filter(z=>z!==cid);rc.unshift(cid);LS.set("recentCls",rc.slice(0,8));fn(cid)}})};const cb=root.querySelector("#"+id+"Back");if(cb)cb.onclick=()=>{CPST[id]=false;render()};
-    const on=L.querySelector(".pr.on");if(on)on.scrollIntoView({block:"nearest"});
+    const on=L.querySelector(".pr.on");/* 250판 */if(on){const lr=L.getBoundingClientRect(),ar=on.getBoundingClientRect();if(ar.top<lr.top)L.scrollTop-=lr.top-ar.top;else if(ar.bottom>lr.bottom)L.scrollTop+=ar.bottom-lr.bottom};
     root.querySelector("#"+id+"New").onclick=()=>newClassDialog(nc=>fn(nc.id))}};
 /* 학생 추가검색 창(261112 대표 — 학생은 많아서 따로 뜨는 창, 시간표·수업 네 곳 같은 창)
    opt: title, help, classId(이 클래스 묶음·범위), only(Set: 고를 수 있는 학생만), exclude(Set: 이미 들어 있음), busy(sid→"…수업"|null), sub(sid→빨간 글씨), from(언제부터 날짜), okLabel, done(ids,from) */

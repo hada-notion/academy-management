@@ -66,7 +66,7 @@ function list(p,items,cur,onPick,o){let addK="";p.innerHTML=`${(items.length>8||
     {const ad=L.querySelector("[data-add]");if(ad){ad.onpointerdown=e=>e.preventDefault();ad.onclick=()=>o.add(addK)}}
     L.querySelectorAll("[data-del]").forEach(d=>{d.onpointerdown=e=>{e.preventDefault();e.stopPropagation()};d.onclick=e=>{e.stopPropagation();o.del(xs[+d.dataset.del])}});
     L.querySelectorAll(".hf-opt:not(.hf-add)").forEach(r=>{r.onpointerdown=e=>e.preventDefault();r.onclick=()=>onPick(xs[+r.dataset.i]);r.onmousemove=()=>{if(act!==+r.dataset.i){act=+r.dataset.i;L.querySelectorAll(".hf-opt").forEach((z,j)=>z.classList.toggle("act",j===act))}}});
-    const a=L.querySelector(".act");if(a)a.scrollIntoView({block:"nearest"})};
+    const a=L.querySelector(".act");/* 250판: 목록 안에서만 움직임(바깥 창이 따라 내려가지 않게) */if(a){const lr=L.getBoundingClientRect(),ar=a.getBoundingClientRect();if(ar.top<lr.top)L.scrollTop-=lr.top-ar.top;else if(ar.bottom>lr.bottom)L.scrollTop+=ar.bottom-lr.bottom}};
   const key=e=>{if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();const n=xs.length+(addK?1:0);if(!n)return;act=(act+(e.key==="ArrowDown"?1:-1)+n)%n;draw()}else if(e.key==="Enter"){e.preventDefault();if(xs[act])onPick(xs[act]);else if(addK)o.add(addK)}};
   draw();if(q){q.oninput=()=>{act=0;draw()};q.onkeydown=key;setTimeout(()=>q.focus())}else if(!o||!o.keepFocus){L.onkeydown=key;setTimeout(()=>L.focus({preventScroll:true}))}return key}
 function select(host,o={}){const items=(o.items||[]).map(x=>typeof x==="string"?{v:x,t:x}:x);let v=o.value??null;
