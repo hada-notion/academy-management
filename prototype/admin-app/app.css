@@ -2284,9 +2284,23 @@ td.pgc .pgp{display:inline-block;min-width:4ch;text-align:right;font-variant-num
 a.golink{color:inherit;text-decoration:none;border-radius:4px}
 a.golink:hover{text-decoration:underline;text-underline-offset:3px;color:var(--ink,#3D3530)}
 
-/* ═════ 252판 ═════ 요일 칩: 노션 다중 선택 색(대표 지정 261114 — 요일마다 다른 색) */
-.tchip.dmon{background:#FDECC8;color:#89632A}.tchip.dtue{background:#FFE2DD;color:#C4554D}
-.tchip.dwed{background:#D3E5EF;color:#337EA9}.tchip.dthu{background:#DBEDDB;color:#448361}
-.tchip.dfri{background:#E3E2E0;color:#5F5E5B}.tchip.dsat{background:#EEE0DA;color:#9F6B53}
-.tchip.dsun{background:#E8DEEE;color:#9065B0}
-.mwk-hd .dmon{color:#89632A}.mwk-hd .dtue{color:#C4554D}.mwk-hd .dwed{color:#337EA9}.mwk-hd .dthu{color:#448361}.mwk-hd .dfri{color:#5F5E5B}.mwk-hd .dsat{color:#9F6B53}.mwk-hd .dsun{color:#9065B0}
+/* ═════ 252~253판 ═════ 노션 선택·다중 선택 색(노션 밝은 화면 태그 색과 같은 값) — 요일 칩·고르기 칸 공통 */
+.nc-default{background:rgba(227,226,224,.55)!important;color:#32302C!important}
+.nc-gray{background:#E3E2E0!important;color:#32302C!important}
+.nc-brown{background:#EEE0DA!important;color:#442A1E!important}
+.nc-orange{background:#FADEC9!important;color:#49290E!important}
+.nc-yellow{background:#FDECC8!important;color:#402C1B!important}
+.nc-green{background:#DBEDDB!important;color:#1C3829!important}
+.nc-blue{background:#D3E5EF!important;color:#183347!important}
+.nc-purple{background:#E8DEEE!important;color:#412454!important}
+.nc-pink{background:#F5E0E9!important;color:#4C2337!important}
+.nc-red{background:#FFE2DD!important;color:#5D1715!important}
+.spill[class*="nc-"],.tchip[class*="nc-"]{border:0}
+/* 요일 칩: 월 노랑 · 화 빨강 · 수 파랑 · 목 초록 · 금 회색 · 토 갈색 · 일 보라 */
+.tchip.dmon{background:#FDECC8;color:#402C1B}.mwk-hd .dmon{color:#CB912F}
+.tchip.dtue{background:#FFE2DD;color:#5D1715}.mwk-hd .dtue{color:#D44C47}
+.tchip.dwed{background:#D3E5EF;color:#183347}.mwk-hd .dwed{color:#337EA9}
+.tchip.dthu{background:#DBEDDB;color:#1C3829}.mwk-hd .dthu{color:#448361}
+.tchip.dfri{background:#E3E2E0;color:#32302C}.mwk-hd .dfri{color:#787774}
+.tchip.dsat{background:#EEE0DA;color:#442A1E}.mwk-hd .dsat{color:#9F6B53}
+.tchip.dsun{background:#E8DEEE;color:#412454}.mwk-hd .dsun{color:#9065B0}
