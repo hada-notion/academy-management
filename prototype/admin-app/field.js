@@ -34,8 +34,8 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&OPEN){e.preventDefa
 function pop(box,build,cls){if(OPEN&&OPEN.box===box)return OPEN.pop;close();const p=document.createElement("div");p.className="hf-pop "+(cls||"");box.parentElement.appendChild(p);
   OPEN={pop:p,box};box.classList.add("open");p.style.width=box.offsetWidth+"px";build(p);
   const r=box.getBoundingClientRect();let top=box.offsetTop+box.offsetHeight+4;
-  if(r.bottom+4+p.offsetHeight>innerHeight-8&&r.top-4-p.offsetHeight>8)top=box.offsetTop-4-p.offsetHeight;
-  p.style.top=top+"px";p.style.left=box.offsetLeft+"px";p.style.width=box.offsetWidth+"px";return p}
+  const up=r.bottom+4+p.offsetHeight>innerHeight-8&&r.top-4-p.offsetHeight>8,op=p.offsetParent;
+  if(up&&op===box.parentElement)p.style.bottom=(op.clientHeight-box.offsetTop+4)+"px";else p.style.top=(up?box.offsetTop-4-p.offsetHeight:top)+"px";p.style.left=box.offsetLeft+"px";p.style.width=box.offsetWidth+"px";return p}
 // 칸 틀: 라벨(칸 위 12/600, 아래 4) · 칸(40) · 알림 글(칸 아래 12)
 const shell=(host,o,inner,cls)=>{host.innerHTML=`<div class="hf ${o.disabled?"dis":""}">${o.label?`<span class="hf-lbl">${esc(o.label)}${o.req?' <i>*</i>':""}</span>`:""}<div class="hf-box ${cls||""}">${inner}</div><span class="hf-msg">${esc(o.help||"")}</span></div>`;return host.querySelector(".hf-box")};
 const say=(host,t,err)=>{const m=host.querySelector(".hf-msg");m.textContent=t||"";host.querySelector(".hf").classList.toggle("err",!!(err&&t))};
@@ -59,19 +59,21 @@ const telFmt=v=>{const d=v.replace(/\D/g,"").slice(0,11);if(d.startsWith("02")){
   return d.length<4?d:d.length<8?d.slice(0,3)+"-"+d.slice(3):d.length<11?d.slice(0,3)+"-"+d.slice(3,6)+"-"+d.slice(6):d.slice(0,3)+"-"+d.slice(3,7)+"-"+d.slice(7)};
 const tel=(host,o={})=>typed(host,Object.assign({placeholder:"010-0000-0000"},o),"tel",'inputmode="tel" autocomplete="off"',telFmt,v=>{const d=v.replace(/\D/g,"");return (d.startsWith("01")?d.length===11||(d.length===10&&!d.startsWith("010")):d.length>=9&&d.length<=11)?"":"번호 자리 수를 확인해 주세요"});
 // 목록에서 하나 고르기(드롭다운): 항목이 9개 이상이면 위에 찾기 칸
-function list(p,items,cur,onPick,o){p.innerHTML=`${items.length>8&&!(o&&o.keepFocus)?`<label class="hf-q">${I.search}<input placeholder="찾기" autocomplete="off"></label>`:""}<div class="hf-list" role="listbox" tabindex="-1"></div>`;
+function list(p,items,cur,onPick,o){let addK="";p.innerHTML=`${(items.length>8||(o&&o.add))&&!(o&&o.keepFocus)?`<label class="hf-q">${I.search}<input placeholder="${o&&o.add?"찾거나 새로 적기":"찾기"}" autocomplete="off"></label>`:""}<div class="hf-list" role="listbox" tabindex="-1"></div>`;
   const L=p.querySelector(".hf-list"),q=p.querySelector(".hf-q input");let act=Math.max(0,items.findIndex(x=>x.v===cur)),xs=items;
-  const draw=()=>{const k=q?q.value.trim():"";xs=items.filter(x=>!k||x.t.includes(k));act=Math.max(0,Math.min(act,xs.length-1));
-    L.innerHTML=xs.map((x,i)=>`<div class="hf-opt ${x.v===cur?"on":""} ${i===act?"act":""}" data-i="${i}" role="option" aria-selected="${x.v===cur}">${x.color?`<span class="hf-dot" style="background:${x.color}"></span>`:""}<span class="t">${esc(x.t)}</span>${x.sub?`<small>${esc(x.sub)}</small>`:""}<span class="ck">${x.v===cur?I.check:""}</span></div>`).join("")||'<div class="hf-none">찾는 항목이 없어요</div>';
-    L.querySelectorAll(".hf-opt").forEach(r=>{r.onpointerdown=e=>e.preventDefault();r.onclick=()=>onPick(xs[+r.dataset.i]);r.onmousemove=()=>{if(act!==+r.dataset.i){act=+r.dataset.i;L.querySelectorAll(".hf-opt").forEach((z,j)=>z.classList.toggle("act",j===act))}}});
+  const draw=()=>{const k=q?q.value.trim():"";xs=items.filter(x=>!k||x.t.includes(k));addK=o&&o.add&&k&&!items.some(x=>x.t===k)?k:"";act=Math.max(0,Math.min(act,xs.length-1+(addK?1:0)));
+    L.innerHTML=xs.map((x,i)=>`<div class="hf-opt ${x.v===cur?"on":""} ${i===act?"act":""}" data-i="${i}" role="option" aria-selected="${x.v===cur}">${x.color?`<span class="hf-dot" style="background:${x.color}"></span>`:""}<span class="t">${esc(x.t)}</span>${x.sub?`<small>${esc(x.sub)}</small>`:""}<span class="ck">${x.v===cur?I.check:""}</span>${o&&o.del?`<button type="button" class="hf-del" data-del="${i}" tabindex="-1" aria-label="이 항목 지우기" title="이 항목 지우기">${I.x}</button>`:""}</div>`).join("")+(addK?`<div class="hf-opt hf-add ${act===xs.length?"act":""}" data-add role="option"><span class="t">+ ‘${esc(addK)}’ 더하기</span></div>`:"")||'<div class="hf-none">찾는 항목이 없어요</div>';
+    {const ad=L.querySelector("[data-add]");if(ad){ad.onpointerdown=e=>e.preventDefault();ad.onclick=()=>o.add(addK)}}
+    L.querySelectorAll("[data-del]").forEach(d=>{d.onpointerdown=e=>{e.preventDefault();e.stopPropagation()};d.onclick=e=>{e.stopPropagation();o.del(xs[+d.dataset.del])}});
+    L.querySelectorAll(".hf-opt:not(.hf-add)").forEach(r=>{r.onpointerdown=e=>e.preventDefault();r.onclick=()=>onPick(xs[+r.dataset.i]);r.onmousemove=()=>{if(act!==+r.dataset.i){act=+r.dataset.i;L.querySelectorAll(".hf-opt").forEach((z,j)=>z.classList.toggle("act",j===act))}}});
     const a=L.querySelector(".act");if(a)a.scrollIntoView({block:"nearest"})};
-  const key=e=>{if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();if(!xs.length)return;act=(act+(e.key==="ArrowDown"?1:-1)+xs.length)%xs.length;draw()}else if(e.key==="Enter"){e.preventDefault();if(xs[act])onPick(xs[act])}};
+  const key=e=>{if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();const n=xs.length+(addK?1:0);if(!n)return;act=(act+(e.key==="ArrowDown"?1:-1)+n)%n;draw()}else if(e.key==="Enter"){e.preventDefault();if(xs[act])onPick(xs[act]);else if(addK)o.add(addK)}};
   draw();if(q){q.oninput=()=>{act=0;draw()};q.onkeydown=key;setTimeout(()=>q.focus())}else if(!o||!o.keepFocus){L.onkeydown=key;setTimeout(()=>L.focus({preventScroll:true}))}return key}
 function select(host,o={}){const items=(o.items||[]).map(x=>typeof x==="string"?{v:x,t:x}:x);let v=o.value??null;
   const b=shell(host,o,`${I[o.icon||"list"]}<span class="hf-val"></span>${o.disabled||o.clear===false?"":X}`,"hf-btn");if(!o.disabled)b.tabIndex=0;b.setAttribute("role","combobox");
   const show=()=>{const it=items.find(x=>x.v===v);b.querySelector(".hf-val").innerHTML=it?`${it.color?`<span class="hf-dot" style="background:${it.color}"></span>`:""}${esc(it.t)}`:`<span class="ph">${esc(o.placeholder||"선택")}</span>`;has(b,it)};
   const set=x=>{v=x;show();o.onChange&&o.onChange(v)};
-  const open=()=>{if(o.disabled)return;if(OPEN&&OPEN.box===b){close();return}pop(b,p=>list(p,items,v,x=>{set(x.v);close();b.focus()}))};
+  const open=()=>{if(o.disabled)return;if(OPEN&&OPEN.box===b){close();return}pop(b,p=>list(p,items,v,x=>{set(x.v);close();b.focus()},o.onAdd||o.onDel?{add:o.onAdd&&(t=>{close();o.onAdd(t)}),del:o.onDel&&(x=>{close();o.onDel(x)})}:undefined))};
   b.onclick=e=>{if(e.target.closest(".hf-x"))return;open()};
   b.onkeydown=e=>{if(["Enter"," ","ArrowDown"].includes(e.key)){e.preventDefault();open()}else if((e.key==="Delete"||e.key==="Backspace")&&o.clear!==false){set(null)}};
   const x=b.querySelector(".hf-x");if(x)x.onclick=e=>{e.stopPropagation();set(null);b.focus()};

@@ -2114,3 +2114,12 @@ table.stt.gt td[data-mg]{vertical-align:top;padding-top:calc(var(--space-2) + 1p
 .pgbar i{display:block;height:100%;background:var(--brand-deep)}
 .spill.none{background:transparent;color:var(--subtle)}
 .unrow .spill{flex:none}
+
+/* ═════ 216판 ═════ 인쇄 목록(엑셀 목록과 같은 모양): 못 누르는 줄 */
+.xlpop .so.dis{opacity:.45;cursor:default}.xlpop .so.dis:hover{background:none}
+
+/* ═════ 217판 ═════ 여러 개 고르기 창: 새 항목 칸 · 항목 지우기 */
+.mlpop .mladd{padding:var(--space-2) var(--space-2) 0}.mlpop .mladd .inp{width:100%;height:32px;box-sizing:border-box;border:1px solid var(--line);border-radius:var(--radius-sm);padding:0 var(--space-2);font-size:var(--text-small);background:var(--surface);color:var(--ink)}
+.mlpop .tso{position:relative}.mlpop .mldel{margin-left:auto;width:28px;height:28px;border:0;background:none;border-radius:var(--radius-sm);color:var(--subtle);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;opacity:0}
+.mlpop .tso:hover .mldel{opacity:1}.mlpop .mldel:hover{background:var(--brand-soft);color:var(--brand-deep)}.mlpop .mldel svg.i{width:14px;height:14px}
+@media (hover:none){.mlpop .mldel{opacity:1}}

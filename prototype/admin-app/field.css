@@ -167,3 +167,10 @@
 /* 색판 = 노션 10색 + 무지개 · 6칸 2줄 */
 .hf-sw{grid-template-columns:repeat(6,1fr);gap:8px}
 .hf-cal .dw.sat{color:var(--day-sat,#3B6FD8)}.hf-cal .dw.sun{color:var(--day-sun,#D9534F)}
+
+/* 고르기 목록: 새 항목 더하기 줄 · 항목 지우기(올리면 보임) */
+.hf-opt.hf-add{color:var(--brand-deep);font-weight:700}
+.hf-opt .hf-del{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:0;background:none;border-radius:6px;color:var(--text-subtle);cursor:pointer;opacity:0;flex:none}
+.hf-opt:hover .hf-del,.hf-opt.act .hf-del{opacity:1}.hf-opt .hf-del:hover{background:var(--brand-soft);color:var(--brand-deep)}
+.hf-opt .hf-del svg{width:14px;height:14px}
+@media (hover:none){.hf-opt .hf-del{opacity:1}}
