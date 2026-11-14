@@ -2345,3 +2345,36 @@ table.stt tr[data-id].sel:not(.sdel):hover td{background:var(--sel-bg)}
 
 /* ═════ 272판 ═════ 옵션 고치기 창 색 고르기 */
 .oecols{display:flex;flex-wrap:wrap;gap:6px}.oec{border:1px solid transparent;background:none;border-radius:8px;padding:4px;cursor:pointer;min-height:36px}.oec.on{border-color:var(--brand-deep,#6B4F3A);background:var(--sel-bg)}
+
+/* ═════ 273판 ═════ 오른쪽 창 머리 = 2줄 고정(1줄 이름·상태, 2줄 바로 가기). 요약 줄 없음 — 창마다 탭 위치가 같게 */
+.phead .pt h2 .pid{font-size:var(--text-small,13px);font-weight:500;color:var(--text-muted,#7A6E66);margin-left:2px;white-space:nowrap}
+.phead .pt .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:20px}
+.phead .pt{min-height:52px}
+.phead input.hname{height:28px;line-height:28px;padding-top:0;padding-bottom:0;box-sizing:border-box}
+.phead .pt h2{min-height:28px;display:flex;align-items:center;flex-wrap:nowrap;gap:6px}.phead .pt .sub{height:22px;line-height:22px;min-height:0}.phead .pt{min-height:0}
+
+/* ═════ 274판 ═════ 오른쪽 창 머리 3줄: 이름 / 정보·배지 / 바로 가기 — 줄마다 높이 고정, 넘치면 … */
+.phead .pt{min-width:0;flex:1 1 auto}
+.phead .pt h2{display:flex;align-items:center;gap:6px;height:28px;min-height:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.phead .pt h2>input.hname{min-width:0;flex:1 1 auto}
+.phead .pinfo{display:flex;align-items:center;gap:6px;height:22px;white-space:nowrap;overflow:hidden;font-size:var(--text-small,13px);color:var(--text-muted,#7A6E66)}
+.phead .pinfo .pid,.phead .pinfo .hsub{margin:0;font-size:inherit}
+.phead .pt .sub{height:22px;line-height:22px}
+.phead .pinfo .ptype{color:var(--text-subtle,#9A8F86)}.phead .pinfo .ptype+*::before{content:""}
+
+/* ═════ 276판 ═════ 오른쪽 창 머리 모듈: 1줄 이름+상태 배지 / 2줄 정보+기타 배지 / 3줄 링크. 배지는 모두 같은 모양(둥근 알약 20px) */
+.phead .pt h2 .phn{display:inline-flex;align-items:center;gap:6px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 1 auto}
+.phead .pt h2 .phn input.hname{width:auto;min-width:3em;max-width:100%}
+.phead .pinfo .phdot{color:var(--text-subtle,#9A8F86);margin:0 -2px}
+.phead .pinfo small,.phead .pinfo .hsub,.phead .pinfo .pid,.phead .pinfo .ptype{font-size:var(--text-small,13px);font-weight:500;color:var(--text-muted,#7A6E66);margin:0}
+.phead .pinfo .ptype{color:var(--text-subtle,#9A8F86)}
+.phead .stp,.phead .pill,.phead .gchip,.phead .tag,.phead .kp{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:600;line-height:20px;white-space:nowrap;flex:none;box-sizing:border-box}
+
+/* ═════ 275판 ═════ 오른쪽 창 시간표: 높게·스크롤·주말·요일 색 */
+.mwk2 .mwk-tool{display:flex;align-items:center;gap:var(--space-3);margin:0 0 6px;font-size:var(--text-small,13px)}
+.mwk2 .mwk-wk{display:inline-flex;align-items:center;gap:6px;cursor:pointer;min-height:32px}
+.mwk2 .mwk-hd,.mwk2 .mwk-bd{grid-template-columns:28px repeat(var(--mwk-n),minmax(0,1fr))}
+.mwk2 .mwk-sc{max-height:360px;overflow-y:auto;overscroll-behavior:contain}
+.mwk2 .mwk-hd .wk-sat{color:#2F6FD1}.mwk2 .mwk-hd .wk-sun{color:#D14B3F}
+.mwk2 .mwk-col[data-mwday]{cursor:cell}
+.mwk2 .mwk-col[data-mwday]:hover{background:color-mix(in srgb,var(--brand-tint,#FBF8F4) 70%,transparent)}
