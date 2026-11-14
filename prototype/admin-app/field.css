@@ -174,3 +174,7 @@
 .hf-opt:hover .hf-del,.hf-opt.act .hf-del{opacity:1}.hf-opt .hf-del:hover{background:var(--brand-soft);color:var(--brand-deep)}
 .hf-opt .hf-del svg{width:14px;height:14px}
 @media (hover:none){.hf-opt .hf-del{opacity:1}}
+
+/* ═════ 271판 ═════ 긴 글 메모: 처음 높이 = 학생 [메모]와 같게(칸 84px), 아래 손잡이로 늘림(입력란 자체가 늘어남) */
+.hf-box.hf-memo{resize:none;height:auto!important;min-height:84px;overflow:visible}
+.hf-memo textarea{resize:vertical;height:64px;min-height:64px;max-height:none;overflow:auto;line-height:20px}

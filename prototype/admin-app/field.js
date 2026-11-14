@@ -37,14 +37,14 @@ function pop(box,build,cls){if(OPEN&&OPEN.box===box)return OPEN.pop;close();cons
   const up=r.bottom+4+p.offsetHeight>innerHeight-8&&r.top-4-p.offsetHeight>8,op=p.offsetParent;
   if(up&&op===box.parentElement)p.style.bottom=(op.clientHeight-box.offsetTop+4)+"px";else p.style.top=(up?box.offsetTop-4-p.offsetHeight:top)+"px";p.style.left=box.offsetLeft+"px";p.style.width=box.offsetWidth+"px";return p}
 // 칸 틀: 라벨(칸 위 12/600, 아래 4) · 칸(40) · 알림 글(칸 아래 12)
-const shell=(host,o,inner,cls)=>{host.innerHTML=`<div class="hf ${o.disabled?"dis":""}">${o.label?`<span class="hf-lbl">${esc(o.label)}${o.req?' <i>*</i>':""}</span>`:""}<div class="hf-box ${cls||""}">${inner}</div><span class="hf-msg">${esc(o.help||"")}</span></div>`;return host.querySelector(".hf-box")};
+const shell=(host,o,inner,cls)=>{host.innerHTML=`<div class="hf ${o.disabled?"dis":""}">${o.label?`<span class="hf-lbl">${esc(o.label)}${o.req?' <i>*</i>':""}${o.tipHtml||""}</span>`:""}<div class="hf-box ${cls||""}">${inner}</div><span class="hf-msg">${esc(o.help||"")}</span></div>`;return host.querySelector(".hf-box")};
 const say=(host,t,err)=>{const m=host.querySelector(".hf-msg");m.textContent=t||"";host.querySelector(".hf").classList.toggle("err",!!(err&&t))};
 const X=`<button type="button" class="hf-x" tabindex="-1" aria-label="비우기" title="비우기">${I.x}</button>`;
 const has=(b,v)=>b.classList.toggle("has",!!v);
 // 글자 입력 공통(text·num·tel·memo)
 function typed(host,o,icon,attrs,fmt,check,cls){const tag=cls==="hf-memo"?"textarea":"input";
   const memo=tag==="textarea";const b=shell(host,o,`${memo||icon==="type"?"":I[icon]}<${tag} ${attrs||""} placeholder="${esc(o.placeholder||"")}" ${o.disabled?"disabled":""} ${tag==="input"?`value="${esc(o.value||"")}">`:`rows="1">${esc(o.value||"")}</textarea>`}${o.unit?`<span class="hf-unit">${esc(o.unit)}</span>`:""}${o.disabled||memo?"":X}`,cls);
-  const i=b.querySelector(tag);const grow=()=>{if(memo&&i.scrollHeight>i.clientHeight)b.style.height=(b.offsetHeight+i.scrollHeight-i.clientHeight)+"px"};
+  const i=b.querySelector(tag);const grow=()=>{if(memo&&i.scrollHeight>i.clientHeight)i.style.height=i.scrollHeight+"px"};/* 271판: 긴 글은 입력란 자체가 늘어남(손잡이로도) */
   if(fmt&&i.value)i.value=fmt(i.value);has(b,i.value);setTimeout(grow);
   b.onpointerdown=e=>{if(e.target===b||e.target.closest("svg:not(.hf-x svg)")){e.preventDefault();i.focus()}};
   i.oninput=()=>{if(fmt){const n=fmt(i.value);if(n!==i.value)i.value=n}has(b,i.value);grow();say(host,o.help||"");o.onChange&&o.onChange(i.value)};
@@ -125,7 +125,7 @@ const date=(host,o={})=>dt(host,o,"d");
 const time=(host,o={})=>dt(host,o,"t");
 const datetime=(host,o={})=>dt(host,o,"dt");
 // 기간 = 두 칸 사이 "-" · 끝이 시작보다 앞이면 알림
-function range(host,o,fn){host.innerHTML=`<div class="hf">${o.label?`<span class="hf-lbl">${esc(o.label)}${o.req?' <i>*</i>':""}</span>`:""}<div class="hf-range"><div></div><span class="hf-dash">-</span><div></div></div><span class="hf-msg"></span></div>`;
+function range(host,o,fn){host.innerHTML=`<div class="hf">${o.label?`<span class="hf-lbl">${esc(o.label)}${o.req?' <i>*</i>':""}${o.tipHtml||""}</span>`:""}<div class="hf-range"><div></div><span class="hf-dash">-</span><div></div></div><span class="hf-msg"></span></div>`;
   const [A,B]=host.querySelectorAll(".hf-range>div");const v=[...(o.value||["",""])];
   const chk=()=>{const m=v[0]&&v[1]&&v[1]<v[0]?(fn===time?"끝 시간이 시작보다 앞이에요":"끝 날짜가 시작보다 앞이에요"):"";const s=host.querySelector(".hf>.hf-msg");s.textContent=m;host.querySelector(".hf").classList.toggle("err",!!m);o.onChange&&o.onChange(v.slice())};
   fn(A,Object.assign({},o,{label:"",value:v[0],placeholder:"",onChange:x=>{v[0]=x;chk()}}));fn(B,Object.assign({},o,{label:"",value:v[1],onChange:x=>{v[1]=x;chk()}}));return {get value(){return v.slice()}}}

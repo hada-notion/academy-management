@@ -2338,3 +2338,7 @@ table.stt.gt td[data-mg].mgsel.mghl{background:var(--sel-bg)}
 .panel .btn.rowsave{background:var(--surface,#fff);color:var(--ink,#3D3530);border:1px solid var(--line-strong,#CFC6BD)}
 .panel .btn.rowsave:not(:disabled):hover{background:var(--hover,#F5F1EC)}
 .panel .btn.rowsave:disabled{opacity:.45}
+
+/* ═════ 271판(대표 261115 '학생·등록 쪽이 나뉘어 보임') ═════ 고른 줄은 마우스를 올려도 줄 전체 같은 색(합친 칸 쪽 = 등록 쪽) */
+table.t tr.sel.mghov td:not([data-mg]),table.t tr.sel:hover td,table.stt tr.sel:hover td{background:var(--sel-bg)}
+table.stt tr[data-id].sel:not(.sdel):hover td{background:var(--sel-bg)}

@@ -478,3 +478,8 @@
 .hp-witem .hp-abs .t{flex-direction:row;flex-wrap:nowrap;white-space:nowrap;overflow:hidden}.hp-witem .hp-abs .t .m{overflow:hidden;text-overflow:ellipsis}
 /* v47 모두 빼기 한 번 더 */
 .hp-link.warn{color:var(--danger)!important}
+
+/* ═════ 271판(대표 261115 '학교·학년 자리 통일') ═════ 구역이 클래스여도 학교·학년은 이름 바로 옆 — 오른쪽 끝은 상태 칩·단추 자리(모든 카드·목록 같은 규칙) */
+.hp-card.ingrp .hp-rt{grid-column:2;justify-self:start}
+.hp-one .hp-card.ingrp .hp-rt{display:contents;order:initial;margin-left:0}
+.hp-one .hp-card.ingrp .hp-rt .sc{order:2;margin-left:0}
