@@ -2319,3 +2319,5 @@ table.stt tr:hover .rowdel:hover,table.stt tr.sel .rowdel:hover{background:var(-
 /* ═════ 265판 ═════ 아래 줄에 올려도 합친 칸이 같이 밝아짐 */
 table.t td[data-mg].mghl{background:var(--brand-tint)}
 table.stt.gt td[data-mg].mgsel.mghl{background:var(--sel-bg)}
+/* ═════ 266판 ═════ 표 열 머리는 숫자 열도 왼쪽 정렬(대표 후순위 요청) — 값 칸(숫자)은 오른쪽 그대로 */
+#view table.t th.n,table.stt.gt th.n,table.stt th{text-align:left}
