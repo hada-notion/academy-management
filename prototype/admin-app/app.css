@@ -2129,3 +2129,14 @@ table.stt.gt td[data-mg]{vertical-align:top;padding-top:calc(var(--space-2) + 1p
 .unrow.ed[data-ar] .unn{order:9;flex:1 0 100%}
 .unrow.ed[data-ar] .adja{flex:1 1 84px;width:auto}
 .unrow select.adjk{width:76px;padding:0 24px 0 var(--space-2)!important;background:var(--surface) var(--icon-chevron-down) no-repeat right 6px center/14px 14px!important}
+
+/* ═════ 221판 ═════ 여러 개 고르기 목록의 찾기 칸(항목 10개 넘을 때) */
+.mlpop .mlq{display:flex;flex:none;margin:0 0 var(--space-1)}
+.mlpop .mlq .inp{flex:1;min-width:0}
+.mlpop .tso[hidden]{display:none}
+
+/* ═════ 222판 ═════ 여러 개 고르기: 찾기 칸에서 바로 더하기 줄 · 고른 항목 칩은 줄어들며 말줄임 */
+.mlpop .mlnew{display:flex;flex:none;align-items:center;gap:var(--space-2);width:100%;min-height:36px;padding:0 var(--space-2);border:0;background:none;border-radius:var(--radius-sm);color:var(--brand-deep);font:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:left}
+.mlpop .mlnew:hover{background:var(--brand-soft)}
+.mlpop .mlnew[hidden]{display:none}
+.hfm .hf-val .hfm-c{flex:0 1 auto;min-width:32px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
