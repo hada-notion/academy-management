@@ -21,6 +21,7 @@
 //   - 알림톡 설정의 "시간표 변경 안내" 행이 꺼져 있거나 템플릿 ID가 비면 보내지 않는다(다른 템플릿으로 잘못 나가지 않게).
 //   - 상태는 등록 `시간표 안내 상태`(⏳→🔄→✅/⚠️), 실패 사유는 등록 `마지막 오류`.
 import { createSendLogEntry, extractErrorMessage, getBotUserId } from "./adminShared.ts"
+import { propKey, propRich, REG_NOTICE_MEMO } from "./propAlias.ts"
 import { getFormulaText } from "./alimtalkShared.ts"
 import { getPage, relIds, updatePageProperties } from "./notionClient.ts"
 import { PROP_LAST_ERROR, PROP_TIMETABLE } from "./constants.ts"
@@ -38,7 +39,7 @@ export const TARGET_TIMETABLE_NOTICE = "timetable-notice"
 export const TIMETABLE_SENT_PROP = "안내한 시간표" // 등록(학원) DB, 서버가 적는 글자
 export const TIMETABLE_PERIOD_PROP = "적용 기간" // 시간표(학원) DB
 export const TIMETABLE_CLASS_MEMO_PROP = "시간표 안내 메모" // 클래스(학원) DB
-export const REG_MEMO_PROP = "안내 메모" // 등록(학원) DB (등록 안내·클래스 변경 안내와 함께 씀)
+export const REG_MEMO_PROP = REG_NOTICE_MEMO[0] // 등록(학원) DB `등록 안내 메모`(예전 `안내 메모`, v2.8.0 항목 64 — 읽고 비울 때는 페이지에 있는 이름)
 
 export type TimetablePayload = { regId: string; clickerUserId?: string | null }
 
@@ -134,7 +135,7 @@ export function planTimetableNotice(reg: any, timetables: any[], cls: any, today
 	const sent = textOf(rp[TIMETABLE_SENT_PROP]?.rich_text).trim()
 	if (sent && sent === ch.after) return { skip: "" }
 	const cp = cls?.properties ?? {}
-	const regMemo = textOf(rp[REG_MEMO_PROP]?.rich_text).trim()
+	const regMemo = textOf(propRich(rp, REG_NOTICE_MEMO)).trim()
 	return {
 		now: ch.after,
 		usedRegMemo: !!regMemo,
@@ -188,7 +189,7 @@ export async function processTimetableNoticeQueueItem(payload: TimetablePayload)
 	await deps.log({ registrationId: p.regId, senderUserId, title: name, category: "시간표 변경 안내", status: "성공" })
 	await deps.update(p.regId, {
 		[TIMETABLE_SENT_PROP]: { rich_text: [{ text: { content: plan.now.slice(0, 1900) } }] },
-		...(plan.usedRegMemo ? { [REG_MEMO_PROP]: { rich_text: [] } } : {}),
+		...(plan.usedRegMemo ? { [propKey(reg, REG_NOTICE_MEMO)]: { rich_text: [] } } : {}),
 	}).catch(() => {})
 	await deps.markDone(p.regId)
 	console.log(`[timetable-notice] sent: reg=${p.regId}`)

@@ -5,6 +5,7 @@
 // (11/6 사용자) 반마다 따로 보인다: 영어반을 열면 영어반 내용만. 같은 내용을 여러 반에 적어도 합치지 않는다.
 // 내용: 일정(알림톡과 같은 계산, 이 반 기준) + 전달사항 + 반 본문(반 발송함 페이지 본문) + 학생별 본문(가정통신문 페이지 본문).
 import { readPageBodyBlocks } from "./feedBody.ts"
+import { LETTER_NOTICE_MEMO, propRich } from "./propAlias.ts"
 import { getPage, queryAllPages, relIds } from "./notionClient.ts"
 import { seoulDay } from "./classReportPlan.ts"
 import { resolveLetterDataSourceId, studentMonthEvents } from "./monthlyNotice.ts"
@@ -14,7 +15,6 @@ const PROP_PERIOD = "기간"
 const PROP_REG = "등록"
 const PROP_MAILBOX = "알림톡 발송함"
 const PROP_STATUS = "안내문 전송 상태"
-const PROP_BOX_NOTE = "가정통신문 전달사항"
 const SENT = "✅ 완료"
 const LIST_LIMIT = 24
 
@@ -99,7 +99,7 @@ export async function buildLetterView(regId: string, studentId: string, month: s
 		label: monthLabel(month),
 		schedule: { rest: ofSection("휴원"), academy: ofSection("학원"), school: ofSection("학교") },
 		// 전달 사항은 발송함에 적은 글 그대로 보인다(알림톡 글자 수 제한이 없다).
-		note: ((box as any)?.properties?.[PROP_BOX_NOTE]?.rich_text ?? []).map((t: any) => t?.plain_text ?? "").join("").trim(),
+		note: propRich(box as any, LETTER_NOTICE_MEMO).map((t: any) => t?.plain_text ?? "").join("").trim(),
 		classBody: publicBody(classBody),
 		studentBody: publicBody(studentBody),
 	}
