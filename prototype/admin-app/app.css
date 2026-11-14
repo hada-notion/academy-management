@@ -2342,3 +2342,6 @@ table.stt.gt td[data-mg].mgsel.mghl{background:var(--sel-bg)}
 /* ═════ 271판(대표 261115 '학생·등록 쪽이 나뉘어 보임') ═════ 고른 줄은 마우스를 올려도 줄 전체 같은 색(합친 칸 쪽 = 등록 쪽) */
 table.t tr.sel.mghov td:not([data-mg]),table.t tr.sel:hover td,table.stt tr.sel:hover td{background:var(--sel-bg)}
 table.stt tr[data-id].sel:not(.sdel):hover td{background:var(--sel-bg)}
+
+/* ═════ 272판 ═════ 옵션 고치기 창 색 고르기 */
+.oecols{display:flex;flex-wrap:wrap;gap:6px}.oec{border:1px solid transparent;background:none;border-radius:8px;padding:4px;cursor:pointer;min-height:36px}.oec.on{border-color:var(--brand-deep,#6B4F3A);background:var(--sel-bg)}

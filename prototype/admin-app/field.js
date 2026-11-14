@@ -18,6 +18,7 @@ const I={type:P+'<path d="M17 10H3M21 6H3M21 14H3M17 18H3"/></svg>',
   split:P+'<polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
   search:P+'<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>',
   x:P+'<path d="M18 6 6 18M6 6l12 12"/></svg>',
+  more:P+'<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>',
   check:P+'<path d="M20 6 9 17l-5-5"/></svg>',
   left:P+'<path d="m15 18-6-6 6-6"/></svg>',
   right:P+'<path d="m9 18 6-6-6-6"/></svg>'};
@@ -62,8 +63,9 @@ const tel=(host,o={})=>typed(host,Object.assign({placeholder:"010-0000-0000"},o)
 function list(p,items,cur,onPick,o){let addK="";p.innerHTML=`${(items.length>8||(o&&o.add))&&!(o&&o.keepFocus)?`<label class="hf-q">${I.search}<input placeholder="${o&&o.add?"찾거나 새로 적기":"찾기"}" autocomplete="off"></label>`:""}<div class="hf-list" role="listbox" tabindex="-1"></div>`;
   const L=p.querySelector(".hf-list"),q=p.querySelector(".hf-q input");let act=Math.max(0,items.findIndex(x=>x.v===cur)),xs=items;
   const draw=()=>{const k=q?q.value.trim():"";xs=items.filter(x=>!k||x.t.includes(k));addK=o&&o.add&&k&&!items.some(x=>x.t===k)?k:"";act=Math.max(0,Math.min(act,xs.length-1+(addK?1:0)));
-    L.innerHTML=xs.map((x,i)=>`<div class="hf-opt ${x.v===cur?"on":""} ${i===act?"act":""}" data-i="${i}" role="option" aria-selected="${x.v===cur}">${x.color?`<span class="hf-dot" style="background:${x.color}"></span>`:""}<span class="t">${x.cls?`<span class="spill ${esc(x.cls)}">${esc(x.t)}</span>`:esc(x.t)}</span>${x.sub?`<small>${esc(x.sub)}</small>`:""}<span class="ck">${x.v===cur?I.check:""}</span>${o&&o.del?`<button type="button" class="hf-del" data-del="${i}" tabindex="-1" aria-label="이 항목 삭제" title="이 항목 삭제">${I.x}</button>`:""}</div>`).join("")+(addK?`<div class="hf-opt hf-add ${act===xs.length?"act":""}" data-add role="option"><span class="t">+ ‘${esc(addK)}’ 생성</span></div>`:"")||'<div class="hf-none">찾는 항목이 없어요</div>';
+    L.innerHTML=xs.map((x,i)=>`<div class="hf-opt ${x.v===cur?"on":""} ${i===act?"act":""}" data-i="${i}" role="option" aria-selected="${x.v===cur}">${x.color?`<span class="hf-dot" style="background:${x.color}"></span>`:""}<span class="t">${x.cls?`<span class="spill ${esc(x.cls)}">${esc(x.t)}</span>`:esc(x.t)}</span>${x.sub?`<small>${esc(x.sub)}</small>`:""}<span class="ck">${x.v===cur?I.check:""}</span>${o&&o.edit?`<button type="button" class="hf-del" data-edit="${i}" tabindex="-1" aria-label="이름 · 색 · 삭제" title="이름 · 색 · 삭제">${I.more}</button>`:o&&o.del?`<button type="button" class="hf-del" data-del="${i}" tabindex="-1" aria-label="이 항목 삭제" title="이 항목 삭제">${I.x}</button>`:""}</div>`).join("")+(addK?`<div class="hf-opt hf-add ${act===xs.length?"act":""}" data-add role="option"><span class="t">+ ‘${esc(addK)}’ 생성</span></div>`:"")||'<div class="hf-none">찾는 항목이 없어요</div>';
     {const ad=L.querySelector("[data-add]");if(ad){ad.onpointerdown=e=>e.preventDefault();ad.onclick=()=>o.add(addK)}}
+    L.querySelectorAll("[data-edit]").forEach(d=>{d.onpointerdown=e=>{e.preventDefault();e.stopPropagation()};d.onclick=e=>{e.stopPropagation();o.edit(xs[+d.dataset.edit])}});
     L.querySelectorAll("[data-del]").forEach(d=>{d.onpointerdown=e=>{e.preventDefault();e.stopPropagation()};d.onclick=e=>{e.stopPropagation();o.del(xs[+d.dataset.del])}});
     L.querySelectorAll(".hf-opt:not(.hf-add)").forEach(r=>{r.onpointerdown=e=>e.preventDefault();r.onclick=()=>onPick(xs[+r.dataset.i]);r.onmousemove=()=>{if(act!==+r.dataset.i){act=+r.dataset.i;L.querySelectorAll(".hf-opt").forEach((z,j)=>z.classList.toggle("act",j===act))}}});
     const a=L.querySelector(".act");/* 250판: 목록 안에서만 움직임(바깥 창이 따라 내려가지 않게) */if(a){const lr=L.getBoundingClientRect(),ar=a.getBoundingClientRect();if(ar.top<lr.top)L.scrollTop-=lr.top-ar.top;else if(ar.bottom>lr.bottom)L.scrollTop+=ar.bottom-lr.bottom}};
@@ -73,7 +75,7 @@ function select(host,o={}){const items=(o.items||[]).map(x=>typeof x==="string"?
   const b=shell(host,o,`${I[o.icon||"list"]}<span class="hf-val"></span>${o.disabled||o.clear===false?"":X}`,"hf-btn");if(!o.disabled)b.tabIndex=0;b.setAttribute("role","combobox");
   const show=()=>{const it=items.find(x=>x.v===v);b.querySelector(".hf-val").innerHTML=it?`${it.color?`<span class="hf-dot" style="background:${it.color}"></span>`:""}${it.cls?`<span class="spill ${esc(it.cls)}">${esc(it.t)}</span>`:esc(it.t)}`:`<span class="ph">${esc(o.placeholder||"선택")}</span>`;has(b,it)};
   const set=x=>{v=x;show();o.onChange&&o.onChange(v)};
-  const open=()=>{if(o.disabled)return;if(OPEN&&OPEN.box===b){close();return}pop(b,p=>list(p,items,v,x=>{set(x.v);close();b.focus()},o.onAdd||o.onDel?{add:o.onAdd&&(t=>{close();o.onAdd(t)}),del:o.onDel&&(x=>{close();o.onDel(x)})}:undefined))};
+  const open=()=>{if(o.disabled)return;if(OPEN&&OPEN.box===b){close();return}pop(b,p=>list(p,items,v,x=>{set(x.v);close();b.focus()},o.onAdd||o.onDel||o.onEdit?{add:o.onAdd&&(t=>{close();o.onAdd(t)}),del:o.onDel&&(x=>{close();o.onDel(x)}),edit:o.onEdit&&(x=>{close();o.onEdit(x)})}:undefined))};
   b.onclick=e=>{if(e.target.closest(".hf-x"))return;open()};
   b.onkeydown=e=>{if(["Enter"," ","ArrowDown"].includes(e.key)){e.preventDefault();open()}else if((e.key==="Delete"||e.key==="Backspace")&&o.clear!==false){set(null)}};
   const x=b.querySelector(".hf-x");if(x)x.onclick=e=>{e.stopPropagation();set(null);b.focus()};
