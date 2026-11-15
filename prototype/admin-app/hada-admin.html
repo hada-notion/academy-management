@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=437">
-<link rel="stylesheet" href="app.css?v=437">
-<link rel="stylesheet" href="pick.css?v=437">
-<link rel="stylesheet" href="field.css?v=437">
+<link rel="stylesheet" href="hada-tokens.css?v=438">
+<link rel="stylesheet" href="app.css?v=438">
+<link rel="stylesheet" href="pick.css?v=438">
+<link rel="stylesheet" href="field.css?v=438">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=437"><script src="hada-rules.js?v=437"></script><script src="alim-preview.js?v=437"></script><script src="pick.js?v=437"></script><script src="field.js?v=437"></script><script src="panel.js?v=437"></script>
+<link rel="stylesheet" href="alim.css?v=438"><script src="hada-rules.js?v=438"></script><script src="alim-preview.js?v=438"></script><script src="pick.js?v=438"></script><script src="field.js?v=438"></script><script src="panel.js?v=438"></script>
 <script>
 "use strict";
 
@@ -2382,7 +2382,19 @@ document.addEventListener("pointerdown",e=>{const t=activeTab;if(!t||t.screen!==
 function colIcon(L,c,f,first){/* 299판: 아이콘은 규칙 파일(hada-rules.js) 한 곳 */if(first&&L.coll==="books")return (activeTab&&activeTab.state&&activeTab.state.sub)==="p"?"package":"bookc";return iconRule(c[0],f?f[3]:"")||(first?{seasons:menuIcon("seasons"),subjects:menuIcon("subjects"),books:(activeTab&&activeTab.state&&activeTab.state.sub)==="p"?"package":"bookc"}[L.coll]||"hash":"hash")}
 function listCols(L){if(L._gc)return L._gc;const ft=k=>(L.fields||[]).find(f=>f[0]===k);
   return L._gc=L.cols.map((c,i)=>{const f=c[2]?ft(c[2]):null;const cat=!!(f&&(Array.isArray(f[2])||typeof f[2]==="function"||f[2]==="teachers"||f[3]==="seg"||f[3]==="bool"))||/상태|구분|강사|과목|영역|직책/.test(c[0]);
-    return {k:c[2]||("c"+i),l:c[0],i:colIcon(L,c,f,i===0),w:null,cat,src:c,v:x=>{const z=String(c[1](x));const y=gtPlain(z);return y==="—"?"":y}}})}
+    return {k:c[2]||("c"+i),l:c[0],i:colIcon(L,c,f,i===0),w:null,cat,src:c,v:x=>{const z=String(c[1](x));const y=gtPlain(z);return y==="—"?"":y}}}).concat(fieldCols(L))}
+/* 열 = 창의 칸(기준 3장): 표 열 정의에 없는 창의 칸은 숨긴 열로 스스로 생김 — [열 정리]에서 켬. 한 열로 합쳐 보이는 칸은 COL_COVER */
+const COL_COVER={seasons:["start","end"],events:["start","end"],reports:["from","to"]};
+function fieldTxt(f,r){const v=r[f[0]];if(v==null||v===""||(Array.isArray(v)&&!v.length))return "—";
+  if(f[2]==="teachers")return tch(v).name||"—";
+  if(typeof f[2]==="function"){let it=[];try{it=f[2](r)||[]}catch(e){}const one=x=>{const m=it.find(z=>(z&&typeof z==="object"?z.v:z)===x);return m&&typeof m==="object"?(m.t||m.v):x};return Array.isArray(v)?"@c:"+v.map(one).join("|"):String(one(v))}
+  if(f[3]==="bool")return (Array.isArray(f[2])&&f[2][v?0:1])||(v?"예":"아니오");
+  if(f[3]==="date")return D10(v);
+  if(f[3]==="won")return (+v||0).toLocaleString();
+  return Array.isArray(v)?v.join(", "):String(v)}
+function fieldCols(L){const ck=new Set(L.cols.map(c=>c[2]).filter(Boolean)),cn=new Set(L.cols.map(c=>String(c[0]))),cv=COL_COVER[L.coll]||[];
+  return (L.fields||[]).filter(f=>!ck.has(f[0])&&!cn.has(f[1])&&!cv.includes(f[0])).map(f=>{const c=[f[1],r=>fieldTxt(f,r),f[0]];const cat=Array.isArray(f[2])||typeof f[2]==="function"||f[2]==="teachers"||f[3]==="seg"||f[3]==="bool";
+    return {k:f[0],l:f[1],i:colIcon(L,c,f,false),w:null,cat,src:c,hid:true,v:x=>{const y=gtPlain(String(c[1](x)));return y==="—"?"":y}}})}
 function gtApply(rows,cols,st){const cf=st.cf||{};Object.keys(cf).forEach(k=>{const c=cols.find(z=>z.k===k);if(!c)return;const f=cf[k];rows=rows.filter(x=>{const v=c.v(x);return Array.isArray(f)?!f.includes(v||"(없음)"):String(v).includes(f)})});
   if(st.sort){const c=cols.find(z=>z.k===st.sort.k);if(c){const num=z=>{const m=String(z).replace(/,/g,"").match(/^-?\d+(\.\d+)?/);return m?+m[0]:null};rows=[...rows].sort((a,b)=>{let A=c.v(a),B=c.v(b);const e1=A===""||A==null,e2=B===""||B==null;if(e1!==e2)return e1?1:-1;const n1=num(A),n2=num(B);if(n1!=null&&n2!=null){A=n1;B=n2}return (A<B?-1:A>B?1:0)*(st.sort.d==="desc"?-1:1)})}}
   return rows}
