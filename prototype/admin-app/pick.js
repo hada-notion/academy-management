@@ -1,11 +1,11 @@
-/* 고르기 칸 모듈(pick) — 클래스 칸 · 학생 칸 (261113 대표: 모듈 하나로 만들어 모든 화면에 똑같이 붙임)
+/* 고르기 칸 모듈(pick) — 클래스 칸 · 학생 칸 (261113 대표: 모듈 하나로 생성해 모든 화면에 똑같이 붙임)
    붙이는 법(기본 = 한 줄 모양 — 이름 · 학교 · 학년 ……… 정보, 좁으면 우선순위대로 숨김. one:false면 두 줄)
      HP.cls(칸을 넣을 요소, {value, classes, none, warn, onNew, onChange})
-     HP.stu(칸을 넣을 요소, {value, students, groups, info, auto, find, onChange}) — find:true = 목록 아래 [거르기로 찾기](학년·빈 시간 거르기 창)
+     HP.stu(칸을 넣을 요소, {value, students, groups, info, auto, find, onChange}) — find:true = 목록 아래 [필터로 검색](학년·빈 시간 필터 창)
    동작(두 칸 공통)
      닫힌 칸 → 누르면 칸 폭 목록이 떠서 열림(아래 자리가 모자랄 때만 위로, 칸에 4px 붙음, 한 번에 하나)
-     닫기 = 바깥 누름 · 빈 찾기 칸에서 Esc · (클래스) 고르면 닫힘
-     목록 맨 아래 왼쪽 돋보기 줄 = 따로 뜨는 찾기 창(클래스: 종료된 클래스 찾기 / 학생: 다른 학생 찾기)
+     닫기 = 바깥 누름 · 빈 검색 칸에서 Esc · (클래스) 고르면 닫힘
+     목록 맨 아래 왼쪽 돋보기 줄 = 따로 뜨는 찾기 창(클래스: 종료된 클래스 검색 / 학생: 다른 학생 검색)
      학생은 고른 학생이 칸 아래에 쌓임(체크를 풀면 빠짐). auto = 클래스 수강생이 처음부터 쌓여 있는 곳(시간표)
    값·이름은 화면규칙 4장(용어) 그대로: 클래스 선택 · 학생 선택 · 학생 n명 · 더 고르기 · 클래스 없음 · 모두 넣기/빼기 */
 (function(){
@@ -65,7 +65,7 @@ function dialog(html,bind){shut();const d=document.createElement("div");d.classN
 
 /* ───── 클래스 칸 ─────
    classes: [{id,name,color,teacher,count,open?,close?}]  none: 맨 위 "클래스 없음"(보강, 값 HP.NONE — 클래스처럼 칸에 들어가고 x로 비움)  warn(id)→노란 글씨(예: "목 13:00 시간표 있음" — 막지 않고 알림)
-   onNew(): [새 클래스] → 만든 클래스 id를 돌려주면 그 칸에 들어감  onChange(id|null) */
+   onNew(): [새 클래스] → 생성한 클래스 id를 돌려주면 그 칸에 들어감  onChange(id|null) */
 // "클래스 없음"도 클래스처럼 고르는 값(HP.NONE) — 고르면 칸에 들어가고 x로 비움(261113 대표). 비어 있음(null) = "클래스 선택"
 const NONE="__none";
 function cls(host,o){const st={value:o.value??null};
@@ -111,7 +111,7 @@ function cls(host,o){const st={value:o.value??null};
     else if(e.key==="Enter"&&rows[hi]){e.preventDefault();pick(rows[hi])}else if(e.key==="Escape"){e.preventDefault();e.stopPropagation();if(inp.value){inp.value="";list()}else{shut();inp.blur();if(st.value)draw()}}};
   inp.addEventListener("blur",()=>setTimeout(()=>{if(!OPEN&&st.value)draw()},120));
   function endedDialog(){const L0=o.classes.filter(ended).sort((a,b)=>b.close.localeCompare(a.close));const T=[...new Set(L0.map(c=>c.teacher))];
-    dialog(`<h2>종료된 클래스 찾기</h2><div class="hp-bar">${searchBox("클래스·강사 검색")}${T.length>1?`<select class="hp-sel"><option value="">강사 전체</option>${T.map(t=>`<option>${esc(t)}</option>`).join("")}</select>`:""}</div>
+    dialog(`<h2>종료된 클래스 검색</h2><div class="hp-bar">${searchBox("클래스·강사 검색")}${T.length>1?`<select class="hp-sel"><option value="">강사 전체</option>${T.map(t=>`<option>${esc(t)}</option>`).join("")}</select>`:""}</div>
       <div class="hp-list"></div><div class="hp-act-row"><span class="hp-hint">누르면 다시 열지 묻고 그 칸에 들어가요</span><span class="hp-sp"></span><button type="button" class="hp-btn" data-x>닫기</button></div>`,(d,close)=>{
       const L=d.querySelector(".hp-list"),inp=d.querySelector("input"),sel=d.querySelector("select");
       const draw2=()=>{const q=inp.value.trim().toLowerCase(),t=sel?sel.value:"";const xs=L0.filter(c=>(!q||(c.name+" "+c.teacher).toLowerCase().includes(q))&&(!t||c.teacher===t));
@@ -125,8 +125,8 @@ function cls(host,o){const st={value:o.value??null};
    groups(): 열린 목록 묶음 [{title, ids, act?}] — 순서대로(이미 나온 학생은 뒤 묶음에서 빠짐)
    info(id) → {sub(빨강: 결석 등), warn(노랑: 같은 시간 수업), note(회색: 등록 클래스), dis(못 고름)}
    auto: {title, ids} — 클래스 수강생이 처음부터 칸 아래에 쌓여 있음(체크로 빼기, [모두 넣기/빼기])
-   searchTitle: 찾기 창 제목  onChange(ids)  onFind(지금 ids, add(ids)) = 목록 아래 [다른 학생 찾기]를 화면의 찾기 창으로(시제품 stuModal)
-   클래스 칸: onNew(set) = [새 클래스](만든 뒤 set(id)) · onReopen(id) = 종료된 클래스를 다시 열었을 때 · onColor(id, 색) */
+   searchTitle: 찾기 창 제목  onChange(ids)  onFind(지금 ids, add(ids)) = 목록 아래 [다른 학생 검색]를 화면의 찾기 창으로(시제품 stuModal)
+   클래스 칸: onNew(set) = [새 클래스](생성한 뒤 set(id)) · onReopen(id) = 종료된 클래스를 다시 열었을 때 · onColor(id, 색) */
 function stu(host,o){const st={value:[...(o.value||[])]};const S=id=>o.students.find(x=>x.id===id);const info=id=>(o.info&&o.info(id))||{};
   // 칸 = 검색창(261113 대표 — Threads 검색처럼): 비었으면 묶음(보강 대기·최근 결석 …), 글자를 넣으면 묶음 결과 + "그 밖의 학생"(모든 학생)
   host.innerHTML=`<div class="hp ${o.one!==false?"hp-one":""}"><label class="hp-fld hp-sfld">${ICON.search}<input placeholder="${esc(o.placeholder||"학생 검색 · 이름·학교")}" autocomplete="off" role="combobox" aria-expanded="false"></label><div class="hp-stackwrap"></div></div>`;
@@ -170,7 +170,7 @@ function stu(host,o){const st={value:[...(o.value||[])]};const S=id=>o.students.
       if(all&&ab.dataset.arm!=="1"){const n=st.value.filter(id=>ids.includes(id)).length;ab.dataset.arm="1";ab.textContent=`${n}명 모두 빼기 — 한 번 더 누르기`;ab.classList.add("warn");setTimeout(()=>{if(ab.isConnected&&ab.dataset.arm==="1"){ab.dataset.arm="";ab.textContent="모두 빼기";ab.classList.remove("warn")}},3000);return}st.value=all?st.value.filter(id=>!ids.includes(id)):[...new Set([...st.value,...ids.filter(id=>!info(id).dis)])];paint();o.onChange&&o.onChange(st.value.slice())};
     if(redrawPop)redrawPop()}
   const open=()=>{if(OPEN&&OPEN.fld===fld)return;openPop(fld,pop=>{
-    pop.innerHTML=`<div class="hp-list"></div>${o.onFind?`<div class="hp-foot"><button type="button" class="hp-link" data-find>${ICON.search}다른 학생 찾기</button></div>`:o.find?`<div class="hp-foot"><button type="button" class="hp-link" data-find>${ICON.search}거르기로 찾기</button></div>`:""}`;
+    pop.innerHTML=`<div class="hp-list"></div>${o.onFind?`<div class="hp-foot"><button type="button" class="hp-link" data-find>${ICON.search}다른 학생 검색</button></div>`:o.find?`<div class="hp-foot"><button type="button" class="hp-link" data-find>${ICON.search}필터로 검색</button></div>`:""}`;
     const L=pop.querySelector(".hp-list");
     redrawPop=()=>{const q=inp.value.trim().toLowerCase();const hit=x=>!q||(x.name+" "+(x.school||"")).toLowerCase().includes(q);const seen=new Set(o.auto?o.auto.ids:[]);const keep=L.scrollTop;
       const G=(typeof o.groups==="function"?o.groups():o.groups||[]).map(g=>{const xs=g.ids.filter(id=>!seen.has(id)).map(S).filter(x=>x&&hit(x));xs.forEach(x=>seen.add(x.id));return [g,xs]}).filter(([,xs])=>xs.length);

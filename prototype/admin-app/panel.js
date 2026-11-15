@@ -68,7 +68,7 @@
     if (!has.length && !t.keepTabs) return `<div class="tdp"><div class="tdh">${ic("check")}지금 할 일이 없어요</div>${sum}${list}</div>${foot}`;
     const on = (t.keepTabs ? groups.find(g => g.k === t.on) : has.find(g => g.k === t.on)) || has[0] || groups[0], max = t.max || 60;
     return `<div class="tdp"><div class="tdh">할 일${t.help ? help(t.help) : ""} <span class="hint">${has.reduce((a, g) => a + g.rows.length, 0)}건</span></div><div class="tdtabs">${groups.map(g => `<button type="button" class="tdt ${g === on ? "on" : ""}" data-${ta}="${esc(g.k)}" ${g.rows.length || t.keepTabs ? "" : "disabled"}>${esc(g.name)} <span class="n">${g.rows.length}</span></button>`).join("")}</div>
-    ${on.why ? `<div class="tdwhy">${esc(on.why)}</div>` : ""}<div class="tdl">${on.rows.slice(0, max).map(rowH).join("") || `<div class="tdnone">${ic("check")}할 일이 없어요</div>`}${on.rows.length > max ? `<div class="hint">외 ${on.rows.length - max}건 — 표의 거르기 알약으로 모두 봐요</div>` : ""}</div>${sum}${list}</div>${foot}`;
+    ${on.why ? `<div class="tdwhy">${esc(on.why)}</div>` : ""}<div class="tdl">${on.rows.slice(0, max).map(rowH).join("") || `<div class="tdnone">${ic("check")}할 일이 없어요</div>`}${on.rows.length > max ? `<div class="hint">외 ${on.rows.length - max}건 — 표의 필터 알약으로 모두 봐요</div>` : ""}</div>${sum}${list}</div>${foot}`;
   }
   // 칸 붙이기(입력칸 모듈 field.js)
   function mountFields(root, boxes) {

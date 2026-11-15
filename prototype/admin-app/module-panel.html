@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>오른쪽 창 모듈</title>
 <!-- 오른쪽 창 모듈 페이지. 앱과 같은 CSS(hada-tokens·app·pick·field)와 입력칸(field.js), 창 그리기(panel.js)를 그대로 쓴다 — 여기서 고친 부품이 앱에 그대로 들어간다. 모음표: _catalog/index.html -->
-<link rel="stylesheet" href="hada-tokens.css?v=424"><link rel="stylesheet" href="app.css?v=424"><link rel="stylesheet" href="pick.css?v=424"><link rel="stylesheet" href="field.css?v=424">
-<link rel="stylesheet" href="alim.css?v=424"><script src="hada-rules.js?v=424"></script><script src="alim-preview.js?v=424"></script><script src="pick.js?v=424"></script><script src="field.js?v=424"></script><script src="panel.js?v=424"></script>
+<link rel="stylesheet" href="hada-tokens.css?v=426"><link rel="stylesheet" href="app.css?v=426"><link rel="stylesheet" href="pick.css?v=426"><link rel="stylesheet" href="field.css?v=426">
+<link rel="stylesheet" href="alim.css?v=426"><script src="hada-rules.js?v=426"></script><script src="alim-preview.js?v=426"></script><script src="pick.js?v=426"></script><script src="field.js?v=426"></script><script src="panel.js?v=426"></script>
 <style>
 body{margin:0;background:var(--canvas,#F7F8FA);overflow:auto;height:auto}
 .mp-top{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--divider,#EEE7DD);padding:14px 24px}
@@ -25,7 +25,7 @@ main{padding:8px 24px 80px;max-width:1500px}
 <nav class="mp-nav"><a href="#s0">0 뼈대</a><a href="#sic">아이콘 규칙</a><a href="#s1">1 머리</a><a href="#s2">2 탭 바</a><a href="#s3">3 상자</a><a href="#s4">4 칸</a><a href="#s5">5 날짜·시각 한 줄</a><a href="#s6">6 줄 목록</a><a href="#s7">7 카드</a><a href="#s8">8 미니 부품</a><a href="#s9">9 선택 전(할 일)</a><a href="#s10">10 아래 단추</a><a href="#s11">전체 예시</a></nav></div>
 <main>
 
-<section class="mp-sec" id="s0"><h2>0. 창 뼈대</h2><p class="d">모든 오른쪽 창은 이 네 칸으로만 만든다. 높이가 정해진 칸(머리 3줄·탭 바·아래 단추)은 창마다 같은 자리 — 탭을 바꿔도, 다른 화면으로 가도 위치가 움직이지 않는다.</p>
+<section class="mp-sec" id="s0"><h2>0. 창 뼈대</h2><p class="d">모든 오른쪽 창은 이 네 칸으로만 생성한다. 높이가 정해진 칸(머리 3줄·탭 바·아래 단추)은 창마다 같은 자리 — 탭을 바꿔도, 다른 화면으로 가도 위치가 움직이지 않는다.</p>
 <div class="mp-row"><div class="mp-skel"><div><b>머리</b> — 3줄 고정<small>이름 + 상태 배지 / 정보 + 기타 배지 / 바로 가기</small></div><div><b>탭 바</b> — 1줄 고정<small>탭이 없는 창도 '정보' 하나</small></div><div style="height:180px"><b>내용</b> — 상자를 위에서 아래로<small>상자 = 제목 + (?) + 오른쪽 링크 + [칸 묶음 · 줄 목록 · 카드 · 미니 부품]</small></div><div><b>아래 단추</b> — 1줄 고정<small>삭제 ……… 되돌리기 · ○○ 저장</small></div></div>
 <pre class="mp-code">창 = {
   head:  { name, dot, status:[{t,tone}], info:[…], badges:[…], links:[{t}] },
@@ -72,7 +72,7 @@ function demoOpt(h, o) {
     const items = o.opts.map(x => ({ v: x.t, t: x.t, cls: "nc-" + x.c }));
     const add = t => { t = String(t || "").trim().slice(0, 30); if (!t) return; if (!o.opts.some(x => x.t === t)) o.opts.push({ t, c: "default" }); st.v = o.multi ? [...new Set([...(st.v || []), t])] : t; draw(); toast(o.multi ? `${o.nm} '${t}'을(를) 생성했어요` : `${o.nm} '${t}'을(를) 생성했어요 — 다른 줄에서도 고를 수 있어요`) };
     const edit = v => { const x = o.opts.find(z => z.t === v); if (!x) return; let col = x.c; const used = (o.multi ? (st.v || []).includes(v) : st.v === v) ? 1 : 0;
-      modal(`<h2>${o.nm} 옵션${PANEL.help("이름을 바꾸면 이 옵션을 쓰는 줄이 모두 같이 바뀌어요. 삭제하면 쓰는 줄에서 이 값이 비워져요. 노션 선택 속성의 옵션 고치기와 같아요.")}</h2>
+      modal(`<h2>${o.nm} 옵션${PANEL.help("이름을 바꾸면 이 옵션을 쓰는 줄이 모두 같이 바뀌어요. 삭제하면 쓰는 줄에서 이 값이 비워져요. 노션 선택 속성의 옵션 편집과 같아요.")}</h2>
   <div class="field"><span class="lbl">이름</span><input class="inp" id="oeN" value="${PANEL.esc(v)}" maxlength="30" style="width:100%"></div>
   <div class="field"><span class="lbl">색</span><div class="oecols">${NC_COLORS.map(([c, t]) => `<button type="button" class="oec ${c === col ? "on" : ""}" data-oec="${c}" title="${t}"><span class="spill nc-${c}">${t}</span></button>`).join("")}</div></div>
   <div class="hint">쓰는 줄 ${used}개</div>
@@ -133,7 +133,7 @@ mountFields(document.querySelector("#h4 .mp-pn"), F4);
     ["고르기 — 항목이 많을 때", h => HF.select(h, { label: "학교(고르기, 항목 8개 넘으면 목록 위에 찾기)", value: "하다중", items: sch })],
     ["고르기 — 새로 적기", h => demoOpt(h, { nm: "출판사", label: "출판사(검색 또는 추가)", value: "", opts: [["비상교육","red"],["천재교과서","green"],["천재교육","green"],["동아출판","blue"],["미래엔","purple"],["NE능률","pink"],["YBM","yellow"],["좋은책신사고","pink"],["개념원리","purple"]].map(([t, c]) => ({ t, c })) })],
     ["여러 개 고르기", h => demoOpt(h, { nm: "과목", multi: true, label: "과목(여러 개 고르기)", value: ["수학", "영어"], help: "눌러 보세요 — 체크 목록이 펼쳐져요", opts: [["국어","red"],["수학","blue"],["영어","purple"],["과학","green"],["사회","orange"]].map(([t, c]) => ({ t, c })) })],
-    ["찾기 칸(돋보기)", h => HF.search(h, { label: "찾기 칸(돋보기)", placeholder: "학교 이름 두 글자 이상", help: "'하다'를 적어 보세요 — 아래에 결과 줄", find: k => ["초등학교 · 경기도 김포시 운양동", "중학교 · 경기도 김포시 장기동 · 이미 있음", "고등학교 · 경기도 김포시 구래동"].map((sub, i) => ({ t: k + "초중고"[i], sub })) })],
+    ["검색 칸(돋보기)", h => HF.search(h, { label: "검색 칸(돋보기)", placeholder: "학교 이름 두 글자 이상", help: "'하다'를 적어 보세요 — 아래에 결과 줄", find: k => ["초등학교 · 경기도 김포시 운양동", "중학교 · 경기도 김포시 장기동 · 이미 있음", "고등학교 · 경기도 김포시 구래동"].map((sub, i) => ({ t: k + "초중고"[i], sub })) })],
     ["켜기/끄기", h => HF.sw(h, { label: "알림톡 보내기", value: true })],
     ["고르기 단추 칸", h => HF.pick(h, { label: "시간표(고르기 단추 칸)", icon: menuIcon("timetable"), valueHtml: "월 16:00 · 수 16:00", help: "모양은 고르기 칸 · 누르면 펼치는 목록은 화면이 정해요(HF.pick)", onOpen: b => toast("화면이 정한 목록이 열려요(예: 등록 카드 시간표 고르기)") })],
   ];
@@ -161,7 +161,7 @@ const cal = (() => { let c = ""; for (let i = 0; i < 35; i++) { const d = i - 5 
 put("h8", [cell("주간 시간표", box({ title: "시간표", body: week })), cell("달 캘린더(학생 리포트 모양)", box({ title: "일정", body: cal }))].join(""));
 // 9 할 일
 put("h9", [
-  cell("할 일이 있을 때", todo({ groups: [{ k: "s", name: "보내기 전", why: "안내문을 아직 보내지 않은 수강료예요. 위 [안내 전송]으로 보내요.", rows: [{ t: "장예린", sub: "중1 수학 · 250,000원" }, { t: "조채원", sub: "중2 영어B · 230,000원" }] }, { k: "z", name: "0원 청구", rows: [] }], summary: [["2026.11 청구", "4,250,000원"], ["받은 금액", "3,100,000원"]] })),
+  cell("할 일이 있을 때", todo({ groups: [{ k: "s", name: "전송 전", why: "안내문을 아직 보내지 않은 수강료예요. 위 [안내 전송]으로 보내요.", rows: [{ t: "장예린", sub: "중1 수학 · 250,000원" }, { t: "조채원", sub: "중2 영어B · 230,000원" }] }, { k: "z", name: "0원 청구", rows: [] }], summary: [["2026.11 청구", "4,250,000원"], ["받은 금액", "3,100,000원"]] })),
   cell("할 일이 없을 때 + 목록", todo({ groups: [], summary: [["지금 시즌", "2026 2학기"], ["남은 날", "38일"]], list: { name: "시즌", rows: [{ t: "2026 2학기", dot: "#9BD3AE", badge: "운영 중", tone: "green", sub: "2026.09.01 - 12.19" }, { t: "2026 겨울방학", dot: "#C9C0E8", badge: "다음 시즌", tone: "blue", sub: "2026.12.20 - 2027.02.28" }], more: "지난 시즌 보기 1" } })),
 ].join(""));
 // 10 아래 단추
@@ -172,5 +172,5 @@ render(ex("클래스 창"), { head: { name: "중1 수학", dot: "#B794F6", statu
 render(ex("학생 창"), { head: { name: "장예린", nameInput: "새 학생 이름", status: [{ t: "등록 중", tone: "green" }], info: ["하다고"], badges: [gchip("고3")], links: [{ t: "주간 시간표" }, { t: "수강" }] }, tabs: [{ id: "i", label: "정보" }, { id: "e", label: "등록", n: 2 }, { id: "c", label: "일정", disabled: true }, { id: "g", label: "성적" }], tab: "i", boxes: [{ title: "문의", fields: [{ label: "문의일시", type: "date", value: "2026-08-29" }, { label: "메모(내부용)", type: "memo" }] }, { title: "기본정보", fields: [{ label: "학교", value: "하다고" }, { label: "학년", value: "고3" }] }], foot: { del: true, save: "학생 저장" } });
 render(ex("수업 창"), { head: { name: "초등 영어", dot: "#E88FB5", info: ["2026.11.11(수) 14:30"], badges: [pill({ t: "정규", tone: "blue" })], links: [{ t: "수업" }, { t: "시간표" }, { t: "클래스" }] }, tabs: [{ id: "a", label: "출결", n: "8/12" }, { id: "l", label: "학습기록", n: 1 }, { id: "r", label: "보고서" }, { id: "i", label: "정보" }], tab: "a", boxes: [{ title: "출결", help: "출석·결석을 눌러 넣어요", right: '<button class="btn sm">모두 출석</button>', rows: [{ t: "신지안", sub: "바다초 초1", tag: "출석" }, { t: "김다은", sub: "푸른중", tag: "결석" }] }], foot: { save: "수업 저장" } });
 document.querySelectorAll(".mp-pn .hname").forEach(i=>i.closest(".mp-pn").classList.add("stpanel"));
-</script><script src="module-icons.js?v=424"></script>
+</script><script src="module-icons.js?v=426"></script>
 </body></html>
