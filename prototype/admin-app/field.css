@@ -223,3 +223,6 @@
 /* 307판: 좁은 칸(등록 카드 등)에서 날짜 한 줄이 잘리면 두 줄로 — 칸 폭 기준 */
 .hf:has(>.hf-range){container-type:inline-size}
 @container (max-width:300px){.hf-range{grid-template-columns:minmax(0,1fr)}.hf-range>.hf-dash{display:none}}
+
+/* 311판: 여러 개 고르기 펼침 창 높이 상한 — 목록만 안에서 스크롤(체크해도 스크롤 그대로) */
+.hf-pop.mlpop{max-height:min(440px,70vh)}
