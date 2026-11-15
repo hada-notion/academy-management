@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>오른쪽 창 모듈</title>
 <!-- 오른쪽 창 모듈 페이지. 앱과 같은 CSS(hada-tokens·app·pick·field)와 입력칸(field.js), 창 그리기(panel.js)를 그대로 쓴다 — 여기서 고친 부품이 앱에 그대로 들어간다. 모음표: _catalog/index.html -->
-<link rel="stylesheet" href="hada-tokens.css?v=434"><link rel="stylesheet" href="app.css?v=434"><link rel="stylesheet" href="pick.css?v=434"><link rel="stylesheet" href="field.css?v=434">
-<link rel="stylesheet" href="alim.css?v=434"><script src="hada-rules.js?v=434"></script><script src="alim-preview.js?v=434"></script><script src="pick.js?v=434"></script><script src="pick-demo-data.js?v=434"></script><script src="field.js?v=434"></script><script src="panel.js?v=434"></script>
+<link rel="stylesheet" href="hada-tokens.css?v=436"><link rel="stylesheet" href="app.css?v=436"><link rel="stylesheet" href="pick.css?v=436"><link rel="stylesheet" href="field.css?v=436">
+<link rel="stylesheet" href="alim.css?v=436"><script src="hada-rules.js?v=436"></script><script src="alim-preview.js?v=436"></script><script src="pick.js?v=436"></script><script src="pick-demo-data.js?v=436"></script><script src="field.js?v=436"></script><script src="panel.js?v=436"></script>
 <style>
 body{margin:0;background:var(--canvas,#F7F8FA);overflow:auto;height:auto}
 .mp-top{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--divider,#EEE7DD);padding:14px 24px}
@@ -25,7 +25,7 @@ main{padding:8px 24px 80px;max-width:1500px}
 <nav class="mp-nav"><a href="#s0">0 뼈대</a><a href="#sic">아이콘 규칙</a><a href="#s1">1 머리</a><a href="#s2">2 탭 바</a><a href="#s3">3 상자</a><a href="#s4">4 칸</a><a href="#s5">5 날짜·시각 한 줄</a><a href="#s6">6 줄 목록</a><a href="#s7">7 카드</a><a href="#s8">8 미니 부품</a><a href="#s9">9 선택 전(할 일)</a><a href="#s10">10 아래 단추</a><a href="#s11">전체 예시</a></nav></div>
 <main>
 
-<section class="mp-sec" id="s0"><h2>0. 창 뼈대</h2><p class="d">모든 오른쪽 창은 이 네 칸으로만 생성한다. 높이가 정해진 칸(머리 3줄·탭 바·아래 단추)은 창마다 같은 자리 — 탭을 바꿔도, 다른 화면으로 가도 위치가 움직이지 않는다.</p>
+<section class="mp-sec" id="s0"><h2>0. 창 뼈대</h2><p class="d">모든 오른쪽 창은 이 네 칸으로만 생성한다. 높이가 정해진 칸(머리·탭 바·아래 단추)은 창마다 같은 자리 — 탭을 바꿔도, 다른 화면으로 가도 위치가 움직이지 않는다.</p>
 <div class="mp-row"><div class="mp-skel"><div><b>머리</b> — 3줄 고정<small>이름 + 상태 배지 / 정보 + 기타 배지 / 바로 가기</small></div><div><b>탭 바</b> — 1줄 고정<small>탭이 없는 창도 '정보' 하나</small></div><div style="height:180px"><b>내용</b> — 상자를 위에서 아래로<small>상자 = 제목 + (?) + 오른쪽 링크 + [칸 묶음 · 줄 목록 · 카드 · 미니 부품]</small></div><div><b>아래 단추</b> — 1줄 고정<small>삭제 ……… 되돌리기 · ○○ 저장</small></div></div>
 <pre class="mp-code">창 = {
   head:  { name, dot, status:[{t,tone}], info:[…], badges:[…], links:[{t}] },
@@ -90,19 +90,21 @@ function demoOpt(h, o) {
 }
 
 const { head, tabs, box, rows, foot, todo, render, mountFields, pill } = PANEL;
-const NOTION_LINK = '<span class="nlk"><a class="link">노션 ↗</a></span>'; /* 머리 3줄 = 노션 ↗ 하나(다른 이동 링크 없음) */
+const NOTION_LINK = 'data-notion="demo"'; /* 머리 오른쪽 끝 [N] = 노션에서 열기 하나(다른 이동 링크 없음) */
 const cell = (lab, html, w) => `<div class="mp-cell"><span class="lab">${lab}</span><div class="panel mp-pn" style="${w ? "width:" + w + "px" : ""}">${html}</div></div>`;
 const put = (id, html) => document.getElementById(id).innerHTML = html;
 const gchip = g => `<span class="gchip ${/^초/.test(g) ? "elem" : /^중/.test(g) ? "mid" : "high"}">${g}</span>`;
 // 1 머리
 put("h1", [
-  cell("클래스", head({ name: "중1 수학", dot: "#B794F6", status: [{ t: "운영 중", tone: "green" }], info: ["클래스", "이하다"], linksHtml: NOTION_LINK })),
-  cell("학생 — 이름을 바로 고침", head({ icon: IC(menuIcon("students")), name: "장예린", nameInput: "새 학생 이름", status: [{ t: "등록 중", tone: "green" }], help: "등록상태는 자동이에요", info: ["하다고"], badges: [gchip("고3")], linksHtml: NOTION_LINK })),
-  cell("수업 — 날짜·시각은 2줄", head({ name: "초등 영어", dot: "#E88FB5", info: ["2026.11.11(수) 14:30"], badges: [pill({ t: "정규", tone: "blue" })], linksHtml: NOTION_LINK })),
-  cell("일정 — 제목 앞 = 메뉴 아이콘", head({ icon: IC(menuIcon("events")), name: "기말고사 대비 보충 주간", info: ["일정"] })),
-  cell("등록 — 누구의 등록인지", head({ name: "중1 수학", dot: "#B794F6", status: [{ t: "작성 중", tone: "yellow" }], info: ["등록", "장예린", "하다고"], badges: [gchip("고3")] })),
-  cell("라이브러리 — 이름 … 오른쪽 상태 / 값 목록(화면은 정의만)", head({ icon: IC("bookc"), name: "개념원리 중등 수학 1-2", state: { t: "사용 중", tone: "green" }, infoLine: ["중등수학 1-2", "160쪽"], linksHtml: NOTION_LINK })),
-  cell("라이브러리 — 고치는 중 · 미사용 · 빈 값은 건너뜀", head({ icon: IC("package"), name: "점토 공예", draft: true, state: { t: "미사용", tone: "gray" }, infoLine: ["공예", "", "8차시"], linksHtml: NOTION_LINK })),
+  cell("학생 — 이름을 바로 고침 · 소속 = 학교 학년", head({ icon: IC(menuIcon("students")), nameHtml: '<input class="hname" value="장예린" placeholder="새 학생 이름">', state: { t: "등록 중", tone: "green" }, help: "등록상태는 자동이에요", belong: "하다고 고3", info: ["2026.09.01 - 현재"], notion: NOTION_LINK }), 360),
+  cell("등록 — 소속 = 클래스(색 점 없이 글자만)", head({ icon: IC("usercheck"), name: "강도윤", state: { t: "수강 중", tone: "green" }, belong: "중등 과학", info: ["박하다", "2026.09.01 - 현재"], notion: NOTION_LINK }), 360),
+  cell("클래스 — 앞 = 색 점", head({ dot: "#B794F6", name: "중1 수학", belong: "보습 · 중등 수학", info: ["이하다", "학생 7명"], notion: NOTION_LINK }), 360),
+  cell("시간표 — 자물쇠", head({ dot: "#B794F6", name: "중1 수학", lock: `<button class="lockbtn" title="잠금 해제">${IC("lock")}</button>`, belong: "월 16:00-17:00", info: ["이하다", "7명", "그룹"], notion: NOTION_LINK }), 360),
+  cell("수업 — 상태 칩 + 자물쇠", head({ dot: "#E88FB5", name: "초등 영어", state: { t: "정규", tone: "blue" }, lock: `<button class="lockbtn" title="잠금 해제">${IC("lock")}</button>`, belong: "11.11(수) 14:30-15:30", info: ["김하다", "출석 8/12"], notion: NOTION_LINK }), 360),
+  cell("라이브러리 — 고치는 중 · 빈 값은 건너뜀", head({ icon: IC("package"), name: "점토 공예", draft: true, state: { t: "미사용", tone: "gray" }, belong: "공예", info: ["", "8차시"], notion: NOTION_LINK }), 360),
+  cell("긴 이름 — 폭 3/5에서 두 줄", head({ icon: IC("bookc"), name: "백발백중 최종점검 중2 영어 2학기 중간 (동아)", state: { t: "사용 중", tone: "green" }, belong: "중등영어2", info: ["6회"], notion: NOTION_LINK }), 360),
+  cell("아주 긴 이름 — 두 줄도 넘으면 …", head({ icon: IC("bookc"), name: "백발백중 최종점검 중2 영어 2학기 중간 (동아) 개정판 실전 모의고사 5회분 포함", state: { t: "사용 중", tone: "green" }, belong: "중등영어2", info: ["6회"], notion: NOTION_LINK }), 360),
+  cell("시즌 — 소속이 없는 창", head({ icon: IC("gitcommit"), name: "2026 2학기", state: { t: "운영 중", tone: "green" }, info: ["2026.09.01 - 2026.12.19"], notion: NOTION_LINK }), 360),
 ].join(""));
 // 2 탭 바
 put("h2", [
@@ -182,9 +184,9 @@ put("h9", [
 put("h10", [cell("고친 게 없을 때", foot({ del: true, save: "클래스 저장" })), cell("고쳤을 때", foot({ del: true, undo: true, save: "클래스 저장", saveOn: true })), cell("새로 만드는 중", foot({ save: "학생 저장", saveOn: true }))].join(""));
 // 전체 예시
 const ex = id => { const d = document.createElement("div"); d.className = "mp-cell"; d.innerHTML = `<span class="lab">${id}</span><div class="panel mp-pn"></div>`; document.getElementById("h11").appendChild(d); return d.querySelector(".mp-pn") };
-render(ex("클래스 창"), { head: { name: "중1 수학", dot: "#B794F6", status: [{ t: "운영 중", tone: "green" }], info: ["클래스", "이하다"], linksHtml: NOTION_LINK }, tabs: [{ id: "i", label: "정보" }, { id: "t", label: "시간표", n: 2 }, { id: "s", label: "학생", n: 7 }, { id: "b", label: "교재", n: 3 }], tab: "i", boxes: [{ title: "기본", fields: [{ label: "클래스 이름", value: "중1 수학" }, { label: "개강일 – 종강일", type: "range", value: ["", ""], help: "모르면 비워 두세요" }, { label: "수강료", type: "num", value: "250000" }] }], foot: { del: true, save: "클래스 저장" } });
-render(ex("학생 창"), { head: { name: "장예린", nameInput: "새 학생 이름", status: [{ t: "등록 중", tone: "green" }], info: ["하다고"], badges: [gchip("고3")], linksHtml: NOTION_LINK }, tabs: [{ id: "i", label: "정보" }, { id: "e", label: "등록", n: 2 }, { id: "c", label: "일정", disabled: true }, { id: "g", label: "성적" }], tab: "i", boxes: [{ title: "문의", fields: [{ label: "문의일시", type: "date", value: "2026-08-29" }, { label: "메모(내부용)", type: "memo" }] }, { title: "기본정보", fields: [{ label: "학교", value: "하다고" }, { label: "학년", value: "고3" }] }], foot: { del: true, save: "학생 저장" } });
-render(ex("수업 창"), { head: { name: "초등 영어", dot: "#E88FB5", info: ["2026.11.11(수) 14:30"], badges: [pill({ t: "정규", tone: "blue" })], linksHtml: NOTION_LINK }, tabs: [{ id: "a", label: "출결", n: "8/12" }, { id: "l", label: "학습기록", n: 1 }, { id: "r", label: "보고서" }, { id: "i", label: "정보" }], tab: "a", boxes: [{ title: "출결", help: "출석·결석을 눌러 넣어요", right: '<button class="btn sm">모두 출석</button>', rows: [{ t: "신지안", sub: "바다초 초1", tag: "출석" }, { t: "김다은", sub: "푸른중", tag: "결석" }] }], foot: { save: "수업 저장" } });
+render(ex("클래스 창"), { head: { name: "중1 수학", dot: "#B794F6", belong: "보습 · 중등 수학", info: ["이하다", "학생 7명"], notion: NOTION_LINK }, tabs: [{ id: "i", label: "정보" }, { id: "t", label: "시간표", n: 2 }, { id: "s", label: "학생", n: 7 }, { id: "b", label: "교재", n: 3 }], tab: "i", boxes: [{ title: "기본", fields: [{ label: "클래스 이름", value: "중1 수학" }, { label: "개강일 – 종강일", type: "range", value: ["", ""], help: "모르면 비워 두세요" }, { label: "수강료", type: "num", value: "250000" }] }], foot: { del: true, save: "클래스 저장" } });
+render(ex("학생 창"), { head: { icon: IC(menuIcon("students")), nameHtml: '<input class="hname" value="장예린" placeholder="새 학생 이름">', state: { t: "등록 중", tone: "green" }, belong: "하다고 고3", info: ["2026.09.01 - 현재"], notion: NOTION_LINK }, tabs: [{ id: "i", label: "정보" }, { id: "e", label: "등록", n: 2 }, { id: "c", label: "일정", disabled: true }, { id: "g", label: "성적" }], tab: "i", boxes: [{ title: "문의", fields: [{ label: "문의일시", type: "date", value: "2026-08-29" }, { label: "메모(내부용)", type: "memo" }] }, { title: "기본정보", fields: [{ label: "학교", value: "하다고" }, { label: "학년", value: "고3" }] }], foot: { del: true, save: "학생 저장" } });
+render(ex("수업 창"), { head: { name: "초등 영어", dot: "#E88FB5", state: { t: "정규", tone: "blue" }, belong: "11.11(수) 14:30-15:30", info: ["김하다", "출석 8/12"], notion: NOTION_LINK }, tabs: [{ id: "a", label: "출결", n: "8/12" }, { id: "l", label: "학습기록", n: 1 }, { id: "r", label: "보고서" }, { id: "i", label: "정보" }], tab: "a", boxes: [{ title: "출결", help: "출석·결석을 눌러 넣어요", right: '<button class="btn sm">모두 출석</button>', rows: [{ t: "신지안", sub: "바다초 초1", tag: "출석" }, { t: "김다은", sub: "푸른중", tag: "결석" }] }], foot: { save: "수업 저장" } });
 document.querySelectorAll(".mp-pn .hname").forEach(i=>i.closest(".mp-pn").classList.add("stpanel"));
-</script><script src="module-icons.js?v=434"></script>
+</script><script src="module-icons.js?v=436"></script>
 </body></html>
