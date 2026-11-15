@@ -43,9 +43,9 @@ addEventListener("scroll",e=>{if(OPEN&&!OPEN.pop.contains(e.target))place(OPEN)}
 // 목록 자리(v46, 261113 밤 사용성 시험: 위로 열릴 때 칸을 덮고 화면 맨 위에 붙었음): 아래에 다 들어가면 아래, 아니면 위에 다 들어가면 위,
 // 둘 다 모자라면 넓은 쪽에 그 높이만큼(안에서 스크롤). 위로 열 때는 아래 끝을 칸 위 4에 붙여, 찾기로 목록이 줄어도 칸에 붙어 있음. 칸은 절대 가리지 않음
 // v47: 칸 아래 자리가 모자라면 칸이 든 창(스크롤 상자)을 먼저 올려 목록이 아래로 열리게(사용성 시험: 창 아래 칸에서 목록이 위로 열려 창 머리·도구를 가렸음)
-function lift(fld,pop){const need=Math.min(420,pop.scrollHeight||pop.offsetHeight)+12;let r=fld.getBoundingClientRect();if(innerHeight-8-r.bottom>=need)return;
-  let sc=fld.parentElement;while(sc&&sc!==document.body){const st=getComputedStyle(sc);if(/(auto|scroll)/.test(st.overflowY)&&sc.scrollHeight>sc.clientHeight+1)break;sc=sc.parentElement}if(!sc||sc===document.body)return;
-  const sr=sc.getBoundingClientRect();const want=Math.min(r.top-sr.top-12,need-(innerHeight-8-r.bottom));const room=sc.scrollHeight-sc.clientHeight-sc.scrollTop;const d=Math.max(0,Math.min(want,room));if(d>0)sc.scrollTop+=d}
+function lift(fld,pop){const need=Math.min(420,pop.scrollHeight||pop.offsetHeight||360)+12;/* v48: 아직 안 그려진 목록은 360으로 어림 */let r=fld.getBoundingClientRect();if(innerHeight-8-r.bottom>=need)return;
+  let sc=fld.parentElement;while(sc&&sc!==document.body){const st=getComputedStyle(sc);if(/(auto|scroll)/.test(st.overflowY))break;/* v48: 지금 스크롤이 없어도 창이면 여백을 붙여 올림 */sc=sc.parentElement}if(!sc||sc===document.body)return;
+  const sr=sc.getBoundingClientRect();const want=Math.min(r.top-sr.top-12,need-(innerHeight-8-r.bottom));let room=sc.scrollHeight-sc.clientHeight-sc.scrollTop;if(want>room){/* v48(365판, 어사이드 사용성 3): 창 끝 칸이라 올릴 자리가 없으면 잠깐 아래 여백을 붙여 올림 — 목록을 닫으면 여백도 없앰 */const sp=document.createElement("div");sp.className="pk-lift";sp.style.cssText="flex:none;height:"+(want+sc.clientHeight)+"px";/* 내용이 창보다 짧아도 올릴 수 있게 넉넉히 */sc.appendChild(sp);room=want;const o=OPEN;setTimeout(()=>{const prev=o&&o.onClose;if(o)o.onClose=()=>{sp.remove();prev&&prev()};else sp.remove()},0)}const d=Math.max(0,Math.min(want,room));if(d>0)sc.scrollTop+=d}
 function place(o){if(!o.fld.isConnected){shut();return} /* v48: 칸이 다시 그려져 없어지면 목록도 닫음(사용성 시험: 형제자매 고른 뒤 왼쪽 위에 막대로 남았음) */const r=o.fld.getBoundingClientRect(),p=o.pop;p.style.width=r.width+"px";p.style.left=r.left+"px";p.style.maxHeight="420px";p.style.top="0px";p.style.bottom="auto";
   const nat=Math.min(420,p.scrollHeight||p.offsetHeight);const dn=innerHeight-8-(r.bottom+4),up=r.top-4-8;
   const below=nat<=dn||(nat>up&&dn>=up);const room=Math.max(120,below?dn:up);p.style.maxHeight=Math.min(420,room)+"px";
@@ -111,7 +111,7 @@ function cls(host,o){const st={value:o.value??null};
     else if(e.key==="Enter"&&rows[hi]){e.preventDefault();pick(rows[hi])}else if(e.key==="Escape"){e.preventDefault();e.stopPropagation();if(inp.value){inp.value="";list()}else{shut();inp.blur();if(st.value)draw()}}};
   inp.addEventListener("blur",()=>setTimeout(()=>{if(!OPEN&&st.value)draw()},120));
   function endedDialog(){const L0=o.classes.filter(ended).sort((a,b)=>b.close.localeCompare(a.close));const T=[...new Set(L0.map(c=>c.teacher))];
-    dialog(`<h2>종료된 클래스 찾기</h2><div class="hp-bar">${searchBox("클래스·강사 찾기")}${T.length>1?`<select class="hp-sel"><option value="">강사 전체</option>${T.map(t=>`<option>${esc(t)}</option>`).join("")}</select>`:""}</div>
+    dialog(`<h2>종료된 클래스 찾기</h2><div class="hp-bar">${searchBox("클래스·강사 검색")}${T.length>1?`<select class="hp-sel"><option value="">강사 전체</option>${T.map(t=>`<option>${esc(t)}</option>`).join("")}</select>`:""}</div>
       <div class="hp-list"></div><div class="hp-act-row"><span class="hp-hint">누르면 다시 열지 묻고 그 칸에 들어가요</span><span class="hp-sp"></span><button type="button" class="hp-btn" data-x>닫기</button></div>`,(d,close)=>{
       const L=d.querySelector(".hp-list"),inp=d.querySelector("input"),sel=d.querySelector("select");
       const draw2=()=>{const q=inp.value.trim().toLowerCase(),t=sel?sel.value:"";const xs=L0.filter(c=>(!q||(c.name+" "+c.teacher).toLowerCase().includes(q))&&(!t||c.teacher===t));
@@ -184,7 +184,7 @@ function stu(host,o){const st={value:[...(o.value||[])]};const S=id=>o.students.
   inp.onkeydown=e=>{if(e.key==="Escape"){e.preventDefault();e.stopPropagation();if(inp.value){inp.value="";redrawPop&&redrawPop()}else{shut();inp.blur()}}
     else if(e.key==="ArrowDown"){e.preventDefault();open();const f=OPEN&&OPEN.pop.querySelector(".hp-s[data-id]");if(f)f.focus()}};
   function findDialog(){const grades=[...new Set(o.students.map(x=>x.grade).filter(Boolean))];const pk=new Set();
-    dialog(`<h2>${esc(o.searchTitle||"학생 찾기")}</h2><div class="hp-bar">${searchBox("이름·학교 찾기")}<select class="hp-sel"><option value="">학년 전체</option>${grades.map(g=>`<option>${esc(g)}</option>`).join("")}</select></div>
+    dialog(`<h2>${esc(o.searchTitle||"학생 찾기")}</h2><div class="hp-bar">${searchBox("이름·학교 검색")}<select class="hp-sel"><option value="">학년 전체</option>${grades.map(g=>`<option>${esc(g)}</option>`).join("")}</select></div>
       <div class="hp-list"></div><div class="hp-act-row"><span class="hp-hint" data-n>0명 선택</span><span class="hp-sp"></span><button type="button" class="hp-btn" data-x>취소</button><button type="button" class="hp-btn pri" data-ok disabled>넣기</button></div>`,(d,close)=>{
       const L=d.querySelector(".hp-list"),inp=d.querySelector("input"),sel=d.querySelector("select"),ok=d.querySelector("[data-ok]");
       const cnt=()=>{d.querySelector("[data-n]").textContent=`${pk.size}명 선택`;ok.disabled=!pk.size;ok.textContent=pk.size?`${pk.size}명 넣기`:"넣기"};

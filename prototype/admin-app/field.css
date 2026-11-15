@@ -262,3 +262,6 @@
 .hf-box.hf-segbox{background:var(--canvas,#F7F8FA);border-color:rgba(17,24,39,.06)}
 /* 365판(기본 옷): 잠긴·고칠 수 없는 칸 = 투명 + 아주 옅은 선 + 흐린 글자(꺼진 [우선]과 같은 말) — 연회색 = 손대는 곳이라 손댈 수 없는 칸은 빼냄 */
 .hf.dis .hf-box{background:transparent;border-color:var(--field-line,rgba(17,24,39,.06))}
+/* 386판: 나눔 단추 안 아이콘(그룹·개별) */
+.hf-seg button{display:inline-flex;align-items:center;justify-content:center;gap:5px}
+.hf-seg button svg.i{width:14px;height:14px;flex:none}

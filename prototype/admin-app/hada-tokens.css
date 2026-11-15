@@ -70,3 +70,6 @@
  --icon-arrow-up-right:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%234E5968' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='7' y1='17' x2='17' y2='7'%3E%3C/line%3E%3Cpolyline points='7 7 17 7 17 17'%3E%3C/polyline%3E%3C/svg%3E");
 }
 @media(max-width:700px){:root{--text-display:1.75rem;--logo-h:1.75rem}}
+
+/* 411판(대표): 색 알약 — 둥근 사각(6), 글자 한 색, 배경만 색(55%로 연하게) */
+:root{--pill-radius:6px;--pill-ink:#37352F;--pill-mix:55%;--pill-veil:rgba(255,255,255,.45)}

@@ -2722,3 +2722,102 @@ table.stt:has(.rowpr) :is(th,td).op{width:68px;white-space:nowrap}
 /* 363판: 오늘 [할 일] 줄의 숫자 = 메뉴 숫자와 같은 배지 */
 .crow.tdl .cl svg.i{width:14px;height:14px;vertical-align:-2px;color:var(--muted)}
 .crow.tdl .ca{align-items:center}.crow.tdl .ca .todo{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:20px;padding:0 6px;border-radius:999px;background:var(--warning-soft);color:var(--warning-ink);font-size:var(--text-micro);font-weight:700}
+/* 373판(대표 "등록할 때 열리는 창이 이질감 — 등록 정보창과 같게"): 작성 중·첫 등록 카드도 저장한 등록과 같은 모양(바탕·왼쪽 띠 없음, 위 구분선) — 작성 중은 [작성 중] 알약으로만 */
+:is(#sp,.stpanel) .encard.edit{border-left:0;padding-left:0;background:transparent;box-shadow:none}
+/* 375판(대표 "그룹·개별 색과 아이콘"): 그룹 = 파랑 · 여러 사람 / 개별 = 갈색 · 한 사람 */
+.kpl{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:999px;font-size:var(--text-caption);font-weight:700;white-space:nowrap;flex:none;margin-left:auto}
+.kpl svg.i{width:13px;height:13px}
+.kpl.grp{background:var(--info-soft);color:var(--info-ink)}
+.kpl.ind{background:var(--brand-soft);color:var(--brand-deep)}
+.ttrow .kpl+.r2{margin-left:8px}
+/* 375판: 등록 카드에서 고르는 줄 — 켬 = 체크·진한 글자 / 끔 = 빈 동그라미·흐린 글자 */
+.ttrow.pick{cursor:pointer;gap:10px}
+.ttrow.pick:hover{background:var(--brand-tint)}
+.ttrow.pick.off .t{color:var(--subtle)}.ttrow.pick.off .kpl{opacity:.55}
+.sck{flex:none;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;border:1.5px solid var(--brand-mid);background:var(--surface);color:#fff}
+.sck.on{background:var(--brand-deep);border-color:var(--brand-deep)}.sck svg.i{width:14px;height:14px}
+.sck.on svg.i{stroke:#fff;color:#fff}
+/* 376판(대표 "책제목 … 그룹/개별 / 진도율바"): 교재 줄 두 줄 — 첫 줄 제목(길면 줄바꿈) + 오른쪽 알약, 둘째 줄 진도율 막대(폭 전체) + % */
+.ttrow.bk2{flex-wrap:wrap;row-gap:6px;padding-top:10px;padding-bottom:10px;height:auto;min-height:56px;align-items:flex-start}
+.ttrow.bk2 .t{flex:1 1 0;min-width:0;white-space:normal;line-height:1.4}
+.ttrow.bk2 .l2{flex:1 1 100%;display:flex;align-items:center;gap:8px}
+.ttrow.bk2 .l2 .pbar{flex:1;width:auto}
+.ttrow.bk2 .l2 .r2{margin:0!important;font-size:var(--text-caption);color:var(--muted);font-variant-numeric:tabular-nums}
+/* 377판(대표): 교재 제목이 한 줄을 넘으면 줄바꿈 없이 줄임표(마우스를 올리면 전체 이름) */
+.ttrow.bk2{align-items:center}
+.ttrow.bk2 .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 378판(대표 "색이 끊어져요 — 끝까지"): 올린 줄·고른 줄 바탕을 줄 전체에 — 휴지통 칸(투명) 뒤로도 같은 색이 이어짐. 모든 표 */
+table.stt tr[data-id]:not(.sdel):hover{background:var(--brand-tint,#FBF8F4)}
+table.stt tr.sel,table.stt tr.sel:hover{background:var(--sel-bg)}
+.ttrow.dgo2{cursor:pointer}:is(#sp,#lp,.body>.panel) .ttrows .ttrow.dgo2:hover{background:var(--brand-tint)}
+/* 380판: 등록 창 머리 — 아이콘은 클래스 색, 이름 옆 클래스 이름(같은 크기·조금 옅게) */
+.phead .enic{display:inline-flex}.phead .enic svg.i{stroke:currentColor}
+.phead .phn.hcls2{margin-left:8px;font-weight:600;color:var(--muted)}
+/* 382판(대표): 등록 창 머리 = 등록 아이콘(클래스 색) 이름 · 클래스 아이콘 클래스 이름 */
+.phead .phn.hcls2{display:inline-flex;align-items:center;gap:4px;margin-left:10px}
+.phead .phn.hcls2 svg{width:16px;height:16px;color:var(--muted);flex:none}
+.phead .phn.hcls2 .dotc{display:inline-block;width:10px;height:10px;border-radius:50%;flex:none;margin-right:2px}
+/* 384판(대표 "학생·등록 머리 글자 통일, 학교 조금 크게, 정렬"): 머리 1줄 = 이름 17/800 + 보조 글(학교 · 클래스) 13/500 회색, 모두 세로 가운데 */
+.phead .pt h2{font-size:17px;font-weight:800;align-items:center}
+.phead .pt h2 .phn,.phead .pt h2 .hname{font-size:17px;font-weight:800;line-height:24px}
+.phead .pt h2 .hsub,.phead .pt h2 .hsub.hcls2{font-size:13px;font-weight:500;color:var(--muted);line-height:24px;margin-left:6px;display:inline-flex;align-items:center;gap:5px;position:static;top:auto;vertical-align:baseline}
+.phead .pt h2 .hsub.hcls2 .dotc{width:10px;height:10px;border-radius:50%;flex:none;margin:0}
+.phead .pt h2 .gchip,.phead .pt h2 .tag{align-self:center}
+#sp .phead .pt h2 .hname+.hsub{margin-left:0}
+/* 387판: 정보 카드·창 제목 안의 그룹/개별 알약은 글 바로 옆(오른쪽 끝으로 밀지 않음) */
+.hc-r .kpl,h3 .kpl{margin-left:6px}
+/* 390판(대표 A안): 시간표 창 머리 = 요일·시간(크게) ● 클래스 / 강사 · 인원 · 그룹|개별 / 노션 ↗ · 오른쪽 = 자물쇠(운영 중) 또는 [예정]·[종료] */
+.phead .pt h2 .hsub.hcls2.bcn{font-size:15px;font-weight:700;color:var(--ink);margin-left:8px}
+.phead .pinfo{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.phead .pinfo .hic{display:inline-flex;align-items:center;gap:4px}.phead .pinfo .hic svg.i{width:14px;height:14px}
+.phead .pinfo .kpl{margin-left:2px}
+.sstag{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;font-size:var(--text-caption);font-weight:700;white-space:nowrap}
+.sstag.prep{background:var(--info-soft);color:var(--info-ink)}.sstag.end{background:var(--brand-soft);color:var(--muted)}
+/* 394판(대표): [예정] = 노랑, [종료] = 빨강 */
+.sstag.prep{background:var(--warning-soft);color:var(--warning-ink)}.sstag.end{background:var(--danger-soft);color:var(--danger-ink)}
+/* 395판(대표): 개별 = 초록, 그룹 = 파랑 — 알약(modePill)·나눔 단추(segKind) 모두 */
+.kpl.ind{background:var(--success-soft);color:var(--success-ink)}
+.kpl svg.i,.ttrow .kpl svg.i{color:currentColor!important;stroke:currentColor}
+/* 397판(대표 A안): 등록·클래스 창 [교재] 탭 줄 = 학생 창 등록 요약과 같은 두 줄(제목 … 그룹|개별 / 진도율 막대 · % · 범위) — 상태 단추는 제목 앞 */
+.ttrow.bk2 .pgst{flex:none;align-self:center}
+.ttrow.bk2 .l2 .r2+.r2::before{content:"· ";color:var(--subtle)}
+:is(#sp,#lp,.body>.panel) .pgsecs .pgsec+.pgsec{margin-top:12px}
+/* 398판(대표 "교재 추가 = 아래 카드 잔상 모양"): 목록 아래 점선 카드([+ 등록 추가]와 같은 모양) — 제목 줄의 글자 단추는 없앰 */
+.pgaddc{height:56px;width:100%;margin-top:12px;border:1.5px dashed var(--line);border-radius:var(--radius-md,10px);background:none;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--muted);font:inherit;font-size:var(--text-small);font-weight:700;cursor:pointer}
+.pgaddc:hover{border-color:var(--brand-mid);color:var(--brand-deep);background:var(--brand-tint)}
+.pgaddc svg.i{width:16px;height:16px}
+.spill.pgn::before{content:none}
+
+/* 406판(대표): [수업량][단위] 한 줄 — 숫자 칸 옆에 단위 고르기 */
+.qupair{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:start}.qupair>.hfh{min-width:0}
+/* 단위 칸 = 연락처 줄 [우선] 단추와 같은 폭(52), 아이콘 없이 알약만 */
+.qupair:not(.half)>[data-hf="unit"] .hf-box{min-width:52px;padding:0 6px;justify-content:center;gap:0}.qupair:not(.half)>[data-hf="unit"] .hf-box>svg{display:none}.qupair:not(.half)>[data-hf="unit"] .hf-val{flex:none}
+.qupair.half{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+
+/* 411판(대표): 색 알약 한 벌 — 모서리 6(반원 ✕) · 글자 한 색(--pill-ink) · 배경만 색, 55%로 연하게. 숫자 배지(.pbadge·.tn·.hp-n)는 그대로 둥글게 */
+.spill,.kpl,.sstag,.tag,.pill,.rpill,.gchip,.tchip,.stp,.mchip,.hfm-c{border-radius:var(--pill-radius)!important}
+.spill,.kpl,.sstag,.tag,.pill,.rpill,.gchip,.tchip,.stp,.mchip{color:var(--pill-ink)!important;background-image:linear-gradient(var(--pill-veil),var(--pill-veil))}
+.kpl svg,.mchip svg,.spill svg,.sstag svg{color:var(--pill-ink)!important;stroke:currentColor}
+.nc-default{background:color-mix(in srgb, #E3E2E0 var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
+.nc-gray{background:color-mix(in srgb, #E3E2E0 var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
+.nc-brown{background:color-mix(in srgb, #EEE0DA var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
+.nc-orange{background:color-mix(in srgb, #FADEC9 var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
+.nc-yellow{background:color-mix(in srgb, #FDECC8 var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
+.nc-green{background:color-mix(in srgb, #DBEDDB var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
+.nc-blue{background:color-mix(in srgb, #D3E5EF var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
+.nc-purple{background:color-mix(in srgb, #E8DEEE var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
+.nc-pink{background:color-mix(in srgb, #F5E0E9 var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
+.nc-red{background:color-mix(in srgb, #FFE2DD var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
+.bkcov.one+.hfgrid{margin-top:12px}
+/* 415판: 숫자 + 단위 한 줄 — 단위 칸은 [우선] 단추 비율(알약 폭만큼, 최소 52). 단위 칸 아래 안내 글은 폭을 넓히지 않게 숨김 */
+.qupair:not(.half)>[data-hf="unit"] .hf-msg{display:none}.hf-pre{color:var(--text-muted);font-weight:600}
+/* 416판(대표): 숫자 + 단위 한 줄은 숫자 칸 아이콘도 없음 — 단위 글자가 뜻을 알려 줌(클래스 수업량 · 라이브러리 분량) */
+.qupair:not(.half)>.hfh:first-child .hf-box>svg:first-child{display:none}
+
+/* 420판(대표): 라이브러리 창 머리 2줄 — 한 줄에 과목 · 출판사 · 분량 · 가격(넘치면 출판사를 뺌) */
+.bkhinfo{display:flex;flex-wrap:nowrap;white-space:nowrap;overflow:hidden;min-width:0;max-width:100%}.bkhinfo small{flex:none}.phead .pinfo:has(.bkhinfo){min-width:0;overflow:hidden}
+.phead .pinfo .bkhinfo .phdot{display:inline-block;margin:0 6px}
+.phead h2 .bkuse{margin-left:auto;flex:none}.phead h2:has(.bkuse) .phn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* 424판(대표): 오른쪽 창 상자 제목 앞 아이콘 없음(기준 5장 F3) — 칸마다 아이콘이 있어 겹침. 한 곳에서 끔 */
+:is(#lp,#sp,.body>.panel,.panel) .box>h3>svg.i:first-child{display:none}
