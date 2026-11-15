@@ -1619,7 +1619,15 @@ function panelAssign(p,t,all,noClass){
 function assignConflicts(cur,all){if(!cur.sid||!cur.cls)return[];const mine=all.filter(b=>b.regs.some(r=>{const e=enr(r);return e&&e.studentId===cur.sid}));const add=all.filter(b=>cur.cls.includes(b.classId)&&b.mode==="group");const out=[];
   add.forEach(a=>[...mine,...add].forEach(m=>{if(m!==a&&m.day===a.day&&m.start<a.end&&a.start<m.end&&m.classId!==a.classId){const msg=`${DAYS[a.day]} ${fmt(a.start)} ${cls(a.classId).name}가 ${cls(m.classId).name}(${fmt(m.start)})와 겹쳐요`;if(!out.includes(msg))out.push(msg)}}));return out}
 /* ================= 대화상자 ================= */
-function modal(html,bind){const r=document.getElementById("modalRoot");r.innerHTML=`<div class="modal"><div class="dlg">${html}</div></div>`;const m=r.firstChild;m.onclick=e=>{if(e.target===m)close()};const close=()=>r.innerHTML="";bind(m,close);return close}
+/* 309판(연결): 대화상자의 옛 칸(.field 안 이름 + 날짜·글 칸)을 열 때 입력칸 모듈 칸으로 바꿈 — 값·id·change 이벤트는 원래 칸 그대로라 각 대화상자 코드는 손대지 않음 */
+function hfUpgrade(root){if(!window.HF||!root)return;root.querySelectorAll(".field").forEach(f=>{const lb=f.querySelector(":scope>.lbl");if(!lb)return;const label=lb.textContent.trim(),tip=[...lb.querySelectorAll(".qhelp")].map(x=>x.outerHTML).join("");
+    const nats=[...f.querySelectorAll(".dwrap>input.dnat")];const host=document.createElement("div");host.className="hfh";
+    if(nats.length===1||nats.length===2){const keep=document.createElement("span");keep.hidden=true;nats.forEach(n=>keep.appendChild(n));const fire=(n,v)=>{if((n.value||"")===(v||""))return;n.value=v||"";n.dispatchEvent(new Event("change",{bubbles:true}))};const dis=nats.some(n=>n.disabled);
+      if(nats.length===1)HF.date(host,{label,tipHtml:tip,value:nats[0].value,min:nats[0].getAttribute("min")||undefined,max:nats[0].getAttribute("max")||undefined,disabled:dis,clear:false,onChange:v=>fire(nats[0],v)});
+      else HF.dateRange(host,{label,tipHtml:tip,value:[nats[0].value,nats[1].value],disabled:dis,onChange:([a,b])=>{fire(nats[0],a);fire(nats[1],b)}});
+      f.replaceWith(host);host.appendChild(keep);return}
+    const inp=f.querySelector(":scope>input.inp:not([type=password]):not([type=hidden])");if(inp&&f.children.length===2){const r=HF.text(host,{label,tipHtml:tip,value:inp.value,max:+inp.getAttribute("maxlength")||100,placeholder:inp.placeholder||""});if(r&&r.el){r.el.id=inp.id;if(inp.name)r.el.name=inp.name}f.replaceWith(host)}})}
+function modal(html,bind){const r=document.getElementById("modalRoot");r.innerHTML=`<div class="modal"><div class="dlg">${html}</div></div>`;const m=r.firstChild;m.onclick=e=>{if(e.target===m)close()};const close=()=>r.innerHTML="";hfUpgrade(m);bind(m,close);return close}
 /* 고르기 목록(261112 대표 — 시간표·수업 같은 부품): 찾기 칸 → 테두리 목록(묶음 머리 위에 붙음) → 줄(체크·이름·학교·학년, 아래 작은 글씨) → 목록 아래 [다른 학생 찾기] */
 // 다니는 클래스(회색) — 겹침 글이 그중 한 반이면 그 반만 노랑 "반 16:00 겹침"으로 바꿔 한 번만(261112 대표)
 const stuClsBz=(id,bz)=>{const ns=DB.enrolls.filter(e=>e.studentId===id&&!e.ended).map(e=>cls(e.classId)).filter(Boolean).map(c=>c.name);const b=String(bz||"").replace(/ 수업$/,"");const hit=bz?ns.find(n=>b.startsWith(n+" ")):null;

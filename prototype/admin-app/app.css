@@ -2441,3 +2441,6 @@ table.stt tr[data-id].sel:not(.sdel):hover td{background:var(--sel-bg)}
 
 /* 305~306판: 등록 카드 안 칸 묶음 = 위 정보 줄과 12 띄움 · 등록 안내 줄 */
 .encard>.hfgrid{margin-top:12px}.encard .engd{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.encard .engd .btn svg.i{width:14px;height:14px}
+
+/* 309판: 대화상자 안 모듈 칸 간격 = 창과 같은 12 */
+.dlg .hfh{margin:0 0 12px}
