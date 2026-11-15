@@ -78,15 +78,18 @@
     return `<div class="pgsecs">${gs.map(g => `<div class="pgsec"><button type="button" class="pgsh" data-pgfold="${esc(g.key)}" aria-expanded="${!g.fold}"><span class="spill ${esc(g.pill)}">${esc(g.key)}</span><span class="hint">${g.count}${esc(g.unit || "")}</span><span class="sp"></span>${g.canFold && typeof IC === "function" ? IC(g.fold ? "down" : "up", "s") : ""}</button>${g.fold ? "" : g.body || ""}</div>`).join("")}</div>`;
   }
   // 6-2. 교재 줄(두 줄): 제목 … 그룹|개별 알약 / 진도율 막대 · % · 최근 범위 · 덧글. 줄 앞에는 아무것도 두지 않는다. 누르면 창 안 이동(data-drill)
-  //   rows = [{drill, title | titleHtml, modeHtml, pct(숫자 또는 ""), range, notes:[글자…]}]
+  //   rows = [{drill, title | titleHtml, modeHtml, pct(숫자 또는 ""), range, notes:[글자…], ro(다른 창 안의 요약 줄)}]
   function bookRows(rs) {
-    return `<div class="ttrows">${rs.map(r => `<div class="ttrow bk2 dgo2" data-drill="${esc(r.drill)}" title="눌러서 이 진도 보기">${r.titleHtml != null ? `<span class="t">${r.titleHtml}</span>` : `<span class="t" title="${esc(r.title)}">${esc(r.title)}</span>`}${r.modeHtml || ""}<span class="l2">${r.pct !== "" && r.pct != null ? `<span class="pbar"><i style="width:${r.pct}%"></i></span><span class="r2">${r.pct}%</span>` : ""}${r.range ? `<span class="r2">${esc(r.range)}</span>` : ""}${(r.notes || []).filter(Boolean).map(t => `<span class="r2">${esc(t)}</span>`).join("")}</span></div>`).join("")}</div>`;
+    return `<div class="ttrows">${rs.map(r => `<div class="ttrow${r.ro ? " ro" : ""} bk2 dgo2" data-drill="${esc(r.drill)}" title="눌러서 이 진도 보기">${r.titleHtml != null ? `<span class="t">${r.titleHtml}</span>` : `<span class="t" title="${esc(r.title)}">${esc(r.title)}</span>`}${r.modeHtml || ""}<span class="l2">${r.pct !== "" && r.pct != null ? `<span class="pbar"><i style="width:${r.pct}%"></i></span><span class="r2">${r.pct}%</span>` : ""}${r.range ? `<span class="r2">${esc(r.range)}</span>` : ""}${(r.notes || []).filter(Boolean).map(t => `<span class="r2">${esc(t)}</span>`).join("")}</span></div>`).join("")}</div>`;
   }
   // 6. 줄 목록: 이름 ……… 정보 · 꼬리표 ›
-  //   줄 = {attr(누를 때 쓸 속성 글자, 예: data-gobook="id"), title(툴팁), dot(색), t(이름), sub(정보 글) | subHtml, tag(꼬리표), arrow(false = 이동 없음)} · empty = 빈 목록 안내 글
-  function rows(rs, empty) {
+  //   줄 = {attr(누를 때 쓸 속성 글자, 예: data-gobook="id"), title(툴팁), cls(덧붙는 클래스), check{attr,on}(체크 줄), lead(앞 그림 HTML), dot(색), t(이름), sub(정보 글) | subHtml, tag(꼬리표), trail(뒤 알약 HTML), arrow(false = 이동 없음)}
+  //   empty = 빈 목록 안내 글 · opt = {ro(보기만 하는 목록), emptyRow(빈 목록도 목록 틀 안의 한 줄로)}
+  function rows(rs, empty, opt) {
+    opt = opt || {};
     const arrow = typeof IC === "function" ? IC("right", "s") : IC_.rightc;
-    return rs.length ? `<div class="ttrows">${rs.map(r => `<div class="ttrow"${r.attr ? " " + r.attr : r.go ? ` data-go="${esc(r.go)}"` : ""}${r.title ? ` title="${esc(r.title)}"` : ""}>${r.dot ? `<i class="cdot" style="background:${esc(r.dot)}"></i>` : ""}<span class="t">${esc(r.t)}</span>${r.subHtml != null ? `<span class="hint">${r.subHtml}</span>` : r.sub != null ? `<span class="hint">${esc(r.sub)}</span>` : ""}${r.tag ? `<span class="tag">${esc(r.tag)}</span>` : ""}${r.arrow === false ? "" : arrow}</div>`).join("")}</div>` : `<div class="hint">${esc(empty || "아직 없어요")}</div>`;
+    if (!rs.length) return opt.emptyRow ? `<div class="ttrows${opt.ro ? " ro" : ""}"><div class="ttrow ro"><span class="t none">${esc(empty || "없음")}</span></div></div>` : `<div class="hint">${esc(empty || "아직 없어요")}</div>`;
+    return `<div class="ttrows${opt.ro ? " ro" : ""}">${rs.map(r => { const tag = r.check ? "label" : "div"; return `<${tag} class="ttrow${r.cls ? " " + esc(r.cls) : ""}"${r.attr ? " " + r.attr : r.go ? ` data-go="${esc(r.go)}"` : ""}${r.title ? ` title="${esc(r.title)}"` : ""}>${r.check ? `<input type="checkbox" ${r.check.attr || ""} ${r.check.on ? "checked" : ""}>` : ""}${r.lead || ""}${r.dot ? `<i class="cdot" style="background:${esc(r.dot)}"></i>` : ""}<span class="t">${esc(r.t)}</span>${r.subHtml != null ? `<span class="hint">${r.subHtml}</span>` : r.sub != null ? `<span class="hint">${esc(r.sub)}</span>` : ""}${r.tag ? `<span class="tag">${esc(r.tag)}</span>` : ""}${r.trail || ""}${r.arrow === false || r.check ? "" : arrow}</${tag}>`; }).join("")}</div>`;
   }
   // 10. 아래 단추줄: 삭제 ……… 되돌리기 · ○○ 저장
   // 아래 줄 재료: 줄 창 = del · undo · save(+ ids, count) / 작업 창 = hint · back{id,label} · go{id,label,icon,off,title,count}
