@@ -2524,3 +2524,41 @@ table.stt:has(.rowpr) :is(th,td).op{width:68px;white-space:nowrap}
  body.pcards #pcards .scard:last-child{break-after:auto}
  body.pcards #pcards .scard section{break-inside:avoid}
 }
+/* 327판(대표): 학생 창 등록 = 카드 상자 대신 구분선(상자 안 상자 금지 — 기준 5장) */
+:is(#sp,.stpanel) .enlist{display:flex;flex-direction:column;gap:0}
+:is(#sp,.stpanel) .encard{border:0;border-radius:0;box-shadow:none;background:none;padding:16px 0;border-top:1px solid var(--line2)}
+:is(#sp,.stpanel) .enlist>.encard:first-child{border-top:0;padding-top:4px}
+:is(#sp,.stpanel) .encard.edit{border-left:3px solid var(--brand-deep);padding-left:12px;background:var(--brand-tint);box-shadow:none}
+:is(#sp,.stpanel) .encard.end{background:none}
+:is(#sp,.stpanel) .enlist>.enadd{margin-top:8px}
+/* 327판: 등록 화면 창 — 등록 안내 알림톡 줄을 위 기본 묶음에 붙임 */
+.box:has(+.rcbox){border-bottom:0;padding-bottom:0;margin-bottom:12px}
+.box.rcbox{padding-top:0}
+/* 328판(대표): [등록 추가] 위에도 구분선 */
+:is(#sp,.stpanel) .enlist>.encard+.enadd{position:relative;margin-top:33px}
+:is(#sp,.stpanel) .enlist>.encard+.enadd::before{content:"";position:absolute;left:-1px;right:-1px;top:-17px;border-top:1px solid var(--line2)}
+/* 330판: 학생 창 신규 등록 — 첫 등록 칸 · 클래스 정보 · 접힌 등록 3줄 */
+:is(#sp,.stpanel) .encard.new .cn{display:inline-flex;align-items:center;gap:6px}
+:is(#sp,.stpanel) .encard .from{font-size:12px;color:var(--muted)}
+.cinfo{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--brand-tint);font-size:13px}
+.cinfo .r{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.cinfo .k{color:var(--muted);width:44px;flex:none}
+.dchip{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:999px;background:var(--surface);border:1px solid var(--line2);font-size:12px;font-weight:600}
+.encard .flow{font-size:12px;color:var(--muted)}.encard .flow b{color:var(--ink)}
+:is(#sp,.stpanel) .encard.mini{cursor:pointer;padding:12px 0}
+:is(#sp,.stpanel) .encard.mini .per{font-size:12.5px;color:var(--muted);margin:2px 0 0 16px}
+:is(#sp,.stpanel) .encard.mini:hover .cn{text-decoration:underline}
+.encard .enfold{margin-top:8px}
+:is(#sp,.stpanel) .encard.mini .per .todo{color:var(--warning-ink,#9a5b00);font-weight:700}
+/* 332판(대표 B): 알림톡 전송 단추 = 카카오 노랑(보내기 전) · 보낸 뒤 [다시 전송]은 흰 단추 */
+.btn.rcb:not(.sent):not([disabled]){background:var(--kakao,#FEE500);border-color:var(--kakao,#FEE500);color:var(--kakao-ink,#191919)}
+.btn.rcb:not(.sent):not([disabled]):hover{background:var(--kakao-hover,#F5DC00);border-color:var(--kakao-hover,#F5DC00)}
+.btn.rcb:not(.sent):not([disabled]) svg{color:var(--kakao-ink,#191919)}
+/* 333판: 등록 제목 = 등록 화면 열기 링크, 오른쪽 펼치기/접기 */
+:is(#sp,.stpanel) .encard .cnlink{border:0;background:none;padding:0;font:inherit;font-size:15px;font-weight:700;color:var(--ink);cursor:pointer}
+:is(#sp,.stpanel) .encard .cnlink .ext{font-size:12px;color:var(--subtle);font-weight:600}
+:is(#sp,.stpanel) .encard .cnlink:hover{text-decoration:underline}
+:is(#sp,.stpanel) .encard.mini:hover .cn{text-decoration:none}
+:is(#sp,.stpanel) .encard.mini:hover .cnlink:hover{text-decoration:underline}
+/* 334판: 펼치고 접어도 클래스 줄 자리 고정 — 접힌 줄도 같은 위 여백 */
+:is(#sp,.stpanel) .encard.mini{padding:16px 0}
+:is(#sp,.stpanel) .enlist>.encard.mini:first-child{padding-top:4px}

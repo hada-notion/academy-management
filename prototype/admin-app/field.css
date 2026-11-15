@@ -222,7 +222,7 @@
 
 /* 307판: 좁은 칸(등록 카드 등)에서 날짜 한 줄이 잘리면 두 줄로 — 칸 폭 기준 */
 .hf:has(>.hf-range){container-type:inline-size}
-@container (max-width:300px){.hf-range{grid-template-columns:minmax(0,1fr)}.hf-range>.hf-dash{display:none}}
+@container (max-width:220px){.hf-range{grid-template-columns:minmax(0,1fr)}.hf-range>.hf-dash{display:none}}/* 326판: 창을 가장 좁게(320) 해도 날짜·시간 한 줄(기준 5장) — 220보다 좁을 때만 두 줄 */
 
 /* 311판: 여러 개 고르기 펼침 창 높이 상한 — 목록만 안에서 스크롤(체크해도 스크롤 그대로) */
 .hf-pop.mlpop{max-height:min(440px,70vh)}
@@ -235,3 +235,6 @@
 /* 323판: 좁은 칸(반 칸 등)에서 날짜 칸이 상자 밖으로 넘쳐 창에 가로 스크롤 생기던 것 — 좁으면 요일 숨기고 날짜 글자 줄어듦 */
 .hf-box.hf-dt{container-type:inline-size;overflow:hidden}
 @container (max-width:170px){.hf-dt .hf-dw{display:none}.hf-dt input.hf-d,.hf-dt input.hf-d:placeholder-shown{flex:1 1 0;width:auto;min-width:0}}
+/* 326판: 시작-끝 한 줄이 좁을 때(카드 안 등) 칸 안쪽 여백만 줄여 날짜 글자가 다 보이게 */
+@container (max-width:260px){.hf-range .hf-box{padding-left:8px;padding-right:8px;gap:6px}}
+@container (max-width:170px){.hf-dt input.hf-d::placeholder{font-size:12px;letter-spacing:-.2px}}
