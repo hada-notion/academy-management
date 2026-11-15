@@ -2199,11 +2199,6 @@ td.pgc .pgp{display:inline-block;min-width:4ch;text-align:right;font-variant-num
 .pgsecs{display:flex;flex-direction:column;gap:var(--space-3)}
 .pgsh{display:flex;align-items:center;gap:var(--space-2);width:100%;border:0;background:none;padding:0;margin:0 0 var(--space-2);font:inherit;cursor:pointer;color:var(--muted)}
 .pgsh .sp{flex:1}
-.pgst{flex:none;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:0;background:none;border-radius:var(--radius-sm);color:var(--subtle);cursor:pointer;margin-left:calc(-1 * var(--space-1))}
-.pgst:hover{background:var(--brand-soft);color:var(--brand-deep)}
-.pgstm{display:flex;flex-wrap:wrap;gap:var(--space-2);padding:var(--space-2) var(--space-3);border:1px solid var(--line);border-top:0;background:var(--surface)}
-.pgstm .spill{border:0;cursor:pointer;height:28px;padding:0 var(--space-3);font-size:var(--text-small)}
-.pgstm .spill.cur{box-shadow:inset 0 0 0 2px currentColor}
 
 /* ═════ 241판 ═════ 창 [시간표] 탭의 작은 주간 시간표 */
 .mwk{margin:0 0 var(--space-3);padding:var(--space-3);border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface)}
@@ -2240,8 +2235,6 @@ td.pgc .pgp{display:inline-block;min-width:4ch;text-align:right;font-variant-num
 .pgcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:var(--space-3)}
 .pgcard .bks{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted)}
 .pgcard .bks .pgbar{width:40px;margin-right:2px}
-.pgcard .pgst{width:24px;height:24px;margin-left:-4px}
-.pgcard .pgstm{padding:var(--space-2) 0 0;border:0;background:none}
 
 /* ═════ 245판 ═════ 등록 창 [현황] = 학부모 리포트 모양(student_report 값 그대로) */
 .seg-toggle{display:inline-flex;gap:2px;padding:4px;border-radius:999px;background:#F5EFE7}
@@ -2779,7 +2772,6 @@ table.stt tr.sel,table.stt tr.sel:hover{background:var(--sel-bg)}
 .kpl.ind{background:var(--success-soft);color:var(--success-ink)}
 .kpl svg.i,.ttrow .kpl svg.i{color:currentColor!important;stroke:currentColor}
 /* 397판(대표 A안): 등록·클래스 창 [교재] 탭 줄 = 학생 창 등록 요약과 같은 두 줄(제목 … 그룹|개별 / 진도율 막대 · % · 범위) — 상태 단추는 제목 앞 */
-.ttrow.bk2 .pgst{flex:none;align-self:center}
 .ttrow.bk2 .l2 .r2+.r2::before{content:"· ";color:var(--subtle)}
 :is(#sp,#lp,.body>.panel) .pgsecs .pgsec+.pgsec{margin-top:12px}
 /* 398판(대표 "교재 추가 = 아래 카드 잔상 모양"): 목록 아래 점선 카드([+ 등록 추가]와 같은 모양) — 제목 줄의 글자 단추는 없앰 */
@@ -2788,11 +2780,6 @@ table.stt tr.sel,table.stt tr.sel:hover{background:var(--sel-bg)}
 .pgaddc svg.i{width:16px;height:16px}
 .spill.pgn::before{content:none}
 
-/* 406판(대표): [수업량][단위] 한 줄 — 숫자 칸 옆에 단위 고르기 */
-.qupair{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:start}.qupair>.hfh{min-width:0}
-/* 단위 칸 = 연락처 줄 [우선] 단추와 같은 폭(52), 아이콘 없이 알약만 */
-.qupair:not(.half)>[data-hf="unit"] .hf-box{min-width:52px;padding:0 6px;justify-content:center;gap:0}.qupair:not(.half)>[data-hf="unit"] .hf-box>svg{display:none}.qupair:not(.half)>[data-hf="unit"] .hf-val{flex:none}
-.qupair.half{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 
 /* 411판(대표): 색 알약 한 벌 — 모서리 6(반원 ✕) · 글자 한 색(--pill-ink) · 배경만 색, 55%로 연하게. 숫자 배지(.pbadge·.tn·.hp-n)는 그대로 둥글게 */
 .spill,.kpl,.sstag,.tag,.pill,.rpill,.gchip,.tchip,.stp,.mchip,.hfm-c{border-radius:var(--pill-radius)!important}
@@ -2809,15 +2796,9 @@ table.stt tr.sel,table.stt tr.sel:hover{background:var(--sel-bg)}
 .nc-pink{background:color-mix(in srgb, #F5E0E9 var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
 .nc-red{background:color-mix(in srgb, #FFE2DD var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
 .bkcov.one+.hfgrid{margin-top:12px}
-/* 415판: 숫자 + 단위 한 줄 — 단위 칸은 [우선] 단추 비율(알약 폭만큼, 최소 52). 단위 칸 아래 안내 글은 폭을 넓히지 않게 숨김 */
-.qupair:not(.half)>[data-hf="unit"] .hf-msg{display:none}.hf-pre{color:var(--text-muted);font-weight:600}
-/* 416판(대표): 숫자 + 단위 한 줄은 숫자 칸 아이콘도 없음 — 단위 글자가 뜻을 알려 줌(클래스 수업량 · 라이브러리 분량) */
-.qupair:not(.half)>.hfh:first-child .hf-box>svg:first-child{display:none}
 
 /* 420판(대표): 라이브러리 창 머리 2줄 — 한 줄에 과목 · 출판사 · 분량 · 가격(넘치면 출판사를 뺌) */
-.bkhinfo{display:flex;flex-wrap:nowrap;white-space:nowrap;overflow:hidden;min-width:0;max-width:100%}.bkhinfo small{flex:none}.phead .pinfo:has(.bkhinfo){min-width:0;overflow:hidden}
-.phead .pinfo .bkhinfo .phdot{display:inline-block;margin:0 6px}
-.phead h2 .bkuse{margin-left:auto;flex:none}.phead h2:has(.bkuse) .phn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.phead .hinfo{display:flex;flex-wrap:nowrap;white-space:nowrap;overflow:hidden;min-width:0;max-width:100%}.phead .hinfo small{flex:none}.phead .pinfo:has(.hinfo){min-width:0;overflow:hidden}
+.phead .pinfo .hinfo .phdot{display:inline-block;margin:0 6px}
+.phead h2 .hstate{margin-left:auto;flex:none}.phead h2:has(.hstate) .phn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-/* 424판(대표): 오른쪽 창 상자 제목 앞 아이콘 없음(기준 5장 F3) — 칸마다 아이콘이 있어 겹침. 한 곳에서 끔 */
-:is(#lp,#sp,.body>.panel,.panel) .box>h3>svg.i:first-child{display:none}

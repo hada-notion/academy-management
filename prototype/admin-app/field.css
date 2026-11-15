@@ -265,3 +265,9 @@
 /* 386판: 나눔 단추 안 아이콘(그룹·개별) */
 .hf-seg button{display:inline-flex;align-items:center;justify-content:center;gap:5px}
 .hf-seg button svg.i{width:14px;height:14px;flex:none}
+/* 숫자 + 단위 한 줄(창 모듈 pairUp): 숫자 칸 넓게 + 단위 칸은 알약 폭만큼(최소 52, [우선] 단추 비율) · 두 칸 모두 아이콘 없음 · 단위 칸 아래 안내 글 없음 · 갈래 half = 반반 */
+.qupair{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:start}.qupair>.hfh{min-width:0}
+.qupair:not(.half)>[data-hf="unit"] .hf-box{min-width:52px;padding:0 6px;justify-content:center;gap:0}.qupair:not(.half)>[data-hf="unit"] .hf-box>svg{display:none}.qupair:not(.half)>[data-hf="unit"] .hf-val{flex:none}
+.qupair.half{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.qupair:not(.half)>[data-hf="unit"] .hf-msg{display:none}.hf-pre{color:var(--text-muted);font-weight:600}
+.qupair:not(.half)>.hfh:first-child .hf-box>svg:first-child{display:none}

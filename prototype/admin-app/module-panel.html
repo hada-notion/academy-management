@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>오른쪽 창 모듈</title>
 <!-- 오른쪽 창 모듈 페이지. 앱과 같은 CSS(hada-tokens·app·pick·field)와 입력칸(field.js), 창 그리기(panel.js)를 그대로 쓴다 — 여기서 고친 부품이 앱에 그대로 들어간다. 모음표: _catalog/index.html -->
-<link rel="stylesheet" href="hada-tokens.css?v=426"><link rel="stylesheet" href="app.css?v=426"><link rel="stylesheet" href="pick.css?v=426"><link rel="stylesheet" href="field.css?v=426">
-<link rel="stylesheet" href="alim.css?v=426"><script src="hada-rules.js?v=426"></script><script src="alim-preview.js?v=426"></script><script src="pick.js?v=426"></script><script src="field.js?v=426"></script><script src="panel.js?v=426"></script>
+<link rel="stylesheet" href="hada-tokens.css?v=430"><link rel="stylesheet" href="app.css?v=430"><link rel="stylesheet" href="pick.css?v=430"><link rel="stylesheet" href="field.css?v=430">
+<link rel="stylesheet" href="alim.css?v=430"><script src="hada-rules.js?v=430"></script><script src="alim-preview.js?v=430"></script><script src="pick.js?v=430"></script><script src="field.js?v=430"></script><script src="panel.js?v=430"></script>
 <style>
 body{margin:0;background:var(--canvas,#F7F8FA);overflow:auto;height:auto}
 .mp-top{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--divider,#EEE7DD);padding:14px 24px}
@@ -100,6 +100,8 @@ put("h1", [
   cell("수업 — 날짜·시각은 2줄", head({ name: "초등 영어", dot: "#E88FB5", info: ["2026.11.11(수) 14:30"], badges: [pill({ t: "정규", tone: "blue" })], links: [{ t: "수업" }, { t: "시간표" }, { t: "클래스" }] })),
   cell("일정 — 제목 앞 = 메뉴 아이콘", head({ icon: IC(menuIcon("events")), name: "기말고사 대비 보충 주간", info: ["일정"] })),
   cell("등록 — 누구의 등록인지", head({ name: "중1 수학", dot: "#B794F6", status: [{ t: "작성 중", tone: "yellow" }], info: ["등록", "장예린", "하다고"], badges: [gchip("고3")] })),
+  cell("라이브러리 — 이름 … 오른쪽 상태 / 값 목록(화면은 정의만)", head({ icon: IC("bookc"), name: "개념원리 중등 수학 1-2", state: { t: "사용 중", tone: "green" }, infoLine: ["중등수학 1-2", "160쪽"], linksHtml: '<span class="nlk"><a class="link">노션 ↗</a></span>' })),
+  cell("라이브러리 — 고치는 중 · 미사용 · 빈 값은 건너뜀", head({ icon: IC("package"), name: "점토 공예", draft: true, state: { t: "미사용", tone: "gray" }, infoLine: ["공예", "", "8차시"], linksHtml: '<span class="nlk"><a class="link">노션 ↗</a></span>' })),
 ].join(""));
 // 2 탭 바
 put("h2", [
@@ -112,7 +114,16 @@ put("h3", [
   cell("제목만", box({ title: "기본", body: '<div class="hint">내용</div>' })),
   cell("제목 + (?)", box({ title: "수강료 조정", help: "할인은 −, 할증은 +", body: '<div class="hint">내용</div>' })),
   cell("제목 + 오른쪽 링크", box({ title: "시간표 · 2026 2학기", right: '<a class="lnk" href="#">시간표 화면 →</a>', body: '<div class="hint">내용</div>' })),
+  cell("상자 나누기 + 숫자·단위 한 줄(정의: 칸 이름 · 묶음 · 짝)", PANEL.infoBoxes(["name", "pub", "total", "unit", "price"], [{ title: "분류", keys: ["pub"] }, { title: "분량", keys: ["total", "unit"] }, { title: r => r.kind === "프로그램" ? "재료비" : "교재비", keys: ["price"] }], { kind: "교재" }, "칸이 8개를 넘으면 뜻으로 묶어 상자를 나눠요")),
 ].join(""));
+/* 위 상자 나누기 견본에 실제 입력칸을 꽂음(입력칸 모듈) + 짝 묶기(창 모듈) */
+(() => { const root = [...document.querySelectorAll("#h3 .mp-pn")].pop(), h = k => root.querySelector(`[data-hf="${k}"]`);
+  HF.text(h("name"), { label: "교재명", value: "개념원리 중등 수학 1-2" });
+  HF.select(h("pub"), { label: "출판사", value: "개념원리", items: [{ v: "개념원리", t: "개념원리", cls: "nc-purple" }, { v: "좋은책신사고", t: "좋은책신사고", cls: "nc-pink" }] });
+  HF.num(h("total"), { label: "전체 분량", value: "160", unit: "쪽" });
+  HF.select(h("unit"), { label: "진도 단위", value: "-쪽", clear: false, items: [{ v: "-쪽", t: "n쪽", cls: "nc-yellow" }, { v: "UNIT -", t: "UNIT n", cls: "nc-purple" }] });
+  HF.num(h("price"), { label: "가격", value: "16,000", unit: "원" });
+  PANEL.pairUp(root, [["total", "unit", ""]]) })();
 // 4 칸
 const F4 = [{ title: "칸 종류", fields: [
   { label: "글", type: "text", value: "중1 수학" }, { label: "날짜", type: "date", value: "2026-09-01" }, { label: "고르기", type: "select", value: "좋은책신사고", items: [{ v: "좋은책신사고", t: "좋은책신사고", cls: "nc-pink" }, { v: "개념원리", t: "개념원리", cls: "nc-purple" }] },
@@ -150,7 +161,10 @@ mountFields(document.querySelector("#h5 .mp-pn"), F5);
 // 6 줄 목록
 put("h6", [
   cell("클래스별 시간표", box({ title: "클래스별 시간표", rows: [{ t: "중1 수학", dot: "#B794F6", sub: "월 16:00 · 수 16:00" }, { t: "중2 수학A", dot: "#7FA6D9", sub: "월 · 수 · 금 16:00" }, { t: "고1 수학 1:1", dot: "#E8C547", sub: "화 17:00 · 토 13:00" }] })),
-  cell("교재 쓰는 곳", box({ title: "쓰는 곳", rows: [{ t: "중1 수학", sub: "그룹 · 7명", tag: "진행 중" }, { t: "장예린", sub: "개별", tag: "다음 교재" }] })),
+  cell("교재 줄 — 상태별 묶음(등록·클래스 [교재], 라이브러리 [진도관리])", box({ title: "진도관리", body: PANEL.groups([
+    { key: "진행 중", pill: "pgn nc-blue", count: 2, unit: "곳", body: PANEL.bookRows([{ drill: "", titleHtml: '<span class="dotc" style="background:#7FA7E0"></span>중2 수학A', modeHtml: modePill(false), pct: 53, range: "77-84" }, { drill: "", titleHtml: '<span class="dotc" style="background:#E05A5A"></span>장예린 · 고1 수학', modeHtml: modePill(true), pct: 62, range: "80-87" }]) },
+    { key: "다음 교재", pill: "pgn nc-gray", count: 1, unit: "곳", body: PANEL.bookRows([{ drill: "", title: "개념원리 중등 수학 1-2 — 제목이 길면 말줄임으로 한 줄에", modeHtml: modePill(false), pct: "", notes: ["아직 시작 전"] }]) },
+    { key: "완료", pill: "pgn nc-green", count: 1, unit: "곳", canFold: true, fold: true }]) })),
 ].join(""));
 // 7 카드
 const card = (t, s, b) => `<div class="encard" style="border:1px solid var(--divider);border-radius:12px;padding:10px 12px;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><i class="cdot" style="background:${b}"></i><b>${t}</b><span class="sp" style="flex:1"></span><span class="stp s-on">등록 중</span></div><div class="hint" style="margin-top:4px">${s}</div></div>`;
@@ -172,5 +186,5 @@ render(ex("클래스 창"), { head: { name: "중1 수학", dot: "#B794F6", statu
 render(ex("학생 창"), { head: { name: "장예린", nameInput: "새 학생 이름", status: [{ t: "등록 중", tone: "green" }], info: ["하다고"], badges: [gchip("고3")], links: [{ t: "주간 시간표" }, { t: "수강" }] }, tabs: [{ id: "i", label: "정보" }, { id: "e", label: "등록", n: 2 }, { id: "c", label: "일정", disabled: true }, { id: "g", label: "성적" }], tab: "i", boxes: [{ title: "문의", fields: [{ label: "문의일시", type: "date", value: "2026-08-29" }, { label: "메모(내부용)", type: "memo" }] }, { title: "기본정보", fields: [{ label: "학교", value: "하다고" }, { label: "학년", value: "고3" }] }], foot: { del: true, save: "학생 저장" } });
 render(ex("수업 창"), { head: { name: "초등 영어", dot: "#E88FB5", info: ["2026.11.11(수) 14:30"], badges: [pill({ t: "정규", tone: "blue" })], links: [{ t: "수업" }, { t: "시간표" }, { t: "클래스" }] }, tabs: [{ id: "a", label: "출결", n: "8/12" }, { id: "l", label: "학습기록", n: 1 }, { id: "r", label: "보고서" }, { id: "i", label: "정보" }], tab: "a", boxes: [{ title: "출결", help: "출석·결석을 눌러 넣어요", right: '<button class="btn sm">모두 출석</button>', rows: [{ t: "신지안", sub: "바다초 초1", tag: "출석" }, { t: "김다은", sub: "푸른중", tag: "결석" }] }], foot: { save: "수업 저장" } });
 document.querySelectorAll(".mp-pn .hname").forEach(i=>i.closest(".mp-pn").classList.add("stpanel"));
-</script><script src="module-icons.js?v=426"></script>
+</script><script src="module-icons.js?v=430"></script>
 </body></html>

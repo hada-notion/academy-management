@@ -24,8 +24,11 @@
   function head(h) {
     h = h || {};
     const name = h.nameInput ? `<input class="hname" value="${esc(h.name || "")}" placeholder="${esc(h.nameInput)}">` : esc(h.name || "");
-    const l1 = h.nameHtml != null ? h.nameHtml : `<span class="phn">${h.dot ? `<i class="cdot" style="background:${esc(h.dot)}"></i>` : ""}${name}</span>${(h.status || []).map(pill).join("")}${help(h.help)}`;
-    const l2 = h.infoHtml != null ? h.infoHtml : (h.info || []).map((t, i) => `${i ? '<span class="phdot">·</span>' : ""}<small>${esc(t)}</small>`).join("") + (h.badges || []).join("");
+    // state = 1줄 오른쪽 끝 한 자리(그 창의 상태 알약: {t, tone}) · draft = 작성 중 알약 · infoLine = 2줄 값 목록(빈 값은 건너뜀, 한 줄)
+    const stateHtml = h.state && h.state.t ? `<span class="spill nc-${esc(h.state.tone || "gray")} hstate">${esc(h.state.t)}</span>` : "";
+    const draftHtml = h.draft ? '<span class="pill w">작성 중</span>' : "";
+    const l1 = h.nameHtml != null ? h.nameHtml : `<span class="phn">${h.dot ? `<i class="cdot" style="background:${esc(h.dot)}"></i>` : ""}${name}</span>${draftHtml}${(h.status || []).map(pill).join("")}${help(h.help)}${stateHtml}`;
+    const l2 = h.infoHtml != null ? h.infoHtml : h.infoLine ? `<span class="hinfo">${h.infoLine.filter(Boolean).map((t, i) => `<small>${i ? '<span class="phdot">·</span>' : ""}${esc(t)}</small>`).join("")}</span>` : (h.info || []).map((t, i) => `${i ? '<span class="phdot">·</span>' : ""}<small>${esc(t)}</small>`).join("") + (h.badges || []).join("");
     const l3 = h.linksHtml != null ? h.linksHtml : (h.links || []).map((x, i) => `${i ? " · " : ""}<a class="link" href="#" data-act="${esc(x.act || "")}">${esc(x.t)} ${IC_.ext}</a>`).join("");
     const ic = h.icon && !/class="cdot"/.test(l1) ? `<span class="phi">${h.icon}</span>` : "";/* 296판: 제목 앞 화면 아이콘(색 점 있으면 색 점만) */
     return `<div class="phead"><div class="pt"><h2>${ic}${l1}</h2><div class="pinfo">${l2}</div><div class="sub">${l3}</div></div>${h.right ? `<span class="pright">${h.right}</span>` : ""}</div>`;
@@ -41,6 +44,27 @@
     if (b.fields) body = `<div class="hfgrid">${b.fields.map((f, i) => f.type === "range" ? `<div class="hfh" data-pf="${i}"></div>` : `<div class="hfh" data-pf="${i}"></div>`).join("")}</div>`;
     if (b.rows) body = rows(b.rows);
     return `<div class="box"><h3>${esc(b.title || "")}${help(b.help)}<span class="sp"></span>${b.right || ""}</h3>${body}</div>`;
+  }
+  // 3-1. 정보 탭 상자 나누기: 칸 이름 목록을 [기본] + 묶음(secs: [{title, keys, hide}])으로 나눠 상자 여러 개로. title 은 글자 또는 줄을 받아 글자를 돌려주는 함수
+  function infoBoxes(keys, secs, row, helpText) {
+    secs = secs || [];
+    const inSec = new Set(secs.flatMap(z => z.keys));
+    const grid = ks => `<div class="hfgrid">${ks.map(k => `<div class="hfh" data-hf="${esc(k)}"></div>`).join("")}</div>`;
+    const main = keys.filter(k => !inSec.has(k));
+    return (main.length ? box({ title: "기본", help: helpText, body: grid(main) }) : "") + secs.map(z => { const ks = z.keys.filter(k => keys.includes(k)); return ks.length && !z.hide ? box({ title: typeof z.title === "function" ? z.title(row) : z.title, body: grid(ks) }) : ""; }).join("");
+  }
+  // 3-2. 한 줄에 두 칸(숫자 + 단위): pairs = [[앞 칸, 뒤 칸, 갈래]] — 갈래 "" = 뒤 칸 좁게([우선] 단추 비율), "half" = 반반
+  function pairUp(root, pairs) {
+    (pairs || []).forEach(([a, b, kind]) => { const ha = root.querySelector(`[data-hf="${a}"]`), hb = root.querySelector(`[data-hf="${b}"]`); if (ha && hb && !ha.closest(".qupair")) { const w = document.createElement("div"); w.className = "qupair " + (kind || ""); ha.parentNode.insertBefore(w, ha); w.append(ha, hb); } });
+  }
+  // 6-1. 상태별 묶음: groups = [{key, pill(알약 클래스), count, unit, canFold, fold, body(HTML)}] — 머리(알약 + 개수 + 접기 화살표) + 내용
+  function groups(gs) {
+    return `<div class="pgsecs">${gs.map(g => `<div class="pgsec"><button type="button" class="pgsh" data-pgfold="${esc(g.key)}" aria-expanded="${!g.fold}"><span class="spill ${esc(g.pill)}">${esc(g.key)}</span><span class="hint">${g.count}${esc(g.unit || "")}</span><span class="sp"></span>${g.canFold && typeof IC === "function" ? IC(g.fold ? "down" : "up", "s") : ""}</button>${g.fold ? "" : g.body || ""}</div>`).join("")}</div>`;
+  }
+  // 6-2. 교재 줄(두 줄): 제목 … 그룹|개별 알약 / 진도율 막대 · % · 최근 범위 · 덧글. 줄 앞에는 아무것도 두지 않는다. 누르면 창 안 이동(data-drill)
+  //   rows = [{drill, title | titleHtml, modeHtml, pct(숫자 또는 ""), range, notes:[글자…]}]
+  function bookRows(rs) {
+    return `<div class="ttrows">${rs.map(r => `<div class="ttrow bk2 dgo2" data-drill="${esc(r.drill)}" title="눌러서 이 진도 보기">${r.titleHtml != null ? `<span class="t">${r.titleHtml}</span>` : `<span class="t" title="${esc(r.title)}">${esc(r.title)}</span>`}${r.modeHtml || ""}<span class="l2">${r.pct !== "" && r.pct != null ? `<span class="pbar"><i style="width:${r.pct}%"></i></span><span class="r2">${r.pct}%</span>` : ""}${r.range ? `<span class="r2">${esc(r.range)}</span>` : ""}${(r.notes || []).filter(Boolean).map(t => `<span class="r2">${esc(t)}</span>`).join("")}</span></div>`).join("")}</div>`;
   }
   // 6. 줄 목록: 이름 ……… 정보 · 꼬리표 ›
   function rows(rs) {
@@ -91,5 +115,5 @@
     el.innerHTML = `${head(spec.head)}${tabs(spec.tabs, spec.tab)}<div class="pbody">${(spec.boxes || []).map(box).join("")}</div>${foot(spec.foot)}`;
     mountFields(el, spec.boxes); return el;
   }
-  window.PANEL = { head, tabs, box, rows, foot, todo, render, mountFields, help, pill, IC: IC_, esc };
+  window.PANEL = { head, tabs, box, infoBoxes, pairUp, groups, bookRows, rows, foot, todo, render, mountFields, help, pill, IC: IC_, esc };
 })();
