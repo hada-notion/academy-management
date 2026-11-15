@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=438">
-<link rel="stylesheet" href="app.css?v=438">
-<link rel="stylesheet" href="pick.css?v=438">
-<link rel="stylesheet" href="field.css?v=438">
+<link rel="stylesheet" href="hada-tokens.css?v=439">
+<link rel="stylesheet" href="app.css?v=439">
+<link rel="stylesheet" href="pick.css?v=439">
+<link rel="stylesheet" href="field.css?v=439">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=438"><script src="hada-rules.js?v=438"></script><script src="alim-preview.js?v=438"></script><script src="pick.js?v=438"></script><script src="field.js?v=438"></script><script src="panel.js?v=438"></script>
+<link rel="stylesheet" href="alim.css?v=439"><script src="hada-rules.js?v=439"></script><script src="alim-preview.js?v=439"></script><script src="pick.js?v=439"></script><script src="field.js?v=439"></script><script src="panel.js?v=439"></script>
 <script>
 "use strict";
 
@@ -2402,7 +2402,7 @@ function listRows(L,st){let rows=(L.rows?L.rows():DB[L.coll]).slice();if(st.q)ro
 function curRows(st){return curScr()==="students"?stuRows(st):listRows(listOf(curScr(),st),st)}
 function gtVis(L){const cfg=stuColsCfg(),all=listCols(L);const wd=c=>cfg.widths[c.k]?Object.assign({},c,{w:cfg.widths[c.k]}):c;const out=cfg.order.filter(k=>!cfg.hidden.includes(k)).map(k=>all.find(c=>c.k===k)).filter(Boolean).map(wd);const PIN=L.pin||L.merge;if(!PIN)return out;const pn=PIN.map(l=>all.find(c=>c.l===l)).filter(Boolean).map(wd);return [...pn,...out.filter(c=>!PIN.includes(c.l))]}
 function gtRowCells(L,r,mg){const op=L.noDel?"":r.del?`<td class="op"><button type="button" class="rowundel" data-gundel="${r.id}" title="삭제 취소 — 삭제 예정 취소(Ctrl+Z도 돼요)">${IC("undo","s")}</button></td>`:`<td class="op"><button type="button" class="rowdel" data-gdel="${r.id}" title="이 줄 삭제(저장 전까지 되돌릴 수 있어요)">${IC("trash","s")}</button></td>`;return gtVis(L).map(c=>{if(mg&&L.merge&&L.merge.includes(c.l)){if(mg.skip)return "";return lcell(c.src,r,L).replace(/^<td/,`<td data-mg rowspan="${mg.span}"`)}return lcell(c.src,r,L)}).join("")+op}
-function gtTable(L,rows,st){const vis=gtVis(L),cf=st.cf||{},MG=gtMerge(L,rows,st);L._num=new Set(L.cols.filter(c=>lnum(c,rows)).map(c=>c[0]));
+function gtTable(L,rows,st){const vis=gtVis(L),cf=st.cf||{},MG=gtMerge(L,rows,st);L._num=new Set(listCols(L).map(z=>z.src).filter(c=>lnum(c,rows)).map(c=>c[0]));
   return `<table class="t stt gt ${st.tedit?"tedit":""} ${L.ro?"ro":""} ${L.grid?"grid":""}"><colgroup>${vis.map(c=>`<col data-cw="${c.k}" ${c.w?`style="width:${c.w}px"`:""}>`).join("")}${L.noDel?"":'<col style="width:40px">'}</colgroup><tr>${vis.map(c=>`<th data-col="${c.k}" ${st.tedit?'draggable="true"':""} class="${L._num.has(c.l)?"n":""} ${st.sort&&st.sort.k===c.k?"s":""} ${cf[c.k]?"f":""}" title="${st.tedit?"끌어서 열 옮기기 · 눌러서 정렬·제외·숨기기":"눌러서 정렬·제외·숨기기"}">${st.tedit?IC("grip","s"):""}${IC(c.i,"s")}${c.l}${st.sort&&st.sort.k===c.k||cf[c.k]?`<span class="thind">${st.sort&&st.sort.k===c.k?IC(st.sort.d==="desc"?"adn":"aup","s"):""}${cf[c.k]?IC("filter","s"):""}</span>`:""}${st.tedit?`<span class="colrz" data-rz="${c.k}" title="끌어서 열 너비 · 두 번 누르면 기본 너비"></span>`:""}</th>`).join("")}${L.noDel?"":'<th class="op"></th>'}</tr>${rows.map((r,ri)=>`<tr data-id="${r.id}" class="${r.del?"sdel":""} ${r.id===st.sel?"sel":""} ${isDirty(L,r)?"draft":""} ${st.fresh&&st.fresh.includes(r.id)?"fresh":""}" ${r.del?'title="삭제 예정 — [저장]하면 삭제돼요"':""}>${gtRowCells(L,r,MG&&MG[ri])}</tr>`).join("")}</table>`}
 /* 줄 삭제: 이어진 것이 있으면 못 지움(이유를 알림). 저장한 줄 = 삭제 예정(저장하면 삭제), 새로 생성한 줄 = 바로 없앰 */
 function gtRefs(L,r){const c=L.coll;if(c==="areas"){const n=DB.subjects.filter(z=>!z.del&&z.area===r.name).length,m=DB.classes.filter(z=>!z.del&&z.subject===r.name).length;return n||m?`이 영역의 ${[n?"과목 "+n+"개":"",m?"클래스 "+m+"개":""].filter(Boolean).join(" · ")}가 있어요`:""}if(c==="charges"&&r.bill)return "수강료·교재비 묶음에서 생성한 줄이에요";if(c==="bookfees"&&+r.paid>0)return "결제한 금액이 있어요";if(c==="series"){const n=srBooks(r).length;return n?`묶인 교재 ${n}권이 있어요`:""}if(c==="classes"){const b=DB.blocks.filter(x=>x.classId===r.id).length,e=DB.enrolls.filter(x=>x.classId===r.id&&!x.ended).length;return b||e?`시간표 ${b}개 · 수강 ${e}건이 이어져 있어요`:""}
@@ -3304,7 +3304,9 @@ function gtXlMenu(btn,L,rows,st){if(ddPop){ddClose();return}const pop=document.c
   pop.innerHTML=`<div class="sl">${cond?`<div class="so" data-x="vis">${IC("dl","s")}<span>지금 보는 목록만 받기 <b>${rows.length}${u}</b><small>필터 조건: ${esc(cond)}${L.xlForm?" · 줄마다 서식 시트":""}</small></span></div>`:""}<div class="so" data-x="down">${IC("dl","s")}<span>${cond?`전체 ${L.title} 받기`:"엑셀로 내려받기"} <b>${all.length}${u}</b><small>${cond?`필터 없이 모두${mm?` (${mm})`:""}`:`지금 ${L.title} 목록 그대로${L.xlForm?" + 줄마다 서식 시트":""}`}</small></span></div>${L.blank||L.upBlank?`<div class="so" data-x="up">${IC("ul","s")}<span>엑셀로 한번에 올리기<small>양식에 적어 여러 줄을 한 번에</small></span></div>`:""}</div>`;
   placePop(pop,btn.getBoundingClientRect(),260);pop._place=()=>placePop(pop,btn.getBoundingClientRect(),260);
   pop.querySelectorAll("[data-x]").forEach(o=>o.onmousedown=e=>{e.preventDefault();ddClose();if(o.dataset.x==="vis")gtXlDown(L,rows,cond);else if(o.dataset.x==="down")gtXlDown(L,all,"");else gtXlUp(L)})}
-async function gtXlDown(L,list,cond){const heads=L.cols.map(c=>c[0]);const data=list.map(r=>L.cols.map(c=>gtTxt(c[1](r))));const name=`${L.coll}-${TODAY}${cond?"-filtered":""}`;
+/* 엑셀·인쇄에 나가는 열 = 표 열 정의 + 켜 둔 숨긴 열(창의 칸에서 생긴 열) */
+function outCols(L){return [...L.cols,...gtVis(L).filter(c=>c.hid).map(c=>c.src)]}
+async function gtXlDown(L,list,cond){const OC=outCols(L);const heads=OC.map(c=>c[0]);const data=list.map(r=>OC.map(c=>gtTxt(c[1](r))));const name=`${L.coll}-${TODAY}${cond?"-filtered":""}`;
   const sub=`내려받은 날 ${md(TODAY)} · 필터 조건: ${cond||"전체"} · ${list.length}${L.unit||"개"}`;let X;
   try{X=await xlLib()}catch(e){dlFile(name+".csv",[csvCell(`하다 학원관리 · ${L.title} · `+sub),"",heads.map(csvCell).join(",")].concat(data.map(r=>r.map(csvCell).join(","))).join("\n"));toast("엑셀 꾸밈을 못 불러와 CSV로 받았어요");return}
   const wb=new X.Workbook();const ws=wb.addWorksheet(L.title,{views:[{state:"frozen",xSplit:1,ySplit:4,showGridLines:false}]});xTitle(ws,`하다 학원관리 · ${L.title}`,sub);xHead(ws,4,heads);
@@ -3339,7 +3341,7 @@ async function gtReadFile(f,L){if(/\.xlsx$/i.test(f.name)){const X=await xlLib()
   if(/\.xls$/i.test(f.name))throw new Error("xls");return csvParse((await f.text()).replace(/^\ufeff/,""))}
 // 인쇄: 지금 보는 목록(필터 조건 그대로)을 A4 가로 표로 — 화면 틀·창은 빼고 제목·조건·날짜만
 function gtPrint(L,rows,st){const cond=gtCond(L,st||{});const w=document.createElement("div");w.id="printList";
-  w.innerHTML=`<div class="pl-h"><h1>${esc(L.title)}</h1><span>${rows.length}${L.unit||"개"} · ${cond?esc(cond)+" · ":""}${md(TODAY)}</span></div><table class="pl-t"><thead><tr>${L.cols.map(c=>`<th class="${L._num&&L._num.has(c[0])?"n":""}">${esc(c[0])}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr>${L.cols.map(c=>{const v=gtTxt(c[1](r));return `<td class="${L._num&&L._num.has(c[0])?"n":""} ${/^[\d.\-: ,]+$/.test(v)||v.length<=6||/\d{2,3}-\d{3,4}-\d{4}/.test(v)?"nw":""}">${esc(v)}</td>`}).join("")}</tr>`).join("")}</tbody></table>`;
+  w.innerHTML=`<div class="pl-h"><h1>${esc(L.title)}</h1><span>${rows.length}${L.unit||"개"} · ${cond?esc(cond)+" · ":""}${md(TODAY)}</span></div><table class="pl-t"><thead><tr>${outCols(L).map(c=>`<th class="${L._num&&L._num.has(c[0])?"n":""}">${esc(c[0])}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr>${outCols(L).map(c=>{const v=gtTxt(c[1](r));return `<td class="${L._num&&L._num.has(c[0])?"n":""} ${/^[\d.\-: ,]+$/.test(v)||v.length<=6||/\d{2,3}-\d{3,4}-\d{4}/.test(v)?"nw":""}">${esc(v)}</td>`}).join("")}</tr>`).join("")}</tbody></table>`;
   document.body.appendChild(w);document.body.classList.add("print-list");const done=()=>{document.body.classList.remove("print-list");w.remove();removeEventListener("afterprint",done)};addEventListener("afterprint",done);window.print();setTimeout(()=>{if(document.body.classList.contains("print-list")&&!matchMedia("print").matches)done()},1500)}
 /* 엑셀(261113 대표): [엑셀 ▾] = 엑셀로 내려받기 · 엑셀로 한번에 올리기(양식 내려받기 + 파일 올리기). 표에서 바로 고치기는 없앰 */
 const XL_COLS=[["name","이름"],["school","학교"],["grade","학년"],["sp","학생 연락처"],["mom","어머니 연락처"],["dad","아버지 연락처"],["gp","기타 연락처"],["gprel","학생과 관계"],["pre","우선 연락"],["memo","메모"]];
