@@ -49,10 +49,10 @@
     const start = () => { new MutationObserver(later).observe(document.body, { childList: true, subtree: true }); addEventListener("resize", later); if (typeof ResizeObserver !== "undefined") { const ro = new ResizeObserver(later); new MutationObserver(() => document.querySelectorAll(".phead").forEach(e => { if (!e.__ro) { e.__ro = 1; ro.observe(e); } })).observe(document.body, { childList: true, subtree: true }); } later(); };
     document.body ? start() : addEventListener("DOMContentLoaded", start);
   }
-  // 2. 탭 바(탭이 없는 창도 '정보' 하나로 같은 자리)
+  // 2. 탭 바(탭이 없는 창도 '정보' 하나로 같은 자리). 탭 = {id, label, n, todo(할 일 수 알약), disabled, later, dot, mark}
   function tabs(ts, on, attr) {
     ts = ts && ts.length ? ts : [{ id: "info", label: "정보" }]; attr = attr || "ptab";
-    return `<div class="ptabs" role="tablist">${ts.map(t => `<button type="button" class="ptb ${t.id === on ? "on" : ""} ${t.later ? "later" : ""}" ${t.later ? `disabled title="${esc(t.label)} — 준비 중"` : `data-${attr}="${esc(t.id)}"`} ${t.disabled ? "disabled" : ""}>${esc(t.label)}${t.dot || ""}${t.n != null && t.n !== "" ? ` <span class="sm">${esc(t.n)}</span>` : ""}${t.mark || ""}${t.later ? `<span class="soon">준비 중</span>` : ""}</button>`).join("")}</div>`;
+    return `<div class="ptabs" role="tablist">${ts.map(t => `<button type="button" class="ptb ${t.id === on ? "on" : ""} ${t.later ? "later" : ""}" ${t.later ? `disabled title="${esc(t.label)} — 준비 중"` : `data-${attr}="${esc(t.id)}"`} ${t.disabled ? "disabled" : ""}>${esc(t.label)}${t.dot || ""}${t.todo ? `<span class="tn ${+t.n ? "w" : ""}">${esc(t.n)}</span>` : t.n != null && t.n !== "" ? ` <span class="sm">${esc(t.n)}</span>` : ""}${t.mark || ""}${t.later ? `<span class="soon">준비 중</span>` : ""}</button>`).join("")}</div>`;
   }
   // 3. 상자: 제목 + (?) + 오른쪽(링크·단추) + 내용
   function box(b) {
@@ -87,10 +87,11 @@
     return rs.length ? `<div class="ttrows">${rs.map(r => `<div class="ttrow" ${r.go ? `data-go="${esc(r.go)}"` : ""}>${r.dot ? `<i class="cdot" style="background:${esc(r.dot)}"></i>` : ""}<span class="t">${esc(r.t)}</span>${r.sub ? `<span class="hint">${esc(r.sub)}</span>` : ""}${r.tag ? `<span class="tag">${esc(r.tag)}</span>` : ""}${IC_.rightc}</div>`).join("")}</div>` : `<div class="hint">아직 없어요</div>`;
   }
   // 10. 아래 단추줄: 삭제 ……… 되돌리기 · ○○ 저장
+  // 아래 줄 재료: 줄 창 = del · undo · save(+ ids, count) / 작업 창 = hint · back{id,label} · go{id,label,icon,off,title,count}
   function foot(f) {
     if (!f) return "";
     const id = f.ids || {}, ic = Object.assign({}, IC_, f.icons || {}); const at = (k, t) => `${id[k] ? ` id="${id[k]}"` : ""}${t ? ` title="${esc(t)}"` : ""}`;
-    return `<div class="actions">${f.hint ? `<span class="hint">${esc(f.hint)}</span>` : ""}${f.del ? `<button class="btn danger" type="button"${at("del", f.delTitle || "이 줄 삭제(저장 전까지 되돌릴 수 있어요)")}${f.delOff ? " disabled" : ""}>${f.delIcon != null ? f.delIcon : ic.trash}${esc(f.delLabel || "삭제")}</button>` : ""}${f.left || ""}<span class="sp"></span>${f.extra || ""}${f.undo ? `<button class="btn icon" type="button"${at("undo", f.undoTitle || "저장 상태로 되돌리기")}>${ic.undo}</button>` : ""}${f.save ? `<button class="btn big ${f.primary ? "pri" : "rowsave"}" type="button"${at("save", f.saveTitle || "이 줄에서 고친 것만 바로 저장해요. 다른 줄까지 모두 저장하려면 위 [저장]을 눌러요")} ${f.saveOn ? "" : "disabled"}>${ic.save}${esc(f.save)}${f.count ? ` <span class="cnt">${esc(f.count)}</span>` : ""}</button>` : ""}</div>`;
+    return `<div class="actions">${f.hint ? `<span class="hint">${esc(f.hint)}</span>` : ""}${f.del ? `<button class="btn danger" type="button"${at("del", f.delTitle || "이 줄 삭제(저장 전까지 되돌릴 수 있어요)")}${f.delOff ? " disabled" : ""}>${f.delIcon != null ? f.delIcon : ic.trash}${esc(f.delLabel || "삭제")}</button>` : ""}${f.back ? `<button class="btn" type="button"${f.back.id ? ` id="${esc(f.back.id)}"` : ""}>${esc(f.back.label || "취소")}</button>` : ""}${f.left || ""}<span class="sp"></span>${f.extra || ""}${f.undo ? `<button class="btn icon" type="button"${at("undo", f.undoTitle || "저장 상태로 되돌리기")}>${ic.undo}</button>` : ""}${f.save ? `<button class="btn big ${f.primary ? "pri" : "rowsave"}" type="button"${at("save", f.saveTitle || "이 줄에서 고친 것만 바로 저장해요. 다른 줄까지 모두 저장하려면 위 [저장]을 눌러요")} ${f.saveOn ? "" : "disabled"}>${ic.save}${esc(f.save)}${f.count ? ` <span class="cnt">${esc(f.count)}</span>` : ""}</button>` : ""}${f.go ? `<button class="btn pri big" type="button"${f.go.id ? ` id="${esc(f.go.id)}"` : ""}${f.go.title ? ` title="${esc(f.go.title)}"` : ""}${f.go.off ? " disabled" : ""}>${f.go.icon || ""}${esc(f.go.label)}${f.go.count ? ` <span class="cnt">${esc(f.go.count)}</span>` : ""}</button>` : ""}</div>`;
   }
   // 9. 선택 전 = 할 일 창
   // 9. 선택 전 = 할 일 창(299판 연결: 앱 todoPanel도 이 함수 하나로 그림)

@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=436">
-<link rel="stylesheet" href="app.css?v=436">
-<link rel="stylesheet" href="pick.css?v=436">
-<link rel="stylesheet" href="field.css?v=436">
+<link rel="stylesheet" href="hada-tokens.css?v=437">
+<link rel="stylesheet" href="app.css?v=437">
+<link rel="stylesheet" href="pick.css?v=437">
+<link rel="stylesheet" href="field.css?v=437">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=436"><script src="hada-rules.js?v=436"></script><script src="alim-preview.js?v=436"></script><script src="pick.js?v=436"></script><script src="field.js?v=436"></script><script src="panel.js?v=436"></script>
+<link rel="stylesheet" href="alim.css?v=437"><script src="hada-rules.js?v=437"></script><script src="alim-preview.js?v=437"></script><script src="pick.js?v=437"></script><script src="field.js?v=437"></script><script src="panel.js?v=437"></script>
 <script>
 "use strict";
 
@@ -877,7 +877,7 @@ function panelMakeup(p,t){const st=t.state;const m=st.mkNew;if(!m.sids)m.sids=[]
   const make=()=>{const id=uid("mk");const nm={id,classId:m.classId,d:m.d,start:m.start,end:m.end,sids:m.sids.slice(),att:{}};DB.mk.push(nm);(st.mkFrom||[]).forEach(k=>{if(nm.sids.includes(k.split("|").pop()))DB.mkw[k]=Object.assign({},DB.mkw[k],{mk:id})});st.mkFrom=null;LUN.add("mk:"+id);if(m.classId)st.mkCls=m.classId;st.mkNew=null;st.mkPick=false;st.lsel="mk:"+id;st.lmode="att";st.ltab="att";commit();clashToast(nm.d,nm.start,nm.end,nm.sids,nm.classId?cls(nm.classId).teacherId:null,"mk:"+id,`${nm.classId?`${mkName(nm)}을`:"보강을"} 생성했어요 — ${mdw(m.d)} ${fmt(m.start)} · ${m.sids.length}명`)};
   if(st.mkPick){const before=m.sids.slice();
     p.innerHTML=`${PANEL.head({name:"학생 편집",belong:"새 보강",info:[`${mdw(m.d)} ${fmt(m.start)}-${fmt(m.end)}`]})}${mkPicker(m,m.d,st.season)}
-    <div class="actions"><button class="btn" id="mpC">취소</button><span class="sp"></span><button class="btn pri big" id="mpO">완료</button></div>`;
+    ${PANEL.foot({back:{id:"mpC"},go:{id:"mpO",label:"완료"}})}`;
     bindPhead(p,t);bindMkPicker(p,m,()=>{});
     p.querySelector("#mpC").onclick=()=>{m.sids=st.mkPickBefore||before;st.mkPick=false;render()};
     p.querySelector("#mpO").onclick=()=>{st.mkPick=false;render()};return}
@@ -889,7 +889,7 @@ function panelMakeup(p,t){const st=t.state;const m=st.mkNew;if(!m.sids)m.sids=[]
     <h3 class="h3s">${IC("layers","l")}클래스${HELP("고르지 않아도 돼요. 비워 두면 여러 클래스 학생이 함께하는 보강이에요. 한 클래스 보강이면 그 클래스를 골라요.")}</h3>
     <div class="hpm" id="hpNC"></div>
     </div>${mkPicker(m,m.d,st.season)}
-  <div class="actions"><button class="btn" id="mkC">취소</button><span class="sp"></span><button class="btn pri big" id="mkO">보강 생성</button></div>`;
+  ${PANEL.foot({back:{id:"mkC"},go:{id:"mkO",label:"보강 생성"}})}`;
   bindPhead(p,t);
   /* 308판: 날짜·시간 = 입력칸 모듈 */HF.date(p.querySelector("#nDH"),{label:"날짜",value:m.d,clear:false,onChange:v=>{if(v){m.d=v;render()}}});HF.timeRange(p.querySelector("#nTH"),{label:"수업 시간",value:[fmt(m.start),fmt(m.end)],step:5,onChange:([a2,b2])=>{const s1=parseT(a2),e1=parseT(b2);if(s1==null||e1==null||e1<=s1)return;if(s1===m.start&&e1===m.end)return;m.start=s1;m.end=e1;render()}});
   hpCls(p.querySelector("#hpNC"),{none:true,value:m.classId,onChange:v2=>{{st.fo=null;m.classId=v2||null;if(m.classId){const al=new Set(DB.enrolls.filter(e=>e.classId===m.classId&&!e.ended).map(e=>e.studentId));const out=m.sids.filter(id=>!al.has(id));m.sids=m.sids.filter(id=>al.has(id));if(out.length)toast(`${cls(m.classId).name} 수강생이 아닌 ${out.length}명은 뺐어요`)}render()}}});
@@ -900,7 +900,7 @@ function panelMk(p,t,id){const st=t.state;const m=DB.mk.find(x=>x.id===id);if(!m
   if(st.mkEd&&st.mkEd.id!==m.id)st.mkEd=null;
   if(st.mkEd){const w=st.mkEd;
     p.innerHTML=`${PANEL.head({name:`${mkName(m)} 학생 편집`,belong:`${mdw(m.d)} ${fmt(m.start)}-${fmt(m.end)}`,info:[`지금 ${m.sids.length}명`]})}${mkPicker(w,m.d,st.season)}
-    <div class="actions"><button class="btn" id="meC">취소</button><span class="sp"></span><button class="btn pri big" id="meO">${IC("save","s")}보강 학생 저장</button></div>`;
+    ${PANEL.foot({back:{id:"meC"},go:{id:"meO",icon:IC("save","s"),label:"보강 학생 저장"}})}`;
     bindPhead(p,t);bindMkPicker(p,w,()=>{});
     p.querySelector("#meC").onclick=()=>{st.mkEd=null;render()};
     p.querySelector("#meO").onclick=()=>{const add=w.sids.filter(x=>!m.sids.includes(x)).length,rm=m.sids.filter(x=>!w.sids.includes(x));rm.forEach(x=>delete m.att[x]);m.sids=w.sids.slice();m.classId=w.classId;st.mkEd=null;commit();toast(`보강 학생을 고쳤어요${add?` — ${add}명 더함`:""}${rm.length?` · ${rm.length}명 뺌`:""}`)};return}
@@ -960,7 +960,7 @@ function mkwHtml(st,W){const open=st.mkwOpen||(st.mkwOpen={});const per=st.mkwPe
   const head=g=>{const x=stu(g.sid);const o=!!open[g.sid];const c=[["pre","판단 전"],["need","필요"],["re","보강도 결석"],["pend","잡힘"]].map(([k,n])=>g.n(k)?`<span class="mwc ${k}">${n} ${g.n(k)}</span>`:"").join("");
     return `<div class="mws ${o?"open":""}" data-mws="${g.sid}" draggable="true" title="누르면 결석이 펼쳐져요 · 끌어서 생성해 둔 보강 수업에 놓으면 가장 오래된 보강 필요 결석과 연결돼요"><span class="chev">${IC(o?"down":"rightc","s")}</span><span class="nm">${stuHtml(x)}</span><span class="mwcs">${c}</span></div>${o?`<div class="mwbody">${body(g)}</div>`:""}`};
   return `<div class="mwlist">${gs.map(head).join("")||`<div class="empty">${IC("check")} 보강을 기다리는 학생이 없어요</div>`}</div>
-  <div class="actions"><span class="hint">학생을 끌어 보강 블록에 놓아요</span><span class="sp"></span><button class="btn pri big" id="mwAdd" title="새 보강 — 빈 칸을 끌어 시간을 정하고, 학생은 나중에 끌어 넣어요">${IC("plus","s")}보강 추가</button></div>`}
+  ${PANEL.foot({hint:"학생을 끌어 보강 블록에 놓아요",go:{id:"mwAdd",icon:IC("plus","s"),label:"보강 추가",title:"새 보강 — 빈 칸을 끌어 시간을 정하고, 학생은 나중에 끌어 넣어요"}})}`}
 // 보강 대기·최근 결석(HP.wait, 261113 대표): 등록(학생+클래스)마다 카드, 결석 줄 상태 아이콘(필요↔없음), 보강 없음 사유, 최근 결석은 주차 구역
 // 163판: 할 일 숫자만 다시 그림(창을 다시 그리지 않아 열린 카드 유지) — 탭·단추 배지·메뉴
 function ltRefresh(p){const n=mkCardN();const tb=p&&p.querySelector('[data-lt="mk"] .tn');if(tb){tb.textContent=n;tb.classList.toggle("w",!!n)}const pb=document.querySelector("#panelT .pbadge");if(pb){const un=+(p.querySelector('[data-lt="un"] .tn')||{}).textContent||0,ms=+(p.querySelector('[data-lt="ms"] .tn')||{}).textContent||0;pb.textContent=un+ms+n}renderSide()}
@@ -989,8 +989,8 @@ function panelLesson(p,t,items){const st=t.state;if(st.mkNew)return panelMakeup(
     const card=x=>`<div class="dcard" data-lgo="${lkey(x.b,x.d)}"><span class="dotc" style="background:${classBar(cls(x.b.classId))}"></span>${esc(cls(x.b.classId).name)}<span class="dcls">${mdw(x.d)} ${fmt(x.b.start)}${act==="un"?` · 미입력 ${attSum(x.b,x.d).미입력}`:""}</span></div>`;
     const list=act==="un"?un:ms;
     p.innerHTML=`<div class="phead"><div class="pt"><h2>할 일${HELP("미입력 = 지난·오늘 수업 중 출결이 덜 들어간 수업. 수업 없음 = 이 주 시간표 중 수업 페이지가 아직 없는 것. 보강 = [보강 대기] 등록(학생+클래스)마다 카드, 숫자 = 보강해야 할 횟수. 카드를 누르면 결석이 열리고, 아이콘으로 보강 필요 ↔ 보강 없음(사유 입력). 카드를 끌어 그 클래스 보강 수업에 놓고, 보강에 출석하면 그 결석이 사라져요. [최근 결석]에서 실수로 보강 없음 한 결석을 되돌려요.")}</h2></div></div>
-    <div class="ptabs"><button type="button" class="ptb ${act==="un"?"on":""}" data-lt="un">미입력<span class="tn ${un.length?"w":""}">${un.length}</span></button><button type="button" class="ptb ${act==="ms"?"on":""}" data-lt="ms">수업 없음<span class="tn ${ms.length?"w":""}">${ms.length}</span></button><button type="button" class="ptb ${act==="mk"?"on":""}" data-lt="mk">보강<span class="tn ${mkCardN()?"w":""}">${mkCardN()}</span></button></div>
-    ${act==="mk"?`<div class="box"><div class="hpm" id="hpWait"></div></div><div class="actions"><span class="hint">카드를 끌어 그 클래스 보강 수업에 놓아요</span><span class="sp"></span><button class="btn pri big" id="mwAdd" title="새 보강 — 빈 칸을 끌어 시간을 정하고, 학생은 나중에 끌어 넣어요">${IC("plus","s")}보강 추가</button></div>`:`<div class="box"><div class="dragcards">${list.map(card).join("")}</div>${list.length?"":`<div class="empty">${IC("check")} ${act==="un"?"출결이 다 들어갔어요":"이 주 수업이 다 있어요"}</div>`}${act==="ms"&&ms.length?`<div class="row"><button class="btn pri" id="mkAll">${IC("plus","s")}이 주 수업 모두 생성</button></div>`:""}</div>
+    ${PANEL.tabs([{id:"un",label:"미입력",n:un.length,todo:true},{id:"ms",label:"수업 없음",n:ms.length,todo:true},{id:"mk",label:"보강",n:mkCardN(),todo:true}],act,"lt")}
+    ${act==="mk"?`<div class="box"><div class="hpm" id="hpWait"></div></div>${PANEL.foot({hint:"카드를 끌어 그 클래스 보강 수업에 놓아요",go:{id:"mwAdd",icon:IC("plus","s"),label:"보강 추가",title:"새 보강 — 빈 칸을 끌어 시간을 정하고, 학생은 나중에 끌어 넣어요"}})}`:`<div class="box"><div class="dragcards">${list.map(card).join("")}</div>${list.length?"":`<div class="empty">${IC("check")} ${act==="un"?"출결이 다 들어갔어요":"이 주 수업이 다 있어요"}</div>`}${act==="ms"&&ms.length?`<div class="row"><button class="btn pri" id="mkAll">${IC("plus","s")}이 주 수업 모두 생성</button></div>`:""}</div>
     <div class="lgbox"><div class="lgrow"><b>출석</b><span><i class="ok"></i>출석</span><span><i class="mk"></i>보강</span><span><i class="ab"></i>결석</span><span><i class="no"></i>미입력</span></div><div class="lgrow"><b>과제</b><span><i class="hs"></i>완료</span><span><i class="hp"></i>일부 완료</span><span><i class="hn"></i>미제출</span></div></div>`}`;
     bindPhead(p,t);if(act==="mk")mkwMount(p,st);p.querySelectorAll("[data-lt]").forEach(b=>b.onclick=()=>{st.ltodo=b.dataset.lt;render()});p.querySelectorAll("[data-lgo]").forEach(x=>x.onclick=()=>{st.lsel=x.dataset.lgo;render()});
     const ma=p.querySelector("#mkAll");if(ma)ma.onclick=()=>makeWeekDialog(ms,weekOf(st));return}
@@ -1011,7 +1011,7 @@ function panelLesson(p,t,items){const st=t.state;if(st.mkNew)return panelMakeup(
     <div class="field"><span class="lbl">언제부터</span><div class="trow">${DATE("asFrom",w.from)}<span></span><span></span></div></div>
     <div class="hpm" id="hpAS"></div>
     <div class="pv2" id="asNew" ${newOnes.length?"":"hidden"}></div></div>
-    <div class="actions"><button class="btn" id="asC">취소</button><span class="sp"></span><button class="btn pri big" id="asO" ${w.sids.length?"":"disabled"}>${w.sids.length?w.sids.length+"명 ":""}넣기</button></div>`;
+    ${PANEL.foot({back:{id:"asC"},go:{id:"asO",label:(w.sids.length?w.sids.length+"명 ":"")+"넣기",off:!w.sids.length}})}`;
     bindPhead(p,t);
     p.querySelector("#asFrom").addEventListener("change",ev=>{w.from=ev.target.value||d});
     const asUpd=()=>{const bt=p.querySelector("#asO");bt.disabled=!w.sids.length;bt.textContent=(w.sids.length?w.sids.length+"명 ":"")+"넣기";const nw=w.sids.filter(id=>!enrolled(id)).map(stu).filter(Boolean);const pv=p.querySelector("#asNew");pv.hidden=!nw.length;pv.innerHTML=nw.length?`${nw.map(x=>esc(x.name)).join(", ")} — ${esc(c.name)} 수강이 없어요. 넣으면 <b>수강 등록(${md(w.from)}부터)</b>도 함께 생성해요.`:""};
@@ -1581,7 +1581,7 @@ function todoCounts(all){const noClass=DB.students.filter(x=>stuStat(x)==="new")
   return {noClass,noTT,ov,empty,check:ov.length+empty.length}}
 function todoHead(t,all,act,help){const c=todoCounts(all);const tb=[["nott","시간표 없음",c.noTT.length+c.noClass.length],["check","점검",c.check]];if(act==="assign")act="nott";
   return `<div class="phead"><div class="pt"><h2>할 일${HELP(help)}</h2></div></div>
-  <div class="ptabs">${tb.map(([k,n,v])=>`<button type="button" class="ptb ${act===k?"on":""}" data-todo="${k}">${n}<span class="tn ${v?"w":""}">${v}</span></button>`).join("")}</div>`}
+  ${PANEL.tabs(tb.map(([k,n,v])=>({id:k,label:n,n:v,todo:true})),act,"todo")}`}
 function bindTodo(p,t){p.querySelectorAll("[data-todo]").forEach(b=>b.onclick=()=>{t.state.panel=b.dataset.todo;render()})}
 function panelCheck(p,t,all){const st=t.state;const c=todoCounts(all);
   p.innerHTML=`${todoHead(t,all,"check","겹침 = 한 학생이 같은 시간에 두 수업. 빈 시간표 = 학생이 한 명도 없는 시간표. 누르면 그 시간표로 가요.")}
@@ -2776,10 +2776,10 @@ const bkArt=x=>{if(x._c)return x._c;const hue=hsh(x.isbn||x.name)%360;const esc2
 const bfHas=x=>DB.books.some(b=>!b.del&&(b.isbn===x.isbn||b.name===x.name));
 function bookFindHtml(st){const F=st.bfind,T=F.T;const n=F.picks.length;
   const list=F.res.length?`<div class="bfl">${F.res.map((x,i)=>`<label class="bfr ${bfHas(x)?"dis":""}"><input type="checkbox" data-bf="${i}" ${F.picks.includes(i)?"checked":""} ${bfHas(x)?"disabled":""}><span class="bfc"><img class="bkimg" alt="" src="${bkArt(x)}"></span><span class="bft"><b>${esc(x.name)}</b><span class="hint">${esc(x.pub)} · ${bookUnit(x)} · ${WON(x.price)}</span><span class="hint">ISBN ${x.isbn}${bfHas(x)?" · 이미 라이브러리에 있어요":""}</span></span></label>`).join("")}</div>`:`<div class="hint bfe">${F.msg||(T==="s"?"책 이름이나 출판사로 찾아요. 예: 쎈, 천일문, NE능률":"교보문고 책 주소나 ISBN 13자리를 붙여 넣고 [가져오기]를 눌러요.")}</div>`;
-  return `${PANEL.head({icon:IC("search"),name:"책 검색",belong:"교재 추가"})}<div class="ptabs">${[["s","검색"],["k","교보문고"],["m","직접 추가"]].map(([k,t])=>`<button type="button" class="ptb ${T===k?"on":""}" data-bt="${k}">${t}</button>`).join("")}</div>
+  return `${PANEL.head({icon:IC("search"),name:"책 검색",belong:"교재 추가"})}${PANEL.tabs([{id:"s",label:"검색"},{id:"k",label:"교보문고"},{id:"m",label:"직접 추가"}],T,"bt")}
   <div class="box"><h3>${T==="s"?"검색해서 추가":T==="k"?"교보문고에서 가져오기":"직접 추가"}${HELP("찾은 책을 고르면 교재명·출판사·분량·가격·ISBN이 채워진 채로 라이브러리에 들어가요(작성 중). 과목은 아래 칸에서 미리 고르거나 넣은 뒤 창에서 골라요. 이미 라이브러리에 있는 책은 결과에서 빠져요. 시제품은 예시 목록에서 찾아요 — 원본에서는 국립중앙도서관 검색과 교보문고 주소 가져오기가 이어져요.")}</h3>
   ${T==="m"?`<div class="hint">찾아도 없는 책·자체 교재는 빈 줄을 생성해 직접 적어요.</div><div class="row"><button class="btn" id="bfM">${IC("plus","s")}빈 교재 생성</button></div>`:`<div class="bfq">${T==="s"?`<span class="searchbox">${IC("search")}<input class="inp" id="bfQ" placeholder="책 이름·출판사" value="${esc(F.q)}" autocomplete="off"></span>`:`<textarea class="inp bfta" id="bfQ" placeholder="교보문고 책 주소 또는 ISBN을 붙여 넣으세요(Ctrl+V)">${esc(F.q)}</textarea>`}<button class="btn" id="bfGo">${T==="s"?"검색":"가져오기"}</button></div>${list}${F.res.length?'<div class="hfgrid bfsub"><div class="hfh" data-bfs></div></div>':""}`}</div>
-  <div class="actions"><button class="btn" id="bfX">닫기</button><span class="sp"></span>${T==="m"?"":`<button class="btn pri big" id="bfAdd" ${n?"":"disabled"} title="고른 책을 라이브러리에 넣어요(작성 중)">${IC("plus","s")}라이브러리에 추가${n?` <span class="cnt">${n}</span>`:""}</button>`}</div>`}
+  ${PANEL.foot({back:{id:"bfX",label:"닫기"},go:T==="m"?null:{id:"bfAdd",icon:IC("plus","s"),label:"라이브러리에 추가",off:!n,count:n||"",title:"고른 책을 라이브러리에 넣어요(작성 중)"}})}`}
 function bookFindBind(p,st){const F=st.bfind;const close=()=>{if(F.newSubj&&!DB.books.some(b=>!b.del&&b.subjectId===F.newSubj)){const i=DB.subjects.findIndex(z=>z.id===F.newSubj&&z.state==="draft");if(i>=0){DB.subjects.splice(i,1);st.bfind=null;panelOpen=false;commit();toast("책을 넣지 않아서 방금 생성한 과목도 삭제했어요");return}}st.bfind=null;panelOpen=false;render()};
   p.querySelectorAll("[data-bt]").forEach(x=>x.onclick=()=>{if(F.T===x.dataset.bt)return;st.bfind={T:x.dataset.bt,q:"",res:[],picks:[],msg:""};render();const i=document.querySelector("#lp #bfQ");if(i)i.focus()});
   const go=()=>{const inp=p.querySelector("#bfQ");const q=inp?inp.value.trim():"";F.q=q;F.picks=[];F.msg="";if(F.T==="s"){const k=q.toLowerCase();F.res=k?BK_CAT.filter(x=>(x.name+" "+x.pub+" "+x.series).toLowerCase().includes(k)):[];if(k&&!F.res.length)F.msg=`"${q}"로 찾은 책이 없어요 — 다른 말로 찾거나 [직접 추가]를 써요`}else{const isbn=(q.match(/97[89]\d{10}/)||[])[0],url=/kyobobook\.co\.kr/.test(q);if(!isbn&&!url){F.res=[];F.msg="교보문고 책 주소나 ISBN 13자리를 붙여 주세요"}else{F.res=[(isbn&&BK_CAT.find(x=>x.isbn===isbn))||BK_CAT[hsh(q)%BK_CAT.length]]}}render();const i=document.querySelector("#lp #bfQ");if(i){i.focus();if(i.setSelectionRange&&F.T==="s")i.setSelectionRange(i.value.length,i.value.length)}};
