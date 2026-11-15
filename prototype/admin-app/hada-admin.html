@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=440">
-<link rel="stylesheet" href="app.css?v=440">
-<link rel="stylesheet" href="pick.css?v=440">
-<link rel="stylesheet" href="field.css?v=440">
+<link rel="stylesheet" href="hada-tokens.css?v=441">
+<link rel="stylesheet" href="app.css?v=441">
+<link rel="stylesheet" href="pick.css?v=441">
+<link rel="stylesheet" href="field.css?v=441">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=440"><script src="hada-rules.js?v=440"></script><script src="alim-preview.js?v=440"></script><script src="pick.js?v=440"></script><script src="field.js?v=440"></script><script src="panel.js?v=440"></script>
+<link rel="stylesheet" href="alim.css?v=441"><script src="hada-rules.js?v=441"></script><script src="alim-preview.js?v=441"></script><script src="pick.js?v=441"></script><script src="field.js?v=441"></script><script src="panel.js?v=441"></script>
 <script>
 "use strict";
 
@@ -1905,7 +1905,7 @@ const LISTS={
   filters:[["교재 없는 과목",x=>!DB.books.some(b=>b.subjectId===x.id)],["학년 빈칸",x=>!(x.grades||[]).length],["예체능(영역 없음)",x=>!x.area]],
   fields:[["name","과목 이름"],["emoji","노션 이모지",null,"text","노션 과목 페이지 앞에만 보여요(앱에서는 안 씀)"],["area","영역",()=>optItems("area"),"opt","예체능 과목은 비워요"],["grades","학년",r=>gradesOn(r.grades),"multi","여러 학년이면 모두 골라요"],["memo","비고",null,"memo"]],
   blank:()=>({id:uid("sb"),name:"새 과목",emoji:"",area:"",grades:[],memo:""}),
-  extra:x=>{const bs=DB.books.filter(b=>b.subjectId===x.id);return `<div class="box"><h3>이 과목 교재 <span class="hint">${bs.length}권</span><span class="sp"></span><button class="lnk" data-act="addBook">${IC("plus","s")}교재 추가</button></h3>${bs.length?`<div class="ttrows">${bs.map(b=>`<div class="ttrow" data-gobook="${b.id}" title="라이브러리에서 열기"><span class="t">${esc(b.name)}</span><span class="hint">${esc(bookUnit(b))}</span>${b.using?"":`<span class="tag">미사용</span>`}${IC("right","s")}</div>`).join("")}</div>`:'<div class="hint">아직 교재가 없어요</div>'}</div>`}},
+  extra:x=>{const bs=DB.books.filter(b=>b.subjectId===x.id);return `<div class="box"><h3>이 과목 교재 <span class="hint">${bs.length}권</span><span class="sp"></span><button class="lnk" data-act="addBook">${IC("plus","s")}교재 추가</button></h3>${PANEL.rows(bs.map(b=>({attr:`data-gobook="${b.id}"`,title:"라이브러리에서 열기",t:b.name,sub:bookUnit(b),tag:b.using?"":"미사용"})),"아직 교재가 없어요")}</div>`}},
  books:{title:"라이브러리",coll:"books",unit:"권",/* 413판(대표): [정보] 상자 = 기본 · 분류 · 분량 · 교재비(프로그램은 재료비) · 표지(ISBN 포함) */secs:[{title:"분류",keys:["pub","series","types","curr"]},{title:"분량",keys:["total","unit"]},{title:r=>r.kind==="프로그램"?"재료비":"교재비",keys:["price","etcItem"]},{hide:true,keys:["isbn"]}],pairs:[["total","unit",""]],numUnit:(b,k)=>k==="total"?bookSuf(b):"",numPre:(b,k)=>k==="total"?bookPre(b):"",subs:[["b","교재"],["p","프로그램"]],ph:"교재 검색",addLabel:"교재 추가",help:"노션 라이브러리(학원) DB와 같은 칸이에요. 여기 교재가 등록 카드 [교재] 칸과 클래스별 진도교재의 목록이 돼요. 북커버·PDF는 노션에서 올려요.",
   cols:[["교재명",b=>b.name,"name"],["과목",b=>{const x=subj(b.subjectId);return x.name},"subjectId"],["구분",b=>b.kind||"교재","kind"],["출판사",b=>b.pub||"—","pub"],["분량",b=>bookUnit(b),"total"],["가격",b=>b.price?b.price.toLocaleString():"—","price"],["쓰는 학생",b=>bookUsers(b).length+"명"],["사용",b=>b.using?"사용 중":"미사용","using"]],
   filters:[["사용 중",b=>b.using,true],["프로그램",b=>b.kind==="프로그램"],["가격 없음",b=>!b.price]],
@@ -2878,7 +2878,7 @@ function todoPanel(L,st){/* 299판(연결): 할 일 창 = 오른쪽 창 모듈 P
 document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-todok]");if(t){activeTab.state.todoK=t.dataset.todok;render();return}const r=e.target.closest&&e.target.closest("[data-todosel]");if(r){activeTab.state.sel=r.dataset.todosel;activeTab.state.fromTodo=r.dataset.todosel;panelOpen=true;render();return}const b=e.target.closest&&e.target.closest("[data-totodo]");if(b){activeTab.state.sel=null;activeTab.state.fromTodo=null;render()}});
 /* 262판(어사이드 점검): 가정통신문·학습 보고서 창에 받는 학생 명단 — 우선 연락처가 없으면 경고 */
 function rcptBox(classId,title,note){const es=liveEn(classId);const sts=es.map(e=>stu(e.studentId)).filter(Boolean);const miss=sts.filter(s=>!preNo(s)).length;
-  return `<div class="box"><h3>${title} <span class="hint">${sts.length}명${miss?` · <span class="bad">번호 없음 ${miss}명</span>`:""}</span>${HELP(note)}</h3>${sts.length?`<div class="ttrows">${sts.map(s=>`<div class="ttrow"><span class="t">${esc(s.name)}</span><span class="hint">${esc(s.pre||"어머니")} ${preNo(s)?esc(preNo(s)):'<span class="bad">번호 없음</span>'}</span></div>`).join("")}</div>`:'<div class="hint">지금 수강 중인 학생이 없어요</div>'}</div>`}
+  return `<div class="box"><h3>${title} <span class="hint">${sts.length}명${miss?` · <span class="bad">번호 없음 ${miss}명</span>`:""}</span>${HELP(note)}</h3>${PANEL.rows(sts.map(s=>({t:s.name,subHtml:`${esc(s.pre||"어머니")} ${preNo(s)?esc(preNo(s)):'<span class="bad">번호 없음</span>'}`,arrow:false})),"지금 수강 중인 학생이 없어요")}</div>`}
 LISTS.letters.infoX=x=>rcptBox(x.classId,"받는 학생","이 클래스를 지금 수강 중인 학생에게 한 통씩 나가요. 받는 번호는 학생마다 정한 우선 연락처예요.");
 LISTS.reports.infoX=x=>rcptBox(x.classId,"받는 학생",`보고서는 학생마다 한 장씩 생성돼 우선 연락처로 나가요.${x.left?" 아직 보내지 않은 학생 "+x.left+"명이 있어요.":""}`);LISTS.bookfees.infoX=x=>chBillBox("bookfee",x);
 /* ═════ 236판: 청구 — 재무 > 청구 한 화면에 탭 넷 [교재비 | 재료비 | 기타경비 | 전체 줄].
@@ -2938,7 +2938,7 @@ function seriesSync(){(DB.series||[]).forEach(x=>{if(x._nm===undefined)x._nm=x.n
 LISTS.books_s={title:"라이브러리",coll:"series",unit:"개",ph:"시리즈 검색",addLabel:"시리즈 추가",help:"같은 계열의 교재를 묶는 이름이에요(쎈 · 개념원리처럼). 교재 창의 [시리즈] 칸에서 골라요. 이름을 고치면 묶인 교재의 시리즈도 같이 바뀌어요.",
   cols:[["시리즈",x=>x.name,"name"],["교재",x=>srBooks(x).length+"권"],["출판사",x=>[...new Set(srBooks(x).map(b=>b.pub).filter(Boolean))].join(", ")||"—"],["쓰는 학생",x=>srBooks(x).reduce((a,b)=>a+bookUsers(b).length,0)+"명"]],
   filters:[["교재 없는 시리즈",x=>!srBooks(x).length]],fields:[["name","시리즈 이름"]],blank:()=>({id:uid("sr"),name:"새 시리즈",_nm:"새 시리즈"}),
-  extra:x=>{const bs=srBooks(x);return `<div class="box"><h3>이 시리즈 교재 <span class="hint">${bs.length}권</span></h3>${bs.length?`<div class="ttrows">${bs.map(b=>`<div class="ttrow" data-gobook="${b.id}" title="교재 열기"><span class="t">${esc(b.name)}</span><span class="hint">${esc([subj(b.subjectId).name,bookUnit(b)].filter(z=>z&&z!=="—").join(" · "))}</span>${IC("right","s")}</div>`).join("")}</div>`:'<div class="hint">아직 이 시리즈로 묶인 교재가 없어요 — 교재 창 [정보]의 [시리즈] 칸에서 골라요</div>'}</div>`}};
+  extra:x=>{const bs=srBooks(x);return `<div class="box"><h3>이 시리즈 교재 <span class="hint">${bs.length}권</span></h3>${PANEL.rows(bs.map(b=>({attr:`data-gobook="${b.id}"`,title:"교재 열기",t:b.name,sub:[subj(b.subjectId).name,bookUnit(b)].filter(z=>z&&z!=="—").join(" · ")})),"아직 이 시리즈로 묶인 교재가 없어요 — 교재 창 [정보]의 [시리즈] 칸에서 골라요")}</div>`}};
 /* ═════ 214판: 등록 화면 개편(대표 261114) — 이름 "등록", 학생 칸 병합, 학교·학년 따로, 클래스 색, 등록상태·등록일·종료일, 요일·시간 칩, 수강료 조정(여러 줄: 금액 + 사유),
    창 [현황] = 출결·과제·평가(학부모 리포트에 보이는 내용), [수강료] = 이 등록의 수강료·교재비. 노션 등록 DB의 칸·버튼 이름을 따른다(결과/노션-등록DB-구조.md) ═════ */
 const EN_ST={pre:["등록 전","prep"],on:["등록 중","run"],end:["종료","end"]};
@@ -3036,8 +3036,8 @@ ${A.length?`<div class="unrows">${A.map((a,i)=>ED&&ED.id===e.id&&ED.i===i?`<div 
 <div class="adjsum tot"><span>달마다 청구할 금액</span><b>${(base+sum+Math.max(0,+c.etcAmt||0)).toLocaleString()}원</b></div></div>
 ${enStat(e)!=="end"&&!e.ended?`<div class="box"><h3>종료${HELP("종료 처리 = 내일부터의 수업에서 빠지고 시간표 연결이 풀려요(학생·등록 기록은 남아요).")}</h3><div class="row"><button class="btn sm danger" data-act="end">종료 처리</button></div></div>`:""}`}/* 327판: 등록 안내는 위 [등록 안내 전송] 하나로(미리보기 단추 없앰) */
 function enFeeBox(e){const tu=DB.tuition.filter(x=>x.studentId===e.studentId&&x.classId===e.classId&&!x.del).sort((a,b)=>String(b.month).localeCompare(String(a.month))),bf=DB.bookfees.filter(x=>x.studentId===e.studentId&&x.classId===e.classId&&!x.del);
-  return `<div class="box"><h3>수강료 <span class="hint">${tu.length}건</span>${HELP("이 등록으로 생성한 달 수강료예요. 줄을 누르면 수강료 화면에서 열려요.")}</h3>${tu.length?`<div class="ttrows">${tu.map(x=>`<div class="ttrow" data-gotu="${x.id}" title="수강료 화면에서 열기"><span class="t">${esc(x.month)}</span><span class="hint">${WON(tuAmt(x))} · ${esc(x.pay)}${x.sent?"":" · 안내 전"}</span>${IC("right","s")}</div>`).join("")}</div>`:'<div class="hint">아직 생성한 수강료가 없어요 — 수강료 화면 [수강료 생성]으로 생성해요</div>'}</div>
-<div class="box"><h3>청구 <span class="hint">${bf.length}건</span>${HELP("이 등록의 교재비 · 재료비 · 기타경비예요. 줄을 누르면 교재비·재료비는 교재비 화면, 기타경비는 청구 화면에서 열려요.")}</h3>${bf.length?`<div class="ttrows">${bf.map(x=>`<div class="ttrow" data-gobf="${x.id}" title="${bfCat(x)==="기타경비"?"청구":"교재비"} 화면에서 열기"><span class="t">${esc(x.items||"")}</span><span class="hint">${bfCat(x)} · ${WON(x.total)} · ${x.paid>=x.total?"완료":"미납"}</span>${IC("right","s")}</div>`).join("")}</div>`:'<div class="hint">교재비 · 재료비 · 기타경비가 없어요</div>'}</div>`}
+  return `<div class="box"><h3>수강료 <span class="hint">${tu.length}건</span>${HELP("이 등록으로 생성한 달 수강료예요. 줄을 누르면 수강료 화면에서 열려요.")}</h3>${PANEL.rows(tu.map(x=>({attr:`data-gotu="${x.id}"`,title:"수강료 화면에서 열기",t:x.month,sub:`${WON(tuAmt(x))} · ${x.pay}${x.sent?"":" · 안내 전"}`})),"아직 생성한 수강료가 없어요 — 수강료 화면 [수강료 생성]으로 생성해요")}</div>
+<div class="box"><h3>청구 <span class="hint">${bf.length}건</span>${HELP("이 등록의 교재비 · 재료비 · 기타경비예요. 줄을 누르면 교재비·재료비는 교재비 화면, 기타경비는 청구 화면에서 열려요.")}</h3>${PANEL.rows(bf.map(x=>({attr:`data-gobf="${x.id}"`,title:`${bfCat(x)==="기타경비"?"청구":"교재비"} 화면에서 열기`,t:x.items||"",sub:`${bfCat(x)} · ${WON(x.total)} · ${x.paid>=x.total?"완료":"미납"}`})),"교재비 · 재료비 · 기타경비가 없어요")}</div>`}
 /* 조정 줄 편집 마치기: 금액·사유가 모두 빈 줄은 없애고, 합계를 다시 적는다(discount = 할인 합, 추가면 음수) */
 function adjDone(e){const st=activeTab.state,ed=st.adjEd;st.adjEd=null;if(ed&&ed.id===e.id){const a=enAdjs(e)[ed.i];if(a&&!a.amt&&!String(a.why||"").trim())e.adjs=e.adjs.filter(z=>z!==a)}e.discount=-enAdjSum(e)}
 function enBind(p,L,r,t){const fin=()=>{adjDone(r);commit()};const act=(k,fn)=>p.querySelectorAll(`[data-act="${k}"]`).forEach(b=>b.onclick=fn);
@@ -3084,11 +3084,11 @@ function optDel(k,v){const n=optUsed(k,v);if(n){toast(`삭제할 수 없어요 �
 const LTABS={
   classes:c=>{const bl=DB.blocks.filter(b=>b.classId===c.id&&b.seasonId==="s1");const en=liveEn(c.id);return [
     ["tt","시간표",ttBl(c.id).length,ttPanel(c.id,null)],
-    ["stu","학생",en.length,`<div class="box"><h3>수강 중인 학생 <span class="hint">${en.length}명</span></h3>${en.length?`<div class="ttrows">${en.map(e=>{const x=stu(e.studentId);return `<div class="ttrow" data-gostu="${x.id}" title="학생 화면에서 열기"><span class="t">${esc(x.name)}</span><span class="hint">${esc([x.school,x.grade].filter(Boolean).join(" "))}</span>${IC("right","s")}</div>`}).join("")}</div>`:'<div class="hint">아직 수강 중인 학생이 없어요 — 학생 창 [등록]에서 넣어요</div>'}</div>`],
+    ["stu","학생",en.length,`<div class="box"><h3>수강 중인 학생 <span class="hint">${en.length}명</span></h3>${PANEL.rows(en.map(e=>{const x=stu(e.studentId);return {attr:`data-gostu="${x.id}"`,title:"학생 화면에서 열기",t:x.name,sub:[x.school,x.grade].filter(Boolean).join(" ")}}),"아직 수강 중인 학생이 없어요 — 학생 창 [등록]에서 넣어요")}</div>`],
     ["bk","교재",DB.progress.filter(x=>x.classId===c.id&&!x.del).length,pgBox(c)]]},
   enrolls:e=>{const bl=DB.blocks.filter(b=>b.classId===e.classId&&b.seasonId==="s1");return [["sum","현황","",enSumBox(e)],["tt","시간표",ttBl(e.classId).filter(b=>b.regs.includes(e.id)).length+"/"+ttBl(e.classId).length,ttPanel(e.classId,e)],["bk","교재",enPg(e).length,enPgBox(e)],["fee","수강료",DB.tuition.filter(x=>x.studentId===e.studentId&&x.classId===e.classId&&!x.del).length||"",enFeeBox(e)]]},
-  teachers:x=>{const cs=DB.classes.filter(c=>c.teacherId===x.id&&DB.blocks.some(b=>b.classId===c.id&&b.seasonId==="s1"));return [["cls","클래스",cs.length,`<div class="box"><h3>이 시즌 맡은 클래스 <span class="hint">${cs.length}개</span><span class="sp"></span><button class="lnk" data-act="ttT">주간 시간표${IC("right","s")}</button></h3>${cs.length?`<div class="ttrows">${cs.map(c=>{const bl=DB.blocks.filter(b=>b.classId===c.id&&b.seasonId==="s1");return `<div class="ttrow" data-gocls="${c.id}" title="클래스 화면에서 열기"><span class="t">${esc(c.name)}</span><span class="hint">${bl.map(b=>DAYS[b.day]+" "+fmt(b.start)).join(" · ")}</span>${IC("right","s")}</div>`}).join("")}</div>`:'<div class="hint">이 시즌에 맡은 클래스가 없어요</div>'}</div>`]]},
-  seasons:x=>{const bl=DB.blocks.filter(b=>b.seasonId===x.id);const byC=[...new Set(bl.map(b=>b.classId))];const sv=LS.get("panelTtView","l");return [["tt","시간표",bl.length,`<div class="box"><h3>클래스별 시간표 <span class="hint">${byC.length}개 클래스 · ${bl.length}개</span><span class="sp"></span><button class="lnk" data-act="ttS">시간표 열기${IC("right","s")}</button></h3><div class="ptool">${ptv("ptv",sv,[["l","menu","리스트로 보기"],["w","grid","시간표로 보기"]])}</div>${sv==="w"?miniWeek(bl,null,{names:1}):""}${sv!=="w"&&byC.length?`<div class="ttrows">${byC.map(c=>{const b2=bl.filter(b=>b.classId===c);return `<div class="ttrow" data-gocls="${c}" title="클래스 화면에서 열기"><span class="t">${esc(cls(c).name)}</span><span class="hint">${b2.map(b=>DAYS[b.day]+" "+fmt(b.start)).join(" · ")}</span>${IC("right","s")}</div>`}).join("")}</div>`:sv==="w"?"":'<div class="hint">이 시즌에 아직 시간표가 없어요</div>'}${x.state!=="확정"?'<div class="row"><button class="btn sm" data-act="confirmS">운영 시작…</button></div>':""}</div>`]]},
+  teachers:x=>{const cs=DB.classes.filter(c=>c.teacherId===x.id&&DB.blocks.some(b=>b.classId===c.id&&b.seasonId==="s1"));return [["cls","클래스",cs.length,`<div class="box"><h3>이 시즌 맡은 클래스 <span class="hint">${cs.length}개</span><span class="sp"></span><button class="lnk" data-act="ttT">주간 시간표${IC("right","s")}</button></h3>${PANEL.rows(cs.map(c=>{const bl=DB.blocks.filter(b=>b.classId===c.id&&b.seasonId==="s1");return {attr:`data-gocls="${c.id}"`,title:"클래스 화면에서 열기",t:c.name,sub:bl.map(b=>DAYS[b.day]+" "+fmt(b.start)).join(" · ")}}),"이 시즌에 맡은 클래스가 없어요")}</div>`]]},
+  seasons:x=>{const bl=DB.blocks.filter(b=>b.seasonId===x.id);const byC=[...new Set(bl.map(b=>b.classId))];const sv=LS.get("panelTtView","l");return [["tt","시간표",bl.length,`<div class="box"><h3>클래스별 시간표 <span class="hint">${byC.length}개 클래스 · ${bl.length}개</span><span class="sp"></span><button class="lnk" data-act="ttS">시간표 열기${IC("right","s")}</button></h3><div class="ptool">${ptv("ptv",sv,[["l","menu","리스트로 보기"],["w","grid","시간표로 보기"]])}</div>${sv==="w"?miniWeek(bl,null,{names:1}):""}${sv==="w"?"":PANEL.rows(byC.map(c=>{const b2=bl.filter(b=>b.classId===c);return {attr:`data-gocls="${c}"`,title:"클래스 화면에서 열기",t:cls(c).name,sub:b2.map(b=>DAYS[b.day]+" "+fmt(b.start)).join(" · ")}}),"이 시즌에 아직 시간표가 없어요")}${x.state!=="확정"?'<div class="row"><button class="btn sm" data-act="confirmS">운영 시작…</button></div>':""}</div>`]]},
   subjects:x=>[["bk","교재",DB.books.filter(b=>b.subjectId===x.id).length,LISTS.subjects.extra(x)]],
   books:b=>[["use","진도관리",bookPg(b).length,LISTS.books.extra(b)],["unit","단원",(b.units||[]).length||"",bookUnitBox(b)]],
   exams:x=>[["gr","성적",exGr(x).length,exBox(x)]],

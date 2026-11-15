@@ -83,8 +83,10 @@
     return `<div class="ttrows">${rs.map(r => `<div class="ttrow bk2 dgo2" data-drill="${esc(r.drill)}" title="눌러서 이 진도 보기">${r.titleHtml != null ? `<span class="t">${r.titleHtml}</span>` : `<span class="t" title="${esc(r.title)}">${esc(r.title)}</span>`}${r.modeHtml || ""}<span class="l2">${r.pct !== "" && r.pct != null ? `<span class="pbar"><i style="width:${r.pct}%"></i></span><span class="r2">${r.pct}%</span>` : ""}${r.range ? `<span class="r2">${esc(r.range)}</span>` : ""}${(r.notes || []).filter(Boolean).map(t => `<span class="r2">${esc(t)}</span>`).join("")}</span></div>`).join("")}</div>`;
   }
   // 6. 줄 목록: 이름 ……… 정보 · 꼬리표 ›
-  function rows(rs) {
-    return rs.length ? `<div class="ttrows">${rs.map(r => `<div class="ttrow" ${r.go ? `data-go="${esc(r.go)}"` : ""}>${r.dot ? `<i class="cdot" style="background:${esc(r.dot)}"></i>` : ""}<span class="t">${esc(r.t)}</span>${r.sub ? `<span class="hint">${esc(r.sub)}</span>` : ""}${r.tag ? `<span class="tag">${esc(r.tag)}</span>` : ""}${IC_.rightc}</div>`).join("")}</div>` : `<div class="hint">아직 없어요</div>`;
+  //   줄 = {attr(누를 때 쓸 속성 글자, 예: data-gobook="id"), title(툴팁), dot(색), t(이름), sub(정보 글) | subHtml, tag(꼬리표), arrow(false = 이동 없음)} · empty = 빈 목록 안내 글
+  function rows(rs, empty) {
+    const arrow = typeof IC === "function" ? IC("right", "s") : IC_.rightc;
+    return rs.length ? `<div class="ttrows">${rs.map(r => `<div class="ttrow"${r.attr ? " " + r.attr : r.go ? ` data-go="${esc(r.go)}"` : ""}${r.title ? ` title="${esc(r.title)}"` : ""}>${r.dot ? `<i class="cdot" style="background:${esc(r.dot)}"></i>` : ""}<span class="t">${esc(r.t)}</span>${r.subHtml != null ? `<span class="hint">${r.subHtml}</span>` : r.sub != null ? `<span class="hint">${esc(r.sub)}</span>` : ""}${r.tag ? `<span class="tag">${esc(r.tag)}</span>` : ""}${r.arrow === false ? "" : arrow}</div>`).join("")}</div>` : `<div class="hint">${esc(empty || "아직 없어요")}</div>`;
   }
   // 10. 아래 단추줄: 삭제 ……… 되돌리기 · ○○ 저장
   // 아래 줄 재료: 줄 창 = del · undo · save(+ ids, count) / 작업 창 = hint · back{id,label} · go{id,label,icon,off,title,count}
