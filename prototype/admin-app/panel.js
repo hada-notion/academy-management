@@ -27,7 +27,7 @@
     // state = 1줄 오른쪽 끝 한 자리(그 창의 상태 알약: {t, tone}) · draft = 작성 중 알약 · infoLine = 2줄 값 목록(빈 값은 건너뜀, 한 줄)
     const stateHtml = h.state && h.state.t ? `<span class="spill nc-${esc(h.state.tone || "gray")} hstate">${esc(h.state.t)}</span>` : "";
     const draftHtml = h.draft ? '<span class="pill w">작성 중</span>' : "";
-    const l1 = h.nameHtml != null ? h.nameHtml : `<span class="phn">${h.dot ? `<i class="cdot" style="background:${esc(h.dot)}"></i>` : ""}${name}</span>${draftHtml}${(h.status || []).map(pill).join("")}${help(h.help)}${stateHtml}`;
+    const l1 = h.nameHtml != null ? h.nameHtml + stateHtml : `<span class="phn">${h.dot ? `<i class="cdot" style="background:${esc(h.dot)}"></i>` : ""}${name}</span>${draftHtml}${(h.status || []).map(pill).join("")}${help(h.help)}${stateHtml}`;
     const l2 = h.infoHtml != null ? h.infoHtml : h.infoLine ? `<span class="hinfo">${h.infoLine.filter(Boolean).map((t, i) => `<small>${i ? '<span class="phdot">·</span>' : ""}${esc(t)}</small>`).join("")}</span>` : (h.info || []).map((t, i) => `${i ? '<span class="phdot">·</span>' : ""}<small>${esc(t)}</small>`).join("") + (h.badges || []).join("");
     const l3 = h.linksHtml != null ? h.linksHtml : (h.links || []).map((x, i) => `${i ? " · " : ""}<a class="link" href="#" data-act="${esc(x.act || "")}">${esc(x.t)} ${IC_.ext}</a>`).join("");
     const ic = h.icon && !/class="cdot"/.test(l1) ? `<span class="phi">${h.icon}</span>` : "";/* 296판: 제목 앞 화면 아이콘(색 점 있으면 색 점만) */

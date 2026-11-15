@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=432">
-<link rel="stylesheet" href="app.css?v=432">
-<link rel="stylesheet" href="pick.css?v=432">
-<link rel="stylesheet" href="field.css?v=432">
+<link rel="stylesheet" href="hada-tokens.css?v=433">
+<link rel="stylesheet" href="app.css?v=433">
+<link rel="stylesheet" href="pick.css?v=433">
+<link rel="stylesheet" href="field.css?v=433">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=432"><script src="hada-rules.js?v=432"></script><script src="alim-preview.js?v=432"></script><script src="pick.js?v=432"></script><script src="field.js?v=432"></script><script src="panel.js?v=432"></script>
+<link rel="stylesheet" href="alim.css?v=433"><script src="hada-rules.js?v=433"></script><script src="alim-preview.js?v=433"></script><script src="pick.js?v=433"></script><script src="field.js?v=433"></script><script src="panel.js?v=433"></script>
 <script>
 "use strict";
 
@@ -1228,6 +1228,26 @@ function addStudentToBlock(b,sid){snapRegs(b);let en=DB.enrolls.find(e=>e.studen
    2줄 = 정보 글(종류 이름 .ptype · 날짜·시각 .pid · 학생·학교 .hsub) + 기타 배지(.kp 정규·보강·휴강 · .gchip 학년 · .tag)
    3줄 = 바로 가기(phead의 sub). 줄마다 높이 고정, 넘치면 … — 창마다 탭 위치가 같다 */
 const PH_KEEP="i.cdot,input.hname,.qhelp",PH_STATUS=".stp,.pill:not(.kp)";
+/* 창 머리 정의(그리는 것은 창 모듈 PANEL.head): 2줄 = 상태·핵심 값(화면 이름을 적지 않는다, 값은 2~3개까지), 오른쪽 끝 = 그 줄의 상태 하나. 목록 이름(coll)으로 찾는다 */
+const HEAD_TONE={"전송 완료":"green","전송 전":"yellow","미납":"red","완료":"green","과오납":"yellow","켜짐":"green","꺼짐":"gray","운영 중":"green","예정":"yellow","종료":"red","진행 중":"blue","다음 교재":"gray","미사용":"yellow","특강":"purple"};
+const hst=t=>t?{t,tone:HEAD_TONE[t]||"gray"}:null;
+const HEAD_DEF={
+  events:r=>({info:[r.start?D10(r.start)+(r.end&&r.end!==r.start?" - "+D10(r.end):""):"",r.kind],state:hst(r.stat)}),
+  letters:r=>({info:[r.month,(r.n||0)+"명"],state:hst(r.sent?"전송 완료":"전송 전")}),
+  teachers:r=>({info:[r.role,"클래스 "+DB.classes.filter(c=>!c.del&&c.teacherId===r.id).length+"개"]}),
+  reports:r=>({info:[(r.kind||"")+" 보고서",r.from?D10(r.from)+" - "+D10(r.to):""],state:hst(r.left?"전송 전":"전송 완료")}),
+  schools:r=>({info:[r.kind,r.addr]}),
+  exams:r=>({info:[r.school,r.grade,r.date?D10(r.date):""]}),
+  seasons:r=>({info:[r.start?D10(r.start)+" - "+D10(r.end):""],state:hst({run:"운영 중",prep:"예정",end:"종료"}[seaState(r)])}),
+  classes:r=>({info:[tch(r.teacherId).name,"학생 "+DB.enrolls.filter(e=>!e.del&&!e.ended&&e.classId===r.id).length+"명"],state:r.kind==="특강"?hst("특강"):null}),
+  subjects:r=>({info:[r.area,(r.grades||[]).join(" · ")]}),
+  progress:r=>({info:[(r.mode==="개별"&&r.studentId?nmStu(r.studentId)+" · ":"")+nmCls(r.classId),r.mode==="개별"?"개별":"그룹"],state:hst(r.stat||"다음 교재")}),
+  bookfees:r=>({info:[nmCls(r.classId),WON(r.total)],state:hst((+r.total||0)-(+r.paid||0)>0?"미납":"완료")}),
+  tuition:r=>({info:[nmCls(r.classId),r.month,WON(tuAmt(r))],state:hst(r.pay)}),
+  profit:r=>({info:["매출 "+WON((r.tu||0)+(r.ec||0)+(r.bf||0)+(r.ot||0)),"지출 "+WON(r.out)]}),
+  alims:r=>({info:[r.code,r.target],state:hst(r.on?"켜짐":"꺼짐")}),
+  charges:r=>({info:[nmCls(r.classId),r.month,WON(r.amount)]}),
+  costs:r=>({info:[r.kind,r.date?D10(r.date):"",WON(r.amount)]})};
 function pheadSplit(title){const t=document.createElement("template");t.innerHTML=title;const a=[],st=[],inf=[],bd=[];
   [...t.content.childNodes].forEach(n=>{if(n.nodeType===3){const x=n.textContent;if(x.trim())a.push(esc(x));return}if(n.nodeType!==1)return;const h=n.outerHTML;
     if(n.matches(PH_KEEP))a.push(h);else if(n.matches(PH_STATUS))st.push(h);else if(n.matches(".ptype,.pid,.hsub,small"))inf.push(h);else bd.push(h)});
@@ -3080,7 +3100,7 @@ function detailHtml(L,r){const tf=LTABS[L.coll];const tabs=tf?tf(r):null;const s
   const drill=(st.backName&&st.sel===r.id)||st.enSel===r.id;const inStu=st.enSel===r.id;/* 260판: 학생에서 들어온 등록 창 — 맨 위 "‹ 학생" */
   const dT=drillTop(st),inDr=dT&&dT.row===r;const back=inDr?`<button type="button" class="spback" data-drillback title="앞 창으로 돌아가기">${IC("left")}${esc(dT.x.from||"뒤로")}</button>`:`${!drill&&st.fromTodo===r.id?`<button type="button" class="spback" data-totodo title="할 일로 돌아가기">${IC("left")}할 일</button>`:""}${inStu?`<button type="button" class="spback" data-enback title="${esc(nmStu(r.studentId))} 학생 창으로 돌아가기">${IC("left")}학생 ${esc(nmStu(r.studentId))}</button>`:drill?`<button type="button" class="spback" data-goback title="${esc(st.backName)} 학생으로 돌아가기 (Alt+←)">${IC("left")}학생</button>`:""}`;
   const [l1,l2]=pheadSplit(`${pHeadOf(L,r)} <span class="ptype">${esc(L.title)}</span> ${isDirty(L,r)?'<span class="pill w">작성 중</span>':""}`);
-  let head;if(L.coll==="enrolls"){const s_=byId(DB.students,r.studentId)||{},c_=cls(r.classId)||{},k_=enStat(r);head=PANEL.head({icon:`<span class="enic" style="color:color-mix(in srgb, ${clsHex(c_)} 70%, #000)">${IC("usercheck")}</span>`,nameHtml:`<span class="phn" style="color:color-mix(in srgb, ${clsHex(c_)} 70%, #000)">${esc(s_.name||"(학생 없음)")}</span><span class="hsub hcls2"><span class="dotc" style="background:${classBar(c_)}"></span>${esc(c_.name||"")}</span>${isDirty(L,r)?'<span class="pill w">작성 중</span>':""}`,infoHtml:`${enPill(k_)}<small class="hsub hinq">${k_==="pre"&&!r.end?`${D10(r.start)} (등원 예정)`:`${D10(r.start)} - ${r.end?D10(r.end):"현재"}`}</small>`,/* 380판(대표): 등록 창 머리 = 클래스 색 아이콘 · 학생 이름 · 클래스 / 상태 · 기간 — 학생 창(이름 · 학교 · 학년)과 구분 */linksHtml:`<span class="nlk"><a class="link" data-notion="enrolls">노션 ↗</a></span>`})}else if(L.headDef){const h=L.headDef(r);head=PANEL.head({icon:panelIcon(),name:h.name,draft:isDirty(L,r),state:h.state,infoLine:h.info,linksHtml:NOTION[activeTab.screen]?`<span class="nlk"><a class="link" data-notion="${activeTab.screen}">노션 ↗</a></span>`:""})}else head=PANEL.head({icon:panelIcon(),nameHtml:l1,infoHtml:l2,linksHtml:L.links?L.links(r):(NOTION[activeTab.screen]?`<span class="nlk"><a class="link" data-notion="${activeTab.screen}">노션 ↗</a></span>`:"")});/* 361판: 정보 탭 틀 ⑥ 머리 3줄 = 노션 ↗ (모든 표 화면 창) */
+  let head;if(L.coll==="enrolls"){const s_=byId(DB.students,r.studentId)||{},c_=cls(r.classId)||{},k_=enStat(r);head=PANEL.head({icon:`<span class="enic" style="color:color-mix(in srgb, ${clsHex(c_)} 70%, #000)">${IC("usercheck")}</span>`,nameHtml:`<span class="phn" style="color:color-mix(in srgb, ${clsHex(c_)} 70%, #000)">${esc(s_.name||"(학생 없음)")}</span><span class="hsub hcls2"><span class="dotc" style="background:${classBar(c_)}"></span>${esc(c_.name||"")}</span>${isDirty(L,r)?'<span class="pill w">작성 중</span>':""}`,infoHtml:`${enPill(k_)}<small class="hsub hinq">${k_==="pre"&&!r.end?`${D10(r.start)} (등원 예정)`:`${D10(r.start)} - ${r.end?D10(r.end):"현재"}`}</small>`,/* 380판(대표): 등록 창 머리 = 클래스 색 아이콘 · 학생 이름 · 클래스 / 상태 · 기간 — 학생 창(이름 · 학교 · 학년)과 구분 */linksHtml:`<span class="nlk"><a class="link" data-notion="enrolls">노션 ↗</a></span>`})}else if(L.headDef){const h=L.headDef(r);head=PANEL.head({icon:panelIcon(),name:h.name,draft:isDirty(L,r),state:h.state,infoLine:h.info,linksHtml:NOTION[activeTab.screen]?`<span class="nlk"><a class="link" data-notion="${activeTab.screen}">노션 ↗</a></span>`:""})}else if(HEAD_DEF[L.coll]){const h=HEAD_DEF[L.coll](r);head=PANEL.head({icon:panelIcon(),nameHtml:l1,state:h.state,infoLine:h.info,linksHtml:L.links?L.links(r):(NOTION[activeTab.screen]?`<span class="nlk"><a class="link" data-notion="${activeTab.screen}">노션 ↗</a></span>`:"")})}else head=PANEL.head({icon:panelIcon(),nameHtml:l1,infoHtml:l2,linksHtml:L.links?L.links(r):(NOTION[activeTab.screen]?`<span class="nlk"><a class="link" data-notion="${activeTab.screen}">노션 ↗</a></span>`:"")});/* 361판: 정보 탭 틀 ⑥ 머리 3줄 = 노션 ↗ (모든 표 화면 창) */
   const tabBar=PANEL.tabs([["info","정보",""],...(tabs||[])].map(([k,n,sub])=>({id:k,label:n,n:sub})),tab,"ltab");
   const EN=L.coll==="enrolls";/* 339판(대표): 등록 창 정보 탭 = 정보 탭 틀 — 기본 → 안내(등록 안내 메모 + 전송) → 수강료 조정·종료 → 메모(내부용) 맨 끝 */const fl=lFields(L,r).filter(([k])=>!EN||(k!=="note"&&k!=="memo"));
   const info=`${PANEL.infoBoxes(fl.map(f=>f[0]),L.secs,r,L.help)}${EN&&enStat(r)!=="end"?`<section class="box"><h3>안내</h3><div class="hfgrid"><div class="hfh" data-hf="note"></div>${enAlimHtml(r,"data-engd2",r.state!=="draft","등록 저장")/* 375판(대표): 고치는 중에는 알림톡 꺼짐 — 저장해야 보냄 */}</div></section>`:""}${L.infoX?L.infoX(r):""}${EN?`<section class="box"><h3>메모</h3><div class="hfgrid"><div class="hfh" data-hf="memo"></div></div></section>`:""}${!tabs&&L.extra?L.extra(r):""}`;
@@ -3168,7 +3188,7 @@ let quietTimer=null;function commitQuiet(){clearTimeout(quietTimer);/* 264판: �
 function refreshListQuiet(p,L,r){const v=document.getElementById("view");const t=activeTab;const tr=v.querySelector(`tr[data-id="${r.id}"]`);
   if(tr){tr.classList.add("draft");tr.innerHTML=gtRowCells(L,r,L.merge?(tr.querySelector("td[data-mg]")?{span:tr.querySelector("td[data-mg]").rowSpan}:{skip:true}):null)}
   rvSync();const sv=v.querySelector("#saveAll");if(sv){sv.disabled=!dirtyCount();const n=sv.querySelector(".num");if(n)n.textContent=dirtyCount();sv.title=dirtyTitle()}
-  const h2=p.querySelector(".phead h2");if(h2){if(L.headDef){const h=L.headDef(r),t=document.createElement("div");t.innerHTML=PANEL.head({icon:panelIcon(),name:h.name,draft:true,state:h.state});h2.innerHTML=t.querySelector("h2").innerHTML}else h2.innerHTML=`${panelIcon()}${pHeadOf(L,r)} <span class="pill w">작성 중</span>`}const rs=p.querySelector("#rowSave");if(rs)rs.disabled=!rowDirty(L,r);renderTabs()}
+  const h2=p.querySelector(".phead h2");if(h2){if(L.headDef){const h=L.headDef(r),t=document.createElement("div");t.innerHTML=PANEL.head({icon:panelIcon(),name:h.name,draft:true,state:h.state});h2.innerHTML=t.querySelector("h2").innerHTML}else{const hs=h2.querySelector(".hstate");h2.innerHTML=`${panelIcon()}${pHeadOf(L,r)} <span class="pill w">작성 중</span>${hs?hs.outerHTML:""}`}}const rs=p.querySelector("#rowSave");if(rs)rs.disabled=!rowDirty(L,r);renderTabs()}
 function bindDetail(p,L,r,t){mountDetail(p,L,r);if(L.coll==="enrolls")enTypeMount(p);
   // 칸을 옮겨도 창을 다시 그리지 않는다: 값만 바꾸고 표·숫자만 새로 고침(커서 유지)
   p.querySelectorAll("[data-k]").forEach(i=>{const upd=()=>{let val=i.value;if(["fee","discount"].includes(i.dataset.k))val=+val||0;if(r[i.dataset.k]===val)return;r[i.dataset.k]=val;r.state="draft";commitQuiet();refreshListQuiet(p,L,r)};i.oninput=upd;i.onchange=upd});
