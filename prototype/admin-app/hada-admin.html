@@ -113,7 +113,7 @@ function addEnroll(studentId,classId,attachGroup,state){
   return en;
 }
 /* ================= 앱 상태 ================= */
-const LS={get(k,d){try{const v=localStorage.getItem('hada_proto_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('hada_proto_'+k,JSON.stringify(v))}catch(e){}}};if(/[?&]cat=/.test(location.search)){LS.get=(k,d)=>d;LS.set=()=>{}}/* 290판: 모음표 미리보기는 저장소를 안 씀 */
+const LS={get(k,d){try{const v=localStorage.getItem('hada_proto_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('hada_proto_'+k,JSON.stringify(v))}catch(e){}}};if(/[?&]cat=/.test(location.search)){const M={};LS.get=(k,d)=>k in M?M[k]:d;LS.set=(k,v)=>{M[k]=v}}/* 290판·310판: 모음표 미리보기는 기기 저장소를 안 씀 — 그 창 안에서만 쓰는 임시 저장(보기 바꾸기 등이 미리보기 안에서 동작) */
 /* 290판(대표 '모음표도 실제로 반응하게'): 모음표 미리보기 ?cat=화면&sub=갈래&tab=n(-1 = 선택 전) — 그 창을 열어 둠. 쓰시던 탭·창 상태(저장소)는 읽지도 쓰지도 않음 */
 if(/[?&]cat=/.test(location.search))addEventListener("load",()=>{const q=new URLSearchParams(location.search),s=q.get("cat"),sub=q.get("sub")||null,k=+(q.get("tab")||0),want=s==="lesson"?"timetable":s;
   /* 첫 클릭에 앱 기본 화면이 남던 것: 앱이 다 뜬 뒤 열고, 다른 화면이면 다시 엶 */const ok=()=>curScr()===want&&(k<0||!!(activeTab.state.sel||activeTab.state.lsel));
@@ -2612,7 +2612,7 @@ function miniWeek(bl,on,opt){opt=opt||{};const H=44,H0=8,H1=23;const wk=LS.get("
   const col=k=>{const xs=bl.filter(b=>b.day===k).sort((a,b)=>a.start-b.start);const lane=[];xs.forEach(b=>{let i=0;while(lane[i]&&lane[i]>b.start)i++;lane[i]=b.end;b._ln=i});const n=Math.max(1,lane.length);
     return `<div class="mwk-col" data-mwday="${k}">${xs.map(b=>{const c=cls(b.classId),hx=clsHex(c),hi=!on||on(b);return `<button type="button" class="mwk-blk ${hi?"":"dim"}" data-goblk="${b.id}" title="${esc(c.name)} · ${DAYS[b.day]} ${fmt(b.start)}-${fmt(b.end)} — 시간표에서 열기" style="top:${(b.start-H0*60)/60*H}px;height:${Math.max(18,(b.end-b.start)/60*H-2)}px;left:${b._ln/n*100}%;width:calc(${100/n}% - 3px);background:color-mix(in srgb, ${hx} 22%, white);border-left-color:${hx}"><b>${fmt(b.start)}</b>${opt.names?` ${esc(c.short||c.name)}`:""}${b.mode==="group"?"":" 개별"}</button>`}).join("")}</div>`};
   const dc=k=>k===5?"wk-sat":k===6?"wk-sun":"";
-  return `<div class="mwk2"><div class="mwk-tool"><label class="mwk-wk"><input type="checkbox" data-mwwk ${wk?"checked":""} ${bl.some(b=>b.day>=5)?"disabled title=\"주말 시간표가 있어 늘 보여요\"":""}> 주말</label>${opt.cid?`<span class="hint">빈 칸을 누르면 그 시각에 시간표가 생겨요</span>`:""}</div>
+  return `<div class="mwk2 ${wk?"wk7":""}"><div class="mwk-tool"><label class="mwk-wk"><input type="checkbox" data-mwwk ${wk?"checked":""} ${bl.some(b=>b.day>=5)?"disabled title=\"주말 시간표가 있어 늘 보여요\"":""}> 주말</label>${opt.cid?`<span class="hint">빈 칸을 누르면 그 시각에 시간표가 생겨요</span>`:""}</div>
   <div class="mwk" style="--mwk-h:${H}px;--mwk-n:${d.length}"><div class="mwk-hd"><span></span>${d.map(k=>`<span class="${dc(k)}">${DAYS[k]}</span>`).join("")}</div><div class="mwk-sc" data-mwfirst="${(Math.floor(first/60)-H0-0.5)*H}"><div class="mwk-bd" style="height:${(H1-H0)*H}px"><div class="mwk-ax">${hs.map((h,i)=>`<span style="top:${i*H}px">${String(h).padStart(2,"0")}</span>`).join("")}</div>${d.map(col).join("")}</div></div></div></div>`}
 function mwBind(p,opt){p.querySelectorAll(".mwk-sc").forEach(sc=>{if(!sc._init){sc._init=1;sc.scrollTop=Math.max(0,+sc.dataset.mwfirst||0)}});
   p.querySelectorAll("[data-mwwk]").forEach(c=>c.onchange=()=>{LS.set("panelTtWknd",c.checked?"1":"");render()});

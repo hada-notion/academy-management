@@ -2444,3 +2444,6 @@ table.stt tr[data-id].sel:not(.sdel):hover td{background:var(--sel-bg)}
 
 /* 309판: 대화상자 안 모듈 칸 간격 = 창과 같은 12 */
 .dlg .hfh{margin:0 0 12px}
+
+/* 310판(후순위): 미니 시간표 주말 포함 7칸 — 칸이 좁아 시각이 잘리지 않게 글자·여백 줄임 */
+.mwk2.wk7 .mwk-blk{font-size:10px;padding:2px 2px 2px 3px;letter-spacing:-.4px;border-left-width:2px}
