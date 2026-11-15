@@ -52,7 +52,7 @@ function menuIcon(k){for(const g of MENU)for(const x of g[1])if(x[0]===k)return 
 /* 1) 메뉴와 연결된 칸 = 그 메뉴 아이콘(대표 261115). 메뉴 아이콘을 바꾸면 같이 바뀜 */
 const MENU_LINK=[[/^(학생|받는 학생|대상 학생|응시 학생|형제자매|형제·자매|학생\(개별일 때\)|학생 이름|학생이름)$/,"students"],[/^(선생님|담당 강사|담당자|강사|담당 선생님|담당)$/,"teachers"],[/^(클래스|등록 클래스|수강 클래스|클래스 이름)$/,"classes"],[/^학교$/,"schools"],[/^학년$/,"@gradcap"],[/^시험$/,"exams"],[/^시즌$/,"seasons"],[/^(과목|영역)$/,"subjects"],[/^(교재|프로그램|교재·프로그램)$/,"books"],[/^일정$/,"events"],[/^(보고서|학습 보고서)$/,"reports"],[/^수강료$/,"tuition"],[/^청구$/,"bill"],[/^교재비$/,"bookfees"],[/^등록$/,"enrolls"],[/^시간표$/,"timetable"],[/^가정통신문$/,"letters"],[/^진도$/,"progress"]];
 /* 2) 뜻을 보여 주는 예외(대표 지정) — 칸 종류 규칙보다 먼저 */
-const ICON_EXC=[[/상태$/,"loader"],[/^메모\(내부용\)$|^메모$/,"lock"],[/안내 메모$/,"msg"],[/^선생님 한마디/,"msgc"],[/^학부모 공개$/,"eye"],[/^개인정보 동의$/,"shield"],[/^등록 보류$/,"pausec"],[/^결제 수단$/,"creditcard"],[/^주소$/,"mappin"],[/^문의 경로$/,"navigation"],[/^우선 연락처$/,"phonecall"],[/요일/,"repeat"]];
+const ICON_EXC=[[/상태$/,"loader"],[/^메모\(내부용\)$|^메모$/,"lock"],[/안내 메모$/,"msg"],[/^선생님 한마디/,"msgc"],[/^학부모 공개$/,"eye"],[/^개인정보 동의$/,"shield"],[/^등록 보류$/,"pausec"],[/^결제 수단$/,"creditcard"],[/^주소$/,"mappin"],[/^문의 경로$/,"navigation"],[/^우선 연락처$/,"phonecall"],[/^성별$/,"user"],[/^학생과 관계$/,"users"],[/^형제자매$/,"users"],[/요일/,"repeat"]];
 /* 3) 칸 종류 규칙 */
 function iconRule(label,type){const l=String(label||"").replace(/\s*\(.*\)\s*$/,"").trim(),t=type||"";
   const raw=String(label||"").trim();for(const [re,k] of ICON_EXC)if(re.test(raw)&&FEATHER[k])return k;
