@@ -27,10 +27,15 @@
     // state = 1줄 오른쪽 끝 한 자리(그 창의 상태 알약: {t, tone}) · draft = 작성 중 알약 · infoLine = 2줄 값 목록(빈 값은 건너뜀, 한 줄)
     const stateHtml = h.state && h.state.t ? `<span class="spill nc-${esc(h.state.tone || "gray")} hstate">${esc(h.state.t)}</span>` : "";
     const draftHtml = h.draft ? '<span class="pill w">작성 중</span>' : "";
-    const l1 = h.nameHtml != null ? h.nameHtml + stateHtml : `<span class="phn">${h.dot ? `<i class="cdot" style="background:${esc(h.dot)}"></i>` : ""}${name}</span>${draftHtml}${(h.status || []).map(pill).join("")}${help(h.help)}${stateHtml}`;
-    const l2 = h.infoHtml != null ? h.infoHtml : h.infoLine ? `<span class="hinfo">${h.infoLine.filter(Boolean).map((t, i) => `<small>${i ? '<span class="phdot">·</span>' : ""}${esc(t)}</small>`).join("")}</span>` : (h.info || []).map((t, i) => `${i ? '<span class="phdot">·</span>' : ""}<small>${esc(t)}</small>`).join("") + (h.badges || []).join("");
+    // 갈래: tint = 이름·아이콘 색(등록 창 = 클래스 색) · sub = 이름 옆 보조 글 {dot(색 점), text, kind(덧붙는 클래스)} · after = 이름 뒤에 붙는 알약들(HTML)
+    const tintStyle = h.tint ? ` style="color:${esc(h.tint)}"` : "";
+    const subHtml = h.sub && h.sub.text != null ? `<span class="hsub hcls2${h.sub.kind ? " " + esc(h.sub.kind) : ""}">${h.sub.dot ? `<span class="dotc" style="background:${esc(h.sub.dot)}"></span>` : ""}${esc(h.sub.text)}</span>` : "";
+    const l1 = h.nameHtml != null ? h.nameHtml + stateHtml : `<span class="phn"${tintStyle}>${h.dot ? `<i class="cdot" style="background:${esc(h.dot)}"></i>` : ""}${name}</span>${subHtml}${h.after || ""}${draftHtml}${(h.status || []).map(pill).join("")}${help(h.help)}${stateHtml}`;
+    // infoParts = 2줄 조각들: {icon, text}(작은 아이콘 + 글, 사이에 가운뎃점) · {html}(알약 등 그대로) · {text, kind}(글)
+    const partsHtml = h.infoParts ? (() => { let out = "", n = 0; h.infoParts.filter(Boolean).forEach(q => { if (q.html != null) { out += q.html; return; } if (q.icon != null) { out += (n++ ? '<span class="phdot">·</span>' : "") + `<small class="hic">${q.icon}${esc(q.text)}</small>`; return; } out += `<small class="${esc(q.kind || "")}">${esc(q.text)}</small>`; }); return out; })() : null;
+    const l2 = h.infoHtml != null ? h.infoHtml : partsHtml != null ? partsHtml : h.infoLine ? `<span class="hinfo">${h.infoLine.filter(Boolean).map((t, i) => `<small>${i ? '<span class="phdot">·</span>' : ""}${esc(t)}</small>`).join("")}</span>` : (h.info || []).map((t, i) => `${i ? '<span class="phdot">·</span>' : ""}<small>${esc(t)}</small>`).join("") + (h.badges || []).join("");
     const l3 = h.linksHtml != null ? h.linksHtml : (h.links || []).map((x, i) => `${i ? " · " : ""}<a class="link" href="#" data-act="${esc(x.act || "")}">${esc(x.t)} ${IC_.ext}</a>`).join("");
-    const ic = h.icon && !/class="cdot"/.test(l1) ? `<span class="phi">${h.icon}</span>` : "";/* 296판: 제목 앞 화면 아이콘(색 점 있으면 색 점만) */
+    const ic = h.icon && !/class="cdot"/.test(l1) ? `<span class="phi">${h.tint ? `<span class="enic" style="color:${esc(h.tint)}">${h.icon}</span>` : h.icon}</span>` : "";/* 296판: 제목 앞 화면 아이콘(색 점 있으면 색 점만) */
     return `<div class="phead"><div class="pt"><h2>${ic}${l1}</h2><div class="pinfo">${l2}</div><div class="sub">${l3}</div></div>${h.right ? `<span class="pright">${h.right}</span>` : ""}</div>`;
   }
   // 2. 탭 바(탭이 없는 창도 '정보' 하나로 같은 자리)
