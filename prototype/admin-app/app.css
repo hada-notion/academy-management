@@ -1316,7 +1316,7 @@ table.stt tr.sdel td{background:#FBF8F4;color:var(--subtle);height:40px}table.st
 
 /* 97판: 학생 창 하나 — 연락처 줄(라벨 · 번호 · [우선]), 새 등록 클래스 목록·요일 */
 .stpanel .ct{display:grid;grid-template-columns:64px 1fr 52px;align-items:center;gap:8px;margin-bottom:8px}.stpanel .ct .cl{font-size:12px;font-weight:600;color:var(--muted)}.stpanel .ct .inp{height:40px;text-align:center;flex:none;width:100%;min-width:0;box-sizing:border-box}
-.stpanel .prb{height:32px;border:1px solid var(--control-border);border-radius:8px;background:var(--surface);font:inherit;font-size:11.5px;font-weight:700;color:var(--subtle);cursor:pointer}.stpanel .prb:hover{color:var(--ink)}.stpanel .prb.on{background:#FFF1D6;border-color:#E3B85C;color:#8A5A00}
+.stpanel .prb{height:32px;border:1px solid var(--control-border);border-radius:8px;background:var(--surface);font:inherit;font-size:11.5px;font-weight:700;color:var(--subtle);cursor:pointer}.stpanel .prb:hover{color:var(--ink)}.stpanel .prb.on{background:var(--brand-primary);border-color:var(--brand-mid);color:var(--brand-on-primary)}/* 319판: 우선 = 프라임 색 */
 .stpanel .fld textarea.inp{text-align:left;min-height:76px}
 .stpanel .clist{border:1px solid var(--control-border);border-radius:10px;overflow:hidden}.stpanel .clist .searchbox{width:100%;border:0;border-bottom:1px solid var(--line2);border-radius:0;height:36px}.stpanel .clist .clbody{max-height:180px;overflow:auto}
 .stpanel .cgh{font-size:11px;font-weight:800;color:var(--subtle);padding:6px 10px 2px}
@@ -2471,3 +2471,56 @@ body[data-w="tabv"] .ttl .seachip small{display:none}
 #view .tb-st{width:auto;height:32px;padding:0 4px;gap:6px;font-size:var(--text-label);font-weight:600;border-radius:0;background:none;border:0;box-shadow:none;cursor:default;white-space:nowrap}
 #view .tb-st svg.i{width:16px;height:16px}
 :is(.ttl,.wknav) .tday.on{background:transparent;color:var(--subtle);box-shadow:inset 0 0 0 1px var(--line)}
+/* 317판(대표): 학생 창 — 연락처 줄마다 [우선], 접수 안내 줄, 새 문의 점, 머리 2줄 문의일 */
+.ctl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
+.ctl .prb{height:40px;min-width:52px}
+.rcpt{display:flex;flex-direction:column;gap:6px}
+.rcpt .row{display:flex;gap:8px;flex-wrap:wrap}
+.rcpt .hint.mut{color:var(--subtle)}
+.newdot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--danger,#d9534f);margin-left:6px;vertical-align:2px}
+.phead .pinfo .hinq{color:var(--muted)}
+.phead .pinfo .hform{margin-left:2px}
+#sp .phead h2 .hname{flex:0 1 auto}
+#sp .phead h2 .hsub{margin-left:4px}
+/* 318판(대표): 학생 카드 — 한눈에 보기 · 인쇄 */
+.dlg.dlg-card{width:min(1000px,94vw);max-height:92vh}
+.scard{display:flex;flex-direction:column;gap:14px;color:var(--ink)}
+.sc-h{border-bottom:1px solid var(--line);padding-bottom:10px}
+.sc-n{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.sc-n b{font-size:22px;font-weight:800}.sc-n>span:not(.stp):not(.gchip){color:var(--muted);font-size:14px}
+.sc-s{display:flex;margin-top:4px;font-size:12.5px;color:var(--muted)}.sc-s .sp{flex:1}
+.sc-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.scard section{border:1px solid var(--line);border-radius:12px;padding:12px 14px;break-inside:avoid}
+.scard h4{display:flex;align-items:center;gap:6px;margin:0 0 8px;font-size:13.5px;font-weight:800}.scard h4 small{color:var(--subtle);font-weight:600}.scard h4 svg{color:var(--muted)}
+.sc-r{display:grid;grid-template-columns:84px minmax(0,1fr);gap:8px;padding:4px 0;font-size:13px;border-top:1px dashed var(--line)}.sc-r:first-of-type{border-top:0}
+.sc-r .l{color:var(--muted)}.sc-r .t{word-break:keep-all;overflow-wrap:anywhere}
+.sc-no{color:var(--subtle)}
+.sc-pre{display:inline-block;font-size:11px;font-weight:700;padding:0 6px;border-radius:999px;background:var(--brand-primary);color:var(--brand-on-primary);margin-left:4px}
+.sc-t{width:100%;border-collapse:collapse;font-size:13px}.sc-t th{text-align:left;color:var(--muted);font-weight:600;padding:4px 6px;border-bottom:1px solid var(--line)}.sc-t td{padding:5px 6px;border-bottom:1px dashed var(--line)}
+.sc-memo{font-size:13px;line-height:1.6;white-space:normal}
+.phead .pright .sccard{white-space:nowrap}
+@media print{
+ body.pcard>*:not(#modalRoot){display:none!important}
+ body.pcard #modalRoot .modal{position:static!important;background:none!important;display:block!important;padding:0!important}
+ body.pcard .dlg.dlg-card{width:auto!important;max-height:none!important;overflow:visible!important;box-shadow:none!important;padding:0!important}
+ body.pcard .dlg.dlg-card>h2,body.pcard .dlg.dlg-card>.actions{display:none!important}
+ body.pcard .scard{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ body.pcard .scard section{break-inside:avoid}
+ @page{size:A4;margin:10mm}
+}
+/* 319판: 접수 안내 알림톡 줄 · 학생 카드 메모 칸 */
+/* 320판: 접수 안내 알림톡 = 다른 칸처럼 이름 위 + 반 칸 단추 두 개(40px) */
+.rcpt{display:flex;flex-direction:column}
+.rcpt .rcb{height:40px;width:100%;justify-content:center}
+.rcpt .hint{margin-top:6px}
+.sc-memo{min-height:150px;background-image:repeating-linear-gradient(to bottom,transparent 0 27px,var(--line) 27px 28px);line-height:28px}
+/* 322판: 학생 표 줄 인쇄(휴지통 왼쪽) · 학생 카드 여러 장 인쇄 */
+table.stt:has(.rowpr) :is(th,td).op{width:68px;white-space:nowrap}
+.rowpr{margin-right:2px}
+#pcards{display:none}
+@media print{
+ body.pcards>*:not(#pcards){display:none!important}
+ body.pcards #pcards{display:block!important}
+ body.pcards #pcards .scard{break-after:page;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ body.pcards #pcards .scard:last-child{break-after:auto}
+ body.pcards #pcards .scard section{break-inside:avoid}
+}

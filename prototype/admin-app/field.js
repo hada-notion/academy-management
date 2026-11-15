@@ -169,9 +169,9 @@ function color(host,o={}){let v=o.value||null;const used=o.used||{};
   const x=b.querySelector(".hf-x");if(x)x.onclick=e=>{e.stopPropagation();close();set(null);b.focus()};show();return {get value(){return v}}}
 // 켜고 끄기: 칸 안 왼쪽 글 · 오른쪽 스위치(칸 어디를 눌러도 바뀜)
 function sw(host,o={}){let v=!!o.value;/* 288판 A안(대표): 이름 ……… 켜짐/꺼짐 · 스위치 한 줄, 테두리 없음. 줄 아무 데나 누르면 바뀜 */
-  host.innerHTML=`<div class="hf hf-sw1 ${o.disabled?"dis":""}"><div class="hf-swrow" ${o.disabled?"":'tabindex="0"'} role="switch"><span class="hf-lbl">${esc(o.label||"")}${o.req?' <i>*</i>':""}${o.tipHtml||""}</span><span class="hf-swst"></span><span class="hf-tg"></span></div>${o.help?`<span class="hf-msg">${esc(o.help)}</span>`:""}</div>`;const b=host.querySelector(".hf-swrow");
+  host.innerHTML=`<div class="hf hf-sw1 ${o.disabled?"dis":""}"><span class="hf-lbl hf-swl">${esc(o.label||"")}${o.req?' <i>*</i>':""}${o.tipHtml||""}</span><div class="hf-swrow" ${o.disabled?"":'tabindex="0"'} role="switch" aria-label="${esc(o.label||"")}"><span class="hf-swst"></span><span class="hf-tg"></span></div>${o.help?`<span class="hf-msg">${esc(o.help)}</span>`:""}</div>`;const b=host.querySelector(".hf-swrow");
   const show=()=>{b.classList.toggle("on",v);b.setAttribute("aria-checked",v);b.querySelector(".hf-swst").textContent=v?(o.on||"켜짐"):(o.off||"꺼짐")};const tg=e=>{if(o.disabled||(e&&e.target.closest(".qhelp")))return;v=!v;show();o.onChange&&o.onChange(v)};
-  b.onclick=tg;b.onkeydown=e=>{if(e.key===" "||e.key==="Enter"){e.preventDefault();tg()}};show();return {get value(){return v}}}
+  b.onclick=tg;{const l=host.querySelector(".hf-swl");if(l)l.onclick=tg}/* 319판: 이름 눌러도 바뀜 */b.onkeydown=e=>{if(e.key===" "||e.key==="Enter"){e.preventDefault();tg()}};show();return {get value(){return v}}}
 // 구분(2~4개 중 하나, 시제품 [정규|휴강]과 같은 모양): 칸 전체 = 옅은 바탕 칸 나눔(아이콘·테두리 없음), 고른 칸 = 흰 바탕 + 그림자 + 그 항목 색 글(colors{항목: 색}, 없으면 갈색)
 function seg(host,o={}){let v=o.value??o.items[0];const b=shell(host,o,`<span class="hf-seg">${o.items.map(x=>`<button type="button" data-v="${esc(x)}" ${o.disabled?"disabled":""} ${o.colors&&o.colors[x]?`style="--on:${o.colors[x]}"`:""}>${esc(x)}</button>`).join("")}</span>`,"hf-segbox");
   const show=()=>b.querySelectorAll("[data-v]").forEach(x=>{x.classList.toggle("on",x.dataset.v===v);x.setAttribute("aria-pressed",x.dataset.v===v)});

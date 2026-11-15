@@ -581,7 +581,7 @@ const noticeAsk=list=>list.length?`<div class="ask2">${list.map(n=>`<label class
 function lSaveDialog(k,after){const nm=lName(k),c0=lChanges(k)||{att:[],other:[]},c={att:c0.att,other:[...c0.other,...lxText(k)]};const ns=lNotices([k]);
   if(!ns.length){const n=lSaveOne(k);render();toast(`저장했어요 — 노션 ${n}건 (시제품: 노션에 쓰지 않음)`);if(after)after();return}
   modal(`<h2>저장</h2><div class="box"><ul class="savelist"><li><span class="dotc" style="background:${nm.bar}"></span>${esc(nm.name)} ${mdw(nm.d)} <span class="sl-t">${[c.att.length?`출결 ${c.att.length}명`:"",...c.other].filter(Boolean).join(" · ")}</span></li></ul>${noticeAsk(ns)}</div>
-  <div class="actions"><span class="sp"></span><button class="btn" id="lsC">취소</button><button class="btn pri" id="lsO">${IC("save","s")}저장</button></div>`,(m,close)=>{m.querySelector("#lsC").onclick=close;m.querySelector("#lsO").onclick=()=>{close();const n=lSaveOne(k);render();toast(`저장했어요 — 노션 ${n}건 (시제품: 노션에 쓰지 않음)`);if(after)after()}})}
+  <div class="actions"><span class="sp"></span><button class="btn" id="lsC">취소</button><button class="btn pri" id="lsO">${IC("save","s")}수업 저장</button></div>`,(m,close)=>{m.querySelector("#lsC").onclick=close;m.querySelector("#lsO").onclick=()=>{close();const n=lSaveOne(k);render();toast(`저장했어요 — 노션 ${n}건 (시제품: 노션에 쓰지 않음)`);if(after)after()}})}
 function lSaveOne(k){const n=lCount(k)+lxRows(k).length;lxSave(k);LDIRTY.delete(k);return n}
 function lName(k){if(k.startsWith("mk:")){const m=DB.mk.find(x=>"mk:"+x.id===k);return m?{name:mkName(m),d:m.d,bar:mkCol(m).bar}:null}const [bid,d]=k.split("|");const b=byId(DB.blocks,bid);return b?{name:cls(b.classId).name,d,bar:classBar(cls(b.classId))}:null}
 // 다른 수업으로 옮길 때 저장 안 한 것 묻기
@@ -902,7 +902,7 @@ function panelMk(p,t,id){const st=t.state;const m=DB.mk.find(x=>x.id===id);if(!m
   if(st.mkEd&&st.mkEd.id!==m.id)st.mkEd=null;
   if(st.mkEd){const w=st.mkEd;
     p.innerHTML=`${phead(`${esc(mkName(m))} 학생 편집`,`${mdw(m.d)} ${fmt(m.start)}-${fmt(m.end)} · 지금 ${m.sids.length}명`)}${mkPicker(w,m.d,st.season)}
-    <div class="actions"><button class="btn" id="meC">취소</button><span class="sp"></span><button class="btn pri big" id="meO">${IC("save","s")}저장</button></div>`;
+    <div class="actions"><button class="btn" id="meC">취소</button><span class="sp"></span><button class="btn pri big" id="meO">${IC("save","s")}보강 학생 저장</button></div>`;
     bindPhead(p,t);bindMkPicker(p,w,()=>{});
     p.querySelector("#meC").onclick=()=>{st.mkEd=null;render()};
     p.querySelector("#meO").onclick=()=>{const add=w.sids.filter(x=>!m.sids.includes(x)).length,rm=m.sids.filter(x=>!w.sids.includes(x));rm.forEach(x=>delete m.att[x]);m.sids=w.sids.slice();m.classId=w.classId;st.mkEd=null;commit();toast(`보강 학생을 고쳤어요${add?` — ${add}명 더함`:""}${rm.length?` · ${rm.length}명 뺌`:""}`)};return}
@@ -949,7 +949,7 @@ function mkwRow(st,w){const m=absMk(w.k);const W2=DB.mkw[w.k]||{};const ago=dAgo
   const tail=w.st==="pend"?`<span class="mwst pend">보강 잡힘 · ${mdw(m.d)}</span>`:w.st==="done"?`<span class="mwst done">보강 완료${m?` · ${md(m.d)}`:""}</span>`
     :`<span class="mwseg"><button type="button" data-mwd="need" class="${(w.st==="need"||w.st==="re")&&st.mkwWhy!==w.k?"on":""}">필요</button><button type="button" data-mwd="none" class="${w.st==="none"||st.mkwWhy===w.k?"on":""}">없음</button></span>`;
   return `<div class="mwa st-${w.st}" data-mw="${w.k}"><span class="dotc" style="background:${classBar(cls(w.classId))}"></span><span class="mwt"><span class="r">${esc(cls(w.classId).name)} ${md(w.d)} 결석</span><span class="age">${ago}${w.st==="pre"?" · 판단 전":w.st==="re"?` · 보강도 결석(${md(m.d)})`:w.st==="none"?` · 보강 없음${W2.why?` · ${esc(W2.why)}`:""}`:""}</span></span>${tail}
-    ${st.mkwWhy===w.k?`<span class="why"><input class="inp" id="mwWhy" placeholder="사유(이월·환불 등)" autocomplete="off" value="${esc(W2.why||"")}"><button type="button" class="btn" id="mwOk">${IC("save","s")}저장</button></span>`:""}</div>`}
+    ${st.mkwWhy===w.k?`<span class="why"><input class="inp" id="mwWhy" placeholder="사유(이월·환불 등)" autocomplete="off" value="${esc(W2.why||"")}"><button type="button" class="btn" id="mwOk">${IC("save","s")}사유 저장</button></span>`:""}</div>`}
 function mkwHtml(st,W){const open=st.mkwOpen||(st.mkwOpen={});const per=st.mkwPer||(st.mkwPer={});
   const G=new Map();W.forEach(w=>{if(!G.has(w.sid))G.set(w.sid,[]);G.get(w.sid).push(w)});
   const gs=[...G.entries()].map(([sid,L])=>({sid,L:L.sort((a,b)=>a.d.localeCompare(b.d)),n:k=>L.filter(w=>w.st===k).length}))
@@ -1773,7 +1773,7 @@ function saveDialog(only){
     ${lastOut.length?`<div class="warnbox">${lastOut.map(e=>esc(stu(e.studentId).name)+" · "+esc(cls(e.classId).name)).join(", ")} — 이 시즌 시간표가 하나도 안 남아요. 클래스를 그만두는 거면 <span class="link" id="rqEnd">[수강 종료]</span></div>`:""}</div>`:""}
   ${tc.length?`<div class="warnbox">학부모 안내는 자동으로 나가지 않아요 — 저장 뒤 [시간표 변경 안내]를 눌러 주세요.</div>`:""}
   ${moved.length?`<div class="warnbox">이미 만든 수업 ${moveN}개를 새 시간으로 옮겨요(출석 날짜도 함께). 학부모 안내는 자동으로 나가지 않아요 — 저장 뒤 [시간표 변경 안내]를 눌러 주세요.</div>`:""}</div>
-  <div class="actions">${only?"":`<button class="btn rvtxt" id="sRv" title="저장하지 않은 것을 모두 마지막 저장 상태로">${IC("undo","s")}모두 되돌리기</button>`}<span class="sp"></span><button class="btn" id="sc">취소</button><button class="btn pri" id="so">${IC("save","s")}저장</button></div>`,(m,close)=>{m.querySelector("#sc").onclick=close;{const r=m.querySelector("#sRv");if(r)r.onclick=()=>{close();revertAllAsk()}}
+  <div class="actions">${only?"":`<button class="btn rvtxt" id="sRv" title="저장하지 않은 것을 모두 마지막 저장 상태로">${IC("undo","s")}모두 되돌리기</button>`}<span class="sp"></span><button class="btn" id="sc">취소</button><button class="btn pri" id="so">${IC("save","s")}시간표 저장</button></div>`,(m,close)=>{m.querySelector("#sc").onclick=close;{const r=m.querySelector("#sRv");if(r)r.onclick=()=>{close();revertAllAsk()}}
     let rqCal=null;
     if(rc.length||tc.length){const bl=rc.map(x=>x.b),mt=MADE_TO();const isL=d=>bl.some(b=>dow(d)===b.day&&inPer(effPeriod(b),d));const kind=addS.length&&rmS.length?"both":addS.length?"add":"rm";
       const tOld=(b,d)=>dow(d)===b.t0.day&&inPer(effPeriod(b),d),tNew=(b,d)=>dow(d)===b.day&&inPer(effPeriod(b),d);
@@ -1931,10 +1931,14 @@ function stuTodo(st){const T=stuTodoL();const tab=st.stodo||"new";const L=T[tab]
   /* 299판(연결): 학생 할 일 창도 오른쪽 창 모듈 PANEL.todo 하나 — 갈래 탭·줄·이유 모양이 다른 화면 할 일과 같음 */
   return PANEL.todo({keepTabs:true,on:tab,tabAttr:"stodo",rowAttr:"tdo",help:"학생을 안 고르면 할 일이 보여요. 표에서 학생을 누르면 그 학생 창, Esc나 [‹ 할 일]로 돌아와요. 새 학생은 [학생 추가].",
     groups:[["new","신규문의"],["info","정보 누락"],["pre","등록 전"]].map(([k,n])=>({k,name:n,why:k===tab?help:"",rows:k===tab?L.map(x=>({id:x.id,html:row(x)})):T[k].map(x=>({id:x.id,html:""}))})),
-    footHtml:`<div class="actions"><span class="sp"></span><button class="btn" id="tdAdd">${IC("plus","s")}학생 추가</button></div>`})}
+    footHtml:`<div class="actions"><button class="btn" id="tdForm" title="시험용 — 상담 신청서 하나가 들어온 것처럼 만들어요">${IC("send","s")||IC("msg","s")}신청서 도착 시험</button><span class="sp"></span><button class="btn" id="tdAdd">${IC("plus","s")}학생 추가</button></div>`})}
 function stuTodoBind(v,st){const p=v.querySelector("#sp");if(!p)return;
   p.querySelectorAll("[data-stodo]").forEach(b=>b.onclick=()=>{st.stodo=b.dataset.stodo;render()});
   p.querySelector("#tdAdd").onclick=()=>v.querySelector("#addRow").click();
+  /* 317판: 신청서 도착 시험 — 원본은 상담 폼이 학생 DB에 줄을 만들고, 동의가 체크돼 있으면 접수 안내가 저절로 나감 */
+  const tf=p.querySelector("#tdForm");if(tf)tf.onclick=()=>{const N=["한서윤","오지호","배하율","문시우","권도아"],S=[["하다중","중1"],["바다초","초5"],["푸른중","중2"]];const i=DB.students.length%N.length,sc=S[i%S.length];const d=new Date();d.setMonth(d.getMonth()+1,1);
+    const x={id:uid("st"),name:N[i],school:sc[0],grade:sc[1],route:"상담 신청서",consent:true,pre:"어머니",mom:"010-0000-19"+String(10+i),dad:"",sp:"",gp:"",gprel:"",hold:false,memo:"토요일 오전 상담 희망(신청서 추가 전달사항)",hope:d.toISOString().slice(0,10),inq:nowStamp(),unseen:true,rcpt:nowStamp()};
+    DB.students.unshift(x);st.sf="new";render();toast(`${x.name} — 상담 신청서로 문의가 들어왔어요 · 접수 안내 알림톡이 저절로 나갔어요(시제품: 보내지 않음)`)};
   p.querySelectorAll("[data-tdo]").forEach(b=>b.onclick=()=>{const id=b.dataset.tdo;const x=byId(DB.students,id);const tab=st.stodo||"new";st.sel=id;st.quick=false;st.gpOpen=null;st.rowFocus=id;st.stab=tab==="pre"?"en":"info";render();
     if(tab==="info"){const f={"이름":".hname","학년":'[data-shf="grade"] .hf-box',"학교":'[data-shf="school"] .hf-box',"연락처":'[data-sk="sp"]'}[stuMiss(x)[0]];setTimeout(()=>{const el=document.querySelector("#sp "+f);if(el){el.scrollIntoView({block:"center"});el.focus();el.classList.add("tdflash");setTimeout(()=>el.classList.remove("tdflash"),1600)}},30)}})}
 function stuDirty(x,k){return x.state==="draft"&&x._o&&x._o[k]!==x[k]}
@@ -1945,7 +1949,8 @@ function stuFocusKey(el){if(!el||!el.closest||!el.closest("#sp"))return null;if(
 const STU_COLS=[
  {k:"stat",l:"등록상태",i:"activity",w:104,cat:1,v:x=>STU_ST[stuStat(x)][0],r:x=>stPill(stuStat(x))},
  {k:"inq",l:"문의일",i:"calendar",w:128,ed:"dt",v:x=>x.inq||"",r:x=>inqS(x.inq)||'<span class="none">—</span>'},
- {k:"name",l:"이름",i:"user",w:88,ed:"t",v:x=>x.name||"",r:x=>`<b class="nm">${esc(x.name)}</b>`},
+ {k:"route",l:"문의 경로",i:"navigation",w:120,cat:1,v:x=>x.route||"",r:x=>x.route?`<span class="spill ${ncCls("students","route",x.route)}">${esc(x.route)}</span>`:'<span class="none">—</span>'},/* 323판(대표): 학생 표 빠진 열 */
+ {k:"name",l:"이름",i:"user",w:88,ed:"t",v:x=>x.name||"",r:x=>`<b class="nm">${esc(x.name)}</b>${x.unseen?'<i class="newdot" title="아직 안 열어 본 새 문의"></i>':""}`},
  {k:"school",l:"학교",i:"school",w:84,cat:1,ed:"dd",v:x=>x.school||"",r:x=>esc(x.school||"")||'<span class="none">—</span>'},
  {k:"grade",l:"학년",i:"gradcap",w:72,cat:1,ed:"dd",v:x=>x.grade||"",r:x=>x.grade?gchip(x.grade)+(stuGrMis(x)?'<span class="bad" title="학교와 학년의 학교급이 달라요 — 학교나 학년을 확인해요"> 학교와 다름</span>':""):'<span class="bad">학년 빈칸</span>',ord:x=>{const g=GRADES.indexOf(x.grade);return g<0?99:g}},
  {k:"birth",l:"생년월일",i:"calendar",w:96,ed:"d",v:x=>x.birth||"",r:x=>x.birth?esc(x.birth.replace(/-/g,".")):'<span class="none">—</span>'},
@@ -1954,13 +1959,20 @@ const STU_COLS=[
  {k:"sp",ed:"t",l:"학생 연락처",i:"phone",w:124,v:x=>x.sp||"",r:x=>esc(x.sp||"")||'<span class="none">—</span>'},
  {k:"mom",ed:"t",l:"어머니 연락처",i:"phone",w:124,v:x=>x.mom||"",r:x=>esc(x.mom||"")||'<span class="none">—</span>'},
  {k:"dad",ed:"t",l:"아버지 연락처",i:"phone",w:124,v:x=>x.dad||"",r:x=>esc(x.dad||"")||'<span class="none">—</span>'},
- {k:"gp",ed:"t",l:"기타 연락처",i:"phone",w:124,v:x=>x.gp||"",r:x=>esc(x.gp||"")||'<span class="none">—</span>'},
+ {k:"gp",ed:"t",l:"기타 보호자 연락처",i:"phone",w:124,v:x=>x.gp||"",r:x=>esc(x.gp||"")||'<span class="none">—</span>'},
  {k:"gprel",l:"학생과 관계",i:"users",w:96,cat:1,ed:"t",v:x=>x.gprel||"",r:x=>esc(x.gprel||"")||'<span class="none">—</span>'},
  {k:"preno",l:"우선 연락처",i:"phone",w:168,ed:"dd",edk:"pre",v:x=>preNo(x)||"",r:x=>`<span class="prek">${esc(x.pre||"어머니")}</span>${preNo(x)?`<b class="preno">${esc(preNo(x))}</b>`:'<span class="bad">번호 없음</span>'}`},
+ {k:"consent",l:"개인정보 동의",i:"shield",w:104,cat:1,v:x=>x.consent?"동의함":"동의 전",r:x=>x.consent?"동의함":'<span class="none">동의 전</span>'},
+ {k:"hold",l:"등록 보류",i:"pausec",w:88,cat:1,v:x=>x.hold?"보류 중":"",r:x=>x.hold?'<span class="tag">보류 중</span>':'<span class="none">—</span>'},
  {k:"cls",l:"등록 클래스",i:"layers",w:208,cat:1,multi:1,v:x=>DB.enrolls.filter(e=>e.studentId===x.id&&enStat(e)!=="end"&&!e.ended).map(e=>cls(e.classId).name),
    r:x=>{const act=DB.enrolls.filter(e=>e.studentId===x.id&&enStat(e)!=="end"&&!e.ended);return act.length?`<span class="chips">${act.map(e=>{const c=cls(e.classId);const pre=enStat(e)==="pre";return `<span class="cc engo" data-goen="${e.id}" title="이 등록 열기(‹ 로 돌아와요)" style="--cc:${classBar(c)}"><i></i>${esc(c.name)}${pre?` · ${md(e.start)}`:""}</span>`}).join("")}</span>`:'<span class="none">등록 없음</span>'}},
  {k:"start",l:"등록일",i:"calendar",w:72,v:x=>stuStart(x),r:x=>ymdS(stuStart(x))||'<span class="none">—</span>'},
- {k:"end",l:"종료일",i:"calendar",w:72,v:x=>stuEnd(x),r:x=>ymdS(stuEnd(x))||'<span class="none">—</span>'}];
+ {k:"end",l:"종료일",i:"calendar",w:72,v:x=>stuEnd(x),r:x=>ymdS(stuEnd(x))||'<span class="none">—</span>'},
+ {k:"hope",l:"희망 시작일",i:"calendar",w:96,hid:1,v:x=>x.hope||"",r:x=>x.hope?D10(x.hope):'<span class="none">—</span>'},
+ {k:"rcpt",l:"접수 안내",i:"msg",w:150,hid:1,cat:1,v:x=>x.rcpt?"전송 완료":"전송 전",r:x=>x.rcpt?`전송 완료 <small class="none">${inqS(x.rcpt)}</small>`:'<span class="none">전송 전</span>'},
+ {k:"sib",l:"형제자매",i:"users",w:140,hid:1,multi:1,v:x=>(x.sib||[]).map(id=>(byId(DB.students,id)||{}).name).filter(Boolean),r:x=>{const n=(x.sib||[]).map(id=>byId(DB.students,id)).filter(Boolean);return n.length?`<span class="chips">${n.map(y=>`<span class="chip">${esc(y.name)}</span>`).join("")}</span>`:'<span class="none">—</span>'}},
+ {k:"tch",l:"담당 선생님",i:"users",w:120,hid:1,cat:1,multi:1,v:x=>[...new Set(DB.enrolls.filter(e=>e.studentId===x.id&&enStat(e)!=="end"&&!e.ended).map(e=>tch(cls(e.classId).teacherId).name).filter(Boolean))],r:x=>{const t=[...new Set(DB.enrolls.filter(e=>e.studentId===x.id&&enStat(e)!=="end"&&!e.ended).map(e=>tch(cls(e.classId).teacherId).name).filter(Boolean))];return t.length?esc(t.join(", ")):'<span class="none">—</span>'}},
+ {k:"memo",l:"메모(내부용)",i:"lock",w:200,hid:1,v:x=>x.memo||"",r:x=>x.memo?`<span class="memo1" title="${esc(x.memo)}">${esc(String(x.memo).split(String.fromCharCode(10))[0])}</span>`:'<span class="none">—</span>'}];
 /* 표 모양은 거르기 탭마다 따로(261113 대표). 손대지 않은 탭은 "전체" 탭 모양을 따름. 원본은 서버(관리자 설정)에 학원 공통으로 + 기기 복사본 */
 const curScr=()=>activeTab?activeTab.screen:"students";
 function CUR_COLS(){return curScr()==="students"?STU_COLS:listCols(listOf(curScr(),activeTab&&activeTab.state))}
@@ -1970,7 +1982,7 @@ function stuColsOwn(){return !!LS.get(colsLS()+":"+stuSfKey(),null)}
 function stuColsRaw(){const old=curScr()==="students"?LS.get("stuCols",null):null;if(old){if(!LS.get("stuCols:all",null))LS.set("stuCols:all",old);try{localStorage.removeItem("hada_proto_stuCols")}catch(e){}}
   return LS.get(colsLS()+":"+stuSfKey(),null)||LS.get(colsLS()+":all",null)}
 function stuColsSave(cfg){if(cfg)LS.set(colsLS()+":"+stuSfKey(),cfg);else try{localStorage.removeItem("hada_proto_"+colsLS()+":"+stuSfKey())}catch(e){}}
-function stuColsCfg(){const d={order:CUR_COLS().map(c=>c.k),hidden:[],widths:{}};const c=stuColsRaw();if(!c||!Array.isArray(c.order))return d;const order=c.order.filter(k=>CUR_COLS().some(z=>z.k===k));CUR_COLS().forEach(z=>{if(!order.includes(z.k))order.push(z.k)});return {order,hidden:(c.hidden||[]).filter(k=>order.includes(k)),widths:c.widths||{}}}
+function stuColsCfg(){const d={order:CUR_COLS().map(c=>c.k),hidden:CUR_COLS().filter(c=>c.hid).map(c=>c.k),widths:{}};/* 323판: hid 열은 처음엔 숨김 */const c=stuColsRaw();if(!c||!Array.isArray(c.order))return d;const order=c.order.filter(k=>CUR_COLS().some(z=>z.k===k));const nw=[];CUR_COLS().forEach(z=>{if(!order.includes(z.k)){order.push(z.k);if(z.hid)nw.push(z.k)}});return {order,hidden:[...(c.hidden||[]).filter(k=>order.includes(k)),...nw],widths:c.widths||{}}}
 function stuVisCols(){const c=stuColsCfg();let v=c.order.filter(k=>!c.hidden.includes(k)).map(k=>{const z=CUR_COLS().find(y=>y.k===k);return c.widths[k]?Object.assign({},z,{w:c.widths[k]}):z}).filter(Boolean);return v}
 function stuRows(st){const sf=st.sf||"all";let rows=DB.students.filter(x=>sf==="all"||stuStat(x)===sf);if(st.q)rows=rows.filter(x=>(x.name+" "+(x.school||"")).includes(st.q));
   const cf=st.cf||{};Object.keys(cf).forEach(k=>{const c=STU_COLS.find(z=>z.k===k);if(!c)return;const f=cf[k];rows=rows.filter(x=>{const v=c.v(x);return Array.isArray(f)?(c.multi?!(v.length?v:["(없음)"]).every(y=>f.includes(y)):!f.includes(v||"(없음)")):String(c.multi?v.join(" "):v).includes(f)})});
@@ -1979,7 +1991,7 @@ function stuRows(st){const sf=st.sf||"all";let rows=DB.students.filter(x=>sf==="
 function stuTable(rows,st){const cols=stuVisCols();const cf=st.cf||{};
   return `<table class="t stt ${st.tedit?"tedit":""}"><colgroup>${cols.map(c=>`<col data-cw="${c.k}" style="width:${c.w}px">`).join("")}<col style="width:40px"></colgroup><tr>${cols.map(c=>`<th data-col="${c.k}" ${st.tedit?'draggable="true"':""} class="${st.sort&&st.sort.k===c.k?"s":""} ${cf[c.k]?"f":""}" title="${st.tedit?"끌어서 열 옮기기 · 눌러서 정렬·제외·숨기기":"눌러서 정렬·제외·숨기기"}">${st.tedit?IC("grip","s"):""}${IC(c.i,"s")}${c.l}${st.sort&&st.sort.k===c.k||cf[c.k]?`<span class="thind">${st.sort&&st.sort.k===c.k?IC(st.sort.d==="desc"?"adn":"aup","s"):""}${cf[c.k]?IC("filter","s"):""}</span>`:""}${st.tedit?`<span class="colrz" data-rz="${c.k}" title="끌어서 열 너비 · 두 번 누르면 기본 너비"></span>`:""}</th>`).join("")}<th class="op"></th></tr>
   ${rows.map(x=>{if(x.del)return `<tr data-id="${x.id}" class="sdel" title="삭제 예정 — [저장]하면 삭제돼요">${cols.map(c=>`<td class="c-${c.k}">${c.k==="stat"?'<span class="stp s-del"><i></i>삭제 예정</span>':c.r(x)}</td>`).join("")}<td class="op"><button type="button" class="rowundel" data-undel="${x.id}" title="되살리기 — 삭제 예정 취소(Ctrl+Z도 돼요)">${IC("undo","s")}</button></td></tr>`;
-    return `<tr data-id="${x.id}" class="${x.id===st.sel?"sel":""} ${x.state==="draft"?"draft":""}">${cols.map(c=>`<td class="se c-${c.k} ${c.k==="grade"&&!x.grade?"bad":""} ${st.tedit&&c.ed?"ed":""} ${st.tedit&&stuDirty(x,c.edk||c.k)?"ch":""}" data-se="${x.id}" data-k="${c.k}">${c.r(x)}</td>`).join("")}<td class="op"><button type="button" class="rowdel" data-del="${x.id}" title="이 학생 삭제(저장 전까지 되돌릴 수 있어요) · 줄을 고르고 Delete">${IC("trash","s")}</button></td></tr>`}).join("")}</table>`}
+    return `<tr data-id="${x.id}" class="${x.id===st.sel?"sel":""} ${x.state==="draft"?"draft":""}">${cols.map(c=>`<td class="se c-${c.k} ${c.k==="grade"&&!x.grade?"bad":""} ${st.tedit&&c.ed?"ed":""} ${st.tedit&&stuDirty(x,c.edk||c.k)?"ch":""}" data-se="${x.id}" data-k="${c.k}">${c.r(x)}</td>`).join("")}<td class="op"><button type="button" class="rowdel rowpr" data-spr="${x.id}" title="학생 카드 — 한눈에 보기 · 인쇄">${IC("printer","s")}</button><button type="button" class="rowdel" data-del="${x.id}" title="이 학생 삭제(저장 전까지 되돌릴 수 있어요) · 줄을 고르고 Delete">${IC("trash","s")}</button></td></tr>`}).join("")}</table>`}
 const stuEnrolls=x=>DB.enrolls.filter(e=>e.studentId===x.id&&enStat(e)!=="end"&&!e.ended);
 const STU_EN_R={cls:e=>{const c=cls(e.classId);const pre=enStat(e)==="pre";return `<span class="cc" style="--cc:${classBar(c)}"><i></i>${esc(c.name)}${pre?` · ${md(e.start)}`:""}</span>`},start:e=>ymdS(e.start)||'<span class="none">—</span>',end:e=>ymdS(e.end)||'<span class="none">—</span>'};
 // 머리 메뉴: 정렬 · 제외(체크한 값을 뺌) · 숨기기
@@ -2067,12 +2079,13 @@ function renderStudents(v,t){const st=t.state;const oSp=v.querySelector("#sp"),o
   v.querySelector("#stPanelT").onclick=()=>stuCycle(st);
   {const bk=v.querySelector("#spBack");if(bk)bk.onclick=()=>{st.sel=null;st.quick=false;render()}}
   if(!px&&st.todo)stuTodoBind(v,st);
+  v.querySelectorAll("[data-spr]").forEach(b=>b.onclick=e=>{e.stopPropagation();const y=byId(DB.students,b.dataset.spr);if(y)stuCardOpen(y)});/* 322판: 줄 인쇄(학생 카드) */
   v.querySelectorAll("[data-del]").forEach(b=>b.onclick=e=>{e.stopPropagation();stuDel(byId(DB.students,b.dataset.del),true)});
   v.querySelectorAll("[data-undel]").forEach(b=>b.onclick=()=>stuDel(byId(DB.students,b.dataset.undel),false));
   v.querySelectorAll("tr[data-id]:not(.sdel) td.se").forEach(td=>td.addEventListener("mousedown",()=>{st.rowFocus=td.dataset.se}));
   (v.querySelector("#xlB")||{}).onclick=e=>{e.stopPropagation();xlMenu(v.querySelector("#xlB"),L)};
   {const pb=v.querySelector("#prB");if(pb)pb.onclick=()=>{const tx=h=>{const d=document.createElement("div");d.innerHTML=String(h).replace(/></g,"> <");return d.textContent.replace(/\s+/g," ").trim()};const SF={all:"",on:"등록 중",pre:"등록 전",new:"신규문의",hold:"등록 보류",end:"종료"};
-    gtPrint({title:"학생",unit:"명",cols:stuVisCols().map(c=>[c.l,x=>tx(c.r(x))]),filters:SF[st.sf||"all"]?[[SF[st.sf]]]:[]},stuRows(st).filter(x=>!x.del),{q:st.q,lf:SF[st.sf||"all"]?{[SF[st.sf]]:true}:{}})}}
+    /* 322판(대표): 위 [인쇄] = 표 인쇄 / 학생 카드 모두(거른 학생, 한 명 한 장) 고르기 */const L2={title:"학생",unit:"명",cols:stuVisCols().map(c=>[c.l,x=>tx(c.r(x))]),filters:SF[st.sf||"all"]?[[SF[st.sf]]]:[],form:{name:"학생 카드 인쇄",desc:"지금 보는 학생 모두 · 한 명에 A4 한 장",run:rows=>stuCardsPrint(rows)}};gtPrMenu(pb,L2,stuRows(st).filter(x=>!x.del),{q:st.q,lf:SF[st.sf||"all"]?{[SF[st.sf]]:true}:{}})}}
   const teBlur=()=>{ddClose();dClose();const ae=document.activeElement;if(ae&&ae.classList&&ae.classList.contains("tin"))ae.blur()};
   v.querySelector("#tbEd").onclick=e=>{e.stopPropagation();teBlur();setTimeout(()=>{
     if(!st.tedit){st.teSnap=DB.students.map(x=>({x,o:stuSnapO(x),state:x.state,_o:x._o?Object.assign({},x._o):null}));st.tedit=true;render();return}
@@ -2116,7 +2129,7 @@ function stuCellEdit(v,t,id,k){const x=byId(DB.students,id);const td=v.querySele
   inp.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();done();down()}else if(e.key==="Tab"){e.preventDefault();done();next(e.shiftKey?-1:1)}else if(e.key==="Escape"){e.stopPropagation();gone=true;inp.remove();td.classList.remove("cur")}};inp.onblur=done}
 // 학생 창 하나(261112 대표): 학생을 눌러 연 창 = [창]·] 로 연 새 학생 창 — 같은 머리·같은 탭(정보·등록·일정·성적)·같은 칸
 // 새 학생은 이름을 넣기 전엔 표에 없음(닫으면 아무것도 안 남음). 이름을 넣는 순간 '작성 중' 학생이 되고, 아래 [저장]·[저장하고 다음]
-const ROUTES=["지인 소개","형제·재원생 소개","블로그·검색","전단·현수막","상담 신청서","기타"];
+const ROUTES=["전화·방문","지인 소개","형제·재원생 소개","블로그·검색","전단·현수막","상담 신청서","기타"]/* 324판(대표): 전화·방문 추가 */;
 const BRANCHES=["본관","운양관"];
 const ddOpts=k=>k==="pre"?["학생","어머니","아버지","기타 보호자"]:k==="gender"?["여학생","남학생"]:k==="sib"?DB.students.filter(s=>!s.del).map(s=>s.id):k==="branch"?BRANCHES:k==="school"?schNames():k==="grade"?gradesOn():k==="route"?ROUTES:[];
 const ddBox=(k,val,ph,cls2="")=>`<button type="button" class="inp pdd ${cls2}" data-dd="${k}">${val?(k==="grade"?gchip(val):esc(val)):`<span class="ph">${ph}</span>`}</button>`;
@@ -2185,28 +2198,53 @@ function enTimeDialog(e){const c=cls(e.classId);const bs=DB.blocks.filter(b=>b.c
     m.querySelectorAll(".ckchip input").forEach(i=>i.onchange=()=>i.parentElement.classList.toggle("on",i.checked));
     m.querySelector("#tsC").onclick=close;m.querySelector("#tsO").onclick=()=>{let n=0;m.querySelectorAll(".ckchip input").forEach(i=>{const b=byId(DB.blocks,i.value);const has=b.regs.includes(e.id);if(i.checked!==has){snapRegs(b);b.regs=i.checked?[...b.regs,e.id]:b.regs.filter(y=>y!==e.id);b.state="draft";n++}});close();commit();toast(n?`${c.name} 시간표 ${n}곳 바꿈 — 시간표 [저장]에서 반영(작성 중)`:"바뀐 것이 없어요")}})}
 // 창 머리 이름 칸: 넣은 뒤에는 글자 폭만큼(이름과 배지 사이 간격 일정), 비었을 땐 입력 칸 폭
-function fitName(el){if(!el)return;if(!el.value){el.style.width="";return}const m=document.createElement("span");m.style.cssText="position:absolute;visibility:hidden;white-space:pre;font:800 17px "+getComputedStyle(el).fontFamily;m.textContent=el.value;document.body.appendChild(m);el.style.width=(m.getBoundingClientRect().width+16)+"px";m.remove()}
+function fitName(el){if(!el)return;if(!el.value){el.style.width="";return}const m=document.createElement("span");const cs_=getComputedStyle(el);m.style.cssText="position:absolute;visibility:hidden;white-space:pre";m.style.font=cs_.fontWeight+" "+cs_.fontSize+" "+cs_.fontFamily;m.textContent=el.value;document.body.appendChild(m);el.style.width=(m.getBoundingClientRect().width+16)+"px";m.remove()}
 const newStu=()=>({id:uid("st"),name:"",school:"",grade:"",pre:"어머니",hold:false,memo:"",mom:"",dad:"",sp:"",gp:"",gprel:"",inq:nowStamp(),_fresh:true});
 const stuIsNew=x=>!DB.students.includes(x);
 function stuGrTab(x){const gs=(DB.grades||[]).filter(g=>g.sid===x.id&&!g.del).map(g=>({g,e:DB.exams.find(e=>e.id===g.examId)})).filter(z=>z.e).sort((a,b)=>(b.e.date||"").localeCompare(a.e.date||""));
   return `<section class="box"><h3>${IC("award","l")}성적 <span class="hint" style="font-weight:400">${gs.length}</span>${HELP("이 학생이 응시한 시험이에요. 줄을 누르면 시험 화면 [성적] 탭에서 점수를 넣어요. 응시 등록은 시험 화면 [응시학생 등록]에서 해요.")}</h3>${gs.length?`<div class="ttrows">${gs.map(({g,e})=>`<div class="ttrow" data-goex="${e.id}" title="시험 화면에서 열기"><span class="t">${esc(e.name)} · ${esc(exSubj(e))}</span><span class="hint">${[D10(e.date),g.score!==""&&g.score!=null?g.score+"점":"점수 전",g.rank?g.rank+"등":"",grPct(g,e)!=null?grPct(g,e)+"%":""].filter(Boolean).join(" · ")}</span>${IC("right","s")}</div>`).join("")}</div>`:'<div class="hint">아직 응시한 시험이 없어요 — 시험 화면 [성적] 탭의 [응시학생 등록]으로 넣어요</div>'}</section>`}
+/* 318판(대표): 학생 카드 — 가운데 큰 창에 한눈에 + 인쇄(회의 때 들고 가기). 학생 창 정보 탭·등록·성적을 한 장으로 */
+function stuCard(x){const k=stuStat(x);const es=DB.enrolls.filter(e=>e.studentId===x.id).sort((a,b)=>(enStat(a)==="end")-(enStat(b)==="end")||(b.start||"").localeCompare(a.start||""));
+  const v=t=>t?esc(t):'<span class="sc-no">—</span>';const R=(l,t)=>`<div class="sc-r"><span class="l">${l}</span><span class="t">${t}</span></div>`;
+  const sib=(x.sib||[]).map(id=>byId(DB.students,id)).filter(Boolean).map(y=>esc(y.name)+(y.school?` <small>${esc(y.school)}</small>`:"")).join(", ");
+  const tel=(n,f)=>R(n,x[f]?esc(x[f])+(x.pre&&({"어머니":"mom","아버지":"dad","기타 보호자":"gp"})[x.pre]===f?' <span class="sc-pre">우선</span>':""):'<span class="sc-no">—</span>');
+  const bl=e=>DB.blocks.filter(b=>b.regs.includes(e.id)&&b.seasonId===curSeason()).sort((a,b)=>a.day-b.day||a.start-b.start).map(b=>DAYS[b.day]+" "+fmt(b.start)).join(" · ");
+  const gs=(DB.grades||[]).filter(g=>g.sid===x.id&&!g.del).map(g=>({g,e:DB.exams.find(e=>e.id===g.examId)})).filter(z=>z.e).sort((a,b)=>(b.e.date||"").localeCompare(a.e.date||"")).slice(0,6);
+  return `<div class="scard"><div class="sc-h"><div class="sc-n"><b>${esc(x.name||"(이름 없음)")}</b>${x.school?`<span>${esc(x.school)}</span>`:""}${x.grade?gchip(x.grade):""}${stPill(k)}</div><div class="sc-s">문의 ${inqS(x.inq)||"—"}${x.route?` · ${esc(x.route)}`:""}<span class="sp"></span>출력 ${D10(TODAY)}</div></div>
+  <div class="sc-g">
+   <section><h4>${IC("user","s")}기본정보</h4>${R("학교",v(x.school))}${R("학년",x.grade?gchip(x.grade):v(""))}${R("성별",v(x.gender))}${R("생년월일",v(x.birth&&D10(x.birth)))}${R("주소",v(x.addr))}${R("형제자매",sib||v(""))}</section>
+   <section><h4>${IC("phone","s")}연락처</h4>${tel("학생","sp")}${tel("어머니","mom")}${tel("아버지","dad")}${tel("기타 보호자","gp")}${R("학생과 관계",v(x.gprel))}</section>
+   <section><h4>${IC("calendar","s")}문의</h4>${R("문의일시",v(inqS(x.inq)))}${R("문의 경로",v(x.route))}${R("희망 시작일",v(x.hope&&D10(x.hope)))}${R("등록 보류",x.hold?"보류 중":"보류 안 함")}${R("개인정보 동의",x.consent?"동의함":"동의 전")}${R("접수 안내",x.rcpt?"전송 완료 "+inqS(x.rcpt):"전송 전")}</section>
+  </div>
+  <section class="sc-w"><h4>${IC("usercheck","s")}등록 <small>${es.length}</small></h4>${es.length?`<table class="sc-t"><tr><th>클래스</th><th>강사</th><th>시간표</th><th>기간</th><th>상태</th></tr>${es.map(e=>{const c=cls(e.classId);return `<tr><td>${esc(c.name)}</td><td>${esc(tch(c.teacherId).name||"—")}</td><td>${enStat(e)==="end"?"—":bl(e)||"없음"}</td><td>${D10(e.start)} - ${e.end?D10(e.end):""}</td><td>${enPill(enStat(e))}</td></tr>`}).join("")}</table>`:'<div class="sc-no">등록 없음</div>'}</section>
+  ${gs.length?`<section class="sc-w"><h4>${IC("award","s")}최근 성적</h4><table class="sc-t"><tr><th>시험</th><th>날짜</th><th>점수</th><th>등수</th></tr>${gs.map(({g,e})=>`<tr><td>${esc(e.name)} · ${esc(exSubj(e))}</td><td>${D10(e.date)}</td><td>${g.score!==""&&g.score!=null?g.score+"점":"—"}</td><td>${g.rank?g.rank+"등":"—"}</td></tr>`).join("")}</table></section>`:""}
+  <section class="sc-w"><h4>${IC("lock","s")}메모(내부용)</h4><div class="sc-memo">${x.memo?esc(x.memo).replace(/\n/g,"<br>"):""}</div></section></div>`}
+function stuCardsPrint(rows){if(!rows.length){toast("인쇄할 학생이 없어요");return}const go=()=>{let h=document.getElementById("pcards");if(!h){h=document.createElement("div");h.id="pcards";document.body.appendChild(h)}h.innerHTML=rows.map(stuCard).join("");document.body.classList.add("pcards");const off=()=>{document.body.classList.remove("pcards");h.innerHTML="";removeEventListener("afterprint",off)};addEventListener("afterprint",off);window.print();setTimeout(off,1500)};
+  if(rows.length>20)askRun(`학생 카드 ${rows.length}장 인쇄`,`지금 보는 학생 <b>${rows.length}명</b>을 한 명에 한 장씩 인쇄해요. 개인정보가 담겨 있으니 인쇄물은 잘 챙겨 주세요.`,"인쇄",go);else go()}
+function stuCardOpen(x){modal(`<h2>학생 카드${HELP("학생 정보를 한 장으로 봐요. [인쇄]하면 이 카드만 종이 한 장으로 나와요 — 개인정보가 담겨 있으니 회의 뒤 잘 챙겨 주세요.")}</h2>${stuCard(x)}<div class="actions"><span class="sp"></span><button class="btn" id="scC">닫기</button><button class="btn pri" id="scP">${IC("printer","s")}인쇄</button></div>`,(m,close)=>{m.querySelector(".dlg").classList.add("dlg-card");m.querySelector("#scC").onclick=close;m.querySelector("#scP").onclick=()=>{document.body.classList.add("pcard");const off=()=>{document.body.classList.remove("pcard");removeEventListener("afterprint",off)};addEventListener("afterprint",off);window.print();setTimeout(off,1500)}})}
 function stuPanel(x,st){const isNew=stuIsNew(x);const k=isNew?"new":stuStat(x);const tab=st.stab==="en"?"en":st.stab==="gr"&&!isNew?"gr":"info";const es=isNew?[]:DB.enrolls.filter(e=>e.studentId===x.id).sort((a,b)=>(b.start||"").localeCompare(a.start||""));
   const why={on:"수강 중인 등록이 있어요.",pre:"가장 최근 등록이 아직 시작 전이에요(등록일이 미래).",new:"등록이 없어요. 등록을 만들면 바뀌어요.",hold:"[등록 보류]가 켜져 있어요. 끄면 등록에 따라 다시 정해져요.",end:"수강 중인 등록이 없고, 가장 최근 등록이 끝났어요.",err:"등록 날짜가 맞지 않아요. 등록을 열어 날짜를 고쳐 주세요."}[k];
   const bl=e=>DB.blocks.filter(b=>b.regs.includes(e.id)&&b.seasonId===curSeason()).sort((a,b)=>a.day-b.day||a.start-b.start).map(b=>DAYS[b.day]+" "+fmt(b.start)).join(" · ");
   const nEnC=isNew?0:DB.enrolls.filter(e=>e.studentId===x.id&&e.state==="draft").length;const nChg=(!isNew&&x.state==="draft"&&x._o?Object.keys(x._o).filter(f=>x._o[f]!==x[f]).length||1:0)+nEnC;
   const dirtyCls=f=>!isNew&&stuDirty(x,f)?"chg":"";
   const live=es.filter(e=>!(e.ended&&!(e.end&&e.end>=TODAY))&&enStat(e)!=="end");
-  /* 284판(대표 '학생 창도 옮겨'): 머리·탭·아래 단추 = 오른쪽 창 모듈(panel.js) */const [sh1,sh2]=pheadSplit(`<input class="hname ${x.name?"":"empty"} ${dirtyCls("name")}" data-sk="name" value="${esc(x.name||"")}" placeholder="새 학생 이름" title="눌러서 이름 고치기" autocomplete="off"> ${stPill(k)}${isNew?"":`<small class="hsub">${esc(x.school||"학교 빈칸")}</small>${gchip(x.grade)||'<span class="tag">학년 빈칸</span>'}`}${HELP("등록상태는 자동이에요. "+why+" 손으로 바꾸는 것은 [등록 보류]뿐이에요.")}`);
-  const head=PANEL.head({icon:IC("user"),nameHtml:sh1,infoHtml:sh2,linksHtml:isNew?`문의 ${inqS(x.inq)} · 이름을 넣으면 표에 생겨요`:`<span class="nlk"><a class="link" data-go="tt">주간 시간표 ↗</a> · <a class="link" data-go="en">수강 ↗</a></span>`});
+  /* 284판(대표 '학생 창도 옮겨'): 머리·탭·아래 단추 = 오른쪽 창 모듈(panel.js) *//* 317판(대표): 머리 1줄 = 이름 · 학교 · 학년, 2줄 = 등록상태 · 문의일(신청서면 [신청서]) */const sh1=`<input class="hname ${x.name?"":"empty"} ${dirtyCls("name")}" data-sk="name" value="${esc(x.name||"")}" placeholder="새 학생 이름" title="눌러서 이름 고치기" autocomplete="off">${isNew?"":`<small class="hsub">${esc(x.school||"학교 빈칸")}</small>${gchip(x.grade)||'<span class="tag">학년 빈칸</span>'}`}`;
+  const sh2=`${stPill(k)}<small class="hsub hinq">문의 ${inqS(x.inq)||"—"}</small>${x.route==="상담 신청서"?'<span class="tag hform" title="상담 신청서로 들어온 문의">신청서</span>':""}${HELP("등록상태는 자동이에요. "+why+" 손으로 바꾸는 것은 [등록 보류]뿐이에요.")}`;
+  const head=PANEL.head({icon:IC("user"),nameHtml:sh1,infoHtml:sh2,linksHtml:isNew?`이름을 넣으면 표에 생겨요`:`<span class="nlk"><a class="link" data-notion="students" title="노션 학생 페이지를 새 탭으로 열어요(원본: 이 학생 페이지)">노션 ↗</a></span>`/* 323판(대표): 머리 3줄 = 노션 링크만(학생 카드는 표 줄 인쇄, 수강은 등록 탭) */});
   const tabs=PANEL.tabs([["info","정보",""],["en","등록",String(live.length)],["sch","일정","",1],["gr","성적",isNew?"":String((DB.grades||[]).filter(g=>g.sid===x.id&&!g.del).length||"")]].map(([k2,n2,sub,later])=>({id:k2,label:n2,n:sub,later})),tab,"stab");
 
   const ctRow=(f,n,lab)=>`<div class="ct"><span class="cl">${lab||n}</span><input class="inp ${dirtyCls(f)}" data-sk="${f}" value="${esc(x[f]||"")}" placeholder="010-0000-0000" autocomplete="off">${n?`<button type="button" class="prb ${x.pre===n?"on":""}" data-pre="${n}" ${!x[f]&&x.pre!==n?"disabled":""} title="${x.pre===n?"우선 연락처":!x[f]?"번호를 넣으면 우선 연락처로 정할 수 있어요":"이 번호를 우선 연락처로"}">우선</button>`:"<span></span>"}</div>`;
   /* 299판(대표 '연결'): 학생 창 칸 = 입력칸 모듈(field.js) — 아이콘·모양은 규칙 파일·모듈 한 곳에서. 형제자매 고르기(hpStu)와 연락처 줄은 다음 판 */
   const SF=k=>`<div class="hfh" data-shf="${k}"></div>`;
-  const infoTab=`<section class="box"><h3>${IC("calendar","l")}문의</h3><div class="hfgrid">${SF("inq")}<div class="fld2">${SF("route")}${SF("hope")}</div>${SF("consent")}${SF("hold")}${SF("memo")}</div></section>
-  <section class="box"><h3>${IC("user","l")}기본정보</h3><div class="hfgrid"><div class="fld2">${SF("school")}${SF("grade")}</div><div class="fld2">${SF("gender")}${SF("birth")}</div>${SF("addr")}
+  const PRB=(n,f)=>`<button type="button" class="prb ${x.pre===n?"on":""}" data-pre="${n}" ${!x[f]&&x.pre!==n?"disabled":""} title="${x.pre===n?"우선 연락처 — 알림톡을 받는 번호":!x[f]?"번호를 넣으면 우선 연락처로 정할 수 있어요":"이 번호를 우선 연락처로(알림톡을 받는 번호)"}">우선</button>`;
+  const CT=(f,n)=>`<div class="ctl">${SF(f)}${PRB(n,f)}</div>`;
+  const rcSt=isNew?"이름을 넣으면 보낼 수 있어요":x.rcpt?`전송 완료 · ${inqS(x.rcpt)}`:"전송 전";
+  const infoTab=`<section class="box"><h3>${IC("user","l")}기본정보</h3><div class="hfgrid"><div class="fld2">${SF("school")}${SF("grade")}</div><div class="fld2">${SF("gender")}${SF("birth")}</div>${SF("addr")}
     <div class="fld"><label>형제자매${HELP("같은 학원에 다니는(다녔던) 형제자매. 서로 연결돼요(원본 형제/자매 칸).")}</label><div class="hpm ${dirtyCls("sib")}" id="hpSib"></div></div></div></section>
-  <section class="box"><h3>${IC("phone","l")}연락처</h3><div class="hfgrid">${SF("sp")}${SF("mom")}${SF("dad")}${SF("gp")}${SF("gprel")}${SF("pre")}</div></section>`;
+  <section class="box"><h3>${IC("phone","l")}연락처${HELP("[우선] = 알림톡을 받는 번호예요. 번호가 있는 보호자만 고를 수 있어요.")}</h3><div class="hfgrid">${SF("sp")}${CT("mom","어머니")}${CT("dad","아버지")}${CT("gp","기타 보호자")}${SF("gprel")}</div></section>
+  <section class="box"><h3>${IC("calendar","l")}문의</h3><div class="hfgrid">${SF("inq")}${SF("route")}<div class="fld2">${SF("hope")}${SF("hold")}</div>${SF("consent")}
+    <div class="hf rcpt"><span class="hf-lbl">접수 안내 알림톡</span><button type="button" class="btn rcb" id="rcSend" ${isNew?"disabled":""} title="누르면 알림톡 미리보기가 떠요 — 보고 [보내기]">${IC("send","s")||IC("msg","s")}${x.rcpt?"다시 전송":"접수 안내 전송"}</button><div class="hint ${x.rcpt?"":"mut"}">${rcSt}</div></div></div></section>
+  <section class="box"><h3>${IC("lock","l")}메모</h3><div class="hfgrid">${SF("memo")}</div></section>`;
   // 등록 탭(261112 대표): 등록 하나 = 카드(클래스·상태 / 강사·과목·요일 / 등록일·종료일 바로 입력 / [시간표 설정][교재 설정 준비 중]) + 빈 카드 [등록 추가]
   const nDate=st.nDate||(x.hope&&x.hope>=TODAY?x.hope:TODAY);
   const esS=[...es].sort((a,b)=>(enStat(a)==="end")-(enStat(b)==="end")||(b.start||"").localeCompare(a.start||""));
@@ -2222,7 +2260,7 @@ function stuPanel(x,st){const isNew=stuIsNew(x);const k=isNew?"new":stuStat(x);c
   const enTab=`<section class="box"><h3>${IC("usercheck","l")}등록 <span class="hint" style="font-weight:400">${es.length}</span><span class="sp"></span>${x.hold?'<span class="tag">등록 보류 중 — 정보 탭에서 바꿔요</span>':""}</h3>
     <div class="enlist">${esS.map(enCard).join("")}${newCard}</div></section>`;
   const SI={trash:IC("trash","s"),undo:IC("undo"),save:IC("save","s")};
-  const foot=x._fresh?PANEL.foot({hint:isNew?"이름을 먼저 입력해 주세요":"작성 중",save:"저장",saveOn:true,primary:true,ids:{save:"spSave"},icons:SI,saveTitle:"이 학생을 저장해요"})
+  const foot=x._fresh?PANEL.foot({hint:isNew?"이름을 먼저 입력해 주세요":"작성 중",save:"학생 저장",saveOn:true,primary:true,ids:{save:"spSave"},icons:SI,saveTitle:"이 학생을 저장해요"})
     :PANEL.foot({del:true,undo:!!nChg,save:"학생 저장",saveOn:!!nChg,count:nChg||"",ids:{del:"spDel",undo:"spRev",save:"spSave"},icons:SI,delTitle:"이 학생 삭제",undoTitle:"저장 상태로 되돌리기 — 이 학생에서 고친 것 모두",saveTitle:"이 학생(과 이 학생 등록)에서 고친 것만 바로 저장해요. 모두 저장하려면 위 [저장]을 눌러요"});
   return `${head}${tabs}${tab==="info"?infoTab:tab==="gr"?stuGrTab(x):enTab}${foot}`}
 function bindStuPanel(p,x,t){const st=t.state;const isNew=stuIsNew(x);
@@ -2233,19 +2271,25 @@ function bindStuPanel(p,x,t){const st=t.state;const isNew=stuIsNew(x);
   const hold=p.querySelector("#spHold");if(hold)hold.onchange=e=>{if(stuIsNew(x)){e.target.checked=false;toast("이름을 먼저 입력해 주세요");return}set("hold",e.target.checked)};
   /* 299판: 학생 칸 = 입력칸 모듈 */{const H=k=>p.querySelector(`[data-shf="${k}"]`),dirty=k=>!isNew&&stuDirty(x,k);const mk=k=>{if(dirty(k)){const b=H(k)&&H(k).querySelector(".hf-box,.hf-swrow,.hf-seg");if(b)b.classList.add("chg")}};const blurSet=(r,k)=>{if(r&&r.el){r.el.dataset.sk=k;r.el.addEventListener("change",()=>set(k,r.el.value.trim()))}};
     if(H("inq")){HF.datetime(H("inq"),{label:"문의일시",tipHtml:HELP("처음 문의한 날짜와 시각. 새 학생은 지금 시각으로 들어가요. 직접 입력: 2026.11.11 14:30"),value:x.inq||"",onChange:v=>set("inq",v)});mk("inq");
-    HF.select(H("route"),{label:"문의 경로",value:x.route||null,placeholder:"선택 안 함",items:ddOpts("route").map(v=>({v,t:v})),onChange:v=>set("route",v||""),onAdd:t=>{if(!ROUTES.includes(t))ROUTES.splice(Math.max(0,ROUTES.indexOf("기타")),0,t);toast(`새 문의 경로 "${t}" — 저장하면 노션 학생 DB [문의 경로] 선택지에도 생겨요(시제품: 노션에 쓰지 않음)`);set("route",t)}});mk("route");
-    HF.sw(H("consent"),{label:"개인정보 동의",tipHtml:HELP("켜면 원본에서는 접수 안내 알림톡이 나가요. 시제품은 보내지 않아요(다음 업데이트)."),value:!!x.consent,on:"동의함",off:"동의 전",onChange:v=>{set("consent",v);if(v)toast("개인정보 동의 — 원본에서는 접수 안내 알림톡이 나가요(시제품: 보내지 않음)")}});mk("consent");
+    HF.select(H("route"),{label:"문의 경로",value:x.route||null,placeholder:"선택 안 함",items:ncItems("students","route",optList("route")),onChange:v=>set("route",v||""),onAdd:t=>{const v=optAdd("route",t);if(!v)return;toast(`문의 경로 '${v}'을(를) 생성했어요 — 저장하면 노션 학생 DB [문의 경로] 선택지에도 생겨요(시제품: 노션에 쓰지 않음)`);set("route",v)},onDel:o=>optDel("route",o.v),onEdit:o=>optEdit("route",o.v)});mk("route");
+    HF.sw(H("consent"),{label:"개인정보 수집·이용 동의",tipHtml:HELP("상담·수업 안내를 위해 학생·보호자 연락처를 받고 쓰는 데 동의했는지예요. 상담 신청서는 이 칸을 반드시 체크해서 들어오고, 그때만 접수 안내가 저절로 나가요. 직접 문의(전화·방문)는 아래 [전송]으로 보내요."),value:!!x.consent,on:"동의함",off:"동의 전",onChange:v=>set("consent",v)});mk("consent");
     HF.date(H("hope"),{label:"희망 시작일",tipHtml:HELP("상담 때 받은 수업 시작 희망일. 등록을 만들 때 등록일 기본값이에요."),value:x.hope||"",onChange:v=>set("hope",v||"")});mk("hope");
     HF.sw(H("hold"),{label:"등록 보류",tipHtml:HELP("상담 뒤 잠시 미룰 때 켜요. 켜면 등록상태가 '등록 보류'가 되고, 끄면 등록에 따라 다시 정해져요. 손으로 바꾸는 유일한 상태예요."),value:!!x.hold,on:"보류 중",off:"보류 안 함",disabled:isNew,onChange:v=>{if(stuIsNew(x)){toast("이름을 먼저 입력해 주세요");return render()}set("hold",v)}});mk("hold");
     blurSet(HF.memo(H("memo"),{label:"메모(내부용)",tipHtml:HELP("상담 신청서의 '추가 전달사항'이 여기로 들어와요(원본 같은 칸). 상담하며 이어서 적어요."),value:x.memo||"",placeholder:"신청서 추가 전달사항 · 상담 메모"}),"memo");mk("memo");
     HF.select(H("school"),{label:"학교",value:x.school||null,placeholder:"학교 선택",items:ddOpts("school").map(v=>({v,t:v})),onChange:v=>set("school",v||""),onAdd:t=>{schEnsure(t);set("school",t)}});mk("school");
     HF.select(H("grade"),{label:"학년",value:x.grade||null,placeholder:isNew?"학년 선택":"학년 빈칸",items:ddOpts("grade").map(v=>({v,t:v,cls:"gchip "+gradeLevel(v)})),onChange:v=>set("grade",v||"")});mk("grade");if(!x.grade&&!isNew){const b=H("grade").querySelector(".hf-box");if(b)b.classList.add("bad")}
     HF.seg(H("gender"),{label:"성별",value:x.gender||"",items:["여학생","남학생"],onChange:v=>set("gender",x.gender===v?"":v)});mk("gender");
-    HF.date(H("birth"),{label:"생년월일",value:x.birth||"",placeholder:"예: 2012.03.14",onChange:v=>set("birth",v||"")});mk("birth");
-    /* 연락처 = 전화 칸 4개 + 우선 연락처(나눔 단추) */[["sp","학생 연락처"],["mom","어머니 연락처"],["dad","아버지 연락처"],["gp","기타 연락처"]].forEach(([k,l])=>{blurSet(HF.tel(H(k),{label:l,value:x[k]||""}),k);mk(k)});
+    HF.date(H("birth"),{label:"생년월일",dow:false,value:x.birth||"",placeholder:"예: 2012.03.14",onChange:v=>set("birth",v||"")});mk("birth");
+    /* 연락처 = 전화 칸 4개 + 우선 연락처(나눔 단추) */[["sp","학생 연락처"],["mom","어머니 연락처"],["dad","아버지 연락처"],["gp","기타 보호자 연락처"]].forEach(([k,l])=>{blurSet(HF.tel(H(k),{label:l,value:x[k]||""}),k);mk(k)});
     blurSet(HF.text(H("gprel"),{label:"학생과 관계",value:x.gprel||"",placeholder:"예: 할머니"}),"gprel");mk("gprel");
-    {const PRE={"어머니":"mom","아버지":"dad","기타 보호자":"gp"};HF.seg(H("pre"),{label:"우선 연락처",help:"알림톡을 받는 번호예요. 번호가 있는 보호자만 고를 수 있어요",value:x.pre||"",items:Object.keys(PRE),onChange:v=>{if(!x[PRE[v]]){toast("번호를 넣으면 우선 연락처로 정할 수 있어요");return render()}set("pre",v)}});mk("pre")}
+    
     blurSet(HF.text(H("addr"),{label:"주소",icon:iconRule("주소")||undefined,value:x.addr||"",placeholder:"예: 운양동 하다아파트 101동"}),"addr");mk("addr")}}
+  /* 317판: 접수 안내 알림톡(상담 신청 접수 안내) 미리보기 · 전송 — 신청서로 오면 저절로 나가고, 직접 문의는 여기서 보냄 */
+  {const rv=()=>{const pn={"어머니":x.mom,"아버지":x.dad,"기타 보호자":x.gp}[x.pre||"어머니"]||x.mom||x.dad||x.gp||"";return {학생이름:x.name||"학생",접수정보:`📋 접수 내용\n  • 학생  ${x.name||""}\n  • 학교  ${x.school||"—"}\n  • 학년  ${x.grade||"—"}`,학부모연락처:pn||"—"}};
+   const sd=p.querySelector("#rcSend");if(sd)sd.onclick=()=>{if(stuIsNew(x)){toast("이름을 먼저 입력해 주세요");return}
+     modal(`<h2>${x.rcpt?"접수 안내 다시 전송":"접수 안내 전송"}${HELP("우선 연락처("+esc(x.pre||"어머니")+")로 알림톡이 나가요. 학원 이름은 알림톡 맨 위 채널명에 보여요.")}</h2>${x.rcpt?`<div class="hint" style="margin:-4px 0 10px">전송 완료 · ${inqS(x.rcpt)} — 보낸 내용을 보기만 하려면 [취소]</div>`:""}${ALIMV.render("상담 신청 접수 안내","","",false,rv())}<div class="actions"><span class="sp"></span><button class="btn" id="mc">취소</button><button class="btn pri" id="mo">${IC("send","s")||IC("msg","s")}보내기</button></div>`,(m,close)=>{m.querySelector("#mc").onclick=close;m.querySelector("#mo").onclick=()=>{close();x.rcpt=nowStamp();render();toast(`${x.name} 접수 안내를 보냈어요(시제품: 보내지 않음)`)}})}}
+  {const cb=p.querySelector("#spCard");if(cb)cb.onclick=()=>stuCardOpen(x)}
+  if(x.unseen&&!isNew)setTimeout(()=>{x.unseen=false;document.querySelectorAll(`tr[data-id="${x.id}"] .newdot`).forEach(d=>d.remove())},0);
   bindDateFlds(p);p.querySelectorAll("[data-sk]").forEach(i=>i.onchange=()=>set(i.dataset.sk,i.value.trim()));
   const hn=p.querySelector(".hname");if(hn){fitName(hn);hn.addEventListener("input",()=>{hn.classList.toggle("empty",!hn.value);fitName(hn)})}if(hn)hn.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();hn.blur()}else if(e.key==="Escape"){if(activeTab.state.quick&&!hn.value.trim())return;e.stopPropagation();hn.value=x.name;hn.blur()}};
   p.querySelectorAll("[data-pre]").forEach(b=>b.onclick=()=>set("pre",b.dataset.pre));
@@ -2981,6 +3025,8 @@ function optRename(k,o,n){if(k==="area"){const a=DB.areas.find(x=>x.name===o);if
 function optSetColor(k,v,col){(OPT_USE[k]||[]).forEach(([c,f])=>{const key=c+"|"+f;(NCOL[key]||(NCOL[key]={}))[v]=col})}
 function optRemove(k,v){let rows=0;(OPT_USE[k]||[]).forEach(([c,f])=>(DB[c]||[]).forEach(x=>{if(x.del)return;if(Array.isArray(x[f])){if(x[f].includes(v)){x[f]=x[f].filter(z=>z!==v);x.state="draft";rows++}}else if(x[f]===v){x[f]="";x.state="draft";rows++}}));
   if(k==="area")DB.areas=DB.areas.filter(x=>x.name!==v);else DB.opts[k]=optList(k).filter(x=>x!==v);if(k==="series")(DB.series||[]).forEach(x=>{if(x.name===v)x.del=true});return rows}
+/* 317판(대표): 문의 경로도 옵션 — 색 · 이름 바꾸기 · 삭제(노션 선택 속성과 같음) */
+OPT_NAME.route="문의 경로";OPT_SRC.route=()=>ROUTES;OPT_USE.route=[["students","route"]];NCOL["students|route"]=NCOL["students|route"]||{"전화·방문":"brown","지인 소개":"green","형제·재원생 소개":"purple","블로그·검색":"blue","전단·현수막":"orange","상담 신청서":"pink","기타":"gray"};
 function optEdit(k,v){const nm=OPT_NAME[k]||"옵션";const used=optUsed(k,v);let col=optColorOf(k,v);const shown=k==="unit"?v.replace("-","n"):v;
   modal(`<h2>${esc(nm)} 옵션${HELP("이름을 바꾸면 이 옵션을 쓰는 줄이 모두 같이 바뀌어요. 삭제하면 쓰는 줄에서 이 값이 비워져요. 노션 선택 속성의 옵션 고치기와 같아요.")}</h2>
   <div class="field"><span class="lbl">이름</span><input class="inp" id="oeN" value="${esc(shown)}" maxlength="30" style="width:100%"></div>
@@ -3010,7 +3056,7 @@ function hfField(h,L,r,spec,set,extra){const [k,label,opts,type,help]=spec;if(!h
   if(typeof opts==="function")return HF.select(h,Object.assign(o,{value:r[k]||null,clear:type!=="req",items:ncItems(L.coll,k,opts(r)),onChange:v=>set(k,v==null?"":v)},OK?{onAdd:t=>{const v=optAdd(OK,t);if(!v)return;r[k]=v;markDirty(L,r);commit();toast(`${OPT_NAME[OK]} '${OK==="unit"?v.replace("-","n"):v}'을(를) 생성했어요 — 다른 줄에서도 고를 수 있어요`)},onDel:x=>optDel(OK,x.v),onEdit:x=>optEdit(OK,x.v)}:RN?{onAdd:t=>{const v=RN(t,r);if(!v)return;r[k]=v;markDirty(L,r);commit();rnToast(t)}}:{}));
   if(Array.isArray(opts)&&type==="seg")return HF.seg(h,Object.assign(o,{value:r[k],items:opts}));
   if(Array.isArray(opts))return HF.select(h,Object.assign(o,{value:r[k],clear:false,items:ncItems(L.coll,k,opts)}));
-  if(type==="date")return HF.date(h,Object.assign(o,{value:r[k]||""}));
+  if(type==="date")return HF.date(h,Object.assign(o,{value:r[k]||""},/생년월일|생일/.test(o.label||"")?{dow:false}:{}))/* 318판: 생년월일은 요일 없이 */;
   if(type==="won"||type==="cnt"||type==="num")return HF.num(h,Object.assign(o,{value:r[k]==null||r[k]===""?"":String(r[k]),unit:type==="won"?"원":type==="cnt"?"회":(spec[5]||""),onChange:v=>set(k,v===""?(type==="won"?0:""):+v.replace(/,/g,""))}));
   if(type==="tel")return HF.tel(h,Object.assign(o,{value:r[k]||""}));
   if(type==="memo")return HF.memo(h,Object.assign(o,{value:r[k]||""}));
