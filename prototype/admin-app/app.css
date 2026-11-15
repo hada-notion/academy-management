@@ -2562,3 +2562,151 @@ table.stt:has(.rowpr) :is(th,td).op{width:68px;white-space:nowrap}
 /* 334판: 펼치고 접어도 클래스 줄 자리 고정 — 접힌 줄도 같은 위 여백 */
 :is(#sp,.stpanel) .encard.mini{padding:16px 0}
 :is(#sp,.stpanel) .enlist>.encard.mini:first-child{padding-top:4px}
+/* 335판(대표 B): 학생 창 저장한 등록 = 칸 상자 요약(보기 전용) */
+:is(#sp,.stpanel) .ensec{cursor:pointer}
+:is(#sp,.stpanel) .ensec:hover .cn{text-decoration:underline}
+:is(#sp,.stpanel) .ensec .go{display:inline-flex;color:var(--subtle)}
+.hf.ro .hf-box{background:var(--brand-tint);cursor:pointer}
+.hf.ro .sv{font-size:var(--text-small);color:var(--ink)}
+.ttrow.ro{cursor:pointer}.ttrow .r2{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pbar{width:44px;height:6px;border-radius:3px;background:var(--line2);overflow:hidden;flex:none}.pbar i{display:block;height:100%;background:var(--brand-deep)}
+#lp.stpanel{padding:0 16px}
+/* 339판: 등록 창 머리 2줄 클래스 */
+.phead .pinfo .dotc{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 4px 0 2px}
+.phead .pinfo .hcls{font-weight:700;color:var(--ink)}
+.phead h2 .hsub{margin-left:6px}
+/* ===== 340판(대표 "하다 디자인 기준으로 입혀줘"): 기본 옷 = 연회색 바탕(canvas) + 흰 카드(테두리 없이 그림자, 모서리 14) + 브라운 포인트 하나 =====
+   원본 = 노션 '하다 디자인 기준 (기본 옷 + 테마)' · GitHub docs/DESIGN.md · hada-tokens.css. 이 블록만 지우면 예전 모양으로 돌아감 */
+#view{background:var(--canvas)}
+/* 위 줄 단추 = 흰 블록 */
+#view .top .tb-ic:not(.pri):not(.dark):not(#saveAll):not([disabled]),#view .top .searchbox,#view .top .combo,#view .nlink{background:var(--surface);box-shadow:var(--shadow-card)}
+/* 표 = 흰 카드 */
+#view .list>table.stt{background:var(--surface);box-shadow:var(--shadow-card);border-radius:var(--radius-lg);border-collapse:separate;border-spacing:0;overflow:hidden}
+#view .list>table.stt thead th:first-child{border-top-left-radius:var(--radius-lg)}#view .list>table.stt thead th:last-child{border-top-right-radius:var(--radius-lg)}
+/* 오른쪽 창 = 연회색 바탕 + 묶음마다 흰 카드(구분선 대신 12px 틈) */
+:is(#sp,#lp,.body>.panel){background:var(--canvas)}
+:is(#sp,#lp,.body>.panel) .phead,:is(#sp,#lp,.body>.panel) .ptabs,:is(#sp,#lp,.body>.panel) .pfoot{background:var(--canvas)}
+/* 341판(대표): 묶음은 흰 카드로 만들지 않음 — 창은 바탕색 그대로(구분선만), 입력칸만 흰색·테두리 없이 */
+/* 카드 화면(오늘·학원 정보·관리자 설정)·캘린더 카드 */
+#view .list.cards>section,#view .list.cards>.card{background:var(--surface);box-shadow:var(--shadow-card);border:0;border-radius:var(--radius-lg)}
+/* 341판: 창 안 줄 목록·[우선]·등록 요약 칸도 같은 규칙(흰 바탕, 테두리 없음) */
+:is(#sp,#lp,.body>.panel) .ttrows{background:var(--surface);border-color:transparent}
+:is(#sp,#lp,.body>.panel) .prb:not(.on){background:var(--surface);border-color:transparent}
+:is(#sp,#lp,.body>.panel) .hf.ro .hf-box{background:var(--surface)}
+:is(#sp,#lp,.body>.panel) .hpm,:is(#sp,#lp,.body>.panel) .hp-box{background:var(--surface);border-color:transparent}
+:is(#sp,#lp,.body>.panel) .hpm:focus-within{border-color:var(--brand-deep);box-shadow:0 0 0 3px var(--brand-soft)}
+:is(#sp,#lp,.body>.panel) .hp-fld{border-color:transparent}
+:is(#sp,#lp,.body>.panel) .hp-fld:focus-within{border-color:var(--brand-deep);box-shadow:0 0 0 3px var(--brand-soft)}
+:is(#sp,#lp,.body>.panel) .hp-fld{border-radius:var(--radius-md,10px)}
+/* 342판: 형제자매 칸 = 둥근 모서리 규칙(바깥 사각 흰 바탕 없앰) · 줄 목록·[우선]도 옅은 선 */
+:is(#sp,#lp,.body>.panel) .hpm,:is(#sp,#lp,.body>.panel) .hp-box{background:transparent}
+:is(#sp,#lp,.body>.panel) .hp-fld{border-color:var(--divider)}
+:is(#sp,#lp,.body>.panel) .ttrows{border-color:var(--divider)}
+:is(#sp,#lp,.body>.panel) .prb:not(.on){border-color:var(--divider)}
+/* 342판: 보기 전용 값(등록 요약 강사·과목·기간)은 흰 상자 없이 글자만 — 흰색 = 적는 칸에만 */
+:is(#sp,#lp,.body>.panel) .hf.ro .hf-box{background:transparent;border-color:transparent;padding-left:0;height:auto;min-height:24px}
+/* 343판(대표): 창 머리(뒤로·머리 3줄·탭)도 흰색 — 아래 단추 줄과 같은 흰 띠, 사이 칸만 바탕색 */
+:is(#sp,#lp,.body>.panel) .phead,:is(#sp,#lp,.body>.panel) .ptabs{background:var(--surface)}
+:is(#sp,#lp,.body>.panel) .phead{margin-bottom:0;box-shadow:0 -48px 0 var(--surface)}
+:is(#sp,#lp,.body>.panel) .ptabs{padding-top:16px}
+:is(#sp,#lp,.body>.panel) .spback{position:relative;z-index:5}
+/* 343판(대표): [우선] 색 없이 — 켜진 것만 흰 단추(글자 진하게), 꺼진 것은 바탕색·옅은 글자(꺼진 느낌) */
+:is(#sp,#lp,.body>.panel) .prb:not(.on){background:transparent;border-color:var(--divider);color:var(--subtle);opacity:.6}
+:is(#sp,#lp,.body>.panel) .prb:not(.on):hover{opacity:1}
+:is(#sp,#lp,.body>.panel) .prb.on{background:var(--surface);border-color:var(--divider);color:var(--ink);box-shadow:var(--shadow-card)}
+/* 344판(대표): 메뉴 제목 줄·켜진 탭도 바탕색(흰 띠 없앰) · 표는 둥근 모서리·그림자 없이 그냥 표 */
+#view .ttl{background:var(--canvas)}
+#tabs .tab.on{background:var(--canvas)}
+#view .list>table.stt{border-radius:0;box-shadow:none}
+#view .list>table.stt thead th:first-child,#view .list>table.stt thead th:last-child{border-radius:0}
+/* 345판(대표 "가"): 창 머리·아래 단추 줄도 바탕색 — 흰색은 입력칸·표·켜진 단추에만(343판 흰 띠 되돌림) */
+:is(#sp,#lp,.body>.panel) .phead,:is(#sp,#lp,.body>.panel) .ptabs,:is(#sp,#lp,.body>.panel) .actions{background:var(--canvas)}
+:is(#sp,#lp,.body>.panel) .phead{box-shadow:0 -48px 0 var(--canvas)}
+/* 346판: 형제자매 칸·줄 목록도 테두리 없음(흰 바탕만) */
+:is(#sp,#lp,.body>.panel) .hp-fld,:is(#sp,#lp,.body>.panel) .ttrows{border-color:transparent}
+/* ===== 347판(대표 "반전으로 적용"): 흰색·바탕색 반전 — 화면·창·머리·탭 = 흰색, 적는 칸·켜진 단추·위 줄 단추 = 연회색(canvas), 그림자 없음 ===== */
+#view,#view .ttl,#tabs .tab.on{background:var(--surface)}
+:is(#sp,#lp,.body>.panel),:is(#sp,#lp,.body>.panel) :is(.phead,.ptabs,.actions){background:var(--surface)}
+:is(#sp,#lp,.body>.panel) .phead{box-shadow:0 -48px 0 var(--surface)}
+:is(#sp,#lp,.body>.panel) :is(.hp-fld,.ttrows){background:var(--canvas)}
+:is(#sp,#lp,.body>.panel) .prb.on{background:var(--canvas);border-color:transparent;box-shadow:none}
+#view .pg-bar .tb-ic:not(.pri):not(.dark):not(.docked):not(#saveAll):not([disabled]),#view .pg-bar .searchbox,#view .combo,#view .nlink{background:var(--canvas);box-shadow:none;border-color:transparent}
+#view .list>table.stt{border:1px solid var(--divider)}
+#view .list.cards>section,#view .list.cards>.card{background:var(--canvas);box-shadow:none}
+/* 348판: 형제자매 칸·줄 목록도 같은 아주 옅은 선 */
+:is(#sp,#lp,.body>.panel) :is(.hp-fld,.ttrows){border-color:rgba(17,24,39,.06)}
+/* 349판(대표): 꺼진 [우선] 선도 입력칸과 같은 아주 옅은 회색 */
+:is(#sp,#lp,.body>.panel) .prb:not(.on){border-color:rgba(17,24,39,.06)}
+@media (min-resolution:2dppx){:is(#sp,#lp,.body>.panel) .prb{border-width:.5px}}
+/* 350판(대표 "베이지"): 우선으로 고른 연락처 = [우선] 단추와 그 연락처 칸 둘 다 선명하지만 얇은 베이지 선(brand-mid, 1px) */
+:is(#sp,#lp,.body>.panel) .prb.on,:is(#sp,#lp,.body>.panel) .ctl:has(.prb.on) .hf-box{border-color:var(--brand-mid);border-width:1px}
+/* 352판(대표 "상단 검색창과 버튼에도 테두리 동일하게"): 위 줄 아이콘 단추·찾기 칸·고르기·노션 = 연회색 + 입력칸과 같은 아주 옅은 선(시간표·수업 위 줄도 같게) */
+#view :is(.pg-bar,.top) .tb-ic:not(.pri):not(.dark):not(.docked):not(#saveAll):not([disabled]),#view :is(.pg-bar,.top) .searchbox,#view .combo,#view .nlink{background:var(--canvas);box-shadow:none;border:1px solid rgba(17,24,39,.06)}
+@media (min-resolution:2dppx){#view :is(.pg-bar,.top) .tb-ic:not(.pri):not(.dark):not(.docked):not(#saveAll):not([disabled]),#view :is(.pg-bar,.top) .searchbox,#view .combo,#view .nlink{border-width:.5px}}
+/* 352판: 묶음 단추(되돌리기·확대)·시간표 주 이동 단추·고르기도 같은 모양 — 묶음은 바깥만 선, 안 단추는 선 없음 */
+#view :is(.pg-bar,.top) .tb-grp{background:var(--canvas);border:1px solid rgba(17,24,39,.06);box-shadow:none}
+#view :is(.pg-bar,.top) .tb-grp .tb-ic:not([disabled]){background:transparent!important}
+#view :is(.pg-bar,.top) .tb-grp>*{border-top:0!important;border-right:0!important;border-bottom:0!important}
+#view :is(.pg-bar,.top) .tb-grp>:first-child{border-left:0!important}
+#view :is(.pg-bar,.top) .tb-grp>*+*{border-left:1px solid rgba(17,24,39,.08)!important}/* 353판(대표): 묶음 안 단추 사이 선(실행 취소|다시 실행 · 확대 묶음) */
+#view .top .combo{background:var(--canvas)}
+#view .wknav button:not(.on){background:var(--canvas);border:1px solid rgba(17,24,39,.06);box-shadow:none}
+/* 352판(대표 "상단 단추 어떤 건 베이지, 어떤 건 회색"): 나눔 단추 바탕도 연회색 하나로(베이지 없앰) — 위 줄 필터·시간표/수업·편집/추가·5|7, 창 안 나눔 단추 모두 */
+#view :is(.pg-bar,.top) :is(.vseg,.kseg,.ttog,.seg),:is(#sp,#lp,.body>.panel) .hf-box.hf-segbox{background:var(--canvas);border:1px solid rgba(17,24,39,.06)}
+/* 352판: 제목 줄 토글(시간표|수업)·시즌 고르기·[이번 주]도 같은 연회색 + 옅은 선 */
+#view .ttl :is(.vseg,.ttog),#view #seaChip,#view .wknav .tday{background:var(--canvas);border:1px solid rgba(17,24,39,.06);box-shadow:none}
+/* 354판(대표 "원래 상자가 있었던 것 같은데 · 상자 안은 연회색"): 보기 전용 값(강사·과목·수강 기간)도 40px 상자로 되살림 — 입력칸과 같은 연회색 + 아주 옅은 선. 줄 목록(시간표·교재) 안쪽 줄도 연회색 */
+:is(#sp,#lp,.body>.panel) .hf.ro .hf-box{background:var(--canvas);border-color:rgba(17,24,39,.06);padding-left:12px;height:40px;min-height:40px}
+:is(#sp,#lp,.body>.panel) .ttrows .ttrow{background:var(--canvas)}
+:is(#sp,#lp,.body>.panel) .ttrows{border-color:rgba(17,24,39,.06)}
+/* 355판(대표 "+,- 아이콘"): 수강료 조정 할인/추가 = − / + 단추(40px, 누르면 바뀜) — 할인 빨강 글자·추가 초록 글자 */
+.unrow .adjsg{flex:none;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(17,24,39,.06);border-radius:10px;background:var(--canvas);cursor:pointer}
+.unrow .adjsg.minus{color:var(--danger,#C0392B)}.unrow .adjsg.plus{color:var(--success,#2E7D32)}
+.unrow .adjsg:hover{border-color:var(--brand-border)}
+/* 355판: 수강료 조정 줄 금액·사유·항목 칸도 입력칸과 같은 연회색 + 옅은 선 + 40px */
+:is(#sp,#lp,.body>.panel) .unrow.ed .inp{height:40px;background-color:var(--canvas)!important;border:1px solid rgba(17,24,39,.06)!important;border-radius:10px;box-shadow:none}
+:is(#sp,#lp,.body>.panel) .unrow.ed .inp:focus{border-color:var(--brand-deep)!important;box-shadow:0 0 0 3px var(--brand-soft);outline:0}
+/* 356판: 수강료 조정 줄 — 사유·기타경비 항목은 입력칸 모듈(HF.select)이 그림. 원래 select는 값만 들고 숨김 */
+.unrow select.adji{display:none!important}
+.unrow.ed{flex-wrap:wrap}.unrow.ed .adjwhy,.unrow.ed .adjitem{flex:1 1 100%;min-width:0}
+.unrow.ed .adjitem[hidden]{display:none}
+/* ===== 356판(대표 "보고서 칸 = 시안 디자인, 성적 추이 = 꺾은선, 보고서 웹앱과 같게"): 등록 [현황] 학부모 리포트 = 리포트 [보고서] 화면 축소판 ===== */
+.box.rp h3{display:flex;align-items:center;gap:6px}.box.rp h3 .sp{flex:1}
+.rp-open{display:inline-flex;align-items:center;gap:2px;border:0;background:none;padding:0;font:inherit;font-size:var(--text-label);font-weight:700;color:var(--brand-deep);cursor:pointer}.rp-open svg.i{width:14px;height:14px}
+.rp-seg{display:flex!important;width:100%;box-sizing:border-box}.rp-seg button{flex:1}
+.rp-nav{display:flex;align-items:center;gap:8px;margin:12px 0}
+.rp-nav b{flex:1;text-align:center;font-size:var(--text-body);font-variant-numeric:tabular-nums}
+.rp-nb{width:32px;height:32px;flex:none;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(17,24,39,.06);border-radius:50%;background:var(--canvas);color:var(--brand-deep);cursor:pointer}.rp-nb:disabled{opacity:.35;cursor:default}
+.rp-td{height:28px;padding:0 10px;border:1px solid rgba(17,24,39,.06);border-radius:999px;background:var(--canvas);font:inherit;font-size:var(--text-caption);font-weight:700;color:var(--brand-deep);cursor:pointer}.rp-td.on{background:var(--brand-soft);border-color:transparent}
+.rp-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:4px}
+.rp-card{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 4px;border:1px solid rgba(17,24,39,.06);border-radius:12px;background:var(--canvas);text-align:center;min-width:0}
+.rp-card .t{font-size:var(--text-caption);font-weight:700;color:var(--muted);white-space:nowrap}
+.rp-card .sub{font-size:var(--text-caption);color:var(--subtle);white-space:nowrap}
+.rp-pill{display:inline-block;padding:4px 10px;border-radius:999px;font-size:var(--text-label);font-weight:700;white-space:nowrap}
+.rp-pill.t-g{background:var(--success-soft);color:var(--success-ink)}.rp-pill.t-y{background:var(--warning-soft);color:var(--warning-ink)}.rp-pill.t-o{background:var(--warning-soft);color:var(--warning-ink)}.rp-pill.t-r{background:var(--danger-soft);color:var(--danger-ink)}.rp-pill.t-none{background:var(--brand-soft);color:var(--muted)}
+.rp-donut{width:46px;height:46px;border-radius:50%;background:conic-gradient(var(--c) var(--p),var(--brand-light,#F1E8DC) 0);display:flex;align-items:center;justify-content:center}
+.rp-donut i{width:36px;height:36px;border-radius:50%;background:var(--canvas);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:11px;font-weight:800;color:var(--ink)}
+.rp-sec{display:flex;align-items:center;gap:6px;margin:16px 0 8px;font-size:var(--text-small);font-weight:700;color:var(--ink)}.rp-sec svg.i{width:16px;height:16px;color:var(--muted)}
+.rp-rec{border:1px solid rgba(17,24,39,.06);border-radius:12px;overflow:hidden;background:var(--canvas)}.rp-rec+.rp-rec{margin-top:6px}
+.rp-rh{padding:10px 12px;font-size:var(--text-small);font-weight:700}
+.rp-rb{padding:10px 12px;background:var(--brand-tint,#FBF8F3);font-size:var(--text-label);line-height:1.6;border-top:1px solid rgba(17,24,39,.04)}.rp-rb .l{display:block;margin-bottom:2px;font-size:var(--text-caption);font-weight:700;color:var(--muted)}
+.rp-row{display:flex;align-items:center;gap:8px;min-height:40px;padding:0 12px;box-sizing:border-box;border:1px solid rgba(17,24,39,.06);border-radius:12px;background:var(--canvas);font-size:var(--text-label)}.rp-row+.rp-row{margin-top:6px}.rp-row .sp{flex:1}
+.rp-d{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:600}
+.rp-tag{padding:2px 8px;border-radius:999px;font-size:var(--text-caption);font-weight:700}.rp-tag.ok{background:var(--info-soft);color:var(--info-ink)}.rp-tag.bad{background:var(--danger-soft);color:var(--danger-ink)}
+.rp-box{padding:10px 12px;border:1px solid rgba(17,24,39,.06);border-radius:12px;background:var(--canvas)}
+.rp-leg{display:flex;gap:14px;margin-bottom:6px;font-size:var(--text-caption);color:var(--muted)}.rp-leg span{display:inline-flex;align-items:center;gap:5px}.rp-leg i{width:8px;height:8px;border-radius:50%;background:#6b5d4d}.rp-leg i.av{background:#fff;border:1.5px solid #b9ab98;box-sizing:border-box}
+.rp-chart{width:100%;aspect-ratio:400/200}.rp-chart svg{width:100%;height:100%;display:block}
+.rp-cm{padding:10px 12px;border:1px solid rgba(17,24,39,.06);border-radius:12px;background:var(--canvas);font-size:var(--text-label);line-height:1.6}.rp-cm small{display:block;margin-top:4px;font-size:var(--text-caption);color:var(--subtle)}
+.rp-links{display:flex;gap:6px;margin-top:14px}.rp-links .btn{flex:1;height:40px;justify-content:center}.rp-links .rp-more{flex:none;width:40px;padding:0}.rp-links+.rp-links{margin-top:6px}
+/* 356판: 창 안 나눔 단추(seg-toggle: 출결|과제 · 일간|주간|월간|수료)도 연회색 + 옅은 선 — 위 줄·입력칸과 같게 */
+:is(#sp,#lp,.body>.panel) .seg-toggle{background:var(--canvas);border:1px solid rgba(17,24,39,.06)}
+.rp-card .sub{margin:0}.rp-card>*{margin:0}
+.unrow.ed .adjwhy,.unrow.ed .adjitem{order:2}
+/* 359판: 링크 켜기·끄기 나눔 단추 + 재발급 한 줄, 꺼짐 안내는 링크 단추 아래 */
+.rp-onoff{display:flex!important;flex:1;height:40px;box-sizing:border-box;padding:3px}.rp-onoff button{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:100%}.rp-onoff button svg.i{width:14px;height:14px}
+.rp-links .btn.sm{flex:1;height:40px}
+.hint.rp-off{margin-top:8px;color:var(--danger-ink)}
+/* 360판: 표 overflow:hidden(340판 둥근 모서리용) 되돌림 — 모서리를 없앤 뒤엔 필요 없고, 출석부 격자 칸이 28 아래로 줄어 가로 스크롤이 사라지던 것 */
+#view .list>table.stt{overflow:visible}
+/* 360판: [리포트 열기] 누르는 영역 32 이상(검사 chk-narrow2) */
+.rp-open{min-height:32px;padding:0 4px}

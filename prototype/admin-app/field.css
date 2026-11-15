@@ -238,3 +238,25 @@
 /* 326판: 시작-끝 한 줄이 좁을 때(카드 안 등) 칸 안쪽 여백만 줄여 날짜 글자가 다 보이게 */
 @container (max-width:260px){.hf-range .hf-box{padding-left:8px;padding-right:8px;gap:6px}}
 @container (max-width:170px){.hf-dt input.hf-d::placeholder{font-size:12px;letter-spacing:-.2px}}
+/* 341판(대표 "입력창만 흰색, 테두리 없이"): 바탕(canvas) 위 입력칸 = 흰 블록 · 테두리 없음 · 누르면 갈색 테두리 링 */
+.hf-box,.hf-swrow,.hf-btn{background:var(--surface,#fff);border-color:transparent}
+.hf-box:hover,.hf-swrow:hover{border-color:var(--brand-border,#DED1C0)}
+.hf-box:focus-within,.hf-swrow:focus-visible{border-color:var(--brand-deep,#6B5D4D);box-shadow:0 0 0 3px var(--brand-soft,#F5EFE7)}
+.hf.err .hf-box,.hf-box.bad{border-color:var(--danger,#E5484D)}
+.hf-box.hf-segbox{background:var(--brand-soft,#F5EFE7)}
+/* 342판(대표 "그렇게 진행"): 흰 칸에 아주 옅은 1px 선(디자인 기준 '카드 안 칸 = 1px 선', divider) — 바탕과 흰 칸 경계가 보이게 */
+.hf-box,.hf-swrow,.hf-btn{border-color:var(--divider,#EEE7DD)}
+.hf-box.hf-segbox{border-color:transparent}
+/* 346판(대표 "입력창 테두리 다시 제거"): 흰 입력칸 테두리 없음(마우스 올리면 옅은 선·누르면 갈색 링은 341판 그대로) */
+.hf-box,.hf-swrow,.hf-btn{border-color:transparent}
+/* 347판(대표 "반전으로 적용"): 바탕 흰색 ↔ 입력칸 연회색(canvas) — 테두리 없음, 누르면 갈색 링 */
+.hf-box,.hf-swrow,.hf-btn{background:var(--canvas,#F7F8FA)}
+.hf-box.hf-segbox{background:var(--brand-soft,#F5EFE7)}
+/* 348판(대표 "아주 연하고 매우 얇게"): 연회색 입력칸에 거의 안 보이는 선(검정 6%, 1px · 고해상도 화면은 0.5px) */
+.hf-box,.hf-swrow,.hf-btn{border-color:rgba(17,24,39,.06)}
+@media (min-resolution:2dppx){.hf-box,.hf-swrow,.hf-btn{border-width:.5px}}
+.hf-box.hf-segbox{border-color:transparent}
+/* 352판(대표 "나눔 단추 여백 동일하게"): 나눔 단추 바깥 상자 안쪽 여백 사방 3px 같게(오른쪽만 12px이던 것) */
+.hf-box.hf-segbox{padding:3px}
+/* 352판: 나눔 단추 상자 바탕 = 입력칸과 같은 연회색 + 같은 옅은 선 */
+.hf-box.hf-segbox{background:var(--canvas,#F7F8FA);border-color:rgba(17,24,39,.06)}
