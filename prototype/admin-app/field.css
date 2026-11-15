@@ -260,3 +260,5 @@
 .hf-box.hf-segbox{padding:3px}
 /* 352판: 나눔 단추 상자 바탕 = 입력칸과 같은 연회색 + 같은 옅은 선 */
 .hf-box.hf-segbox{background:var(--canvas,#F7F8FA);border-color:rgba(17,24,39,.06)}
+/* 365판(기본 옷): 잠긴·고칠 수 없는 칸 = 투명 + 아주 옅은 선 + 흐린 글자(꺼진 [우선]과 같은 말) — 연회색 = 손대는 곳이라 손댈 수 없는 칸은 빼냄 */
+.hf.dis .hf-box{background:transparent;border-color:var(--field-line,rgba(17,24,39,.06))}

@@ -2710,3 +2710,15 @@ table.stt:has(.rowpr) :is(th,td).op{width:68px;white-space:nowrap}
 #view .list>table.stt{overflow:visible}
 /* 360판: [리포트 열기] 누르는 영역 32 이상(검사 chk-narrow2) */
 .rp-open{min-height:32px;padding:0 4px}
+/* 361판: 오늘 화면 수업 줄 = 카드 줄(구분선 · 왼쪽 맞춤 · 오른쪽 →). 할 일 목록 .tdl 이름과 겹쳐 상자 안 상자·가운데 정렬로 보이던 것 */
+.crow.tdl{flex-direction:row;border:0;border-top:1px solid var(--line2);border-radius:0;overflow:visible;text-align:left}
+.crow.tdl:first-of-type{border-top:0}
+/* 362판(어사이드 "✓가 작아 몰랐어요"): 조정 줄 [✓ 반영] 40 — 칸에 딸린 작은 동작 = 칸 높이(정보 탭 틀 ④) */
+.unrow.ed .anb[data-aok]{width:40px;height:40px;border:1px solid var(--pick-line,#D1BEA5);border-radius:10px;background:var(--canvas);color:var(--brand-deep)}
+.unrow.ed .anb[data-aok] svg.i{width:18px;height:18px}
+/* 362판(어사이드 "켜졌는지 꺼졌는지 모르겠어요"): 나눔 단추 = 켜진 칸 흰색·진한 글자·옅은 그림자 / 꺼진 칸 흐린 글자 — 모든 seg-toggle */
+.seg-toggle button:not(.on){color:var(--subtle)}
+.seg-toggle button.on{color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+/* 363판: 오늘 [할 일] 줄의 숫자 = 메뉴 숫자와 같은 배지 */
+.crow.tdl .cl svg.i{width:14px;height:14px;vertical-align:-2px;color:var(--muted)}
+.crow.tdl .ca{align-items:center}.crow.tdl .ca .todo{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:20px;padding:0 6px;border-radius:999px;background:var(--warning-soft);color:var(--warning-ink);font-size:var(--text-micro);font-weight:700}
