@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>오른쪽 창 모듈</title>
 <!-- 오른쪽 창 모듈 페이지. 앱과 같은 CSS(hada-tokens·app·pick·field)와 입력칸(field.js), 창 그리기(panel.js)를 그대로 쓴다 — 여기서 고친 부품이 앱에 그대로 들어간다. 모음표: _catalog/index.html -->
-<link rel="stylesheet" href="hada-tokens.css?v=431"><link rel="stylesheet" href="app.css?v=431"><link rel="stylesheet" href="pick.css?v=431"><link rel="stylesheet" href="field.css?v=431">
-<link rel="stylesheet" href="alim.css?v=431"><script src="hada-rules.js?v=431"></script><script src="alim-preview.js?v=431"></script><script src="pick.js?v=431"></script><script src="field.js?v=431"></script><script src="panel.js?v=431"></script>
+<link rel="stylesheet" href="hada-tokens.css?v=432"><link rel="stylesheet" href="app.css?v=432"><link rel="stylesheet" href="pick.css?v=432"><link rel="stylesheet" href="field.css?v=432">
+<link rel="stylesheet" href="alim.css?v=432"><script src="hada-rules.js?v=432"></script><script src="alim-preview.js?v=432"></script><script src="pick.js?v=432"></script><script src="pick-demo-data.js?v=432"></script><script src="field.js?v=432"></script><script src="panel.js?v=432"></script>
 <style>
 body{margin:0;background:var(--canvas,#F7F8FA);overflow:auto;height:auto}
 .mp-top{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--divider,#EEE7DD);padding:14px 24px}
@@ -168,7 +168,9 @@ put("h6", [
     { key: "완료", pill: "pgn nc-green", count: 1, unit: "곳", canFold: true, fold: true }]) })),
 ].join(""));
 // 7 카드 — 손 견본 없음(실제 부품을 모듈로 옮긴 뒤 여기서 불러 그린다)
-put("h7", cell("아직 모듈로 옮기지 않은 부품", box({ title: "옮길 차례", help: "손으로 그린 견본은 두지 않아요 — 실제 부품과 어긋나기 때문이에요. 지금 모양은 창 모음표에서 실제 창으로 봐요.", rows: [{ t: "등록 카드", sub: "학생 창 [등록] · 틀 6단계" }, { t: "학생 카드", sub: "고르기 모듈 · 틀 6단계" }, { t: "교재 카드", sub: "라이브러리 카드 보기 · 틀 4단계" }] })));
+put("h7", [cell("고르기 모듈 — 클래스 칸(pick.js HP.cls)", box({ title: "클래스", body: '<div id="mpPickC"></div>' })), cell("고르기 모듈 — 학생 칸(pick.js HP.stu)", box({ title: "학생", body: '<div id="mpPickS"></div>' })), cell("아직 모듈로 옮기지 않은 부품", box({ title: "옮길 차례", help: "손으로 그린 견본은 두지 않아요 — 실제 부품과 어긋나기 때문이에요. 지금 모양은 창 모음표에서 실제 창으로 봐요.", rows: [{ t: "등록 카드", sub: "학생 창 [등록] · 틀 6단계" }, { t: "학생 카드", sub: "고르기 모듈 · 틀 6단계" }, { t: "교재 카드", sub: "라이브러리 카드 보기 · 틀 4단계" }] }))].join(""));
+/* 고르기 모듈을 실제로 꽂음(예시 자료 pick-demo-data.js) */
+if (window.HP && typeof DEMO !== "undefined") { HP.cls(document.getElementById("mpPickC"), { value: "c1", classes: DEMO.classes, onChange: () => { } }); HP.stu(document.getElementById("mpPickS"), { value: ["s1", "s2"], students: DEMO.students, onChange: () => { } }); }
 // 8 미니 부품 — 손 견본 없음
 put("h8", cell("아직 모듈로 옮기지 않은 부품", box({ title: "옮길 차례", help: "손으로 그린 견본은 두지 않아요 — 실제 부품과 어긋나기 때문이에요. 지금 모양은 창 모음표에서 실제 창으로 봐요.", rows: [{ t: "주간 시간표", sub: "등록·클래스 창 [시간표] · 틀 7단계" }, { t: "달 캘린더", sub: "등록 창 [현황] · 틀 7단계" }, { t: "평가 그래프", sub: "evLine · 틀 4단계" }] })));
 // 9 할 일
@@ -184,5 +186,5 @@ render(ex("클래스 창"), { head: { name: "중1 수학", dot: "#B794F6", statu
 render(ex("학생 창"), { head: { name: "장예린", nameInput: "새 학생 이름", status: [{ t: "등록 중", tone: "green" }], info: ["하다고"], badges: [gchip("고3")], linksHtml: NOTION_LINK }, tabs: [{ id: "i", label: "정보" }, { id: "e", label: "등록", n: 2 }, { id: "c", label: "일정", disabled: true }, { id: "g", label: "성적" }], tab: "i", boxes: [{ title: "문의", fields: [{ label: "문의일시", type: "date", value: "2026-08-29" }, { label: "메모(내부용)", type: "memo" }] }, { title: "기본정보", fields: [{ label: "학교", value: "하다고" }, { label: "학년", value: "고3" }] }], foot: { del: true, save: "학생 저장" } });
 render(ex("수업 창"), { head: { name: "초등 영어", dot: "#E88FB5", info: ["2026.11.11(수) 14:30"], badges: [pill({ t: "정규", tone: "blue" })], linksHtml: NOTION_LINK }, tabs: [{ id: "a", label: "출결", n: "8/12" }, { id: "l", label: "학습기록", n: 1 }, { id: "r", label: "보고서" }, { id: "i", label: "정보" }], tab: "a", boxes: [{ title: "출결", help: "출석·결석을 눌러 넣어요", right: '<button class="btn sm">모두 출석</button>', rows: [{ t: "신지안", sub: "바다초 초1", tag: "출석" }, { t: "김다은", sub: "푸른중", tag: "결석" }] }], foot: { save: "수업 저장" } });
 document.querySelectorAll(".mp-pn .hname").forEach(i=>i.closest(".mp-pn").classList.add("stpanel"));
-</script><script src="module-icons.js?v=431"></script>
+</script><script src="module-icons.js?v=432"></script>
 </body></html>
