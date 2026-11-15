@@ -884,16 +884,14 @@ function panelMakeup(p,t){const st=t.state;const m=st.mkNew;if(!m.sids)m.sids=[]
   const c=m.classId?cls(m.classId):null;const ss=m.sids.map(stu).filter(Boolean);
   p.innerHTML=`${phead(`새 보강`,`${mdw(m.d)} ${fmt(m.start)}-${fmt(m.end)}`)}
   <div class="box"><h3>${IC("clock","l")}이 수업 날짜·시간${HELP("빈 칸을 다시 끌거나, 점선 칸을 끌어 옮기거나 위아래 끝으로 늘려도 돼요.")}</h3>
-    <div class="field"><span class="lbl">날짜</span><div class="trow">${DATE("nD",m.d)}<span></span><span></span></div></div>
-    <div class="field"><span class="lbl">수업 시간</span><div class="trow"><input class="inp timebtn" id="nS" value="${fmt(m.start)}" readonly><span class="tsep">-</span><input class="inp timebtn" id="nE" value="${fmt(m.end)}" readonly></div></div>
+    <div class="hfgrid"><div class="hfh" id="nDH"></div><div class="hfh" id="nTH"></div></div>
+    <!-- 308판: 시간 = 위 칸 묶음 -->
     <h3 class="h3s">${IC("layers","l")}클래스${HELP("고르지 않아도 돼요. 비워 두면 여러 클래스 학생이 함께하는 보강이에요. 한 클래스 보강이면 그 클래스를 골라요.")}</h3>
     <div class="hpm" id="hpNC"></div>
     </div>${mkPicker(m,m.d,st.season)}
   <div class="actions"><button class="btn" id="mkC">취소</button><span class="sp"></span><button class="btn pri big" id="mkO">보강 만들기</button></div>`;
   bindPhead(p,t);
-  p.querySelector("#nD").addEventListener("change",ev=>{if(ev.target.value){m.d=ev.target.value;render()}});
-  p.querySelector("#nS").onclick=ev=>openTimeWheel(ev.currentTarget,{value:m.start,max:m.end-5,step:5,label:"시작"},v2=>{m.start=v2;render()});
-  p.querySelector("#nE").onclick=ev=>openTimeWheel(ev.currentTarget,{value:m.end,min:m.start+5,step:5,label:"끝"},v2=>{m.end=v2;render()});
+  /* 308판: 날짜·시간 = 입력칸 모듈 */HF.date(p.querySelector("#nDH"),{label:"날짜",value:m.d,clear:false,onChange:v=>{if(v){m.d=v;render()}}});HF.timeRange(p.querySelector("#nTH"),{label:"수업 시간",value:[fmt(m.start),fmt(m.end)],step:5,onChange:([a2,b2])=>{const s1=parseT(a2),e1=parseT(b2);if(s1==null||e1==null||e1<=s1)return;if(s1===m.start&&e1===m.end)return;m.start=s1;m.end=e1;render()}});
   hpCls(p.querySelector("#hpNC"),{none:true,value:m.classId,onChange:v2=>{{st.fo=null;m.classId=v2||null;if(m.classId){const al=new Set(DB.enrolls.filter(e=>e.classId===m.classId&&!e.ended).map(e=>e.studentId));const out=m.sids.filter(id=>!al.has(id));m.sids=m.sids.filter(id=>al.has(id));if(out.length)toast(`${cls(m.classId).name} 수강생이 아닌 ${out.length}명은 뺐어요`)}render()}}});
   bindMkPicker(p,m,()=>{});
   p.querySelector("#mkC").onclick=()=>{st.mkNew=null;st.mkPick=false;render()};
@@ -915,8 +913,8 @@ function panelMk(p,t,id){const st=t.state;const m=DB.mk.find(x=>x.id===id);if(!m
     <div class="attlist">${ss.map(x=>{const a=m.att[x.id];const w0=lWas(mk,x.id),ch=w0!==undefined&&w0!==(a||null);return `<div class="attrow ${ch?"ch":""}">${stuHtml(x)}${ch?`<span class="was">${w0==="출석"?"보강":w0||"미입력"}</span>`:""}${anBtn(mk,x,st)}<span class="attseg" data-s="${x.id}">${[["출석","보강","a3"],["결석","결석","a2"]].map(([v2,l,cl])=>`<button class="${!off&&a===v2?"on "+cl:""}" data-a="${v2}" ${off?"disabled":""}>${l}</button>`).join("")}</span></div>${anBox(mk,x,st)}`}).join("")||'<div class="empty">학생이 없어요</div>'}</div></div></section>
   <section class="ptab ${lt==="log"?"on":""}">${lt==="log"?recsHtml(mk,{classId:m.classId},m.d,ss,st):""}</section>
   <section class="ptab ${lt==="info"?"on":""}"><div class="box"><h3>${IC("checksq","l")}수업 구분${HELP("직접 만든 수업은 보강이에요. 취소하면 휴강으로 바꿔요(휴강 안내 보내기는 다음 업데이트). 잘못 만들었으면 [보강 삭제]. [보강 추가] = 같은 학생으로 다른 시간에 다시 잡아요.")}</h3>${kindRow("보강",off)}</div>${lmsgBox(mk,"보강",off,m.d,m.start,ss,sid=>m.att[sid])}${off?`<div class="offbox">취소한 보강이에요. 날짜·학생은 바꾸지 않아요.</div>`:""}<div class="box ${off?"dis dimall":""}"><h3>${IC("clock","l")}이 수업 날짜·시간${HELP("캘린더에서 끌어 옮기거나 위아래 끝으로 늘려도 돼요.")}</h3>
-    <div class="field"><span class="lbl">날짜</span><div class="trow">${DATE("mD",m.d,ml||off?"disabled":"")}<span></span><span></span></div></div>
-    <div class="field"><span class="lbl">수업 시간</span><div class="trow"><input class="inp timebtn" id="mS" value="${fmt(m.start)}" readonly ${ml||off?"disabled":""}><span class="tsep">-</span><input class="inp timebtn" id="mE" value="${fmt(m.end)}" readonly ${ml||off?"disabled":""}></div></div>
+    <div class="hfgrid"><div class="hfh" id="mDH" data-dis="${ml||off?1:""}"></div><div class="hfh" id="mTH"></div></div>
+    <!-- 308판: 시간 = 위 칸 묶음 -->
     <h3 class="h3s">${IC("layers","l")}클래스${HELP("고르지 않아도 돼요. 비워 두면 여러 클래스 학생이 함께하는 보강이에요.")}</h3>
     ${off?`<div class="valline">${c?`<span class="dotc" style="background:${classBar(c)}"></span>${esc(c.name)} · ${esc(tch(c.teacherId).name)}`:"클래스 없음"}</div>`:'<div class="hpm" id="hpMC"></div>'}
     </div>${off?"":mkPicker(mw,m.d,st.season)}</section>
@@ -926,7 +924,7 @@ function panelMk(p,t,id){const st=t.state;const m=DB.mk.find(x=>x.id===id);if(!m
   bindKind(p,st,o=>{if(o===off)return;lBase(mk);m.off=o;commit();toast(o?"보강을 휴강(취소)으로 바꿨어요":"보강으로 되돌렸어요")},()=>({classId:m.classId,sids:m.sids.slice()}));
   p.querySelectorAll(".attseg").forEach(sg=>sg.querySelectorAll("[data-a]").forEach(bt=>bt.onclick=()=>{const sid=sg.dataset.s;lBase(mk);m.att[sid]=m.att[sid]===bt.dataset.a?null:bt.dataset.a;commit()}));anBind(p,mk,m.classId,m.d,st);lmsgBind(p,mk,"보강",off,m.d,m.start,ss,sid=>m.att[sid],mkName(m));
   const ma=p.querySelector("#mAll");if(ma)ma.onclick=()=>{lBase(mk);m.sids.forEach(x=>{if(!m.att[x])m.att[x]="출석"});commit();toast("남은 학생을 모두 보강으로 넣었어요")};
-  const md2=p.querySelector("#mD");if(md2)md2.addEventListener("change",()=>{if(md2.value){lBase(mk);m.d=md2.value;commit()}});
+  /* 308판 */{const mh=p.querySelector("#mDH");if(mh){const dis1=!!mh.dataset.dis;HF.date(mh,{label:"날짜",value:m.d,clear:false,disabled:dis1,onChange:v=>{if(v&&v!==m.d){lBase(mk);m.d=v;commit()}}});HF.timeRange(p.querySelector("#mTH"),{label:"수업 시간",value:[fmt(m.start),fmt(m.end)],step:5,disabled:dis1,onChange:([a2,b2])=>{const s1=parseT(a2),e1=parseT(b2);if(s1==null||e1==null||e1<=s1)return;if(s1===m.start&&e1===m.end)return;lBase(mk);m.start=s1;m.end=e1;commit()}})}}
   const ms2=p.querySelector("#mS"),me2=p.querySelector("#mE");if(ms2&&!ml&&!off){ms2.onclick=ev=>openTimeWheel(ev.currentTarget,{value:m.start,max:m.end-5,step:5,label:"시작"},v2=>{lBase(mk);m.start=v2;commit()});me2.onclick=ev=>openTimeWheel(ev.currentTarget,{value:m.end,min:m.start+5,step:5,label:"끝"},v2=>{lBase(mk);m.end=v2;commit()})}
   if(!off)hpCls(p.querySelector("#hpMC"),{none:true,value:m.classId,onChange:v2=>{{st.fo=null;const nc=v2||null;if(nc===m.classId)return render();lBase(mk);if(nc){const al=new Set(DB.enrolls.filter(e=>e.classId===nc&&!e.ended).map(e=>e.studentId));const out=m.sids.filter(id=>!al.has(id));if(out.length&&!confirm(`${cls(nc).name} 수강생이 아닌 ${out.length}명은 이 보강에서 빠져요. 바꿀까요?`))return render();out.forEach(id=>delete m.att[id]);m.sids=m.sids.filter(id=>al.has(id))}m.classId=nc;commit()}}});
   if(!off)bindMkPicker(p,mw,()=>{if(mw.sids.join()===m.sids.join())return;lBase(mk);m.sids.filter(x=>!mw.sids.includes(x)).forEach(x=>delete m.att[x]);m.sids=mw.sids.slice();commit()});
@@ -1039,8 +1037,8 @@ function panelLesson(p,t,items){const st=t.state;if(st.mkNew)return panelMakeup(
   <section class="ptab ${lt==="log"?"on":""}">${lt==="log"?recsHtml(k,b,d,studs,st):""}</section>
   <section class="ptab ${lt==="rep"?"on":""}">${lt==="rep"?lrepHtml(k,b,d,studs,sid=>attOf(b,d,sid),st,e.off):""}</section>
   <section class="ptab ${lt==="info"?"on":""}"><div class="box"><h3>${IC("checksq","l")}수업 구분${HELP("시간표로 만든 수업은 정규예요. 못 하게 되면 휴강으로 바꿔요(휴강 안내 보내기는 다음 업데이트). [보강 추가] = 이 수업 결석 학생(휴강이면 모든 학생)으로 보강을 잡아요.")}</h3>${kindRow("정규",e.off)}</div>${lmsgBox(k,"정규",e.off,e.d,e.start,studs,sid=>attOf(b,d,sid))}${e.off?`<div class="offbox">휴강한 수업이에요. 날짜·학생은 바꾸지 않아요.</div>`:""}<div class="box ${e.off?"dis dimall":""}"><h3>${IC("clock","l")}이 수업 날짜·시간${HELP("자물쇠를 풀면 이 주 이 수업 한 번만 옮겨요. 시간표는 그대로이고 출석 날짜도 함께 옮겨요. 캘린더에서 끌어 옮겨도 돼요.")}</h3>
-    <div class="field"><span class="lbl">날짜</span><div class="trow">${DATE("lD",e.d,`min="${weekOf(st).from}" max="${weekOf(st).to}" ${locked||e.off?"disabled":""}`)}<span></span><span></span></div></div>
-    <div class="field"><span class="lbl">수업 시간</span><div class="trow"><input class="inp timebtn" id="lS" value="${fmt(e.start)}" readonly ${locked||e.off?"disabled":""}><span class="tsep">-</span><input class="inp timebtn" id="lE" value="${fmt(e.end)}" readonly ${locked||e.off?"disabled":""}></div></div>
+    <div class="hfgrid"><div class="hfh" id="lDH" data-dis="${locked||e.off?1:""}" data-min="${weekOf(st).from}" data-max="${weekOf(st).to}"></div><div class="hfh" id="lTH"></div></div>
+    <!-- 308판: 시간 = 위 칸 묶음 -->
     ${e.moved?`<div class="hint">원래 ${mdw(d)} ${fmt(b.start)}-${fmt(b.end)} · <span class="link" id="lBack">원래대로</span></div>`:""}
     <h3 class="h3s">${IC("layers","l")}클래스${HELP("정규 수업은 시간표의 클래스예요. 바꾸려면 시간표에서.")}</h3>
     <div class="valline"><span class="dotc" style="background:${classBar(c)}"></span>${esc(c.name)} · ${esc(tch(c.teacherId).name)}</div>
@@ -1052,7 +1050,7 @@ function panelLesson(p,t,items){const st=t.state;if(st.mkNew)return panelMakeup(
   p.querySelector("#lLock").onclick=()=>{LUN.has(k)?LUN.delete(k):LUN.add(k);if(LUN.has(k))st.ltab="info";render()};
   const setOv=o=>{lBase(k);DB.lov[k]=Object.assign({d:e.d,start:e.start,end:e.end},DB.lov[k]||{},o);const n=DB.lov[k];if(n.d===d&&n.start===b.start&&n.end===b.end&&!n.off)delete DB.lov[k];commit()};
   bindKind(p,st,off=>{if(off===e.off)return;setOv({off});toast(off?"휴강으로 바꿨어요 — 다시 잡으려면 [보강 추가]":"정규 수업으로 되돌렸어요")},()=>({classId:b.classId,sids:(e.off?studs:studs.filter(x=>attOf(b,d,x.id)==="결석")).map(x=>x.id)}));
-  const ld=p.querySelector("#lD");if(ld)ld.addEventListener("change",()=>{setOv({d:ld.value});toast(`이 주 한 번만 ${mdw(ld.value)}로 옮겼어요`)});
+  /* 308판 */{const lh=p.querySelector("#lDH");if(lh){const dis1=!!lh.dataset.dis;HF.date(lh,{label:"날짜",value:e.d,clear:false,min:lh.dataset.min,max:lh.dataset.max,disabled:dis1,onChange:v=>{if(v&&v!==e.d){setOv({d:v});toast(`이 주 한 번만 ${mdw(v)}로 옮겼어요`)}}});HF.timeRange(p.querySelector("#lTH"),{label:"수업 시간",value:[fmt(e.start),fmt(e.end)],step:5,disabled:dis1,onChange:([a2,b2])=>{const s1=parseT(a2),e1=parseT(b2);if(s1==null||e1==null||e1<=s1)return;if(s1===e.start&&e1===e.end)return;setOv({start:s1,end:e1})}})}}
   const ls=p.querySelector("#lS"),le=p.querySelector("#lE");if(ls&&!locked&&!e.off){ls.onclick=ev=>openTimeWheel(ev.currentTarget,{value:e.start,max:e.end-5,step:5,label:"시작"},m=>setOv({start:m}));le.onclick=ev=>openTimeWheel(ev.currentTarget,{value:e.end,min:e.start+5,step:5,label:"끝"},m=>setOv({end:m}))}
   const bk=p.querySelector("#lBack");if(bk)bk.onclick=()=>{lBase(k);const o=DB.lov[k];if(o&&o.off)DB.lov[k]={d,start:b.start,end:b.end,off:true};else delete DB.lov[k];commit()};
   const as=p.querySelector("#addStu");if(as)as.onclick=()=>{const inB=new Set(studs.map(x=>x.id));const enrolled=id=>DB.enrolls.some(en=>en.classId===b.classId&&!en.ended&&en.studentId===id);
@@ -1368,10 +1366,8 @@ function panelBlock(p,t,all,o,isNew){
   ${PANEL.tabs([["sch","수업 일정",""],["cls","클래스",""],["stu","학생",c?`${chk.size}/${eligible.length}`:""]].map(([k,n,sub])=>({id:k,label:n,n:sub,mark:(k==="stu"&&busyN?'<i class="pdot" title="이 시간에 다른 수업이 있는 학생이 있어요"></i>':"")+(k==="cls"&&!c?'<i class="pdot w"></i>':"")})),pt,"pt")}
   <section class="ptab ${pt==="sch"?"on":""}" data-sec="sch">
   <div class="box"><h3>${IC("clock","l")}수업 일정${HELP(locked?"운영 중이라 잠겨 있어요. 위 자물쇠를 풀면 바꿀 수 있어요.":hasL?"요일·시간·기간을 바꾸면 \"언제부터\" 물어보고, 그날부터 새 시간으로 적용해요. 지난 수업은 그대로 남아요.":"칸을 눌러 요일·시간·날짜를 골라요.")}</h3>
-    <div class="field"><span class="lbl">수업 요일</span><div class="trow"><input class="inp timebtn" id="fDay" data-v="${o.day}" value="${DAYS[o.day]}요일" readonly ${dis} title="눌러서 요일 고르기"></div></div>
-    <div class="field"><span class="lbl">수업 시간</span><div class="trow"><input class="inp timebtn" id="fS" value="${fmt(o.start)}" readonly ${dis} title="눌러서 시간 고르기"><span class="tsep">-</span><input class="inp timebtn" id="fE" value="${fmt(o.end)}" readonly ${dis} title="눌러서 시간 고르기"></div></div>
-    <div class="field"><span class="lbl lblrow">적용 기간${HELP("기본 = 시즌 기간을 클래스 개강·종강으로 좁힌 기간. 날짜를 바꾸면 직접 정한 기간이 되고, 오른쪽 [기본으로]를 누르면 돌아가요.")}${isCustom(o)?`<button class="linkbtn" id="fPerMode" ${dis} title="시즌·클래스 기본 기간으로">${IC("undo","s")}기본으로</button>`:""}</span>
-      <div class="trow"><span class="${per.from!==dp.from?"cu":""}">${DATE("fFrom",per.from,`min="${dp.from}" max="${dp.to}" ${dis}`)}</span><span class="tsep">-</span><span class="${per.to!==dp.to?"cu":""}">${DATE("fTo",per.to,`min="${dp.from}" max="${dp.to}" ${dis}`)}</span></div></div></div>
+    <input type="hidden" id="fDay" data-v="${o.day}" value="${DAYS[o.day]}요일"><input type="hidden" id="fS" value="${fmt(o.start)}"><input type="hidden" id="fE" value="${fmt(o.end)}"><input type="hidden" id="fFrom" value="${per.from||""}"><input type="hidden" id="fTo" value="${per.to||""}">
+    <div class="hfgrid"><div class="hfh" id="fDayH"></div><div class="hfh" id="fTimeH"></div><div class="hfh" id="fPerH" data-cu="${isCustom(o)?1:""}" data-dis="${dis?1:""}" data-min="${dp.from}" data-max="${dp.to}"></div></div></div>
   ${!isNew&&c?`<div class="row"><button class="btn" id="pCopy" title="같은 시간으로 다른 요일에도 만들기">${IC("copy","s")}다른 요일에도 같은 시간</button></div>`:""}
   </section>
   <section class="ptab ${pt==="cls"?"on":""}" data-sec="cls">
@@ -1405,6 +1401,7 @@ function panelBlock(p,t,all,o,isNew){
     if(hasL)return stageTime(o,nv,all);
     const old={day:o.day,start:o.start,end:o.end};Object.assign(o,nv);if(blockConflicts(o,all)){Object.assign(o,old);render();return toast("같은 클래스가 같은 요일 겹치는 시간에 둘 수 없어요")}o.state="draft";commit()};
   ["#fS","#fE"].forEach(x=>p.querySelector(x).onchange=reTime);
+
   p.querySelector("#fDay").onclick=e=>{if(locked)return;openDayWheel(e.currentTarget,o.day,d=>{const f=p.querySelector("#fDay");f.dataset.v=d;f.value=DAYS[d]+"요일";reTime()})};
   // 시간은 휠로 고른다(24시). 시작은 끝보다 앞, 끝은 시작보다 뒤로만
   const STEP=5;
@@ -1418,6 +1415,11 @@ function panelBlock(p,t,all,o,isNew){
     if(!isNew&&blockConflicts(o,all)){delete o.from;delete o.to;render();return toast("같은 기간에 이 클래스의 같은 시간 시간표가 있어요")}
     if(isNew)return render();o.state="draft";commit()};
   ["#fFrom","#fTo"].forEach(x=>p.querySelector(x).onchange=rePer);
+  /* 308판(연결): 요일·시간·적용 기간 칸 = 입력칸 모듈 — 값은 숨긴 칸에 넣고 원래 계산(reTime·rePer)을 그대로 부름 */{const dis1=!!locked;const sv=(id,v)=>{const x=p.querySelector(id);x.value=v;return x};
+    HF.day(p.querySelector("#fDayH"),{label:"수업 요일",value:DAYS[o.day],disabled:dis1,clear:false,onChange:v=>{const d=DAYS.indexOf(v);if(d<0)return;const f=p.querySelector("#fDay");f.dataset.v=d;f.value=DAYS[d]+"요일";reTime()}});
+    HF.timeRange(p.querySelector("#fTimeH"),{label:"수업 시간",value:[fmt(o.start),fmt(o.end)],step:5,disabled:dis1,onChange:([a2,b2])=>{if(!a2||!b2)return;if(a2===fmt(o.start)&&b2===fmt(o.end))return;sv("#fS",a2);sv("#fE",b2);reTime()}});
+    const ph=p.querySelector("#fPerH");HF.dateRange(ph,{label:"적용 기간",tipHtml:HELP("기본 = 시즌 기간을 클래스 개강·종강으로 좁힌 기간. 날짜를 바꾸면 직접 정한 기간이 되고, 오른쪽 [기본으로]를 누르면 돌아가요.")+(ph.dataset.cu?`<button class="linkbtn" id="fPerMode" ${dis1?"disabled":""} title="시즌·클래스 기본 기간으로">${IC("undo","s")}기본으로</button>`:""),value:[p.querySelector("#fFrom").value,p.querySelector("#fTo").value],min:ph.dataset.min,max:ph.dataset.max,disabled:dis1,
+      onChange:([a2,b2])=>{if((a2||"")===p.querySelector("#fFrom").value&&(b2||"")===p.querySelector("#fTo").value)return;sv("#fFrom",a2||"");sv("#fTo",b2||"");rePer()}})}
   p.querySelector("#fPerMode")&&(p.querySelector("#fPerMode").onclick=e=>{e.preventDefault();if(!isCustom(o))return toast("날짜를 고치면 '직접 정함'이 돼요");delete o.from;delete o.to;if(isNew)return render();o.state="draft";commit()});
   // 클래스 고르기
   const pickClass=id=>{st.fo=null;if(o.classId===id)return render();if(isNew){o.classId=id;o.checked=null;o.extra=[];st.nsq="";return render()}
