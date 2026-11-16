@@ -35,7 +35,6 @@ export const WEBHOOK_ROUTES: WebhookRoute[] = [
   { id: "reg-textbook-queue", db: "등록(학원)", name: "[웹훅] 교재 생성", kind: "automation", fn: "sync-registration-textbook", path: "/queue" },
   { id: "reg-end-cleanup", db: "등록(학원)", name: "종료 처리", kind: "button", fn: "sync-registration-textbook", path: "/cleanup-on-end" },
   { id: "reg-registration-notice", db: "등록(학원)", name: "등록 안내", kind: "button", fn: "send-lesson-notice", path: "/registration" },
-  { id: "reg-class-change-notice", db: "등록(학원)", name: "클래스 변경 안내", kind: "button", fn: "send-lesson-notice", path: "/class-change" },
   { id: "reg-timetable-notice", db: "등록(학원)", name: "[웹훅] 시간표 안내", kind: "automation", fn: "send-lesson-notice", path: "/timetable" },
   { id: "class-report-sync", db: "클래스(학원)", name: "학생 페이지 동기화", kind: "button", fn: "sync-class-report-cache", path: "" },
   { id: "class-report-create", db: "클래스(학원)", name: "보고서 생성", kind: "button", fn: "create-class-reports", path: "" },

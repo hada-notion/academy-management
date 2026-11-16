@@ -155,7 +155,6 @@ const CHECKLIST=[
   ['reg-textbook-queue','[웹훅] 교재 생성',AUTO,route('sync-registration-textbook'),{path:'/queue',trigger:{when:'속성 편집',select:['교재 생성 상태','⚪ 대기']},note:'주소 끝의 /queue까지 넣습니다. [교재 생성] 버튼은 교재 생성 상태만 바꾸고, 키는 이 자동화에 있습니다(v2.7).'}],
   ['reg-end-cleanup','종료 처리',BUTTON,route('sync-registration-textbook'),{path:'/cleanup-on-end',note:'주소 끝의 /cleanup-on-end까지 넣습니다. 버튼 마지막 단계의 교재 정리 웹훅입니다(v2.7).'}],
   ['reg-registration-notice','등록 안내',BUTTON,route('send-lesson-notice'),{path:'/registration',note:'주소 끝의 /registration까지 넣습니다(v2.8.0).'}],
-  ['reg-class-change-notice','클래스 변경 안내',BUTTON,route('send-lesson-notice'),{path:'/class-change',note:'주소 끝의 /class-change까지 넣습니다. 새 반 등록 페이지에서 누릅니다(v2.8.0).'}],
   ['reg-timetable-notice','[웹훅] 시간표 안내',AUTO,route('send-lesson-notice'),{path:'/timetable',trigger:{when:'속성 편집',select:['시간표 안내 상태','⚪ 대기']},note:'주소 끝의 /timetable까지 넣습니다. 클래스·등록 [시간표 변경 안내] 버튼은 시간표 안내 상태만 바꿉니다(v2.8.0).'}]]],
  ['클래스(학원)',[
   ['class-report-sync','학생 페이지 동기화',BUTTON,route('sync-class-report-cache')],
@@ -246,7 +245,6 @@ const DESC={
  'reg-report-sync':'이 학생의 학부모 리포트(출석·학습기록·교재·일정)를 최신 내용으로 다시 만듭니다. 학부모에게 보내지는 않습니다.',
  'reg-textbook-queue':'등록의 교재 생성 상태가 ⚪ 대기가 되면 이 학생의 진도교재를 큐에서 만듭니다. 그룹 진도 교재는 반별교재에 연결하고, 개별 진도 교재는 이 학생용으로 만듭니다. 클래스의 [교재 생성]도 학생마다 이 자동화로 처리됩니다.',
  'reg-registration-notice':'새로 등록한 학생의 학부모에게 수강 등록 안내 알림톡(시작일·시간)을 보냅니다.',
- 'reg-class-change-notice':'반을 옮긴 학생의 학부모에게 클래스 변경 안내를 보냅니다. 예전 반 등록을 종료한 뒤 새 반 등록에서 누릅니다.',
  'reg-timetable-notice':'시간표 안내 상태가 ⚪ 대기가 되면 이 학생에게 기존·변경 시간표와 적용일을 안내합니다. 같은 시간표로 이미 안내했으면 건너뜁니다.',
  'reg-end-cleanup':'[종료 처리] 버튼의 마지막 단계입니다. 시작하지 않은 교재(다음 교재이고 학습기록이 없는 것)를 정리합니다. 출석·수업 정리는 버튼과 출석 조정이 합니다. 되돌리는 기능은 없습니다.',
  'class-report-sync':'이 클래스 학생 중 리포트 링크가 있는 학생의 학부모 리포트를 최신 내용으로 다시 만듭니다. 학부모에게 보내지는 않습니다.',
