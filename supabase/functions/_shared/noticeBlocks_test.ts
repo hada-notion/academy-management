@@ -71,6 +71,16 @@ Deno.test("v2.8.0 구역: 클래스 알림톡 구분이 예체능이면 일일 �
 	eq(await b.dailyConfigCategory(att, async () => { throw new Error("x") }), "일일 보고서")
 })
 
+Deno.test("v2.8.0 항목 65: 새 이름 `클래스 구분`(교과/예체능)을 읽고, 옛 이름 `알림톡 구분`도 읽는다 — 옛 학원의 `클래스 구분`(정규/특강)은 섞이지 않음", async () => {
+	const att = { properties: { "클래스": { type: "rollup", rollup: { type: "array", array: [{ type: "relation", relation: [{ id: "cls" }] }] } } } }
+	const page = (p: Record<string, string | null>) => async () => ({ properties: Object.fromEntries(Object.entries(p).map(([k, v]) => [k, { select: v ? { name: v } : null }])) })
+	eq(await b.dailyConfigCategory(att, page({ "클래스 구분": "예체능", "클래스 유형": "정규" })), "일일 활동 보고서")
+	eq(await b.dailyConfigCategory(att, page({ "클래스 구분": "교과" })), "일일 보고서")
+	eq(await b.dailyConfigCategory(att, page({ "클래스 구분": "특강", "알림톡 구분": "예체능" })), "일일 활동 보고서")
+	eq(await b.dailyConfigCategory(att, page({ "클래스 구분": "정규", "알림톡 구분": "교과" })), "일일 보고서")
+	eq(await b.isArtsClass("cls", page({ "클래스 구분": "예체능" })), true)
+})
+
 Deno.test("v2.8.0 구역: 주간·월간 구역 변수는 (알림톡) 수식을 따르고, 예체능 반은 활동 보고서 행부터", async () => {
 	eq(b.reportSectionVars({ properties: { "학습기록(알림톡)": formula("📗 공통수학1\n#개념원리 공통수학1 (~73%)") } }), {
 		"#{학습기록}": "📗 공통수학1\n#개념원리 공통수학1 (~73%)",
