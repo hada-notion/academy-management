@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=501">
-<link rel="stylesheet" href="app.css?v=501">
-<link rel="stylesheet" href="pick.css?v=501">
-<link rel="stylesheet" href="field.css?v=501">
+<link rel="stylesheet" href="hada-tokens.css?v=502">
+<link rel="stylesheet" href="app.css?v=502">
+<link rel="stylesheet" href="pick.css?v=502">
+<link rel="stylesheet" href="field.css?v=502">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=501"><script src="hada-rules.js?v=501"></script><script src="alim-preview.js?v=501"></script><script src="pick.js?v=501"></script><script src="field.js?v=501"></script><script src="panel.js?v=501"></script>
+<link rel="stylesheet" href="alim.css?v=502"><script src="hada-rules.js?v=502"></script><script src="alim-preview.js?v=502"></script><script src="pick.js?v=502"></script><script src="field.js?v=502"></script><script src="panel.js?v=502"></script>
 <script>
 "use strict";
 
@@ -1256,6 +1256,7 @@ const HEAD_DEF={/* 창 머리 재료(기준 4장 "창 머리 화면별 재료"):
   tuition:r=>({name:nmStu(r.studentId),belong:nmCls(r.classId),info:[r.month,r.qty!=null&&r.qty!==""?r.qty+"/"+(r.full||8)+clsQU(cls(r.classId)):"",WON(tuAmt(r))],state:hst(r.pay)}),
   profit:r=>({info:["매출 "+WON((r.tu||0)+(r.ec||0)+(r.bf||0)+(r.ot||0)),"지출 "+WON(r.out)]}),
   alims:r=>({info:[r.code,r.target],state:hst(r.on?"켜짐":"꺼짐")}),
+  files:r=>({belong:r.kind,info:[(r.files||[]).length?"첨부 "+r.files.length+"개":"첨부 없음",(r.tags||[]).join(", ")]}),
   charges:r=>({name:nmStu(r.studentId),belong:nmCls(r.classId),info:[r.month,WON(r.amount)]}),
   costs:r=>({belong:r.kind,info:[r.date?D10(r.date):"",WON(r.amount)]}),
   enrolls:r=>{const c_=cls(r.classId)||{},k_=enStat(r);return {icon:IC("usercheck"),name:(byId(DB.students,r.studentId)||{}).name||"새 등록",chipsHtml:r.studentId&&r.classId?enPill(k_):"",belong:c_.name||(r._pickStu?"학생과 클래스를 골라요":""),info:[(tch(c_.teacherId)||{}).name,k_==="pre"&&!r.end?`${D10(r.start)} (등원 예정)`:`${D10(r.start)} - ${r.end?D10(r.end):"현재"}`]}}};
