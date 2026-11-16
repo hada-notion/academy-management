@@ -2286,7 +2286,7 @@ a.golink:hover{text-decoration:underline;text-underline-offset:3px;color:var(--i
 .tchip.dsat{background:#EEE0DA;color:#442A1E}.mwk-hd .dsat{color:#9F6B53}
 .tchip.dsun{background:#E8DEEE;color:#412454}.mwk-hd .dsun{color:#9065B0}
 /* ═════ 256판 ═════ 줄 끝 휴지통 칸이 고른 줄·올린 줄에서 마지막 값을 가리지 않게: 칸은 투명, 단추만 작은 바탕(어사이드 점검) */
-table.stt tr[data-id]:not(.sdel):hover td.op,table.stt tr.sel td.op{background:transparent!important;box-shadow:none!important}
+
 table.stt tr:hover .rowdel,table.stt tr.sel .rowdel{background:var(--surface,#fff);box-shadow:0 1px 3px rgba(61,53,48,.18)}
 table.stt tr:hover .rowdel:hover,table.stt tr.sel .rowdel:hover{background:var(--danger-soft,#FDECEA)}
 /* ═════ 259판 ═════ 학생 표 등록 클래스 칩 = 그 등록으로 들어가기(노션 관계 칩처럼) · 학생 창 등록 카드 [열기] */
@@ -2798,5 +2798,23 @@ table.stt tr.sel,table.stt tr.sel:hover{background:var(--sel-bg)}
 .gted.cellmode .hf .hf-box{height:100%;min-height:0;border:0;border-radius:0;background:transparent;box-shadow:none}
 .gted.cellmode .hf .hf-x{display:none}
 .gted.cellmode.tall .hf .hf-box{height:auto;min-height:72px}
-table.stt :is(th,td).op,table.stt:has(.rowpr) :is(th,td).op{width:0;min-width:0;max-width:0;padding:0;border-left:0;overflow:visible}
 table.stt td.op>.opw{position:absolute;right:6px;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;gap:2px;white-space:nowrap}
+/* 줄 동작 자리(기준 3장 "줄 동작"): 표 끝 단추 폭 여유 · 그 줄과 같은 바탕 · 따로 된 칸 느낌 없음 */
+table.stt col.opc{width:40px}table.stt:has(td.op .rowpr) col.opc{width:70px}
+table.stt :is(th,td).op{padding:0;border-left:0;box-shadow:none;overflow:visible;cursor:inherit}
+table.stt th.op{background:transparent}
+table.stt tr[data-id] td.op,table.stt tr[data-id]:not(.sdel):hover td.op,table.stt tr[data-id].sel:not(.sdel):hover td.op,table.stt tr.sel td.op,table.stt tr.sdel td.op{background:transparent;box-shadow:none}
+/* 칸 선택(표 편집 중) */
+#view table.stt td[data-csel]{box-shadow:inset 0 0 0 2px var(--brand-deep);background:var(--surface)}
+/* 계산 칸 값 */
+.hf-box .calcv{display:inline-flex;align-items:center;gap:8px;min-width:0;overflow:hidden;white-space:nowrap}
+.box [data-ex="stat"]{margin-bottom:14px}
+/* 창 [시간표] 탭 */
+.box .ttsub{display:flex;align-items:baseline;gap:8px;margin:12px 0 6px}.box .ttsub b{font-size:13px}
+.box h3 .hfh.pss{width:150px;margin-left:8px}.box h3 .hfh.pss .hf-lbl{display:none}
+.box .indadd{margin-top:10px;padding-top:12px;border-top:1px solid var(--line)}
+.box .indwarn .errtext{display:flex;gap:6px;align-items:flex-start;margin-top:8px;font-size:12.5px}
+.box .ttrow.ttind{cursor:pointer}.box .ttrow.ttind.on{box-shadow:inset 0 0 0 2px var(--brand-deep)}
+.box .ttrow .indx{width:28px;height:28px;border:0;background:none;color:var(--subtle)}
+.box .ttfoot{margin-top:10px}
+#lp .box .indadd .row,#lp .box .row.ttfoot,.box .indadd .row,.box .ttfoot{display:flex;flex-direction:row;align-items:center;gap:8px}#lp .box .indadd .row .btn,#lp .box .row.ttfoot .btn,.box .indadd .row .btn,.box .ttfoot .btn{width:auto;flex:none}

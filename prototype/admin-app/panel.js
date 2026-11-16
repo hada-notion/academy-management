@@ -61,13 +61,13 @@
     if (b.rows) body = rows(b.rows);
     return `<div class="box"><h3>${esc(b.title || "")}${help(b.help)}<span class="sp"></span>${b.right || ""}</h3>${body}</div>`;
   }
-  // 3-1. 정보 탭 상자 나누기: 칸 이름 목록을 [기본] + 묶음(secs: [{title, keys, hide}])으로 나눠 상자 여러 개로. title 은 글자 또는 줄을 받아 글자를 돌려주는 함수
+  // 3-1. 정보 탭 상자 나누기: 칸 이름 목록을 [기본] + 묶음(secs: [{title, keys, hide, pre(row) 묶음 맨 위 HTML, right(row) 제목 오른쪽}])으로 나눠 상자 여러 개로. title 은 글자 또는 줄을 받아 글자를 돌려주는 함수
   function infoBoxes(keys, secs, row, helpText) {
     secs = secs || [];
     const inSec = new Set(secs.flatMap(z => z.keys));
     const grid = ks => `<div class="hfgrid">${ks.map(k => `<div class="hfh" data-hf="${esc(k)}"></div>`).join("")}</div>`;
     const main = keys.filter(k => !inSec.has(k));
-    return (main.length ? box({ title: "기본", help: helpText, body: grid(main) }) : "") + secs.map(z => { const ks = z.keys.filter(k => keys.includes(k)); return ks.length && !z.hide ? box({ title: typeof z.title === "function" ? z.title(row) : z.title, body: grid(ks) }) : ""; }).join("");
+    return (main.length ? box({ title: "기본", help: helpText, body: grid(main) }) : "") + secs.map(z => { const ks = z.keys.filter(k => keys.includes(k)); const pre = z.pre ? z.pre(row) : ""; return (ks.length || pre) && !z.hide ? box({ title: typeof z.title === "function" ? z.title(row) : z.title, right: z.right ? z.right(row) : "", body: pre + (ks.length ? grid(ks) : "") }) : ""; }).join("");
   }
   // 3-2. 한 줄에 두 칸(숫자 + 단위): pairs = [[앞 칸, 뒤 칸, 갈래]] — 갈래 "" = 뒤 칸 좁게([우선] 단추 비율), "half" = 반반
   function pairUp(root, pairs) {
