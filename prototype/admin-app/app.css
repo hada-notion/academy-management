@@ -1754,7 +1754,7 @@ body.docked .body>.rsz{right:calc(var(--panel-w) - 4px);top:0;bottom:0}
 /* ───── 176판 ───── */
 /* 학생 표 오른쪽 끝 삭제 칸: 평소엔 투명(흰 바탕이 연락처 열을 가렸음), 줄에 마우스·고른 줄일 때만 바탕·그림자 */
 table.stt td.op{background:transparent;box-shadow:none;pointer-events:none}
-table.stt td.op .rowdel{pointer-events:auto}
+table.stt td.op .rowdel,table.stt td.op .rowundel{pointer-events:auto}
 table.stt th.op{background:transparent;box-shadow:none}
 table.stt tr[data-id]:not(.sdel):hover td.op,table.stt tr.sel td.op{background:inherit;box-shadow:-8px 0 8px -8px rgba(0,0,0,.12)}
 table.stt tr[data-id]:not(.sdel):hover td.op{background:var(--brand-tint,#FBF8F4)}table.stt tr.sel td.op{background:var(--sel-bg)}
@@ -2792,3 +2792,9 @@ table.stt tr.sel,table.stt tr.sel:hover{background:var(--sel-bg)}
 .phead .pt .sub small{font-size:inherit;font-weight:inherit;color:inherit;margin:0}
 .phead .pt .sub .phdot{display:inline-block;margin:0 6px;color:inherit}
 .phead .pt .pinfo:empty{display:none}.phead .pt .pinfo:empty+.sub{margin-top:4px}.phead .pt .sub:empty{display:none}
+.dayhead .dhoff{margin-left:6px;height:20px;font-size:11px}
+.gted.cellmode{border-radius:0;background:var(--surface);box-shadow:0 0 0 2px var(--brand-deep),0 6px 16px rgba(0,0,0,.12);display:flex}
+.gted.cellmode>.hf{flex:1;display:flex;flex-direction:column;justify-content:center;min-width:0;margin:0}
+.gted.cellmode .hf .hf-box{height:100%;min-height:0;border:0;border-radius:0;background:transparent;box-shadow:none}
+.gted.cellmode .hf .hf-x{display:none}
+.gted.cellmode.tall .hf .hf-box{height:auto;min-height:72px}

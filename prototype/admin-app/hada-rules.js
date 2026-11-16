@@ -59,7 +59,7 @@ function iconRule(label,type){const l=String(label||"").replace(/\s*\(.*\)\s*$/,
   if(t==="won"||/^수강료$/.test(l))return "won";/* 404판(대표): 돈 칸은 메뉴 연결보다 ₩ 먼저 */
   for(const [re,k] of MENU_LINK)if(re.test(l))return k[0]==="@"?k.slice(1):menuIcon(k);
   if(/^(이름|받는 사람)$/.test(l))return "user";
-  if(t==="date"||/일$|날짜|기간|개강|종강/.test(l))return "calendar";if(t==="tel"||/연락처|전화|발신번호/.test(l))return "phone";if(t==="days"||/요일/.test(l))return "repeat";
+  if(t==="date"||t==="datetime"||/일$|일시$|날짜|기간|개강|종강/.test(l))return "calendar";if(t==="tel"||/연락처|전화|발신번호/.test(l))return "phone";if(t==="days"||/요일/.test(l))return "repeat";
   if(t==="won"||/(금액|가격|재료비|교습비|매출|지출|순이익|손익|합계|단가|할인|미납액|환불액|받을 돈|받은 돈|기타경비|교재비 등|조정)$/.test(l))return "won";if(/분량|범위/.test(l))return "book";if(/발송|안내|전달|템플릿/.test(l))return "msg";
   if(/진행|사용|구분|직책|결제 수단|결제$/.test(l))return "loader";return ""}
 /* 요소: 그룹|개별 알약 — 그룹 = 여러 사람 + 파랑 바탕, 개별 = 한 사람 + 초록 바탕(글자·아이콘은 색 알약 한 색) */
