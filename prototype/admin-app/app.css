@@ -1626,7 +1626,7 @@ body.dragpush .body>.panel{transform:translateX(calc(100% - 28px));opacity:.55;p
 .ptb .soon{font-size:11px;font-weight:500;color:var(--text-subtle);margin-left:4px}
 /* 163판 표 화면 공통: 표 편집 칸 · 떠 있는 칸 편집 · 인쇄 */
 #view.tedit-on table.t td[data-ge]{cursor:text;box-shadow:inset 0 0 0 1px transparent}
-#view.tedit-on table.t td[data-ge]:hover{box-shadow:inset 0 0 0 1px var(--brand-deep);background:#FFFDF4}
+#view.tedit-on table.t td[data-ge]:hover{box-shadow:inset 0 0 0 1px var(--brand-mid);background:#FFFDF4}
 #view.tedit-on .pg-ttl,#view.tedit-on .pg-bar{background:#FFF8E1}
 .gted{position:fixed;z-index:70;background:var(--surface);border-radius:10px;box-shadow:var(--shadow-float,0 8px 24px rgba(0,0,0,.18))}
 .gted .hf-lbl,.gted .hf-msg:empty{display:none}
@@ -2807,7 +2807,7 @@ table.stt :is(th,td).op{padding:0;border-left:0;box-shadow:none;overflow:visible
 table.stt th.op{background:transparent}
 table.stt tr[data-id] td.op,table.stt tr[data-id]:not(.sdel):hover td.op,table.stt tr[data-id].sel:not(.sdel):hover td.op,table.stt tr.sel td.op,table.stt tr.sdel td.op{background:transparent;box-shadow:none}
 /* 칸 선택(표 편집 중) */
-#view table.stt td[data-csel]{box-shadow:inset 0 0 0 2px var(--brand-deep);background:var(--surface)}
+#view table.stt td[data-csel],#view.tedit-on table.t td[data-ge][data-csel],#view.tedit-on table.t td[data-ge][data-csel]:hover{box-shadow:inset 0 0 0 2px var(--brand-deep);background:var(--surface)}/* 선택 테두리는 호버 표시보다 늘 위 */
 /* 계산 칸 값 */
 .hf-box .calcv{display:inline-flex;align-items:center;gap:8px;min-width:0;overflow:hidden;white-space:nowrap}
 .box [data-ex="stat"]{margin-bottom:14px}
