@@ -1902,7 +1902,7 @@ table.stt tr.fresh td{background:#F1FAF4}table.stt tr.fresh td:first-child{box-s
 .crow.tdl:hover{background:var(--brand-soft)}
 .crow .tdm{display:block;color:var(--muted);font-size:var(--text-caption);font-variant-numeric:tabular-nums;margin-top:2px}
 .crow .dotc{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:var(--space-2);vertical-align:middle}
-.crow .rpill,.cbox h3 .rpill{display:inline-flex;align-items:center;height:20px;padding:0 var(--space-2);border-radius:var(--radius-pill);font-size:var(--text-micro);font-weight:700;background:var(--brand-soft);color:var(--brand);white-space:nowrap;vertical-align:middle}
+.crow .rpill,.cbox h3 .rpill,.mkt .rpill{display:inline-flex;align-items:center;height:20px;padding:0 var(--space-2);border-radius:var(--radius-pill);font-size:var(--text-micro);font-weight:700;background:var(--brand-soft);color:var(--brand);white-space:nowrap;vertical-align:middle}
 .crow .rpill.ex,.cbox h3 .rpill.ex{background:var(--line2);color:var(--muted)}
 .crow .ca svg.i{width:14px;height:14px;color:var(--subtle)}
 
@@ -2818,7 +2818,7 @@ table.stt tr[data-id] td.op,table.stt tr[data-id]:not(.sdel):hover td.op,table.s
 .box .indwarn .errtext{display:flex;gap:6px;align-items:flex-start;margin-top:8px;font-size:12.5px}
 .box .ttrow.ttind{cursor:pointer}.box .ttrow.ttind.on{box-shadow:inset 0 0 0 2px var(--brand-deep)}
 .box .ttrow .indx{width:28px;height:28px;border:0;background:none;color:var(--subtle)}
-.box .ttfoot{margin-top:10px}
+.box .ttfoot,#lp .box .row.ttfoot{margin-top:16px}
 #lp .box .indadd .row,#lp .box .row.ttfoot,.box .indadd .row,.box .ttfoot{display:flex;flex-direction:row;align-items:center;gap:8px}#lp .box .indadd .row .btn,#lp .box .row.ttfoot .btn,.box .indadd .row .btn,.box .ttfoot .btn{width:auto;flex:none}
 
 /* 진도 줄 펼치기(기준 3장 "진도 줄 펼치기") — 줄 안 아래쪽, 위 구분선 하나(상자 안 상자 없음) · 교재/프로그램 전환 */
@@ -2844,3 +2844,89 @@ table.stt tr[data-id] td.op,table.stt tr[data-id]:not(.sdel):hover td.op,table.s
 
 /* 기타경비 추가 창 — 고르기 목록이 창 안에 다 보이게 */
 .cegrid{min-height:340px;align-content:start}
+
+/* 보강 달력(결석) */
+.mkcal .cal-cell.mkc{height:auto;min-height:96px;align-items:stretch;justify-content:flex-start;padding:6px;gap:3px;cursor:default}
+.mkcal .cal-cell.mkc>span{font-size:13px;color:var(--text-subtle)}
+.mkab{display:block;width:100%;text-align:left;font:inherit;font-size:12px;border:0;border-radius:6px;padding:2px 6px;background:var(--field-bg);color:var(--text-subtle);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:22px}
+.mkab.open{background:var(--danger-soft);color:var(--danger-ink);font-weight:700;cursor:pointer}
+/* 좁은 화면: 날짜 이동이 있는 제목 줄(홈·보강)은 다음 줄로 접음 */
+@media (max-width:600px){#view .top.pg-ttl.ttl:has(.mnav){flex-wrap:wrap;row-gap:8px}}
+
+/* 기본 옷 음영(기준 1-1장): 적는 칸 = 안으로 들어감(누르는 중엔 갈색 링 그대로), 누르는 단추 = 흰 바탕 + 밖으로 나옴. 값은 hada-tokens.css 한 곳 */
+html:root .hf:not(.dis) .hf-box:not(:focus-within),html:root #view .searchbox:not(:focus-within),html:root #view .combo:not(:focus-within),html:root .hp-fld,html:root .vseg,html:root .hf-swrow:not(:focus-visible){box-shadow:var(--field-inset)}
+html:root #view :is(.pg-bar,.top) .tb-ic:not(.pri):not(.dark):not(.docked):not(#saveAll):not([disabled]),html:root #view :is(.pg-bar,.top) .tb-grp,html:root #view .nlink,html:root #view .tday,html:root #view .nb,html:root #view .cal-nav-btn,html:root #view .cal-today-btn,html:root #view .scal-f,html:root .btn:not(.pri):not(.dark):not(.tb-ic):not(.rcb):not(.danger):not(.kakao):not([disabled]){background:var(--btn-bg);border:1px solid var(--btn-line);box-shadow:var(--btn-raise)}
+html:root #view :is(.pg-bar,.top) .tb-grp .tb-ic:not([disabled]){box-shadow:none}
+html:root .vseg button.on{background:var(--btn-bg);box-shadow:var(--btn-raise)}
+
+/* 보강 결석 달력 = 화면 가득(시간표·수업처럼): 남는 높이를 주(줄)마다 나눔 */
+.mkmain{flex:1;min-width:0;display:flex;flex-direction:column;padding:0 16px 16px;overflow:auto}
+.mkmain .mkscal{flex:1;display:flex;min-height:0}
+.mkmain .cal-month.mkcal{flex:1;display:flex;flex-direction:column;min-height:0}
+.mkmain .mkcal .cal-grid{flex:1;grid-auto-rows:minmax(96px,1fr)}
+.mkab small{font-weight:500;opacity:.8}
+/* 보강 고르기 */
+.mkab.open.sel{background:var(--danger-ink);color:#fff}
+.crow.mkw{cursor:pointer}.crow.mkw.on{background:var(--brand-tint)}
+.mkrow.off{opacity:.45}
+.ttrow.mkrow.drop{background:var(--brand-tint)}
+.mkpickh{padding:4px 0}
+/* 보강 대기 표 */
+.mkmain.mkwait{display:block;padding-top:4px}
+.mkmain .mkt{width:100%}
+.mkt tr[data-mksel]{cursor:pointer}.mkt tr.on td{background:var(--brand-tint)}.mkt tr.ro td{color:var(--text-subtle)}
+.mkt .dotc{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.mkt th svg.i{width:14px;height:14px;margin-right:4px;vertical-align:-2px;color:var(--text-subtle)}
+.mkdec{display:inline-flex}.mkdec button{min-height:28px;font-size:12px}
+.mknone{margin-top:12px}
+/* 보강: 떠 있는 오른쪽 창에 달력·표가 가리지 않게 그만큼 비움(창 고정이면 창이 자리를 차지하므로 비우지 않음) */
+body[data-w="pc"]:not(.docked) .body:has(>#panel)>.mkmain{padding-right:calc(var(--panel-w) + 24px)}
+/* 창 [시간표] 탭 추가 칸 */
+.box .hfh.pssw{margin:0 0 8px}.box .hfh.pssw .hf-lbl,.box .hfh.pssw .hf-msg{display:none}
+.ttghost{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:44px;margin-top:6px;border:1.5px dashed var(--line2,#D9D2C9);border-radius:var(--radius-md);background:transparent;color:var(--text-muted);font:inherit;font-weight:600;cursor:pointer}
+.ttghost:hover{border-color:var(--brand-mid);color:var(--brand-deep);background:var(--brand-tint)}
+.ttprev{margin:4px 0 12px}.ttprev .hf-lbl{display:block;margin-bottom:6px}
+/* 달력 틀(CALF) 월간: 머리 = 요일(dayhead), 왼쪽 축 = M월 N주(시각 축과 같은 자리 · 같은 글자), 칸 선 · 오늘 칸 = 시간표와 같음 */
+.cfcal{min-width:0}
+.cfcal .scroll{display:flex;flex-direction:column}
+.cfgrid{flex:1;display:grid;grid-template-columns:var(--hours-w) repeat(7,1fr);min-height:100%}
+.cfax{position:relative;font-size:var(--text-micro);color:var(--subtle);text-align:right;padding-right:var(--space-2)}
+.cfax span{position:relative;top:-8px;background:var(--surface);padding-left:var(--space-1)}
+.cfax:first-child span{top:4px}
+.cfday{position:relative;border-left:1px solid var(--line2);border-bottom:1px solid var(--line2);padding:4px 4px 6px;display:flex;flex-direction:column;gap:3px;min-width:0;overflow:hidden}
+.cfday.todaycol{background-color:var(--today-col)}
+.cfday.outside{background:var(--canvas)}.cfday.outside .cfdn{opacity:.45}
+.cfdn{font-size:var(--text-caption);font-weight:600;color:var(--subtle);font-variant-numeric:tabular-nums;padding-left:2px}
+.cfday.sat .cfdn{color:var(--info-ink)}.cfday.sun .cfdn{color:var(--danger-ink)}
+.cfday.todaycol .cfdn{color:var(--today-ink);font-weight:800}
+.cfday.drop{background:var(--brand-tint)}
+.blk.cfblk{position:relative;flex:none;cursor:pointer;padding-left:12px}
+.cfblk .cfbar{position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--bar)}
+.blk.cfblk .m{font-size:var(--text-micro);color:var(--text-muted)}
+.blk.cfblk.drop{filter:brightness(.95)}
+body.dragging-stu .blk.cfblk.drop-no{opacity:.3}
+.mkab .cdot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:1px}
+/* 시즌 달력 = 달력 틀 */
+.scal-ms2{border:1px solid var(--line2);border-radius:var(--radius-md);overflow:hidden;height:min(70vh,820px);display:flex}
+.scal-ms2 .cfcal{flex:1}
+.scal-cf .cfday{cursor:pointer;padding-bottom:16px}
+.scal-cev{display:flex;flex-direction:column;gap:2px;min-width:0}
+.scal-chip{display:flex;align-items:center;gap:4px;font-size:11px;line-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-ink)}
+
+.scal-cf .cfday.picked{background:var(--brand-tint)}
+.scal-cf .cal-sbar{position:absolute;left:4px;right:4px;height:3px;border-radius:2px}
+/* 달력 틀 결석 칸 = 바탕 색만(글자는 늘 진한 글자) · 고른 칸 = 바탕 진하게 */
+.cfday .mkab,.cfday .mkab.open{color:var(--text-ink)}
+.cfday .mkab small{color:var(--text-muted);font-weight:500}
+.cfday .mkab.open{background:var(--danger-soft)}
+.cfday .mkab:not(.open){background:var(--canvas)}
+.cfday .mkab.open.sel{background:color-mix(in srgb,var(--danger) 28%,white);color:var(--text-ink)}
+/* 시즌 타임라인 탭 */
+.scal.stlwrap .stl{margin:0}
+.scal.stlwrap #seaList{display:none}
+/* 달력 틀 좁은 화면 */
+@media (max-width:600px){#view>.ttl,#view>.top{flex-wrap:wrap;row-gap:8px}#view>.top .zone{flex-wrap:wrap;row-gap:8px}}
+.mkt td,.mkt th{white-space:nowrap}.mkt td:first-child{min-width:150px}
+.mkt td .sname{overflow:visible}
+.mkmain.mkwait{overflow-x:auto}
+table.stt.mkt{table-layout:auto}.stt.mkt td{overflow:visible}

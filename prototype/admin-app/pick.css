@@ -483,3 +483,6 @@
 .hp-card.ingrp .hp-rt{grid-column:2;justify-self:start}
 .hp-one .hp-card.ingrp .hp-rt{display:contents;order:initial;margin-left:0}
 .hp-one .hp-card.ingrp .hp-rt .sc{order:2;margin-left:0}
+/* 끄는 동안(학생 카드 끌기)엔 마우스 올린 갈색 테두리를 안 보임 — 끄는 그림자·놓을 칸에 테두리가 따라붙지 않게 */
+body.dragging-stu .hp-card:hover,body.dragging-stu .hp-card:focus{border-color:var(--brand-border);outline:none}
+.hp-card:focus:not(:focus-visible){outline:none}
