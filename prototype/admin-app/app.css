@@ -2487,7 +2487,7 @@ body[data-w="tabv"] .ttl .seachip small{display:none}
 .rcpt .hint{margin-top:6px}
 .sc-memo{min-height:150px;background-image:repeating-linear-gradient(to bottom,transparent 0 27px,var(--line) 27px 28px);line-height:28px}
 /* 322판: 학생 표 줄 인쇄(휴지통 왼쪽) · 학생 카드 여러 장 인쇄 */
-table.stt:has(.rowpr) :is(th,td).op{width:68px;white-space:nowrap}
+
 .rowpr{margin-right:2px}
 #pcards{display:none}
 @media print{
@@ -2550,7 +2550,7 @@ table.stt:has(.rowpr) :is(th,td).op{width:68px;white-space:nowrap}
    원본 = 노션 '하다 디자인 기준 (기본 옷 + 테마)' · GitHub docs/DESIGN.md · hada-tokens.css. 이 블록만 지우면 예전 모양으로 돌아감 */
 #view{background:var(--canvas)}
 /* 위 줄 단추 = 흰 블록 */
-#view .top .tb-ic:not(.pri):not(.dark):not(#saveAll):not([disabled]),#view .top .searchbox,#view .top .combo,#view .nlink{background:var(--surface);box-shadow:var(--shadow-card)}
+#view .top .tb-ic:not(.pri):not(.dark):not(.docked):not(#saveAll):not([disabled]),#view .top .searchbox,#view .top .combo,#view .nlink{background:var(--surface);box-shadow:var(--shadow-card)}
 /* 표 = 흰 카드 */
 #view .list>table.stt{background:var(--surface);box-shadow:var(--shadow-card);border-radius:var(--radius-lg);border-collapse:separate;border-spacing:0;overflow:hidden}
 #view .list>table.stt thead th:first-child{border-top-left-radius:var(--radius-lg)}#view .list>table.stt thead th:last-child{border-top-right-radius:var(--radius-lg)}
@@ -2798,3 +2798,5 @@ table.stt tr.sel,table.stt tr.sel:hover{background:var(--sel-bg)}
 .gted.cellmode .hf .hf-box{height:100%;min-height:0;border:0;border-radius:0;background:transparent;box-shadow:none}
 .gted.cellmode .hf .hf-x{display:none}
 .gted.cellmode.tall .hf .hf-box{height:auto;min-height:72px}
+table.stt :is(th,td).op,table.stt:has(.rowpr) :is(th,td).op{width:0;min-width:0;max-width:0;padding:0;border-left:0;overflow:visible}
+table.stt td.op>.opw{position:absolute;right:6px;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;gap:2px;white-space:nowrap}
