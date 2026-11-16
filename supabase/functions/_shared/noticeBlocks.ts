@@ -117,11 +117,14 @@ export function reportSectionVars(page: any): Record<string, string> {
 	}
 }
 
-// 클래스 `알림톡 구분`이 예체능인지. 클래스를 못 읽으면 교과로 본다.
+// 클래스 `클래스 구분`(교과 / 예체능)이 예체능인지. 클래스를 못 읽으면 교과로 본다.
+// (v2.8.0 항목 65, 11/16) 칸 이름을 `알림톡 구분` → `클래스 구분`으로 바꿨다. 이름을 아직 안 바꾼 학원을 위해 옛 이름도 읽는다.
+// 그 학원의 `클래스 구분`은 정규 / 특강(새 이름 `클래스 유형`)이라 "예체능"이 나오지 않으므로 둘을 함께 봐도 섞이지 않는다.
+export const CLASS_ARTS_PROPS = ["클래스 구분", "알림톡 구분"] as const
 export async function isArtsClass(classId: string | null | undefined, getPage: (id: string) => Promise<any>): Promise<boolean> {
 	if (!classId) return false
 	const cls = await getPage(classId).catch(() => null)
-	return cls?.properties?.["알림톡 구분"]?.select?.name === "예체능"
+	return CLASS_ARTS_PROPS.some((k) => cls?.properties?.[k]?.select?.name === "예체능")
 }
 
 // 주간·월간 보고서의 설정 행과 넘어갈 순서. 예체능 반이면 "주간 활동 보고서" → "주간 보고서" → "보고서".
@@ -137,7 +140,7 @@ export async function reportConfigChain(reportType: "주간 보고서" | "월간
 	return { category: reportType, fallback: ["보고서"] }
 }
 
-// 출석의 클래스(등록 → 클래스 롤업)에서 일일 보고서 설정 행을 고른다. 클래스 `알림톡 구분`이 예체능이면 "일일 활동 보고서".
+// 출석의 클래스(등록 → 클래스 롤업)에서 일일 보고서 설정 행을 고른다. 클래스 `클래스 구분`(옛 `알림톡 구분`)이 예체능이면 "일일 활동 보고서".
 // 클래스를 못 읽으면 교과(일일 보고서)로 보낸다.
 export async function dailyConfigCategory(page: any, getPage: (id: string) => Promise<any>): Promise<"일일 보고서" | "일일 활동 보고서"> {
 	const arr = page?.properties?.["클래스"]?.rollup?.array ?? []
