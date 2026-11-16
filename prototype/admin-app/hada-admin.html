@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=463">
-<link rel="stylesheet" href="app.css?v=463">
-<link rel="stylesheet" href="pick.css?v=463">
-<link rel="stylesheet" href="field.css?v=463">
+<link rel="stylesheet" href="hada-tokens.css?v=464">
+<link rel="stylesheet" href="app.css?v=464">
+<link rel="stylesheet" href="pick.css?v=464">
+<link rel="stylesheet" href="field.css?v=464">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=463"><script src="hada-rules.js?v=463"></script><script src="alim-preview.js?v=463"></script><script src="pick.js?v=463"></script><script src="field.js?v=463"></script><script src="panel.js?v=463"></script>
+<link rel="stylesheet" href="alim.css?v=464"><script src="hada-rules.js?v=464"></script><script src="alim-preview.js?v=464"></script><script src="pick.js?v=464"></script><script src="field.js?v=464"></script><script src="panel.js?v=464"></script>
 <script>
 "use strict";
 
@@ -2775,6 +2775,16 @@ const ttSs=()=>activeTab.state.pss||curSeason();
 const ttBl=cid=>DB.blocks.filter(b=>b.classId===cid&&b.seasonId===ttSs());
 const ptv=(k,cur,opts)=>`<span class="seg ptv">${opts.map(([v,ic,t])=>`<button type="button" data-${k}="${v}" class="${cur===v?"on":""}" title="${t}" aria-label="${t}">${IC(ic,"s")}</button>`).join("")}</span>`;
 /* 창 [시간표] 탭(기준 3장 "창 [시간표] 탭"): 목록만 · 등록 = 그룹(클래스) + 개별(이 학생 — 바로 추가·고치기) · 클래스 = 목록 + 시간표 추가 */
+/* 시간표 변경 안내(노션 등록 · 클래스 [시간표 변경 안내], 클래스 `시간표 안내 메모`, 등록 `안내한 시간표`) — 기준 3장 "시간표 변경 안내" */
+const enTtNow=e=>enTimes(e).join(" · ");
+function enTtSeed(e){if(e.ttGuided===undefined){e.ttGuided=enTtNow(e);e.ttGuidedAt=""}return e.ttGuided}
+function enTtChanged(e){enTtSeed(e);return e.ttGuided!==enTtNow(e)}
+function ttMsg(e){const c=cls(e.classId)||{},s=stu(e.studentId)||{};return {학생이름:s.name||"",클래스:c.name||"",시간표정보:`🕒 기존  ${e.ttGuided||"없음"}\n🕒 변경  ${enTtNow(e)||"없음"}\n📅 적용  ${md(TODAY)}부터`,전달사항:e.note||c.ttMemo||"없음"}}
+function ttNoticeBox(e){const ch=enTtChanged(e);return `<div class="box"><h3>시간표 변경 안내${HELP("시간표가 바뀌면 이 학생 학부모에게 기존·변경 시간표를 알려요(노션 등록 [시간표 변경 안내]). 전달사항은 등록 안내 메모, 비면 클래스의 시간표 안내 메모예요.")}</h3><div class="hf rcpt"><span class="hf-lbl">시간표 변경 안내 알림톡</span><button type="button" class="btn rcb ${e.ttGuidedAt&&!ch?"sent":""}" data-ttn="e|${e.id}" ${ch?"":"disabled"} title="${ch?"누르면 알림톡 미리보기가 떠요 — 보고 [보내기]":"안내한 시간표와 지금이 같아요"}">${IC("send","s")}시간표 변경 안내 전송</button><div class="hint ${ch?"":"mut"}">${ch?`안내한 시간표 ${esc(e.ttGuided||"없음")} → 지금 ${esc(enTtNow(e)||"없음")}`:e.ttGuidedAt?`전송 완료 · ${D10(e.ttGuidedAt)} · 바뀐 시간표가 없어요`:`바뀐 시간표가 없어요 · 안내한 시간표 ${esc(e.ttGuided||"없음")}`}</div></div></div>`}
+function ttClsNoticeBox(c){const es=liveEn(c.id).filter(enTtChanged);return `<div class="box"><h3>시간표 변경 안내${HELP("이 클래스를 듣는 학생 중 안내한 시간표와 지금이 다른 학생에게 한 통씩 보내요(노션 클래스 [시간표 변경 안내]). 같은 시간표로 이미 안내한 학생은 건너뛰어요.")}<span class="sp"></span><button type="button" class="btn sm" data-ttn="c|${c.id}" ${es.length?"":"disabled"} title="${es.length?`시간표 변경 안내 — ${es.length}명에게 보내요`:"보낼 학생이 없어요"}">${IC("send","s")}전송 ${es.length}</button></h3><div class="hf rpn"><span class="hf-lbl">시간표 안내 메모</span><div class="hf-box hf-memo"><textarea rows="2" maxlength="50" data-ttmemo="${c.id}" placeholder="바뀐 이유 등 — 비우면 없음으로 나가요">${esc(c.ttMemo||"")}</textarea></div><span class="hf-msg">50자까지 · 학생의 등록 안내 메모가 있으면 그것이 먼저예요</span></div>${es.length?PANEL.rows(es.map(e=>({t:nmStu(e.studentId),sub:`${e.ttGuided||"없음"} → ${enTtNow(e)||"없음"}`,arrow:false})),"",{ro:true}):'<div class="hint">보낼 학생이 없어요 — 시간표를 바꾸면 여기에 보여요</div>'}</div>`}
+function ttSend(list,one){if(!list.length)return toast("보낼 학생이 없어요");const e0=list[0];askRun(one?`${esc(nmStu(e0.studentId))} 시간표 변경 안내`:"시간표 변경 안내를 보낼까요?",`${one?(window.ALIMV?ALIMV.render("시간표 변경 안내","","",false,ttMsg(e0)):""):`<b>${list.length}명</b>에게 한 통씩 보내요. 같은 시간표로 이미 안내한 학생은 빠졌어요.${toList(list.map(e=>esc(nmStu(e.studentId))))}`}<div class="hint">시제품이라 알림톡은 실제로 나가지 않아요. 보내면 등록 안내 메모는 비워져요.</div>`,"보내기",()=>{list.forEach(e=>{e.ttGuided=enTtNow(e);e.ttGuidedAt=TODAY;if(e.note)e.note="";e.state="draft"});commit();toast(`${list.length}명에게 시간표 변경 안내를 보낸 것으로 적었어요(시제품: 실제 발송 없음)`)})}
+document.addEventListener("click",ev=>{const b=ev.target.closest&&ev.target.closest("[data-ttn]");if(!b||b.disabled)return;ev.stopPropagation();const [k,id]=b.dataset.ttn.split("|");if(k==="e"){const e=byId(DB.enrolls,id);if(e&&enTtChanged(e))ttSend([e],true)}else ttSend(liveEn(id).filter(enTtChanged),false)});
+document.addEventListener("input",ev=>{const t=ev.target.closest&&ev.target.closest("[data-ttmemo]");if(!t)return;const c=byId(DB.classes,t.dataset.ttmemo);if(!c)return;c.ttMemo=t.value;markDirty(LISTS.classes,c);commitQuiet()});
 const ttInd=b=>b.mode==="individual"||b.mode==="indiv";
 function ttPanel(cid,e){const c=cls(cid)||{},bl=ttBl(cid).filter(b=>!b.del).sort((a,b)=>a.day-b.day||a.start-b.start),st=activeTab.state;
   const who=b=>(tch(b.teacherId||c.teacherId)||{}).name||"",n2=b=>studentsOfBlock(b).length+"명",tt=b=>`${DAYS[b.day]} ${fmt(b.start)}-${fmt(b.end)}`;
@@ -3236,10 +3246,10 @@ function optAdd(k,t){t=String(t||"").trim().slice(0,30);if(!t)return null;if(k==
 function optDel(k,v){const n=optUsed(k,v);if(n){toast(`삭제할 수 없어요 — '${k==="unit"?v.replace("-","n"):v}'을(를) 쓰는 줄이 ${n}개 있어요. 그쪽을 먼저 바꿔 주세요`);return false}if(k==="area")DB.areas=DB.areas.filter(x=>x.name!==v);else DB.opts[k]=optList(k).filter(x=>x!==v);commit();toast(`${OPT_NAME[k]} 목록에서 삭제했어요 — Ctrl+Z로 되살려요`);return true}
 const LTABS={
   classes:c=>{const bl=DB.blocks.filter(b=>b.classId===c.id&&b.seasonId==="s1");const en=liveEn(c.id);return [
-    ["tt","시간표",ttBl(c.id).length,ttPanel(c.id,null)],
+    ["tt","시간표",ttBl(c.id).length,ttPanel(c.id,null)+ttClsNoticeBox(c)],
     ["stu","학생",en.length,`<div class="box"><h3>수강 중인 학생 <span class="hint">${en.length}명</span></h3>${PANEL.rows(en.map(e=>{const x=stu(e.studentId);return {attr:`data-gostu="${x.id}"`,title:"학생 화면에서 열기",t:x.name,sub:[x.school,x.grade].filter(Boolean).join(" ")}}),"아직 수강 중인 학생이 없어요 — 학생 창 [등록]에서 넣어요")}</div>`],
     ["bk","진도",DB.progress.filter(x=>x.classId===c.id&&!x.del).length,pgBox(c)]]},
-  enrolls:e=>{const bl=DB.blocks.filter(b=>b.classId===e.classId&&b.seasonId==="s1");return [["sum","현황","",enSumBox(e)],["tt","시간표",ttBl(e.classId).filter(b=>b.regs.includes(e.id)).length+"/"+ttBl(e.classId).length,ttPanel(e.classId,e)],["bk","진도",enPg(e).length,enPgBox(e)],["fee","수강료",DB.tuition.filter(x=>x.studentId===e.studentId&&x.classId===e.classId&&!x.del).length||"",enFeeBox(e)],["rp","보고서",rpOfEn(e).length||"",rpListBox(rpOfEn(e),"이 등록으로 받은 보고서가 없어요")]]},
+  enrolls:e=>{const bl=DB.blocks.filter(b=>b.classId===e.classId&&b.seasonId==="s1");return [["sum","현황","",enSumBox(e)],["tt","시간표",ttBl(e.classId).filter(b=>b.regs.includes(e.id)).length+"/"+ttBl(e.classId).length,ttPanel(e.classId,e)+ttNoticeBox(e)],["bk","진도",enPg(e).length,enPgBox(e)],["fee","수강료",DB.tuition.filter(x=>x.studentId===e.studentId&&x.classId===e.classId&&!x.del).length||"",enFeeBox(e)],["rp","보고서",rpOfEn(e).length||"",rpListBox(rpOfEn(e),"이 등록으로 받은 보고서가 없어요")]]},
   teachers:x=>{const cs=DB.classes.filter(c=>c.teacherId===x.id&&DB.blocks.some(b=>b.classId===c.id&&b.seasonId==="s1"));return [["cls","클래스",cs.length,`<div class="box"><h3>이 시즌 맡은 클래스 <span class="hint">${cs.length}개</span><span class="sp"></span><button class="lnk" data-act="ttT">주간 시간표${IC("right","s")}</button></h3>${PANEL.rows(cs.map(c=>{const bl=DB.blocks.filter(b=>b.classId===c.id&&b.seasonId==="s1");return {attr:`data-gocls="${c.id}"`,title:"클래스 화면에서 열기",t:c.name,sub:bl.map(b=>DAYS[b.day]+" "+fmt(b.start)).join(" · ")}}),"이 시즌에 맡은 클래스가 없어요")}</div>`]]},
   seasons:x=>{const bl=DB.blocks.filter(b=>b.seasonId===x.id);const byC=[...new Set(bl.map(b=>b.classId))];const sv=LS.get("panelTtView","l");return [["tt","시간표",bl.length,`<div class="box"><h3>클래스별 시간표 <span class="hint">${byC.length}개 클래스 · ${bl.length}개</span><span class="sp"></span><button class="lnk" data-act="ttS">시간표 열기${IC("right","s")}</button></h3><div class="ptool"></div>${"w"==="x"?"":PANEL.rows(byC.map(c=>{const b2=bl.filter(b=>b.classId===c);return {attr:`data-gocls="${c}"`,title:"클래스 화면에서 열기",t:cls(c).name,sub:b2.map(b=>DAYS[b.day]+" "+fmt(b.start)).join(" · ")}}),"이 시즌에 아직 시간표가 없어요")}${x.state!=="확정"?'<div class="row"><button class="btn sm" data-act="confirmS">운영 시작…</button></div>':""}</div>`]]},
   subjects:x=>[["bk","교재",DB.books.filter(b=>b.subjectId===x.id).length,LISTS.subjects.extra(x)]],
@@ -3672,7 +3682,7 @@ document.addEventListener("keydown",e=>{const tag=(e.target.tagName||"").toLower
 });
 window.addEventListener("beforeunload",e=>{if(dirtyCount()){e.preventDefault();e.returnValue=""}});
 /* 시작 */
-seed();seedLib();clsColorSeed();seedX();DB.areas=AREAS.map((n,i)=>({id:"ar"+i,name:n,course:"보통교과",_was:n,state:"saved"}));DB.glevels=ALL_GRADES.map((g,i)=>({id:"gl"+i,name:g,on:true,state:"saved"}));DB.exams.forEach(e=>{if(e.subject!==undefined&&!e.subjectIds){const m=DB.subjects.find(z=>z.area===e.subject&&(z.grades||[]).includes(e.grade))||DB.subjects.find(z=>z.area===e.subject);e.subjectIds=m?[m.id]:[];delete e.subject}});DB.events.forEach(e=>{if(e.kind==="상담"){e.kind="학원 일정";e.guide="상담"}});seedRecs();chargesSeed();if(window.HP)HP.today=TODAY;DB.blocks.forEach(tSnap);lastSnap=snapshot();
+seed();try{DB.enrolls.forEach(enTtSeed)}catch(e){}/* 예시 자료는 모두 지금 시간표로 안내했다고 봄 */seedLib();clsColorSeed();seedX();DB.areas=AREAS.map((n,i)=>({id:"ar"+i,name:n,course:"보통교과",_was:n,state:"saved"}));DB.glevels=ALL_GRADES.map((g,i)=>({id:"gl"+i,name:g,on:true,state:"saved"}));DB.exams.forEach(e=>{if(e.subject!==undefined&&!e.subjectIds){const m=DB.subjects.find(z=>z.area===e.subject&&(z.grades||[]).includes(e.grade))||DB.subjects.find(z=>z.area===e.subject);e.subjectIds=m?[m.id]:[];delete e.subject}});DB.events.forEach(e=>{if(e.kind==="상담"){e.kind="학원 일정";e.guide="상담"}});seedRecs();chargesSeed();if(window.HP)HP.today=TODAY;DB.blocks.forEach(tSnap);lastSnap=snapshot();
 // 새로고침해도 보던 탭·화면 그대로(261112 대표). 시제품은 데이터가 새로 생성돼서 고친 내용·고른 시간표는 안 남음(학생 고른 것은 남김)
 DB.students.forEach((x,i)=>{const g=x.grade||"";const m=g.match(/^(초|중|고)(\d)/);if(m&&!x.birth&&i%4!==3){const y=2026-({초:6,중:12,고:15}[m[1]])-(+m[2]);x.birth=`${y}-${String(1+i%12).padStart(2,"0")}-${String(1+(i*7)%28).padStart(2,"0")}`}if(!x.gender&&i%5!==4)x.gender=i%2?"남학생":"여학생";if(!x.addr&&i%3!==2)x.addr=["운양동 하다아파트","장기동 푸른마을","구래동 바다빌라","마산동 하늘채"][i%4]+" "+(101+i%5)+"동"});
 (()=>{const sv=LS.get("tabs2",null);if(sv&&Array.isArray(sv.list)&&sv.list.length){sv.list.forEach(x=>{const ex=Object.assign({},x.state);if(ex.sel&&!(x.screen==="students"&&DB.students.some(s=>s.id===ex.sel)))delete ex.sel;openScreen(x.screen,true,ex)});activeTab=tabs[Math.min(sv.act||0,tabs.length-1)]}else{openScreen("timetable",true);openScreen("students",true);activeTab=tabs[0]}})();NAVB=[];NAVF=[];render();

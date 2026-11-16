@@ -2835,3 +2835,7 @@ table.stt tr[data-id] td.op,table.stt tr[data-id]:not(.sdel):hover td.op,table.s
 .ttrow.bk2 .bkm .rpn textarea{min-height:60px}
 .ttrow.bk2 .l2{flex-wrap:wrap;row-gap:2px}
 .ttrow.bk2 .l2 .r2{white-space:nowrap}
+
+/* 시간표 변경 안내 · 보고서 한마디 — 묶음 안 메모 칸 */
+.box .hf.rpn{margin-bottom:10px}
+.box .hf.rpn textarea{min-height:44px}
