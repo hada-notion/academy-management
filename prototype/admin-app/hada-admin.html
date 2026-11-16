@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=461">
-<link rel="stylesheet" href="app.css?v=461">
-<link rel="stylesheet" href="pick.css?v=461">
-<link rel="stylesheet" href="field.css?v=461">
+<link rel="stylesheet" href="hada-tokens.css?v=463">
+<link rel="stylesheet" href="app.css?v=463">
+<link rel="stylesheet" href="pick.css?v=463">
+<link rel="stylesheet" href="field.css?v=463">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=461"><script src="hada-rules.js?v=461"></script><script src="alim-preview.js?v=461"></script><script src="pick.js?v=461"></script><script src="field.js?v=461"></script><script src="panel.js?v=461"></script>
+<link rel="stylesheet" href="alim.css?v=463"><script src="hada-rules.js?v=463"></script><script src="alim-preview.js?v=463"></script><script src="pick.js?v=463"></script><script src="field.js?v=463"></script><script src="panel.js?v=463"></script>
 <script>
 "use strict";
 
@@ -1893,8 +1893,8 @@ const LISTS={
  classes:{title:"클래스",coll:"classes",unit:"개",secs:[{title:"수강료",keys:["fee","qty","unit","etcName","etcAmt"]}],pairs:[["qty","unit",""]],cntUnit:r=>clsQU(r),onSet:(r,k)=>{if(k==="unit")setTimeout(render,0)},
   cols:[["클래스",c=>c.name,"name"],["약칭",c=>c.short||"—","short"],["영역",c=>c.subject||"—","subject"],["강사",c=>tch(c.teacherId).name,"teacherId"],["개강-종강",c=>c.open&&c.close?md(c.open)+" - "+md(c.close):c.open?md(c.open)+" 개강":c.close?md(c.close)+" 종강":"—"],["학생",c=>DB.enrolls.filter(e=>e.classId===c.id&&!e.ended).length],["주 횟수",c=>{const n=DB.blocks.filter(b=>b.classId===c.id&&b.seasonId==="s1"&&b.mode==="group").length;return n?`주 ${n}회`:(DB.blocks.some(b=>b.classId===c.id)?"개별":"!시간표 없음")}],["수강료",c=>c.fee.toLocaleString(),"fee"],["한 달 수업량",c=>(c.qty||DB.blocks.filter(b=>b.classId===c.id&&b.seasonId==="s1"&&b.mode==="group").length*4)+clsQU(c)]],
   filters:[["이 시즌과 겹치는 클래스",c=>classInSeason(c,seasonOf("s1")),true],["특강",c=>c.kind==="특강"],["종료 예정",c=>!!c.close]],
-  fields:[["name","클래스 이름"],["short","약칭",null,"text","좁은 시간표 칸에 보여요 · 4-6자"],["subject","영역",()=>optItems("area"),"opt","과목 화면 [영역] 탭의 목록과 같아요"],["course","신고 교습과정명",null,"text","교육청에 신고한 교습과정 이름 그대로 — 법정 서류(출석부·수강생 대장·교습비 목록·영수증 원부)에 클래스 이름 대신 나가요"],["teacherId","담당 강사","teachers"],["kind","구분",["정규","특강"],"seg"],["hex","색",null,"clscolor","시간표 블록 색 · 노션 [색] 10색 또는 직접 고른 색 · 운영 중인 다른 클래스 색은 고를 수 없어요"],["open","개강일",null,"date","모르면 비워 두세요"],["close","종강일",null,"date","모르면 비워 두세요"],["fee","월 수강료",null,"won"],["qty","한 달 수업량",null,"cnt","비우면 시간표로 계산해요"],["unit","단위",null,"qunit"],["etcName","신고한 기타경비 이름",null,"text","교육청에 신고한 기타경비 항목(예: 재료비). 없으면 비워 두세요. 교재비는 여기에 넣지 않아요"],["etcAmt","신고한 기타경비(월)",null,"won","월 수강료를 생성할 때 기타경비 줄로 함께 청구돼요. 영수증 기타경비 칸에 나가요"]],
-  blank:()=>({id:uid("c"),name:"새 클래스",subject:"수학",teacherId:"t1",fee:0,qty:"",unit:"횟수",kind:"정규",open:"",close:"",color:DB.classes.length%8+1}),
+  fields:[["name","클래스 이름"],["short","약칭",null,"text","좁은 시간표 칸에 보여요 · 4-6자"],["subject","영역",()=>optItems("area"),"opt","과목 화면 [영역] 탭의 목록과 같아요"],["course","신고 교습과정명",null,"text","교육청에 신고한 교습과정 이름 그대로 — 법정 서류(출석부·수강생 대장·교습비 목록·영수증 원부)에 클래스 이름 대신 나가요"],["teacherId","담당 강사","teachers"],["arts","클래스 구분",["교과","예체능"],"seg","예체능이면 보고서가 활동 보고서로, 수료는 프로그램 수료 보고서로 나가요 — 노션 클래스 구분"],["kind","클래스 유형",["정규","특강"],"seg","정규 반인지 방학·시험 대비 특강인지 — 노션 클래스 유형"],["hex","색",null,"clscolor","시간표 블록 색 · 노션 [색] 10색 또는 직접 고른 색 · 운영 중인 다른 클래스 색은 고를 수 없어요"],["open","개강일",null,"date","이 날 앞에는 수업을 만들지 않아요 · 비우면 처음부터"],["close","종강일",null,"date","이 날 뒤에는 수업을 만들지 않고 종료로 바뀌어요 · 비우면 계속"],["fee","월 수강료",null,"won"],["qty","한 달 수업량",null,"cnt","비우면 시간표로 계산해요"],["unit","단위",null,"qunit"],["etcName","신고한 기타경비 이름",null,"text","교육청에 신고한 기타경비 항목(예: 재료비). 없으면 비워 두세요. 교재비는 여기에 넣지 않아요"],["etcAmt","신고한 기타경비(월)",null,"won","월 수강료를 생성할 때 기타경비 줄로 함께 청구돼요. 영수증 기타경비 칸에 나가요"]],
+  blank:()=>({id:uid("c"),name:"새 클래스",subject:"수학",teacherId:"t1",fee:0,qty:"",unit:"횟수",kind:"정규",arts:"교과",open:"",close:"",color:DB.classes.length%8+1}),
   extra:c=>`<div class="box"><h3>시간표·학생</h3><div class="row">${DB.blocks.filter(b=>b.classId===c.id&&b.seasonId==="s1").map(b=>DAYS[b.day]+" "+fmt(b.start)).join(", ")||"시간표 없음"}</div><div class="row"><button class="btn sm" data-act="cal">캘린더에서 보기${IC("right","s")}</button></div></div>`},
  enrolls:{title:"등록",coll:"enrolls",unit:"건",ph:"학생·클래스 검색",help:"등록 = 학생 한 명 + 클래스 하나예요. 수업·출결·학습기록·교재·수강료가 모두 등록에 매달려요. 새 등록은 위 [+] 또는 학생 창 [등록] 탭에서 생성해요.",
   head:e=>{const s=stu(e.studentId)||{};return `${esc(s.name||"")}${stuTag(s)} <span class="hint">· <i class="cdot" style="background:${clsHex(cls(e.classId)||{})}"></i>${esc(cls(e.classId).name)}</span>`},
@@ -2565,7 +2565,7 @@ function seedX(){const live=DB.enrolls.filter(e=>!e.ended);const m=TODAY.slice(0
   [...new Set([...DB.students.map(s=>s.school).filter(Boolean),"운양중"])].forEach((n,i)=>DB.schools.push({id:uid("sc"),name:n,kind:/초$/.test(n)?"초등학교":/중$/.test(n)?"중학교":"고등학교",addr:["운양동","장기동","구래동","마산동"][i%4]+" "+(10+i*3)+"번길",code:i%3!==2,sync:i%3!==2?dPlus(TODAY,-3-i):"",state:"saved"}));
   DB.schools.filter(s=>s.kind!=="초등학교").slice(0,3).forEach((s,i)=>["수학","영어"].forEach((sub,j)=>DB.exams.push({id:uid("ex"),name:"2학기 기말고사",school:s.name,grade:(s.kind==="중학교"?["중1","중2","중3"]:["고1","고2","고3"])[(i+j)%3],subject:sub,date:dPlus(TODAY,19+i+j),units:j?"":"3단원-5단원",state:"saved"})));
   [["임대료","지출",-10,"계좌이체",1800000],["교재 구입","지출",-6,"카드",264000],["전기·수도","지출",-4,"계좌이체",183000],["간식","지출",-1,"카드",42000],["특강 교재 판매","매출",-3,"현금",90000],["10월 임대료","지출",-40,"계좌이체",1800000]].forEach(([n,k,d,h,a])=>DB.costs.push({id:uid("co"),name:n,kind:k,date:dPlus(TODAY,d),how:h,amount:a,memo:"",state:"saved"}));
-  [["일일 학습 보고서","daily_report",1,1,"우선 연락처"],["주간·월간 학습 보고서","period_report",1,1,"우선 연락처"],["수료 보고서","complete_report",1,1,"우선 연락처"],["수강료 청구 안내","tuition",1,1,"우선 연락처"],["교재비 청구 안내","textbook",1,0,"우선 연락처"],["상담 신청 접수 안내","inquiry",1,1,"우선 연락처"],["등원 알림","checkin",1,1,"어머니"],["하원 알림","checkout",0,1,"어머니"],["수업 일정 안내","lesson",1,1,"우선 연락처"],["보강 안내","makeup",1,1,"우선 연락처"],["휴강 안내","cancel",1,1,"우선 연락처"],["상담 일정 안내","consult",0,0,"우선 연락처"],["월간 일정 안내","monthly",1,1,"우선 연락처"],["시간표 변경 안내","timetable",1,1,"우선 연락처"],["등록 안내","registration",1,1,"우선 연락처"],["클래스 변경 안내","class_change",1,1,"우선 연락처"]].forEach(([n,c,on,tpl,tg])=>DB.alims.push({id:uid("al"),name:n,code:c,on:!!on,tpl:!!tpl,from:"031-000-0000",target:tg,ment:"",state:"saved"}))}
+  [["일일 학습 보고서","daily_report",1,1,"우선 연락처"],["주간·월간 학습 보고서","period_report",1,1,"우선 연락처"],["수료 보고서","complete_report",1,1,"우선 연락처"],["수강료 청구 안내","tuition",1,1,"우선 연락처"],["교재비 청구 안내","textbook",1,0,"우선 연락처"],["재료비 청구 안내","material",0,0,"우선 연락처"],["상담 신청 접수 안내","inquiry",1,1,"우선 연락처"],["등원 알림","checkin",1,1,"어머니"],["하원 알림","checkout",0,1,"어머니"],["수업 일정 안내","lesson",1,1,"우선 연락처"],["보강 안내","makeup",1,1,"우선 연락처"],["휴강 안내","cancel",1,1,"우선 연락처"],["상담 일정 안내","consult",0,0,"우선 연락처"],["월간 일정 안내","monthly",1,1,"우선 연락처"],["시간표 변경 안내","timetable",1,1,"우선 연락처"],["등록 안내","registration",1,1,"우선 연락처"],["클래스 변경 안내","class_change",1,1,"우선 연락처"]].forEach(([n,c,on,tpl,tg])=>DB.alims.push({id:uid("al"),name:n,code:c,on:!!on,tpl:!!tpl,from:"031-000-0000",target:tg,ment:"",state:"saved"}))}
 /* 노션 페이지로 가기(화면 ↔ 노션 메뉴 페이지 1:1). 시제품에는 주소가 없어 알림만, 원본에서는 페이지 ID로 엶 */
 LISTS.tuition.head=x=>`${esc(nmStu(x.studentId))} <small class="hsub">${esc(nmCls(x.classId))} · ${x.month} · ${WON(tuAmt(x))}</small>`;LISTS.bookfees.head=x=>`${esc(nmStu(x.studentId))} <small class="hsub">${esc(x.items)}</small>`;LISTS.reports.head=x=>`${esc(nmCls(x.classId))} <small class="hsub">${x.kind} 보고서 · ${D10(x.from)} - ${D10(x.to)}</small>`;LISTS.letters.head=x=>`${esc(nmCls(x.classId))} <small class="hsub">${x.month} 가정통신문</small>`;LISTS.progress.head=x=>`${esc(nmBook(x.bookId))} <small class="hsub">${esc(nmCls(x.classId))} · ${x.mode==="개별"?esc(nmStu(x.studentId)):"클래스 전체"}</small>`;
 const NOTION={today:"대시보드",students:"학생 목록",enrolls:"등록학생",classes:"클래스",timetable:"시간표",lesson:"수업",teachers:"직원관리",subjects:"공개 DB › 과목",books:"라이브러리",progress:"진도관리",events:"일정",reports:"학습 보고서",tuition:"수강료",bookfees:"교재비 관리",letters:"가정통신문",schools:"학교",glevels:"학년",areas:"영역",exams:"시험",costs:"비용",alims:"알림톡 설정"};
@@ -2832,7 +2832,8 @@ document.addEventListener("click",ev=>{if(!activeTab||!ev.target.closest)return;
   const row=t.closest("[data-pgx]");if(!row||t.closest(".bkm"))return;const st=activeTab.state,id=row.dataset.pgx;st.pgX=st.pgX===id?null:id;render()});
 /* 461판: 보고서 = 묶음(DB.reports = 노션 알림톡 발송함) + 개별(DB.rpStu = 노션 보고서 DB 한 페이지) — 기준 3장 "보고서 묶음·개별" */
 const RP_ST={ok:["nc-green","전송 완료"],wait:["nc-gray","전송 전"],err:["nc-red","전송 오류"]};
-function rpTpl(z){if(z.kind==="수료"){const pg=z.pgId&&byId(DB.progress,z.pgId);return pg&&pgIsProg(pg)?"프로그램 수료 보고서":"교재 수료 보고서"}return z.kind==="월간"?"월간 학습 보고서":"주간 학습 보고서"}
+const clsArts=cid=>(cls(cid)||{}).arts==="예체능";/* 노션 클래스 구분 = 예체능(서버 isArtsClass와 같음) */
+function rpTpl(z){const a=clsArts(z.classId);if(z.kind==="수료")return a?"프로그램 수료 보고서":"교재 수료 보고서";return (z.kind==="월간"?"월간 ":"주간 ")+(a?"활동":"학습")+" 보고서"}
 function rpSync(z){const its=(DB.rpStu||[]).filter(i=>i.rpId===z.id&&!i.del),ok=its.filter(i=>i.st==="ok").length;z.n=its.length;z.sent=ok>0;z.left=ok?its.length-ok:0}
 /* 묶음의 학생 보고서(없으면 그 클래스 수강생으로 생성 — 노션 [보고서 생성]과 같음) */
 function rpItems(z){if(!DB.rpStu)DB.rpStu=[];let its=DB.rpStu.filter(i=>i.rpId===z.id&&!i.del);
@@ -2864,7 +2865,7 @@ function rpListBox(os,empty){const st=activeTab.state,f=st.rpK||"all",K=["주간
 function rpSendAll(z){rpItems(z).forEach(i=>{if(i.st!=="ok"){i.st="ok";i.sentAt=TODAY}});rpSync(z)}
 function rpAllAsk(z){const todo=rpItems(z).filter(i=>i.st!=="ok");if(!todo.length)return toast("모두 보냈어요");askRun("보고서를 보낼까요?",`<div><b>${esc(nmCls(z.classId))}</b> · ${esc(rpTpl(z))} · ${D10(z.from)} - ${D10(z.to)}</div>전송 전 <b>${todo.length}명</b>에게 한 통씩 보내요.${todo.some(i=>!i.note)?` 한마디가 없는 학생 ${todo.filter(i=>!i.note).length}명은 한마디 없이 나가요.`:""}${typeof sendNote!=="undefined"?sendNote:""}`,"보내기",()=>{rpSendAll(z);markDirty(LISTS.reports,z);commit();toast(`${todo.length}명에게 전송 완료로 표시했어요 — Ctrl+Z로 되돌려요`)})}
 function rpSendOne(it){const z=byId(DB.reports,it.rpId);if(!z)return;const s=stu(it.studentId)||{},S=rpSum(z,it),fin=z.kind==="수료",pg=fin&&z.pgId&&byId(DB.progress,z.pgId),per=`${D10(z.from).slice(5)}~${D10(z.to).slice(5)}`,say=it.note?`\n\n💬 선생님 한마디\n${it.note}`:"";
-  const vals=fin?{학생이름:s.name||"",클래스:nmCls(z.classId),수료과정:`${pg&&pgIsProg(pg)?"🎨 프로그램":"📚 교재"}  ${pg?nmBook(pg.bookId):""}\n📅 기간  ${per}\n✅ 출석  ${S.att}`,수료요약:`📋 과제  ${S.hw}\n📄 평가  ${S.ev}${say}`}:{학생이름:s.name||"",클래스:nmCls(z.classId),학습기간:per,학습기록:DB.progress.filter(x=>!x.del&&x.classId===z.classId&&x.stat==="진행 중").map(x=>`#${nmBook(x.bookId)} (~${pgPct(x)===""?"—":pgPct(x)+"%"})`).join("\n")||"—",학습요약:`✅ 출석  ${S.att}\n📋 과제  ${S.hw}\n📄 평가  ${S.ev}${say}`};
+  const vals=fin?{학생이름:s.name||"",클래스:nmCls(z.classId),수료과정:`${clsArts(z.classId)?"🎨 프로그램":"📚 교재"}  ${pg?nmBook(pg.bookId):""}\n📅 기간  ${per}\n✅ 출석  ${S.att}`,수료요약:`📋 과제  ${S.hw}\n📄 평가  ${S.ev}${say}`}:{학생이름:s.name||"",클래스:nmCls(z.classId),학습기간:per,학습기록:DB.progress.filter(x=>!x.del&&x.classId===z.classId&&x.stat==="진행 중").map(x=>`#${nmBook(x.bookId)} (~${pgPct(x)===""?"—":pgPct(x)+"%"})`).join("\n")||"—",학습요약:`✅ 출석  ${S.att}\n📋 과제  ${S.hw}\n📄 평가  ${S.ev}${say}`};
   askRun(`${esc(s.name||"")} ${fin?"수료 보고서":"보고서"} ${it.st==="ok"?"다시 전송":"전송"}`,`${window.ALIMV?ALIMV.render(rpTpl(z),"","",false,vals):""}<div class="hint">받는 사람: ${esc(s.name||"")} 학생의 우선 연락처${preNo(s)?"":" — 번호가 없어요"}. 시제품이라 알림톡은 실제로 나가지 않아요.</div>`,"보내기",()=>{it.st="ok";it.sentAt=TODAY;rpSync(z);markDirty(LISTS.reports,z);commit();toast(`${s.name||""} 보고서를 보낸 것으로 적었어요(시제품: 실제 발송 없음)`)})}
 document.addEventListener("click",ev=>{if(!activeTab||!ev.target.closest)return;const t=ev.target;
   const f=t.closest("[data-rpf]");if(f){activeTab.state.rpF=f.dataset.rpf;return render()}
