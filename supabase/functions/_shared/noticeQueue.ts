@@ -40,7 +40,7 @@ import {
 } from "./alimtalkShared.ts"
 import { refreshStudentReport } from "./dailyReportRefresh.ts"
 import { buildLetterNotice, LetterBlocked } from "./monthlyNotice.ts"
-import { alimtalkVar, BULLET, reportConfigChain, reportSectionVars, textbookListBlock } from "./noticeBlocks.ts"
+import { alimtalkVar, BULLET, isArtsClass, reportConfigChain, reportSectionVars, textbookListBlock } from "./noticeBlocks.ts"
 import { fitVariablesToTemplate } from "./templateFit.ts"
 import { createSolapiService } from "./solapiClient.ts"
 
@@ -209,7 +209,7 @@ const LOCK_REASON: Partial<Record<NoticeKind, string>> = {
 // 수강료·가정통신문 [안내문 전송](개별)이 켠다. 켜져 있으면 같은 달 장을 이미 보냈어도 보낸다.
 const isForced = (page: any) => page?.properties?.["개별 전송"]?.checkbox === true
 
-function prepareTextbook(page: any): Prepared {
+async function prepareTextbook(page: any): Promise<Prepared> {
 	const registrationId = getRelationFirstId(page, "등록")
 	if (!registrationId) throw new Error("교재비 페이지에 연결된 등록이 없습니다.")
 	const studentName = getRollupText(page, "학생이름(표시)") || "학생"
@@ -221,11 +221,16 @@ function prepareTextbook(page: any): Prepared {
 		// (v2.8.0 구역) 교재비 청구 안내 [교재 내역].
 		"#{교재목록}": alimtalkVar(page, "교재목록", textbookListBlock(unpaid)),
 	}
+	// (v2.8.0 항목 67, 11/16) 예체능 반(클래스 `클래스 구분`)은 "재료비 안내" 행(재료비 청구 안내)부터 쓰고,
+	// 그 행이 없거나 꺼져 있으면 예전처럼 "교재비 안내" 행으로 보낸다. 줄 모양(🎨 / 📚)은 청구 `교재목록(알림톡)` 수식이 정한다.
+	const reg = await noticeDeps.getPage(registrationId).catch(() => null)
+	const arts = await isArtsClass(reg?.properties?.["클래스"]?.relation?.[0]?.id, noticeDeps.getPage)
 	return {
 		registrationId,
 		title: studentName || "교재비 안내",
 		logCategory: "교재비 안내",
-		configCategory: "교재비 안내",
+		configCategory: arts ? "재료비 안내" : "교재비 안내",
+		configFallback: arts ? ["교재비 안내"] : undefined,
 		primaryPhone: "", // 교재비에는 연락처 롤업이 없다 → 우선 연락 대상이면 등록을 한 번 읽는다
 		variables: (notice) => ({ ...fixed, "#{안내멘트}": notice }),
 		log: { textbookCartId: page.id },
@@ -296,7 +301,7 @@ export async function processNoticeQueueItem(payload: NoticePayload): Promise<vo
 	let config: Awaited<ReturnType<typeof getAlimtalkConfig>>
 	let recipients: { phone: string }[]
 	try {
-		prep = kind === "report" ? await prepareReport(page) : kind === "tuition" ? prepareTuition(page) : kind === "letter" ? await prepareLetter(page) : prepareTextbook(page)
+		prep = kind === "report" ? await prepareReport(page) : kind === "tuition" ? prepareTuition(page) : kind === "letter" ? await prepareLetter(page) : await prepareTextbook(page)
 		config = await noticeDeps.config(prep.configCategory, { pfId: FALLBACK.pfId, templateId: "", senderNumber: FALLBACK.senderNumber }, prep.configFallback)
 		recipients = await noticeDeps.recipients({ registrationId: prep.registrationId, primaryPhone: prep.primaryPhone, recipientTarget: config.recipientTarget })
 	} catch (err) {
