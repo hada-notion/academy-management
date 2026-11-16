@@ -19,7 +19,7 @@ svg.i{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-widt
 svg.i.s{width:14px;height:14px;vertical-align:-2px}
 svg.i.l{width:20px;height:20px}
 #narrow{display:none;position:fixed;inset:0;background:var(--canvas);z-index:999;align-items:center;justify-content:center;text-align:center;padding:var(--space-6);font-size:var(--text-section);color:var(--muted)}
-@media(max-width:767px){#narrow{display:flex}}
+@media(max-width:767px){#narrow{display:flex}html,body{overflow:hidden}}
 .app{display:flex;height:100vh}
 .sp{flex:1}
 
