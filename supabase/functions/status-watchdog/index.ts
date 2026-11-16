@@ -107,7 +107,7 @@ const TARGETS: Array<{ label: string; dataSourceId: string | (() => Promise<stri
 	{ label: "클래스:가정통신문생성", dataSourceId: DS_CLASS, spec: CLASS_LETTER_GEN_STATUS_SPEC },
 	// (v2.8.0, 10/31) 등록 시간표 변경 안내(클래스·등록 [시간표 변경 안내] → 등록 ⚪ 대기 → 자동화).
 	{ label: "등록:시간표안내", dataSourceId: DS_REGISTRATION, spec: TIMETABLE_NOTICE_STATUS_SPEC },
-	// (v2.8.0, 10/31) 등록 [등록 안내]·[클래스 변경 안내].
+	// (v2.8.0, 10/31) 등록 [등록 안내].
 	{ label: "등록:안내", dataSourceId: DS_REGISTRATION, spec: REGISTRATION_NOTICE_STATUS_SPEC },
 	{ label: "클래스:교재생성", dataSourceId: DS_CLASS, spec: CLASS_TEXTBOOK_STATUS_SPEC },
 	// (2026-09-22, Phase 3) cascade-delete가 공유하는 "삭제 처리중" 상태 — 7개 DB(원래 마스터플랜
