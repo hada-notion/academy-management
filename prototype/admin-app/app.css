@@ -2797,6 +2797,8 @@ table.stt tr.sel,table.stt tr.sel:hover{background:var(--sel-bg)}
 .gted.cellmode>.hf{flex:1;display:flex;flex-direction:column;justify-content:center;min-width:0;margin:0}
 .gted.cellmode .hf .hf-box{height:100%;min-height:0;border:0;border-radius:0;background:transparent;box-shadow:none}
 .gted.cellmode .hf .hf-x{display:none}
+.gted.cellmode .hf>.hf-msg,.gted.cellmode .hf>.hf-lbl{display:none}/* 표 칸 편집 = 칸 높이 그대로 — 도움말·라벨은 창에서만(도움말 있는 고르기 칸이 0 높이로 눌리던 것) */
+.gted.cellmode .hf .hf-box{flex:1 0 auto}
 .gted.cellmode.tall .hf .hf-box{height:auto;min-height:72px}
 table.stt td.op>.opw{position:absolute;right:6px;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;gap:2px;white-space:nowrap}
 /* 줄 동작 자리(기준 3장 "줄 동작"): 표 끝 단추 폭 여유 · 그 줄과 같은 바탕 · 따로 된 칸 느낌 없음 */
@@ -2839,3 +2841,6 @@ table.stt tr[data-id] td.op,table.stt tr[data-id]:not(.sdel):hover td.op,table.s
 /* 시간표 변경 안내 · 보고서 한마디 — 묶음 안 메모 칸 */
 .box .hf.rpn{margin-bottom:10px}
 .box .hf.rpn textarea{min-height:44px}
+
+/* 기타경비 추가 창 — 고르기 목록이 창 안에 다 보이게 */
+.cegrid{min-height:340px;align-content:start}
