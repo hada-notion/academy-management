@@ -2930,3 +2930,5 @@ body.dragging-stu .blk.cfblk.drop-no{opacity:.3}
 .mkt td .sname{overflow:visible}
 .mkmain.mkwait{overflow-x:auto}
 table.stt.mkt{table-layout:auto}.stt.mkt td{overflow:visible}
+/* 자료실 */
+.fupl{cursor:pointer}

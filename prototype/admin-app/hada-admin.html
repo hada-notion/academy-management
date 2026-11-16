@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=492">
-<link rel="stylesheet" href="app.css?v=492">
-<link rel="stylesheet" href="pick.css?v=492">
-<link rel="stylesheet" href="field.css?v=492">
+<link rel="stylesheet" href="hada-tokens.css?v=494">
+<link rel="stylesheet" href="app.css?v=494">
+<link rel="stylesheet" href="pick.css?v=494">
+<link rel="stylesheet" href="field.css?v=494">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=492"><script src="hada-rules.js?v=492"></script><script src="alim-preview.js?v=492"></script><script src="pick.js?v=492"></script><script src="field.js?v=492"></script><script src="panel.js?v=492"></script>
+<link rel="stylesheet" href="alim.css?v=494"><script src="hada-rules.js?v=494"></script><script src="alim-preview.js?v=494"></script><script src="pick.js?v=494"></script><script src="field.js?v=494"></script><script src="panel.js?v=494"></script>
 <script>
 "use strict";
 
@@ -64,7 +64,7 @@ const DAYS=["월","화","수","목","금","토","일"];
 const uid=(p)=>p+Math.random().toString(36).slice(2,8);
 const rnd=(()=>{let s=261111;return()=>{s=(s*1103515245+12345)%2147483648;return s/2147483648}})();
 const pick=a=>a[Math.floor(rnd()*a.length)];
-const XCOL=["progress","events","reports","tuition","bookfees","letters","schools","exams","costs","alims","recs","anotes","grades","series","glevels","charges","areas","etcs"];/* 185판: 표 부품만으로 생성한 화면들의 자료 */
+const XCOL=["progress","events","reports","tuition","bookfees","letters","schools","exams","costs","alims","recs","anotes","grades","series","glevels","charges","areas","etcs","files"];/* 185판: 표 부품만으로 생성한 화면들의 자료 */
 const DB={seasons:[],teachers:[],classes:[],students:[],enrolls:[],blocks:[],subjects:[],books:[]};XCOL.forEach(k=>DB[k]=[]);
 function seed(){
   DB.seasons=[{id:"s1",name:"2026 2학기",start:"2026-09-01",end:"2026-12-19",state:"확정"},{id:"s2",name:"2026 겨울방학",start:"2026-12-20",end:"2027-02-28",state:"초안"}];
@@ -177,7 +177,7 @@ function tbSlots(st,o){/* 표 화면 D3 앞 네 자리: 평소 [엑셀][표 편�
   const add=`<button class="btn tb-ic" id="addRow" ${o.add&&!st.tedit?"":"disabled"} title="${st.tedit?"추가 — 표 편집을 마치면 추가할 수 있어요":o.add?o.addTitle:"추가 — "+(o.noAddWhy||"이 화면은 줄을 직접 추가하지 않아요")}">${IC("plus","s")}</button>`;
   return st.tedit?`<button class="btn tb-ic" id="colB" title="열 정리 — 열 순서·숨기기${o.hid?` (${o.hid}개 숨김)`:""}">${IC("eye","s")}</button><button class="btn pri tb-ic" id="tbEd" title="완료 — 편집을 마쳐요(고친 줄은 작성 중 → [저장])">${IC("check","s")}</button><button class="btn tb-ic" id="teCancel" title="취소 — 이번 편집을 모두 되돌리고 나가요">${IC("x","s")}</button>${add}`
    :`<button class="btn tb-ic" id="xlB" title="엑셀 — ${o.up?"내려받기 · 한번에 올리기":"내려받기"}">${IC("xls","s xl")}</button><button class="btn tb-ic" id="tbEd" ${o.ro?"disabled":""} title="${o.ro?"표 편집 — 보기만 하는 화면이에요(열을 숨기거나 정렬하려면 열 제목을 눌러요)":`표 편집 — 칸을 바로 고치고 열을 정리해요${o.hid?` (${o.hid}개 숨김)`:""}`}">${IC("pen","s")}</button><button class="btn tb-ic" id="prB" title="인쇄 — 지금 보는 목록(필터 조건 그대로)">${IC("printer","s")}</button>${add}`}
-const COLLNAME={classes:"클래스",enrolls:"등록",students:"학생",teachers:"선생님",seasons:"시즌",subjects:"과목",books:"라이브러리",progress:"진도교재",events:"일정",reports:"학습 보고서",tuition:"수강료",bookfees:"청구",letters:"가정통신문",schools:"학교",glevels:"학년",areas:"영역",exams:"시험",costs:"비용",alims:"알림톡 설정",recs:"학습기록",anotes:"출결 한마디·메모",grades:"성적",series:"시리즈",charges:"청구 항목"};
+const COLLNAME={classes:"클래스",enrolls:"등록",students:"학생",teachers:"선생님",seasons:"시즌",subjects:"과목",books:"라이브러리",progress:"진도교재",events:"일정",reports:"학습 보고서",tuition:"수강료",bookfees:"청구",letters:"가정통신문",schools:"학교",glevels:"학년",areas:"영역",exams:"시험",costs:"비용",alims:"알림톡 설정",recs:"학습기록",anotes:"출결 한마디·메모",grades:"성적",series:"시리즈",charges:"청구 항목",files:"자료"};
 function rowName(k,x){if(k==="grades")return esc(`${nmStu(x.sid)} · ${(DB.exams.find(e=>e.id===x.examId)||{}).name||"시험"}`);if(k==="anotes")return esc(`${D10(x.d)} ${nmCls(x.classId)} · ${nmStu(x.sid)}`);if(k==="recs")return esc(`${D10(x.d)} ${nmCls(x.classId)} · ${x.kind}`);const L=LISTS[k];if(!L)return esc(x.name||"");const d=document.createElement("div");d.innerHTML=L.head?L.head(x):esc(String(L.cols[0][1](x)).replace(/^[!@]g?:?/,""));return esc(d.textContent.replace(/\s+/g," ").trim())}
 const toList=(a,n=8)=>`<div class="svl">${a.slice(0,n).map(t=>`<div>${t}</div>`).join("")}${a.length>n?`<div class="hint">외 ${a.length-n}건</div>`:""}</div>`;
 function rvBtn(){const n=dirtyCount();return `<button class="btn icon tb-ic rvall" id="rvAll" ${n?"":"disabled"} title="${n?`저장 전으로 모두 되돌리기 (${n}건)`:"저장 전으로 모두 되돌리기 — 고친 것이 없어요"}">${IC("undo")}</button>`}
@@ -202,7 +202,7 @@ function undo(){if(blurEdit())return setTimeout(undo,0);flushQuiet();if(!undoSta
 function redo(){if(blurEdit())return setTimeout(redo,0);flushQuiet();if(!redoStack.length)return;undoStack.push(snapshot());Object.assign(DB,JSON.parse(redoStack.pop()));lastSnap=snapshot();render()}
 function dirtyCount(){let n=0;for(const k of ["teachers","classes","students","enrolls","blocks","subjects","books",...XCOL])n+=(DB[k]||[]).filter(x=>x.state==="draft").length;n+=DB.seasons.filter(x=>x.dirty).length;lPrune();n+=LDIRTY.size;return n}
 
-function dirtyTitle(){const n={blocks:"시간표",classes:"클래스",enrolls:"등록",students:"학생",teachers:"선생님",seasons:"시즌",subjects:"과목",books:"라이브러리",progress:"진도교재",events:"일정",reports:"학습 보고서",tuition:"수강료",bookfees:"청구",letters:"가정통신문",schools:"학교",glevels:"학년",areas:"영역",exams:"시험",costs:"비용",alims:"알림톡 설정",recs:"학습기록",anotes:"출결 한마디·메모",grades:"성적",series:"시리즈",charges:"청구 항목"};const parts=Object.keys(n).map(k=>[n[k],DB[k].filter(x=>k==="seasons"?x.dirty:x.state==="draft").length]).filter(x=>x[1]);lPrune();if(LDIRTY.size)parts.push(["수업",LDIRTY.size]);return parts.length?"저장 안 한 것: "+parts.map(([a,b])=>a+" "+b).join(" · "):"저장할 것이 없어요"}
+function dirtyTitle(){const n={blocks:"시간표",classes:"클래스",enrolls:"등록",students:"학생",teachers:"선생님",seasons:"시즌",subjects:"과목",books:"라이브러리",progress:"진도교재",events:"일정",reports:"학습 보고서",tuition:"수강료",bookfees:"청구",letters:"가정통신문",schools:"학교",glevels:"학년",areas:"영역",exams:"시험",costs:"비용",alims:"알림톡 설정",recs:"학습기록",anotes:"출결 한마디·메모",grades:"성적",series:"시리즈",charges:"청구 항목",files:"자료"};const parts=Object.keys(n).map(k=>[n[k],DB[k].filter(x=>k==="seasons"?x.dirty:x.state==="draft").length]).filter(x=>x[1]);lPrune();if(LDIRTY.size)parts.push(["수업",LDIRTY.size]);return parts.length?"저장 안 한 것: "+parts.map(([a,b])=>a+" "+b).join(" · "):"저장할 것이 없어요"}
 
 /* 검색되는 고르기 상자: 모두 같은 폭, 누르면 검색 칸 + 목록(위아래 화살표·Enter·Esc) */
 const COMBO={};
@@ -234,7 +234,7 @@ function classInSeason(c,s){const st=s.start,en=s.end;return (!c.open||c.open<=e
 function classBadges(c){let h="";if(c.kind==="특강")h+='<span class="tag b">특강</span>';if(c.open&&c.open>"2026-11-11")h+=`<span class="tag">${md(c.open)} 개강</span>`;if(c.close)h+=`<span class="tag w">${md(c.close)} 종료</span>`;return h}
 
 /* ================= 메뉴·탭 ================= */
-const TITLES={today:"오늘",timetable:"시간표",students:"학생",classes:"클래스",enrolls:"등록",teachers:"선생님",seasons:"시즌",admin:"관리자 설정",subjects:"과목",books:"라이브러리",progress:"진도관리",events:"일정",reports:"학습 보고서",tuition:"수강료",bookfees:"교재비",bill:"청구서",makeup:"보강",records:"학습기록",completion:"수료 보고서",etcs:"기타경비",letters:"가정통신문",schools:"학교",glevels:"학년",areas:"영역",exams:"시험",costs:"비용",alims:"알림톡 설정"};
+const TITLES={today:"오늘",timetable:"시간표",students:"학생",classes:"클래스",enrolls:"등록",teachers:"선생님",seasons:"시즌",admin:"관리자 설정",subjects:"과목",books:"라이브러리",progress:"진도관리",events:"일정",reports:"학습 보고서",tuition:"수강료",bookfees:"교재비",bill:"청구서",makeup:"보강",records:"학습기록",files:"자료실",completion:"수료 보고서",etcs:"기타경비",letters:"가정통신문",schools:"학교",glevels:"학년",areas:"영역",exams:"시험",costs:"비용",alims:"알림톡 설정"};
 let navIdx=0;try{history.replaceState({hada:0},"")}catch(e){}
 const navState=x=>{const o=JSON.parse(JSON.stringify(x));delete o.tedit;delete o._seen;delete o._seenK;return o};
 function navSnap(t){return {screen:t.screen,state:navState(t.state)}}
@@ -2431,7 +2431,7 @@ document.addEventListener("keydown",e=>{const t=activeTab;if(!t||t.screen!=="stu
   const st=t.state;if(e.key==="Delete"){const id=st.sel||st.rowFocus;if(id){e.preventDefault();stuDel(byId(DB.students,id),true)}}else if(e.key==="Escape"&&(st.sel||st.quick)&&st.todo){st.sel=null;st.quick=false;render()}else if(e.key==="Escape"&&stuOpen(st)&&!dockOn){st.sel=null;st.quick=false;st.todo=false;render()}});
 document.addEventListener("pointerdown",e=>{const t=activeTab;if(!t||t.screen!=="students"||dockOn||!stuOpen(t.state))return;const tg=e.target;if(!tg.closest||tg.closest("#sp,#lp,.srel,#stPanelT,#undoB,#redoB,#addRow,.it[data-scr],#tabs,.modal,#modalRoot,.toast,.spick,td.se,.dpop,.srsz,.ddpop,.hp-pop,.hp-dim,.hf-pop"))return;const st=t.state;setTimeout(()=>{st.sel=null;st.quick=false;st.todo=false;render()},0)},true);
 /* 표 공통(184판): 목록 화면 열 = 학생 표와 같은 꼴 {k,l,i,cat,v,src} */
-function colIcon(L,c,f,first){/* 299판: 아이콘은 규칙 파일(hada-rules.js) 한 곳 */if(first&&L.coll==="books")return (activeTab&&activeTab.state&&activeTab.state.sub)==="p"?"package":"bookc";return iconRule(c[0],f?f[3]:"")||(first?{seasons:menuIcon("seasons"),subjects:menuIcon("subjects"),books:(activeTab&&activeTab.state&&activeTab.state.sub)==="p"?"package":"bookc"}[L.coll]||"hash":"hash")}
+function colIcon(L,c,f,first){if(first&&L.coll==="files")return "file";/* 299판: 아이콘은 규칙 파일(hada-rules.js) 한 곳 */if(first&&L.coll==="books")return (activeTab&&activeTab.state&&activeTab.state.sub)==="p"?"package":"bookc";return iconRule(c[0],f?f[3]:"")||(first?{seasons:menuIcon("seasons"),subjects:menuIcon("subjects"),books:(activeTab&&activeTab.state&&activeTab.state.sub)==="p"?"package":"bookc"}[L.coll]||"hash":"hash")}
 function listCols(L){if(L._gc)return L._gc;const ft=k=>(L.fields||[]).find(f=>f[0]===k);
   return L._gc=L.cols.map((c,i)=>{const f=c[2]?ft(c[2]):null;const cat=!!(f&&(Array.isArray(f[2])||typeof f[2]==="function"||f[2]==="teachers"||f[3]==="seg"||f[3]==="bool"))||/상태|구분|강사|과목|영역|직책/.test(c[0]);
     const o=c[3]||{};return {k:c[2]||("c"+i),l:c[0],i:colIcon(L,c,f,i===0),w:o.w||null,hid:!!o.hid,multi:!!o.multi,cat:o.cat!=null?!!o.cat:cat,src:c,v:o.v||(x=>{const z=String(c[1](x));const y=gtPlain(z);return y==="—"?"":y})}}).concat(fieldCols(L))}
@@ -2579,7 +2579,7 @@ function seedX(){const live=DB.enrolls.filter(e=>!e.ended);const m=TODAY.slice(0
   [["일일 학습 보고서","daily_report",1,1,"우선 연락처"],["주간·월간 학습 보고서","period_report",1,1,"우선 연락처"],["수료 보고서","complete_report",1,1,"우선 연락처"],["수강료 청구 안내","tuition",1,1,"우선 연락처"],["교재비 청구 안내","textbook",1,0,"우선 연락처"],["재료비 청구 안내","material",0,0,"우선 연락처"],["상담 신청 접수 안내","inquiry",1,1,"우선 연락처"],["등원 알림","checkin",1,1,"어머니"],["하원 알림","checkout",0,1,"어머니"],["수업 일정 안내","lesson",1,1,"우선 연락처"],["보강 안내","makeup",1,1,"우선 연락처"],["휴강 안내","cancel",1,1,"우선 연락처"],["상담 일정 안내","consult",0,0,"우선 연락처"],["월간 일정 안내","monthly",1,1,"우선 연락처"],["시간표 변경 안내","timetable",1,1,"우선 연락처"],["등록 안내","registration",1,1,"우선 연락처"],["클래스 변경 안내","class_change",1,1,"우선 연락처"]].forEach(([n,c,on,tpl,tg])=>DB.alims.push({id:uid("al"),name:n,code:c,on:!!on,tpl:!!tpl,from:"031-000-0000",target:tg,ment:"",state:"saved"}))}
 /* 노션 페이지로 가기(화면 ↔ 노션 메뉴 페이지 1:1). 시제품에는 주소가 없어 알림만, 원본에서는 페이지 ID로 엶 */
 LISTS.tuition.head=x=>`${esc(nmStu(x.studentId))} <small class="hsub">${esc(nmCls(x.classId))} · ${x.month} · ${WON(tuAmt(x))}</small>`;LISTS.bookfees.head=x=>`${esc(nmStu(x.studentId))} <small class="hsub">${esc(x.items)}</small>`;LISTS.reports.head=x=>`${esc(nmCls(x.classId))} <small class="hsub">${x.kind} 보고서 · ${D10(x.from)} - ${D10(x.to)}</small>`;LISTS.letters.head=x=>`${esc(nmCls(x.classId))} <small class="hsub">${x.month} 가정통신문</small>`;LISTS.progress.head=x=>`${esc(nmBook(x.bookId))} <small class="hsub">${esc(nmCls(x.classId))} · ${x.mode==="개별"?esc(nmStu(x.studentId)):"클래스 전체"}</small>`;
-const NOTION={today:"홈",bill:"청구서",makeup:"보강",records:"학습기록",completion:"수료 보고서",etcs:"기타경비",students:"학생 목록",enrolls:"등록학생",classes:"클래스",timetable:"시간표",lesson:"수업",teachers:"직원관리",subjects:"과목",books:"라이브러리",progress:"진도관리",events:"일정",reports:"학습 보고서",tuition:"수강료",letters:"가정통신문",schools:"학교",glevels:"학년",areas:"영역",exams:"시험",costs:"비용",alims:"알림톡 설정"};
+const NOTION={today:"홈",bill:"청구서",makeup:"보강",records:"학습기록",files:"자료실",completion:"수료 보고서",etcs:"기타경비",students:"학생 목록",enrolls:"등록학생",classes:"클래스",timetable:"시간표",lesson:"수업",teachers:"직원관리",subjects:"과목",books:"라이브러리",progress:"진도관리",events:"일정",reports:"학습 보고서",tuition:"수강료",letters:"가정통신문",schools:"학교",glevels:"학년",areas:"영역",exams:"시험",costs:"비용",alims:"알림톡 설정"};
 function notionBtn(scr){const n=NOTION[scr];return n?`<button type="button" class="nlink" aria-label="노션에서 열기" data-notion="${scr}" title="노션 ‘${n}’ 페이지를 새 탭으로 열어요">${IC("notion","s")}</button>`:""}
 document.addEventListener("click",ev=>{const b=ev.target.closest&&ev.target.closest("[data-enback]");if(!b||!activeTab)return;ev.preventDefault();ev.stopPropagation();activeTab.state.enSel=null;activeTab.state.stab="en";render()},true);/* 335판: ‹ 학생 */
 document.addEventListener("click",ev=>{const b=ev.target.closest&&ev.target.closest("[data-engd2]");if(!b)return;const e2=byId(DB.enrolls,b.dataset.engd2);if(e2)enGuideRun(e2)});/* 327판: 등록 화면 창 [등록 안내 전송] */
@@ -2743,7 +2743,7 @@ function mkCalBind(v,st){const drop=(e)=>{const sid=e.dataTransfer.getData("text
     b.addEventListener("drop",e=>{e.preventDefault();e.stopPropagation();b.classList.remove("drop");const k=drop(e);if(k)mkPut(k,m)});
     b.onclick=()=>{if(mkSelK())mkPut(mkSelK(),m)};b.ondblclick=()=>lsnOpen("mk:"+m.id,false)});
   v.querySelectorAll("[data-mksel]").forEach(x=>x.onclick=ev=>{ev.stopPropagation();st.mkSel=st.mkSel===x.dataset.mksel?null:x.dataset.mksel;render()})}
-function renderMakeup(v,t){const st=t.state,tab=st.mtab||"cal",ym=st.mym||TODAY.slice(0,7);const W=mkWait().filter(a=>absOpen(a.k));const nS=new Set(W.map(a=>a.sid)).size;
+function renderMakeup(v,t){const st=t.state,tab=st.mtab||"cal",ym=st.mym||TODAY.slice(0,7);const W=mkWait().filter(a=>absOpen(a.k));const nS=mkCardN();/* 창 탭 "보강 대기 n"과 같은 단위(등록 카드) */
   if(st.mkSel&&!W.some(a=>a.k===st.mkSel))st.mkSel=null;const [y,m]=ym.split("-").map(Number);const mv=k=>{const d=new Date(y,m-1+k,1);return d.getFullYear()+"-"+pad2(d.getMonth()+1)};
   const seg=`<span class="vseg mkseg"><button class="${tab==="cal"?"on":""}" data-mtab="cal">결석 달력</button><button class="${tab==="wait"?"on":""}" data-mtab="wait">보강 대기</button></span>`;
   const AL=absAll().map(a=>Object.assign(a,{st:absState(a.k)})).filter(a=>a.st!=="done"&&(st.mkNone||a.st!=="none")).sort((a,b)=>a.d.localeCompare(b.d));const nNone=absAll().filter(a=>absState(a.k)==="none").length;
@@ -2752,7 +2752,7 @@ function renderMakeup(v,t){const st=t.state,tab=st.mtab||"cal",ym=st.mym||TODAY.
   else{const decSeg=a=>a.st==="pend"?`<span class="hint">보강 잡힘</span>`:`<span class="vseg mkdec"><button type="button" class="${a.st==="need"||a.st==="re"?"on":""}" data-mkdec="${a.k}|need">보강 필요</button><button type="button" class="${a.st==="none"?"on":""}" data-mkdec="${a.k}|none">보강 없음</button></span>`;const mkOf=a=>{const mm=absMk(a.k);return mm?`${md(mm.d).slice(5)}(${DAYS[dow(mm.d)]}) ${fmt(mm.start)}`:"—"};
     main=`<div class="mkmain mkwait"><table class="t stt mkt"><tr><th>${IC("user","s")}이름</th><th>${IC("layers","s")}클래스</th><th>${IC("calendar","s")}결석일</th><th>지난 날</th><th>${IC("repeat","s")}보강 여부</th><th>보강 수업</th></tr>${AL.map(a=>{const c=cls(a.classId),s1=stu(a.sid);return `<tr class="${absOpen(a.k)?"":"ro"}"><td>${s1?stuHtml(s1):""}</td><td><span class="dotc" style="background:${classBar(c)}"></span>${esc(c?c.name:"")}</td><td>${md(a.d).slice(5)}(${DAYS[dow(a.d)]})</td><td>${dAgo(a.d)}일</td><td>${decSeg(a)}${a.st==="pre"?' <span class="rpill">판단 전</span>':a.st==="re"?' <span class="rpill nc-red">보강도 결석</span>':""}</td><td>${mkOf(a)}</td></tr>`}).join("")}</table>${AL.length?"":'<div class="empty">보강을 기다리는 결석이 없어요</div>'}${nNone?`<button type="button" class="btn sm mknone" data-mknone>${st.mkNone?"보강 없음 숨기기":`보강 없음 ${nNone}건 보기`}</button>`:""}</div>`}
   const showPanel=panelOpen!==false;
-  v.innerHTML=CALF.title({scr:"makeup",title:"보강",cnt:nS?`남은 보강 ${nS}명`:"",help:"결석을 달력으로 보고(결석 달력), 보강을 기다리는 결석을 표로 정리해요(보강 대기). 오른쪽 카드를 끌어 날짜에 놓으면 새 보강, 보강 블록에 놓으면 그 보강에 들어가요. 출결은 수업 화면에서 적어요.",notion:"makeup"})+
+  v.innerHTML=CALF.title({scr:"makeup",title:"보강",cnt:nS?`보강 대기 ${nS}건`:"",help:"결석을 달력으로 보고(결석 달력), 보강을 기다리는 결석을 표로 정리해요(보강 대기). 오른쪽 카드를 끌어 날짜에 놓으면 새 보강, 보강 블록에 놓으면 그 보강에 들어가요. 출결은 수업 화면에서 적어요.",notion:"makeup"})+
     CALF.bar({left:(tab==="cal"?CALF.nav({label:`${y}.${pad2(m)}`,prev:"앞 달",next:"다음 달",now:"이번 달",isNow:ym===TODAY.slice(0,7)}):"")+seg,right:`<button class="btn icon pbtn tb-ic" id="mkPanelT" title="${showPanel?"오른쪽 창 닫기":"오른쪽 창 열기"}">${IC("panel")}${nS?`<b class="pbadge">${nS}</b>`:""}</button>`})+
     `<div class="body">${main}${showPanel?mkSidePanel(st):""}</div>`;
   v.querySelectorAll("[data-mtab]").forEach(x=>x.onclick=()=>{st.mtab=x.dataset.mtab;render()});
@@ -3190,7 +3190,25 @@ LISTS.completion=Object.assign({},LISTS.reports,{title:"수료 보고서",rows:(
 LISTS.reports=Object.assign(LISTS.reports,{title:"정기 보고서",rows:()=>DB.reports.filter(r=>!r.del&&r.kind!=="수료"),filters:LISTS.reports.filters.filter(f=>f[0]!=="수료")});
 
 /* 246판: 청구 = [기타경비 | 전체 줄] · 247판: 손익 분석 = [손익 | 지출](노션 손익 분석 페이지의 지출내역 보기) */
-/* 청구서 = 교재비 · 재료비 · 기타경비 · 전체 줄(노션 청구서 메뉴와 같은 탭) */LISTS.bill=Object.assign({},LISTS.bookfees,{title:"청구서",subs:[["b","교재비"],["m","재료비"],["e","기타경비"],["l","전체 줄"],["c","기타경비 목록"]]});LISTS.bill_c=Object.assign({},LISTS.etcs,{title:"청구서"});LISTS.bill_b=Object.assign({},LISTS.bookfees_b,{title:"청구서"});LISTS.bill_m=Object.assign({},LISTS.bookfees_m,{title:"청구서"});LISTS.bill_e=Object.assign({},LISTS.bookfees_e,{title:"청구서"});LISTS.bill_l=LISTS.bookfees_l;
+/* 청구서 = 교재비 · 재료비 · 기타경비 · 전체 줄(노션 청구서 메뉴와 같은 탭) */LISTS.bill=Object.assign({},LISTS.bookfees,{title:"청구서",subs:[["b","교재비"],["m","재료비"],["e","기타경비"],["l","전체 줄"],["c","기타경비 목록"]]});LISTS.bill_c=Object.assign({},LISTS.etcs,{title:"청구서"});
+/* 자료실(노션 자료(학원) DB와 같은 칸): 이름 · 구분 · 첨부파일 · 태그. 탭 = 노션 보기 [운영 자료 | 학습 자료 | 전체] */
+const fileExt=f=>(String(f).match(/\.([a-z0-9]+)$/i)||[,""])[1].toUpperCase();
+const fileCell=x=>(x.files||[]).length?`${x.files[0]}${x.files.length>1?` 외 ${x.files.length-1}개`:""}`:"—";
+function filesBox(x){if(!x||!x.id)return "";const fs=x.files||[];return `<section class="box"><h3>첨부파일 <span class="hint">${fs.length}개</span>${HELP("파일 줄을 누르면 열려요. 노션 자료실의 첨부파일과 같은 칸이에요.")}<span class="sp"></span><label class="btn sm fupl" title="이 PC에서 파일 고르기">${IC("plus","s")}파일 올리기<input type="file" multiple hidden data-fupl="${x.id}"></label></h3>${PANEL.rows(fs.map((f,i)=>({attr:`data-fopen="${x.id}|${i}"`,title:"눌러서 열기",lead:IC("file","s"),t:f,sub:fileExt(f),trail:`<button type="button" class="btn icon fdel" data-fdel="${x.id}|${i}" title="이 파일 빼기" aria-label="빼기">${IC("x","s")}</button>`,arrow:false})),"첨부한 파일이 없어요",{emptyRow:true})}</section>`}
+document.addEventListener("click",ev=>{const o=ev.target.closest&&ev.target.closest("[data-fopen]");const d=ev.target.closest&&ev.target.closest("[data-fdel]");
+  if(d){ev.stopPropagation();const [id,i]=d.dataset.fdel.split("|");const x=byId(DB.files,id);if(!x)return;const f=x.files.splice(+i,1)[0];x.state="draft";commit();toast(`${f} 를 뺐어요(작성 중)`);return}
+  if(o&&!ev.target.closest("[data-fdel]")){const [id,i]=o.dataset.fopen.split("|");const x=byId(DB.files,id);if(x)toast(`${x.files[+i]} 열기 — 시제품이라 실제 파일은 없어요`)}});
+document.addEventListener("change",ev=>{const t=ev.target.closest&&ev.target.closest("[data-fupl]");if(!t)return;const x=byId(DB.files,t.dataset.fupl);if(!x)return;const ns=[...t.files].map(f=>f.name);if(!ns.length)return;x.files=(x.files||[]).concat(ns);x.state="draft";commit();toast(`파일 ${ns.length}개를 붙였어요(작성 중)`)});
+function filesSeed(){NCOL["files|kind"]={"운영자료":"gray","학습자료":"pink","학생자료":"blue"};if(DB.files.length)return;[["학원 등록증 사본","운영자료",["registration.pdf"],["신고"]],["교습비 게시표","운영자료",["tuition-board.pdf"],["신고","게시"]],["개인정보 수집 동의서 양식","운영자료",["privacy-consent.docx"],["양식"]],["강사 계약서 양식","운영자료",["teacher-contract.hwp"],["양식","계약"]],["중1 수학 단원평가 1단원","학습자료",["m1-unit1-test.pdf","m1-unit1-answer.pdf"],["수학","평가"]],["중2 영어 단어 시험지","학습자료",["e2-voca.pdf"],["영어"]],["겨울방학 특강 안내문","학습자료",[],["안내"]]].forEach(([name,kind,files,tags],i)=>DB.files.push({id:"fl"+(i+1),name,kind,files,tags,state:"saved"}))}
+const FILES_BASE={title:"자료실",coll:"files",unit:"개",ph:"이름 · 태그 검색",addLabel:"자료 추가",help:"운영 자료(신고 서류 · 계약서 · 안내문 등)와 학습 자료(수업 자료)를 올리는 곳이에요. 학생 자료는 학생 창에 올려요. 노션 자료실과 같은 표예요.",
+  cols:[["이름",x=>x.name,"name"],["구분",x=>x.kind,"kind"],["첨부파일",x=>fileCell(x)],["태그",x=>(x.tags||[]).join(" · ")||"—","tags"]],filters:[],
+  fields:[["name","이름"],["kind","구분",["운영자료","학습자료","학생자료"],"opt"],["tags","태그",()=>[...new Set(DB.files.flatMap(f=>f.tags||[]))],"multi"]],
+  infoX:x=>filesBox(x)};
+LISTS.files=Object.assign({},FILES_BASE,{subs:[["o","운영 자료"],["l","학습 자료"],["a","전체"]]});
+LISTS.files_o=Object.assign({},FILES_BASE,{rows:()=>DB.files.filter(x=>!x.del&&x.kind==="운영자료").sort((a,b)=>a.name.localeCompare(b.name)),blank:()=>({id:uid("fl"),name:"새 자료",kind:"운영자료",files:[],tags:[]})});
+LISTS.files_l=Object.assign({},FILES_BASE,{rows:()=>DB.files.filter(x=>!x.del&&x.kind==="학습자료").sort((a,b)=>a.name.localeCompare(b.name)),blank:()=>({id:uid("fl"),name:"새 자료",kind:"학습자료",files:[],tags:[]})});
+LISTS.files_a=Object.assign({},FILES_BASE,{rows:()=>DB.files.filter(x=>!x.del),blank:()=>({id:uid("fl"),name:"새 자료",kind:"운영자료",files:[],tags:[]})});
+LISTS.bill_b=Object.assign({},LISTS.bookfees_b,{title:"청구서"});LISTS.bill_m=Object.assign({},LISTS.bookfees_m,{title:"청구서"});LISTS.bill_e=Object.assign({},LISTS.bookfees_e,{title:"청구서"});LISTS.bill_l=LISTS.bookfees_l;
 /* 297판(대표 '그렇게 합치자'): 손익 분석 = [손익(월별 요약) | 결제 내역(그 달 결제 상세 — 매출·지출)], 비용 메뉴 뺌. 손익 달 줄을 누르면 그 달 결제 내역 */
 LISTS.profit_p=Object.assign({},LISTS.profit,{help:LISTS.profit.help.replace("수강료·교재비·청구 항목·비용 화면에서 고쳐요.","수강료·교재비·청구 화면과 [결제 내역]에서 고쳐요. 달 줄을 누르면 그 달 결제 내역이 열려요.")});LISTS.profit.subs=[["p","손익"],["c","결제 내역"]];
 LISTS.profit_c=Object.assign({},LISTS.costs,{title:"손익 분석",help:"그 달 결제(매출·지출) 상세예요 — [손익] 숫자의 근거(노션 결제(학원) DB). [지출]·[매출]로 필터해 봐요. 수강료·교재비 결제는 청구 화면에서 들어와요."});
@@ -3820,7 +3838,7 @@ document.addEventListener("keydown",e=>{const tag=(e.target.tagName||"").toLower
 });
 window.addEventListener("beforeunload",e=>{if(dirtyCount()){e.preventDefault();e.returnValue=""}});
 /* 시작 */
-seed();try{etcSeed()}catch(e){console.error(e)}try{LTABS.completion=LTABS.reports;HEAD_DEF.completion=HEAD_DEF.reports}catch(e){}try{DB.enrolls.forEach(enTtSeed)}catch(e){}/* 예시 자료는 모두 지금 시간표로 안내했다고 봄 */seedLib();clsColorSeed();seedX();DB.areas=AREAS.map((n,i)=>({id:"ar"+i,name:n,course:"보통교과",_was:n,state:"saved"}));DB.glevels=ALL_GRADES.map((g,i)=>({id:"gl"+i,name:g,on:true,state:"saved"}));DB.exams.forEach(e=>{if(e.subject!==undefined&&!e.subjectIds){const m=DB.subjects.find(z=>z.area===e.subject&&(z.grades||[]).includes(e.grade))||DB.subjects.find(z=>z.area===e.subject);e.subjectIds=m?[m.id]:[];delete e.subject}});DB.events.forEach(e=>{if(e.kind==="상담"){e.kind="학원 일정";e.guide="상담"}});seedRecs();chargesSeed();if(window.HP)HP.today=TODAY;DB.blocks.forEach(tSnap);lastSnap=snapshot();
+seed();try{etcSeed();filesSeed()}catch(e){console.error(e)}try{LTABS.completion=LTABS.reports;HEAD_DEF.completion=HEAD_DEF.reports}catch(e){}try{DB.enrolls.forEach(enTtSeed)}catch(e){}/* 예시 자료는 모두 지금 시간표로 안내했다고 봄 */seedLib();clsColorSeed();seedX();DB.areas=AREAS.map((n,i)=>({id:"ar"+i,name:n,course:"보통교과",_was:n,state:"saved"}));DB.glevels=ALL_GRADES.map((g,i)=>({id:"gl"+i,name:g,on:true,state:"saved"}));DB.exams.forEach(e=>{if(e.subject!==undefined&&!e.subjectIds){const m=DB.subjects.find(z=>z.area===e.subject&&(z.grades||[]).includes(e.grade))||DB.subjects.find(z=>z.area===e.subject);e.subjectIds=m?[m.id]:[];delete e.subject}});DB.events.forEach(e=>{if(e.kind==="상담"){e.kind="학원 일정";e.guide="상담"}});seedRecs();chargesSeed();if(window.HP)HP.today=TODAY;DB.blocks.forEach(tSnap);lastSnap=snapshot();
 // 새로고침해도 보던 탭·화면 그대로(261112 대표). 시제품은 데이터가 새로 생성돼서 고친 내용·고른 시간표는 안 남음(학생 고른 것은 남김)
 DB.students.forEach((x,i)=>{const g=x.grade||"";const m=g.match(/^(초|중|고)(\d)/);if(m&&!x.birth&&i%4!==3){const y=2026-({초:6,중:12,고:15}[m[1]])-(+m[2]);x.birth=`${y}-${String(1+i%12).padStart(2,"0")}-${String(1+(i*7)%28).padStart(2,"0")}`}if(!x.gender&&i%5!==4)x.gender=i%2?"남학생":"여학생";if(!x.addr&&i%3!==2)x.addr=["운양동 하다아파트","장기동 푸른마을","구래동 바다빌라","마산동 하늘채"][i%4]+" "+(101+i%5)+"동"});
 (()=>{const sv=LS.get("tabs2",null);if(sv&&Array.isArray(sv.list)&&sv.list.length){sv.list.forEach(x=>{const ex=Object.assign({},x.state);if(ex.sel&&!(x.screen==="students"&&DB.students.some(s=>s.id===ex.sel)))delete ex.sel;openScreen(x.screen,true,ex)});activeTab=tabs[Math.min(sv.act||0,tabs.length-1)]}else{openScreen("timetable",true);openScreen("students",true);activeTab=tabs[0]}})();NAVB=[];NAVF=[];render();
