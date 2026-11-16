@@ -31,7 +31,7 @@ export const CLEAR_DBS = [
   "수강료(학원) DB",
   "청구 결제(학원) DB",
   "청구 항목(학원) DB",
-  "청구(학원) DB",
+  "청구서(학원) DB",
   "가정통신문(학원) DB",
   "알림톡 발송함(학원) DB",
   "자동화 로그(학원) DB",
@@ -74,7 +74,7 @@ export const GROUPS: { name: string; required: boolean; dbs: string[] }[] = [
   { name: "학생·수강", required: true, dbs: ["학생(학원) DB", "등록(학원) DB", "클래스(학원) DB", "시간표(학원) DB", "시즌(학원) DB"] },
   { name: "수업·학습", required: true, dbs: ["수업(학원) DB", "출석(학원) DB", "학습기록(학원) DB", "학습활동(학원) DB", "루틴 체크(학원) DB", "진도관리(학원) DB", "대시보드(학원) DB"] },
   { name: "보고서·알림", required: true, dbs: ["보고서(학원) DB", "알림톡 발송함(학원) DB", "가정통신문(학원) DB", "자동화 로그(학원) DB"] },
-  { name: "수납", required: true, dbs: ["수강료(학원) DB", "결제(학원) DB", "청구(학원) DB", "청구 항목(학원) DB", "청구 결제(학원) DB"] },
+  { name: "수납", required: true, dbs: ["수강료(학원) DB", "결제(학원) DB", "청구서(학원) DB", "청구 항목(학원) DB", "청구 결제(학원) DB"] },
   { name: "시험·일정", required: true, dbs: ["시험(학원) DB", "시험정보(학원) DB", "성적(학원) DB", "일정(학원) DB"] },
   { name: "직원", required: true, dbs: ["강사(학원) DB", "근무(학원) DB"] },
   { name: "기준 자료", required: false, dbs: ["학교(학원) DB", "교시(학원) DB", "루틴(학원) DB", "라이브러리(학원) DB", "단원목록(학원) DB", "자료(학원) DB"] },
@@ -88,7 +88,9 @@ const OLD_NAME = CLEAR_DBS[CLEAR_DBS.length - 1]
 export const RENAMED_DBS: Record<string, string> = {
   "진도교재(학원) DB": "진도관리(학원) DB",
   "교재배부(학원) DB": "청구 항목(학원) DB",
-  "교재비(학원) DB": "청구(학원) DB",
+  "교재비(학원) DB": "청구서(학원) DB",
+  // (11/16) 청구 → 청구서(한 장 = 학생 한 명 × 한 종류).
+  "청구(학원) DB": "청구서(학원) DB",
   "교재결제(학원) DB": "청구 결제(학원) DB",
 }
 export const currentName = (name: string) => RENAMED_DBS[name] ?? name
