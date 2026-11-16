@@ -262,13 +262,15 @@ async function buildReceiptLedger(body: any) {
   const paid=p.properties?.[PROP_PAYMENT_AMOUNT]?.number ?? null
   const billing=tuition?.properties?.["청구기간"]?.date
   if(tids.length!==1 || rids.length!==1)warnings.add("복수/미연결 수강료 결제: 학생·과목·기간별 금액 배분을 확인해야 합니다. 임의로 첫 등록을 선택하지 않았습니다.")
-  // Operator-approved export policy: billed tuition, with editable other-expense default zero.
+  // Operator-approved export policy: billed tuition, and other expense from the tuition `기타경비 금액` formula
+  // (v2.8.0 item 70: class `기타경비(매달)` → 기타경비 DB 신고 금액). Default zero when the formula is absent.
   // These are draft output values, not a write-back or a claim that the bill was fully received.
   const billed=tuition?.properties?.["청구금액"]?.formula?.number
   const amount=typeof billed === "number" && Number.isFinite(billed) ? billed : null
-  const etc=0
+  const etcRaw=tuition?.properties?.["기타경비 금액"]?.formula?.number
+  const etc=typeof etcRaw === "number" && Number.isFinite(etcRaw) && etcRaw > 0 ? etcRaw : 0
   if(amount===null)warnings.add("연결된 수강료의 청구금액을 확인할 수 없는 결제가 있습니다. 교습비를 결제금액으로 대체하지 않았습니다.")
-  if(amount!==null && paid!==null && amount!==paid)warnings.add("청구 교습비와 해당 결제금액이 다른 건이 있습니다. 분할납부·할인·과오납 등을 확인하고 원부·영수증은 실제 수납액에 맞춰 수정한 뒤 사용하세요.")
+  if(amount!==null && paid!==null && amount+etc!==paid)warnings.add("청구 교습비(+기타경비)와 해당 결제금액이 다른 건이 있습니다. 분할납부·할인·과오납 등을 확인하고 원부·영수증은 실제 수납액에 맞춰 수정한 뒤 사용하세요.")
   if(paid===null || paid<0 || /환불|취소/.test(plainText(p.properties?.[PROP_PAYMENT_NOTE])))warnings.add("금액 미입력·음수·환불/취소 메모가 포함된 결제는 원거래와 대조해야 합니다.")
   const no=sid && reg?.properties?.[PROP_REG_ENROLL_DATE]?.date?.start ? await ensureStudentRegistrationNumber(sid,student) : null
   const birth=seoulDate(student?.properties?.["생년월일"]?.date?.start ?? "")
@@ -277,7 +279,7 @@ async function buildReceiptLedger(body: any) {
   rows.push({paymentId:p.id,serialNo:await reserveLegalNumber("receipt",p.id),paymentDate:seoulDate(p.properties?.[PROP_PAYMENT_DATE]?.date?.start ?? ""),payerName:titleOf(student,"학생이름"),registrationNo:no,birthDate:birth,classId:course.classId,subject:course.subject,className:course.className,
    billingStart:seoulDate(billing?.start ?? ""),billingEnd:seoulDate(billing?.end || billing?.start || ""),billingMonth:billing?.start?.slice(0,7) ?? "",amount,etcExpense:etc,paidAmount:paid,note:plainText(p.properties?.[PROP_PAYMENT_NOTE])})
  }
- warnings.add("교습비는 연결된 수강료의 청구금액이며 기타경비는 출력용 기본값 0원입니다. 필요한 금액은 엑셀 다운로드 후 직접 수정하고 실제 수납액과 대조하세요.")
+ warnings.add("교습비는 연결된 수강료의 청구금액, 기타경비는 수강료의 기타경비 금액(클래스 기타경비(매달) 신고 금액, 없으면 0원)입니다. 한 번 받는 기타경비(청구)는 아직 넣지 않았습니다. 엑셀 다운로드 후 실제 수납액과 대조하세요.")
  warnings.add("환불·취소 전용 상태/원거래 연결 및 발행자/서명 정보는 아직 없습니다. 원부·영수증 출력은 대조·보완용 초안이며 확정 발급 전 확인이 필요합니다.")
  missingWarnings(rows.map(r=>({...r,studentName:r.payerName}))).forEach(v=>warnings.add(v))
  return {rows,warnings:[...warnings]}
