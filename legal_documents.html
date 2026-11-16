@@ -512,7 +512,7 @@
       html+=`<section class="class-receipt-list"><h2>${esc(documentTitle(snapshot))}</h2><div class="doc-sub">별지 제24호서식 항목 기반 초안 · 원부 5년 보관</div><h3>반명: ${field(g.className)} &nbsp; 교습과목: ${field(g.subject)}</h3>`;
     html+=`<table class="doc-table"><thead><tr><th>일련번호</th><th>납부일자</th><th>납부자(성명)</th><th>등록번호</th><th>생년월일</th><th>교습과목</th><th>신고 교습과정</th><th>교습기간</th><th>교습비</th><th>기타경비</th><th>결제금액</th><th>비고</th></tr></thead><tbody>`;
     g.rows.forEach(r=>html+=`<tr><td>${field(r.serialNo)}</td><td>${esc(r.paymentDate)}</td><td class="name-cell">${field(r.payerName)}</td><td>${field(r.registrationNo)}</td><td>${esc(r.birthDate)}</td><td>${field(r.subject)}</td><td>${field(r.className)}</td><td>${esc(billingText(r))}</td><td>${money(r.amount)}</td><td>${money(r.etcExpense)}</td><td>${money(r.paidAmount)}</td><td class="note-cell">${esc(r.note)}</td></tr>`);
-      html+=`</tbody></table><div class="legend">반별 결제금액 합계: ${won(g.rows.reduce((sum,r)=>sum+(r.paidAmount ?? 0),0))}<span class="screen-only">교습비는 청구금액, 기타경비는 출력용 기본값 0원입니다. 필요 시 엑셀에서 직접 수정하고 실제 수납액과 대조하세요.</span></div></section>`;
+      html+=`</tbody></table><div class="legend">반별 결제금액 합계: ${won(g.rows.reduce((sum,r)=>sum+(r.paidAmount ?? 0),0))}<span class="screen-only">교습비는 청구금액, 기타경비는 수강료의 기타경비 금액(클래스에 붙인 매달 기타경비, 없으면 0원)입니다. 필요 시 엑셀에서 직접 수정하고 실제 수납액과 대조하세요.</span></div></section>`;
     });
     return html+`<div class="legend">조회 전체 결제금액 합계: ${won(data.rows.reduce((sum,r)=>sum+(r.paidAmount ?? 0),0))}</div>`;
   }
