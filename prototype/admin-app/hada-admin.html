@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=471">
-<link rel="stylesheet" href="app.css?v=471">
-<link rel="stylesheet" href="pick.css?v=471">
-<link rel="stylesheet" href="field.css?v=471">
+<link rel="stylesheet" href="hada-tokens.css?v=472">
+<link rel="stylesheet" href="app.css?v=472">
+<link rel="stylesheet" href="pick.css?v=472">
+<link rel="stylesheet" href="field.css?v=472">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=471"><script src="hada-rules.js?v=471"></script><script src="alim-preview.js?v=471"></script><script src="pick.js?v=471"></script><script src="field.js?v=471"></script><script src="panel.js?v=471"></script>
+<link rel="stylesheet" href="alim.css?v=472"><script src="hada-rules.js?v=472"></script><script src="alim-preview.js?v=472"></script><script src="pick.js?v=472"></script><script src="field.js?v=472"></script><script src="panel.js?v=472"></script>
 <script>
 "use strict";
 
@@ -1890,7 +1890,7 @@ const LISTS={
    req:["name","inq"],edk:{preno:"pre"},beforeSet:x=>{if(x.state!=="draft"||!x._o)x._o=stuSnapO(x)},
   blank:()=>({id:uid("st"),name:"새 학생",school:"",grade:"",pre:"어머니",hold:false,memo:"",mom:"",dad:"",inq:nowStamp()}),
   extra:s=>{const es=DB.enrolls.filter(e=>e.studentId===s.id&&!e.ended);return `<div class="box"><h3>수강·시간표</h3>${es.length?es.map(e=>{const bl=DB.blocks.filter(b=>b.regs.includes(e.id)&&b.seasonId==="s1");return `<div class="row">${esc(cls(e.classId).name)} <span class="hint">${bl.map(b=>DAYS[b.day]+" "+fmt(b.start)).join(", ")||"시간표 없음"}</span></div>`}).join(""):'<div class="hint">아직 클래스가 없어요</div>'}<div class="row"><button class="btn sm" data-act="tt">이 학생 주간 시간표${IC("right","s")}</button><button class="btn sm" data-act="assign">시간표 입히기${IC("right","s")}</button></div></div>`}},
- classes:{title:"클래스",coll:"classes",unit:"개",infoX:c=>clsEtcBox(c),secs:[{title:"수강료",keys:["fee","qty","unit"]}],pairs:[["qty","unit",""]],cntUnit:r=>clsQU(r),onSet:(r,k)=>{if(k==="unit")setTimeout(render,0)},
+ classes:{title:"클래스",coll:"classes",unit:"개",req:["name","fee"],infoX:c=>clsEtcBox(c),secs:[{title:"수강료",keys:["fee","qty","unit"]}],pairs:[["qty","unit",""]],cntUnit:r=>clsQU(r),onSet:(r,k)=>{if(k==="unit")setTimeout(render,0)},
   cols:[["클래스",c=>c.name,"name"],["약칭",c=>c.short||"—","short"],["영역",c=>c.subject||"—","subject"],["강사",c=>tch(c.teacherId).name,"teacherId"],["개강-종강",c=>c.open&&c.close?md(c.open)+" - "+md(c.close):c.open?md(c.open)+" 개강":c.close?md(c.close)+" 종강":"—"],["학생",c=>DB.enrolls.filter(e=>e.classId===c.id&&!e.ended).length],["주 횟수",c=>{const n=DB.blocks.filter(b=>b.classId===c.id&&b.seasonId==="s1"&&b.mode==="group").length;return n?`주 ${n}회`:(DB.blocks.some(b=>b.classId===c.id)?"개별":"!시간표 없음")}],["수강료",c=>c.fee.toLocaleString(),"fee"],["한 달 수업량",c=>(c.qty||DB.blocks.filter(b=>b.classId===c.id&&b.seasonId==="s1"&&b.mode==="group").length*4)+clsQU(c)]],
   filters:[["이 시즌과 겹치는 클래스",c=>classInSeason(c,seasonOf("s1")),true],["특강",c=>c.kind==="특강"],["종료 예정",c=>!!c.close]],
   fields:[["name","클래스 이름"],["short","약칭",null,"text","좁은 시간표 칸에 보여요 · 4-6자"],["subject","영역",()=>optItems("area"),"opt","과목 화면 [영역] 탭의 목록과 같아요"],["course","신고 교습과정명",null,"text","교육청에 신고한 교습과정 이름 그대로 — 법정 서류(출석부·수강생 대장·교습비 목록·영수증 원부)에 클래스 이름 대신 나가요"],["teacherId","담당 강사","teachers"],["arts","클래스 구분",["교과","예체능"],"seg","예체능이면 보고서가 활동 보고서로, 수료는 프로그램 수료 보고서로 나가요 — 노션 클래스 구분"],["kind","클래스 유형",["정규","특강"],"seg","정규 반인지 방학·시험 대비 특강인지 — 노션 클래스 유형"],["hex","색",null,"clscolor","시간표 블록 색 · 노션 [색] 10색 또는 직접 고른 색 · 운영 중인 다른 클래스 색은 고를 수 없어요"],["open","개강일",null,"date","이 날 앞에는 수업을 만들지 않아요 · 비우면 처음부터"],["close","종강일",null,"date","이 날 뒤에는 수업을 만들지 않고 종료로 바뀌어요 · 비우면 계속"],["fee","월 수강료",null,"won"],["qty","한 달 수업량",null,"cnt","비우면 시간표로 계산해요"],["unit","단위",null,"qunit"],],
@@ -3519,7 +3519,7 @@ function gtCellEdit(td,L){document.querySelectorAll(".gted").forEach(x=>x.remove
   if(false){const o=spec[2];if(L.beforeSet)L.beforeSet(r,k);if(spec[3]!=="seg"){r[k]=!r[k]}else{const i=o.indexOf(r[k]);r[k]=o[(i+1)%o.length]}if(L.onSet)L.onSet(r,k);markDirty(L,r);commit();toast(`${spec[1]}: ${spec[3]!=="seg"?(r[k]?o[0]:o[1]):r[k]} — 한 번 더 누르면 바뀌어요`);return}
   const box=document.createElement("div");box.className="gted";document.body.appendChild(box);gtCellBox(box,td,spec);
   let done=false;const z=gtSnap(r);const fin=save=>{if(done)return;done=true;box.remove();if(save)commit();else{gtUndo(r,z);render()}const cs=activeTab.state.csel;if(cs)setTimeout(()=>gtSelect(cs.id,cs.k),0)};
-  const set=(kk,val)=>{if(r[kk]===val)return;if((L.req||[]).includes(kk)&&(val==null||val==="")){toast(`${spec[1]}은(는) 비울 수 없어요`);return}if(L.beforeSet)L.beforeSet(r,kk);r[kk]=val;if(L.onSet)L.onSet(r,kk);markDirty(L,r);const tr=document.querySelector(`#view tr[data-id="${r.id}"]`);if(tr){tr.classList.add("draft");tr.innerHTML=gtRowCells(L,r,L.merge?(tr.querySelector("td[data-mg]")?{span:tr.querySelector("td[data-mg]").rowSpan}:{skip:true}):null);gtCellBind(tr,L)}
+  const set=(kk,val)=>{const raw=(box.querySelector("input")||{}).value;if((L.req||[]).includes(kk)&&(val==null||val===""||(raw!==undefined&&String(raw).trim()===""))){toast(`${spec[1]}은(는) 비울 수 없어요`);return}if(r[kk]===val)return;if(false){toast(`${spec[1]}은(는) 비울 수 없어요`);return}if(L.beforeSet)L.beforeSet(r,kk);r[kk]=val;if(L.onSet)L.onSet(r,kk);markDirty(L,r);const tr=document.querySelector(`#view tr[data-id="${r.id}"]`);if(tr){tr.classList.add("draft");tr.innerHTML=gtRowCells(L,r,L.merge?(tr.querySelector("td[data-mg]")?{span:tr.querySelector("td[data-mg]").rowSpan}:{skip:true}):null);gtCellBind(tr,L)}
     if(spec[3]!=="multi"&&!["text","won","cnt","num","tel","memo","isbn",undefined].includes(spec[3])||Array.isArray(spec[2])||spec[2]==="teachers"||typeof spec[2]==="function")setTimeout(()=>fin(true),0)};
   hfField(box,L,r,spec,set,{label:""});const inp=box.querySelector("input,textarea,.hf-box[tabindex],button");if(inp){inp.focus();if(inp.select)try{inp.select()}catch(_){}}
   const bx=box.querySelector(".hf-box");if(bx&&(Array.isArray(spec[2])||spec[2]==="teachers"||typeof spec[2]==="function"||spec[3]==="date"))bx.click();
