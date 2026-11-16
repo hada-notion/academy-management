@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=498">
-<link rel="stylesheet" href="app.css?v=498">
-<link rel="stylesheet" href="pick.css?v=498">
-<link rel="stylesheet" href="field.css?v=498">
+<link rel="stylesheet" href="hada-tokens.css?v=499">
+<link rel="stylesheet" href="app.css?v=499">
+<link rel="stylesheet" href="pick.css?v=499">
+<link rel="stylesheet" href="field.css?v=499">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=498"><script src="hada-rules.js?v=498"></script><script src="alim-preview.js?v=498"></script><script src="pick.js?v=498"></script><script src="field.js?v=498"></script><script src="panel.js?v=498"></script>
+<link rel="stylesheet" href="alim.css?v=499"><script src="hada-rules.js?v=499"></script><script src="alim-preview.js?v=499"></script><script src="pick.js?v=499"></script><script src="field.js?v=499"></script><script src="panel.js?v=499"></script>
 <script>
 "use strict";
 
@@ -763,7 +763,7 @@ function renderLessons(v,t){const st=t.state;if(!seasonOf(st.season))st.season=s
   v.innerHTML=`${titleRow(st,s,true)}<div class="top">
     <div class="zone">${weekNav(st)}<span class="seg no-print mode lmode"><button id="lmAtt" class="${st.lmode!=="mk"?"on":""}" title="출결 — 수업을 눌러 출결을 입력해요">출결</button><button id="lmMk" class="${st.lmode==="mk"?"on":""}" title="보강 — 빈 칸을 끌어 보강을 생성해요">보강</button></span>
     ${combo("cbFind",[...DB.classes.map(c=>({v:"cls:"+c.id,label:c.name,sub:"클래스 · "+tch(c.teacherId).name})),...DB.teachers.map(c=>({v:"tch:"+c.id,label:c.name,sub:"강사"})),...DB.students.map(c=>({v:"stu:"+c.id,label:c.name,sub:"학생 · "+[c.school,c.grade].filter(Boolean).join(" ")}))],f.cls?"cls:"+f.cls:f.tch?"tch:"+f.tch:f.stu?"stu:"+f.stu:"","클래스·강사·학생","search")}</div>
-    <div class="zone end no-print">${s.state!=="확정"?`<span class="state w tb-st" title="예정 시즌 — [운영 시작]하면 수업을 생성할 수 있어요">${IC("clock","s")}예정 시즌</span>`:missing.length?`<button class="btn pri tb-num" id="makeWeek" title="이 주 시간표 중 수업이 없는 것을 모두 생성해요">${IC("plus","s")}수업 생성 <span class="num">${missing.length}</span></button>`:`<span class="state tb-st" title="이 주 시간표의 수업 페이지가 모두 생성돼 있어요">${IC("checksq")}수업 생성 완료</span>`}
+    <div class="zone end no-print">${s.state!=="확정"?`<span class="state w tb-st" title="예정 시즌 — [운영 시작]하면 수업을 생성할 수 있어요">${IC("clock","s")}예정 시즌</span>`:`<button class="btn tb-num act" id="makeWeek" ${missing.length?"":"disabled"} title="${missing.length?`수업 생성 — 이 주 시간표 중 수업이 없는 ${missing.length}개를 생성해요`:"수업 생성 — 이 주 시간표의 수업이 모두 생성돼 있어요"}">${IC("plussq","s")}<span class="num">${missing.length}</span></button>`}
     ${(()=>{const sn=ZOOM[st.zoom][1];return `<span class="tb-grp zoomgrp"><button class="btn icon tb-ic" id="zOut" title="보기 크기 작게 (−)" ${st.zoom<=0?"disabled":""}>${IC("zoomout")}</button><span class="zoomlbl" title="보기 크기 — 한 칸 ${sn===60?"1시간":sn+"분"}(시간표와 같이 바뀌어요)">${sn===60?"1시간":sn+"분"}</span><button class="btn icon tb-ic" id="zIn" title="보기 크기 크게 (+)" ${st.zoom>=ZOOM.length-1?"disabled":""}>${IC("zoomin")}</button></span>`})()}
     <span class="vseg wkd no-print" id="wkB" title="보는 요일"><button data-wkd="5" class="${st.weekend?"":"on"}" title="평일만 (월~금)">5</button><button data-wkd="7" class="${st.weekend?"on":""}" title="주말 포함 (월~일)">7</button></span>
     <span class="tb-grp"><button class="btn icon tb-ic" id="undoB" title="실행 취소 Ctrl+Z">${IC("cul")}</button><button class="btn icon tb-ic" id="redoB" title="다시 실행 Ctrl+Y">${IC("cur")}</button></span>${rvBtn()}<button class="btn pri tb-num" id="saveAll" ${dirtyCount()?"":"disabled"} title="${dirtyTitle()}">${IC("save")}저장 <span class="num">${dirtyCount()}</span></button>
