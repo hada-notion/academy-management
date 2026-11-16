@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=495">
-<link rel="stylesheet" href="app.css?v=495">
-<link rel="stylesheet" href="pick.css?v=495">
-<link rel="stylesheet" href="field.css?v=495">
+<link rel="stylesheet" href="hada-tokens.css?v=496">
+<link rel="stylesheet" href="app.css?v=496">
+<link rel="stylesheet" href="pick.css?v=496">
+<link rel="stylesheet" href="field.css?v=496">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=495"><script src="hada-rules.js?v=495"></script><script src="alim-preview.js?v=495"></script><script src="pick.js?v=495"></script><script src="field.js?v=495"></script><script src="panel.js?v=495"></script>
+<link rel="stylesheet" href="alim.css?v=496"><script src="hada-rules.js?v=496"></script><script src="alim-preview.js?v=496"></script><script src="pick.js?v=496"></script><script src="field.js?v=496"></script><script src="panel.js?v=496"></script>
 <script>
 "use strict";
 
@@ -1242,7 +1242,7 @@ function addStudentToBlock(b,sid){snapRegs(b);let en=DB.enrolls.find(e=>e.studen
 const HEAD_TONE={"전송 완료":"green","전송 전":"yellow","보내는 중":"blue","미납":"red","완료":"green","과오납":"yellow","켜짐":"green","꺼짐":"gray","운영 중":"green","예정":"yellow","종료":"red","진행 중":"blue","다음 교재":"gray","미사용":"yellow","특강":"purple"};
 const hst=t=>t?{t,tone:HEAD_TONE[t]||"gray"}:null;
 const HEAD_DEF={/* 창 머리 재료(기준 4장 "창 머리 화면별 재료"): name(없으면 표 첫 열) · belong(2줄 소속) · info(3줄 정보) · state(상태 알약) */
-  events:r=>({belong:r.kind,info:[r.kind==="휴원"?((r.classIds||[]).length?"클래스 "+r.classIds.length+"개 휴원":"클래스 없음 — 수업 그대로"):"",r.start?D10(r.start)+(r.end&&r.end!==r.start?" - "+D10(r.end):""):"",tch(r.who).name,r.pub?"학부모 공개":""],state:hst(r.stat)}),
+  events:r=>({belong:r.kind,info:[r.kind==="휴원"?((r.classIds||[]).length?"클래스 "+r.classIds.length+"개 휴원":"클래스 없음 — 수업 그대로"):"",r.start?D10(r.start)+(r.end&&r.end!==r.start?" - "+D10(r.end):""):"",(tch(r.who)||{}).name||"",r.pub?"학부모 공개":""],state:hst(r.stat)}),
   letters:r=>({name:nmCls(r.classId),belong:r.month,info:[tch((cls(r.classId)||{}).teacherId).name,(r.n||0)+"명"],state:hst(r.sent?"전송 완료":"전송 전")}),
   teachers:r=>({belong:r.role,info:["클래스 "+DB.classes.filter(c=>!c.del&&c.teacherId===r.id).length+"개",r.days]}),
   reports:r=>({name:nmCls(r.classId),belong:r.from?D10(r.from)+" - "+D10(r.to):"",info:[(r.kind||"")+" 보고서",(r.n||0)+"명",r.left?"남은 "+r.left+"명":""],state:hst(!r.sent?"전송 전":r.left?"보내는 중":"전송 완료")}),
@@ -2481,7 +2481,7 @@ function renderList(v,t){v.classList.toggle("tedit-on",!!(t.state&&t.state.tedit
   <div class="top pg-ttl ttl"><h1>${pgIc(curScr())}${L.title}</h1>${t.screen==="seasons"?`<button type="button" class="nlink" data-tlink="timetable" title="시간표로 돌아가기">${IC("left","s")}시간표</button>`:""}${monthNav(L,st)}<span class="pg-cnt">${rows.length}${L.unit||"개"}</span>${L.note?`<span class="pg-note">${L.note(rows)}</span>`:""}${L.help?HELP(L.help):""}${notionBtn(t.screen)}${st.tedit?`<span class="tedtag">${IC("pen","s")}표 편집 중 — 칸을 눌러 고쳐요</span>`:""}${Object.keys(st.cf||{}).length||st.sort?`<span class="cfbar">${IC("filter","s")}${[...Object.keys(st.cf||{}).map(k=>(listCols(L).find(z=>z.k===k)||{}).l+(Array.isArray(st.cf[k])?" 제외":" 검색")),st.sort?`${(listCols(L).find(z=>z.k===st.sort.k)||{}).l} ${st.sort.d==="desc"?"내림차순":"오름차순"}`:""].filter(Boolean).join(" · ")}<button type="button" class="linkbtn" id="cfClr">해제</button></span>`:""}</div>
   <div class="pg-bar">${tlinkBar(t.screen)}${LISTS[t.screen].subs?`<span class="vseg subseg">${LISTS[t.screen].subs.map(([k,n])=>`<button class="${st.sub===k?"on":""}" data-sub="${k}">${n}</button>`).join("")}</span>`:""}${L.card&&st.vw==="c"?`<button type="button" class="chip csort" id="cSort" title="카드 정렬">${IC("aup","s")}${({name:"이름순",subj:"과목순",series:"시리즈순",use:"쓰는 학생순"})[st.csort]||"넣은 순"}</button>`:""}${L.card?`<span class="vseg vwseg"><button class="${st.vw==="c"?"":"on"}" data-vw="t" title="표로 보기">${IC("menu")}</button><button class="${st.vw==="c"?"on":""}" data-vw="c" title="카드로 보기 — 표지가 보여요">${IC("grid")}</button></span>`:""}<span class="searchbox">${IC("search")}<input class="inp" id="lq" placeholder="${L.ph||"검색"}" value="${esc(st.q||"")}"></span>${L.filters.map(([n,,,key])=>`<span class="chip ${st.lf[key||n]?"on":""}" data-f="${key||n}">${n}</span>`).join("")}<span class="sp"></span>${st.tedit?"":actsHtml(L)}${tbSlots(st,{add:!!(L.blank||L.add),addTitle:`${L.addLabel||L.title+" 추가"} — 오른쪽 창에 새 줄`,noAddWhy:L.ro?"보기만 하는 화면이에요":L.noAddWhy,up:!!(L.blank||L.upBlank),hid:stuColsCfg().hidden.length,ro:L.ro})}<span class="tb-grp"><button class="btn icon tb-ic" id="undoB" title="실행 취소 Ctrl+Z">${IC("cul")}</button><button class="btn icon tb-ic" id="redoB" title="다시 실행 Ctrl+Y">${IC("cur")}</button></span>${rvBtn()}<button class="btn pri tb-num" id="saveAll" ${dirtyCount()?"":"disabled"} title="${dirtyTitle()}">${IC("save","s")}저장 <span class="num">${dirtyCount()}</span></button><button class="btn icon tb-ic" id="panelT" title="${!(panelOpen||st.sel)?"오른쪽 창 띄우기":!dockOn?"옆에 고정 — 표를 가리지 않게":"창 닫기"} (])">${IC("panel")}</button></div>
   <div class="body"><div class="list">
-  ${L.cal?seasonCal(L,st):L.card&&st.vw==="c"?bookCards(L,rows,st):gtTable(L,rows,st)}
+  ${L.cal?(L.calFn?L.calFn(L,st):seasonCal(L,st)):L.card&&st.vw==="c"?bookCards(L,rows,st):gtTable(L,rows,st)}
   ${rows.length?"":`<div class="empty">${/* 260판: 필터한 것이 없으면 "이 달에는 없음", 필터한 게 있으면 "맞는 줄 없음" */(st.q||Object.values(st.lf||{}).some(Boolean)||Object.keys(st.cf||{}).length)?(L.empty||"맞는 줄이 없어요")+" — 필터를 해제하면 더 보여요":L.byMonth?`${st.month||thisM()}에는 ${L.title}${/[가-힣]$/.test(L.title)&&((L.title.charCodeAt(L.title.length-1)-0xAC00)%28)?"이":"가"} 없어요 — ‹ › 로 다른 달을 봐요`:(L.empty||`아직 ${L.title} 줄이 없어요`)}</div>`}</div>
   ${panelOpen||sel?`<div class="panel" id="lp">${st.bfind&&!sel?bookFindHtml(st):drillTop(st)?(drillTop(st).isBlk?"":detailHtml(drillTop(st).L,drillTop(st).row)):sel?detailHtml(L,sel):todoPanel(L,st)}</div>`:''}</div>`;
   const bn=v.querySelector("#bnX");if(bn)bn.onclick=()=>{st.banner=false;render()};
@@ -3199,6 +3199,18 @@ LISTS.reports=Object.assign(LISTS.reports,{title:"정기 보고서",rows:()=>DB.
 
 /* 246판: 청구 = [기타경비 | 전체 줄] · 247판: 손익 분석 = [손익 | 지출](노션 손익 분석 페이지의 지출내역 보기) */
 /* 청구서 = 교재비 · 재료비 · 기타경비 · 전체 줄(노션 청구서 메뉴와 같은 탭) */LISTS.bill=Object.assign({},LISTS.bookfees,{title:"청구서",subs:[["b","교재비"],["m","재료비"],["e","기타경비"],["l","전체 줄"],["c","기타경비 목록"]]});LISTS.bill_c=Object.assign({},LISTS.etcs,{title:"청구서"});
+/* 일정 [달력 | 표]: 달력 = 달력 틀 월간. 칩 = 구분별 바탕(학원 일정 · 학사 일정 · 휴원 · 할일), 글자는 진한 기본색 */
+const EV_BG={"학원 일정":"info","학사 일정":"danger","휴원":"gray","할일":"success"};
+function eventsCal(L,st){const ym=(st.month||thisM()).replace(".","-");const evs=DB.events.filter(e=>!e.del&&e.start);
+  const on=d=>evs.filter(e=>e.start<=d&&(e.end||e.start)>=d).sort((a,b)=>String(a.kind).localeCompare(String(b.kind))||String(a.name).localeCompare(String(b.name)));
+  return `<div class="evcal">${CALF.month({ym,cls:"evcf",rowH:104,dayCls:d=>"",cell:d=>`<button type="button" class="cfadd" data-evday="${d}" title="${mdw(d)} 일정 추가">${IC("plus","s")}일정</button>`+on(d).map(e=>`<button type="button" class="evchip ev-${EV_BG[e.kind]||"gray"} ${String(st.sel)===String(e.id)?"sel":""}" data-evsel="${e.id}" title="${esc(e.kind||"")} · ${esc(e.name)}${e.end&&e.end!==e.start?` · ${md(e.start).slice(5)} - ${md(e.end).slice(5)}`:""}">${esc(e.name)}</button>`).join("")})}</div>`}
+document.addEventListener("click",ev=>{const c=ev.target.closest&&ev.target.closest("#view .evcal [data-evsel]");const a=ev.target.closest&&ev.target.closest("#view .evcal [data-evday]");if(!c&&!a)return;ev.stopPropagation();const st=activeTab.state;
+  if(c){st.sel=c.dataset.evsel;panelOpen=true;render();return}
+  const L=LISTS.events;const x=L.blank();x.start=a.dataset.evday;x.state="draft";DB.events.push(x);st.sel=x.id;panelOpen=true;commit();toast(`${mdw(a.dataset.evday)} 일정을 추가했어요(작성 중) — 오른쪽 창에서 이름 · 구분을 고쳐요`)},true);
+LISTS.events_c=Object.assign({},LISTS.events,{cal:true,calFn:eventsCal,byMonth:r=>{const m=(activeTab&&activeTab.state.month)||thisM(),ym=m.replace(".","-");return String(r.start||"").slice(0,7)<=ym&&String(r.end||r.start||"").slice(0,7)>=ym?m:""},filters:[]});
+LISTS.events_l=Object.assign({},LISTS.events);
+LISTS.events.subs=[["c","달력"],["l","표"]];
+
 /* 자료실(노션 자료(학원) DB와 같은 칸): 이름 · 구분 · 첨부파일 · 태그. 탭 = 노션 보기 [운영 자료 | 학습 자료 | 전체] */
 const fileExt=f=>(String(f).match(/\.([a-z0-9]+)$/i)||[,""])[1].toUpperCase();
 const fileCell=x=>(x.files||[]).length?`${x.files[0]}${x.files.length>1?` 외 ${x.files.length-1}개`:""}`:"—";
