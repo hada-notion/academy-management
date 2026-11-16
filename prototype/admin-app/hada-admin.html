@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=494">
-<link rel="stylesheet" href="app.css?v=494">
-<link rel="stylesheet" href="pick.css?v=494">
-<link rel="stylesheet" href="field.css?v=494">
+<link rel="stylesheet" href="hada-tokens.css?v=495">
+<link rel="stylesheet" href="app.css?v=495">
+<link rel="stylesheet" href="pick.css?v=495">
+<link rel="stylesheet" href="field.css?v=495">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=494"><script src="hada-rules.js?v=494"></script><script src="alim-preview.js?v=494"></script><script src="pick.js?v=494"></script><script src="field.js?v=494"></script><script src="panel.js?v=494"></script>
+<link rel="stylesheet" href="alim.css?v=495"><script src="hada-rules.js?v=495"></script><script src="alim-preview.js?v=495"></script><script src="pick.js?v=495"></script><script src="field.js?v=495"></script><script src="panel.js?v=495"></script>
 <script>
 "use strict";
 
@@ -2723,7 +2723,7 @@ const mkOldest=(sid,cid)=>absAll().filter(a=>a.sid===sid&&(!cid||a.classId===cid
 /* 그 결석 수업의 시간(새 보강 기본 시간) */
 const mkTimeOf=k=>{const b=byId(DB.blocks,String(k).split("|")[0]);return b?[b.start,b.end]:[18*60,19*60]};
 function mkDayCell(d,st){const ms=(DB.mk||[]).filter(m=>!m.del&&m.d===d).sort((a,b)=>a.start-b.start);const ab=(st._abBy||{})[d]||[];
-  return ms.map(m=>{const c=m.classId?cls(m.classId):null;return CALF.blk({col:c?Object.assign(classColor(c),{bar:classBar(c)}):{bg:"var(--canvas)",bar:"var(--line2)"},cls:"mkblk",attr:`data-mkb="${m.id}" title="${esc(mkName(m))} — 학생을 끌어 놓거나, 고른 학생을 누르면 넣어요 · 두 번 누르면 수업 화면"`,t:`${fmt(m.start)} ${esc(c?c.name:"보강")}`,m:`보강 · ${m.sids.length}명`})}).join("")+
+  return `<button type="button" class="cfadd" data-mkday="${d}" title="${mdw(d)} 보강 생성">${IC("plus","s")}보강</button>`+ms.map(m=>{const c=m.classId?cls(m.classId):null;return CALF.blk({col:c?Object.assign(classColor(c),{bar:classBar(c)}):{bg:"var(--canvas)",bar:"var(--line2)"},cls:"mkblk",attr:`data-mkb="${m.id}" title="${esc(mkName(m))} — 학생을 끌어 놓거나, 고른 학생을 누르면 넣어요 · 두 번 누르면 수업 화면"`,t:`${fmt(m.start)} ${esc(c?c.name:"보강")}`,m:`보강 · ${m.sids.length}명`})}).join("")+
     ab.map(a=>{const op=absOpen(a.k),mk=a.st==="pend"?absMk(a.k):null;const c=cls(a.classId);return `<button type="button" class="mkab ${op?"open":""} ${op&&mkSelK()===a.k?"sel":""}" ${op?`data-mksel="${a.k}"`:""} title="${esc(c?c.name:"")} 결석 · ${esc(MK_ST[a.st][0])}${op?" — 눌러서 고르고 날짜나 보강 블록을 누르면 보강":""}"><b>${esc(stu(a.sid)?stu(a.sid).name:"")}</b> <small>${esc(c?c.name:"")}</small>${mk?` <small>→ ${md(mk.d).slice(5)}</small>`:""}</button>`}).join("")}
 /* 오른쪽 창 = 수업 화면 할 일 [보강]과 같은 학생 카드(HP.wait) */
 function mkSidePanel(st){return `<div class="panel" id="panel"><div class="phead"><div class="pt"><h2>보강 대기${HELP("등록(학생+클래스)마다 카드예요. 숫자 = 보강해야 할 횟수. 카드를 누르면 결석이 열리고 보강 필요 ↔ 보강 없음을 정해요. 카드를 끌어 달력 날짜에 놓으면 그 결석 수업 시간으로 새 보강이 생기고, 보강 블록에 놓으면 그 보강에 들어가요(같은 클래스만).")}</h2></div></div><div class="box"><div class="hpm" id="hpWait"></div></div>${PANEL.foot({hint:"카드를 끌어 날짜(새 보강)나 보강 블록에 놓아요"})}</div>`}
@@ -2735,7 +2735,15 @@ function mkSideMount(v,st){const host=v.querySelector("#hpWait");if(!host)return
     onWhy:(k,why)=>{DB.mkw[k]=Object.assign({},DB.mkw[k],{dec:"none",why});toast(`보강 없음 사유를 저장했어요${why?` — ${why}`:""}`);render()},
     onDrag:(e,ids,cname)=>{const it=items.find(x=>x.sid===ids[0]&&x.cls===cname);e.dataTransfer.setData("text/mks",ids[0]);if(it)e.dataTransfer.setData("text/mkc",it.cid);e.dataTransfer.effectAllowed="copy";document.body.classList.add("dragging-stu");
       v.querySelectorAll("[data-mkb]").forEach(b=>{const m=DB.mk.find(x=>x.id===b.dataset.mkb);b.classList.add(!m||!m.classId||!it||m.classId===it.cid?"drop-ok":"drop-no")})}})}
-function mkCalBind(v,st){const drop=(e)=>{const sid=e.dataTransfer.getData("text/mks"),cid=e.dataTransfer.getData("text/mkc");if(!sid)return null;const a=mkOldest(sid,cid);if(!a){toast("보강을 기다리는 결석이 없어요");return null}return a.k};
+/* 날짜 칸 [+ 보강] → 그 날 보강 생성 상자(개별 시간 추가와 같은 부품: 고르기 · 시작 - 끝) */
+function mkDayDialog(d){const W=mkWait().filter(a=>absOpen(a.k)).sort((a,b)=>a.d.localeCompare(b.d));if(!W.length)return toast("보강을 기다리는 결석이 없어요");
+  const pre=mkSelK()&&W.some(a=>a.k===mkSelK())?mkSelK():W[0].k;const F={k:pre,s:"",e:""};const setT=()=>{const [a,b]=mkTimeOf(F.k);F.s=fmt(a);F.e=fmt(b)};setT();
+  modal(`<h2>${mdw(d)} 보강 생성</h2><div class="box"><div class="hfgrid"><div class="hfh" data-mkd="s"></div><div class="hfh" data-mkd="t"></div></div></div><div class="actions"><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">${IC("plus","s")}보강 생성</button></div>`,(m,close)=>{
+    const ht=m.querySelector('[data-mkd="t"]');const drawT=()=>HF.timeRange(ht,{label:"시작 - 끝",value:[F.s,F.e],help:"기본 = 그 학생이 빠진 수업 시간",onChange:v=>{const [a,b]=v||[];F.s=a||"";F.e=b||""}});
+    HF.select(m.querySelector('[data-mkd="s"]'),{icon:"user",label:"학생",value:F.k,clear:false,help:"보강을 기다리는 결석 — 오래된 순",items:W.map(a=>({v:a.k,t:`${nmStu(a.sid)} · ${cls(a.classId)?cls(a.classId).name:""}`,sub:`${md(a.d).slice(5)}(${DAYS[dow(a.d)]}) 결석`})),onChange:v=>{if(!v)return;F.k=v;setT();drawT()}});drawT();
+    m.querySelector("#cc").onclick=close;
+    m.querySelector("#co").onclick=()=>{const s0=t2m(F.s),e0=t2m(F.e);if(s0==null||e0==null||e0<=s0)return toast("시작 - 끝 시간을 넣어 주세요");close();mkNew(F.k,d,s0,e0)}})}
+function mkCalBind(v,st){v.querySelectorAll("[data-mkday]").forEach(b=>b.onclick=ev=>{ev.stopPropagation();mkDayDialog(b.dataset.mkday)});const drop=(e)=>{const sid=e.dataTransfer.getData("text/mks"),cid=e.dataTransfer.getData("text/mkc");if(!sid)return null;const a=mkOldest(sid,cid);if(!a){toast("보강을 기다리는 결석이 없어요");return null}return a.k};
   v.querySelectorAll(".cfday:not(.outside)").forEach(c=>{c.addEventListener("dragover",e=>{if(!e.dataTransfer.types.includes("text/mks"))return;e.preventDefault();c.classList.add("drop")});c.addEventListener("dragleave",e=>{if(!c.contains(e.relatedTarget))c.classList.remove("drop")});
     c.addEventListener("drop",e=>{c.classList.remove("drop");if(e.target.closest("[data-mkb]"))return;e.preventDefault();const k=drop(e);if(k){const [s0,e0]=mkTimeOf(k);mkNew(k,c.dataset.cfd,s0,e0)}});
     c.addEventListener("click",e=>{if(e.target.closest("[data-mkb],[data-mksel]"))return;const k=mkSelK();if(k){const [s0,e0]=mkTimeOf(k);mkNew(k,c.dataset.cfd,s0,e0)}})});

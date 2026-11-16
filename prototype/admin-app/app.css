@@ -2932,3 +2932,6 @@ body.dragging-stu .blk.cfblk.drop-no{opacity:.3}
 table.stt.mkt{table-layout:auto}.stt.mkt td{overflow:visible}
 /* 자료실 */
 .fupl{cursor:pointer}
+/* 날짜 칸 [+ 보강] */
+.cfday .cfadd{position:absolute;top:4px;right:4px;display:inline-flex;align-items:center;gap:2px;height:24px;padding:0 8px;border-radius:6px;font:inherit;font-size:var(--text-caption);font-weight:600;color:var(--brand-deep);background:var(--btn-bg);border:1px solid var(--btn-line);box-shadow:var(--btn-raise);cursor:pointer;opacity:0;transition:opacity .12s}
+.cfday:hover .cfadd,.cfday .cfadd:focus-visible{opacity:1}
