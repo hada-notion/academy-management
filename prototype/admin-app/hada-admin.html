@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=460">
-<link rel="stylesheet" href="app.css?v=460">
-<link rel="stylesheet" href="pick.css?v=460">
-<link rel="stylesheet" href="field.css?v=460">
+<link rel="stylesheet" href="hada-tokens.css?v=461">
+<link rel="stylesheet" href="app.css?v=461">
+<link rel="stylesheet" href="pick.css?v=461">
+<link rel="stylesheet" href="field.css?v=461">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=460"><script src="hada-rules.js?v=460"></script><script src="alim-preview.js?v=460"></script><script src="pick.js?v=460"></script><script src="field.js?v=460"></script><script src="panel.js?v=460"></script>
+<link rel="stylesheet" href="alim.css?v=461"><script src="hada-rules.js?v=461"></script><script src="alim-preview.js?v=461"></script><script src="pick.js?v=461"></script><script src="field.js?v=461"></script><script src="panel.js?v=461"></script>
 <script>
 "use strict";
 
@@ -1233,13 +1233,13 @@ function addStudentToBlock(b,sid){snapRegs(b);let en=DB.enrolls.find(e=>e.studen
    3줄 = 바로 가기(phead의 sub). 줄마다 높이 고정, 넘치면 … — 창마다 탭 위치가 같다 */
 
 /* 창 머리 정의(그리는 것은 창 모듈 PANEL.head): 2줄 = 상태·핵심 값(화면 이름을 적지 않는다, 값은 2~3개까지), 오른쪽 끝 = 그 줄의 상태 하나. 목록 이름(coll)으로 찾는다 */
-const HEAD_TONE={"전송 완료":"green","전송 전":"yellow","미납":"red","완료":"green","과오납":"yellow","켜짐":"green","꺼짐":"gray","운영 중":"green","예정":"yellow","종료":"red","진행 중":"blue","다음 교재":"gray","미사용":"yellow","특강":"purple"};
+const HEAD_TONE={"전송 완료":"green","전송 전":"yellow","보내는 중":"blue","미납":"red","완료":"green","과오납":"yellow","켜짐":"green","꺼짐":"gray","운영 중":"green","예정":"yellow","종료":"red","진행 중":"blue","다음 교재":"gray","미사용":"yellow","특강":"purple"};
 const hst=t=>t?{t,tone:HEAD_TONE[t]||"gray"}:null;
 const HEAD_DEF={/* 창 머리 재료(기준 4장 "창 머리 화면별 재료"): name(없으면 표 첫 열) · belong(2줄 소속) · info(3줄 정보) · state(상태 알약) */
   events:r=>({belong:r.kind,info:[r.kind==="휴원"?((r.classIds||[]).length?"클래스 "+r.classIds.length+"개 휴원":"클래스 없음 — 수업 그대로"):"",r.start?D10(r.start)+(r.end&&r.end!==r.start?" - "+D10(r.end):""):"",tch(r.who).name,r.pub?"학부모 공개":""],state:hst(r.stat)}),
   letters:r=>({name:nmCls(r.classId),belong:r.month,info:[tch((cls(r.classId)||{}).teacherId).name,(r.n||0)+"명"],state:hst(r.sent?"전송 완료":"전송 전")}),
   teachers:r=>({belong:r.role,info:["클래스 "+DB.classes.filter(c=>!c.del&&c.teacherId===r.id).length+"개",r.days]}),
-  reports:r=>({name:nmCls(r.classId),belong:r.from?D10(r.from)+" - "+D10(r.to):"",info:[(r.kind||"")+" 보고서",(r.n||0)+"명",r.left?"남은 "+r.left+"명":""],state:hst(r.left?"전송 전":"전송 완료")}),
+  reports:r=>({name:nmCls(r.classId),belong:r.from?D10(r.from)+" - "+D10(r.to):"",info:[(r.kind||"")+" 보고서",(r.n||0)+"명",r.left?"남은 "+r.left+"명":""],state:hst(!r.sent?"전송 전":r.left?"보내는 중":"전송 완료")}),
   schools:r=>({belong:r.kind,info:[r.addr,r.sync?"학사일정 "+D10(r.sync):""]}),
   exams:r=>({belong:[r.school,r.grade].filter(Boolean).join(" "),info:[r.date?D10(r.date):"",r.units]}),
   seasons:r=>({info:[r.start?D10(r.start)+" - "+D10(r.end):"","시간표 "+DB.blocks.filter(b=>!b.del&&b.seasonId===r.id).length+"개"],state:hst({run:"운영 중",prep:"예정",end:"종료"}[seaState(r)])}),
@@ -2284,7 +2284,7 @@ function stuCardsPrint(rows){if(!rows.length){toast("인쇄할 학생이 없어�
   if(rows.length>20)askRun(`학생 카드 ${rows.length}장 인쇄`,`지금 보는 학생 <b>${rows.length}명</b>을 한 명에 한 장씩 인쇄해요. 개인정보가 담겨 있으니 인쇄물은 잘 챙겨 주세요.`,"인쇄",go);else go()}
 function stuCardOpen(x){return cardOpen(LISTS.students,x)}
 function stuCardOpenOld(x){modal(`<h2>학생 카드${HELP("학생 정보를 한 장으로 봐요. [인쇄]하면 이 카드만 종이 한 장으로 나와요 — 개인정보가 담겨 있으니 회의 뒤 잘 챙겨 주세요.")}</h2>${stuCard(x)}<div class="actions"><span class="sp"></span><button class="btn" id="scC">닫기</button><button class="btn pri" id="scP">${IC("printer","s")}인쇄</button></div>`,(m,close)=>{m.querySelector(".dlg").classList.add("dlg-card");m.querySelector("#scC").onclick=close;m.querySelector("#scP").onclick=()=>{document.body.classList.add("pcard");const off=()=>{document.body.classList.remove("pcard");removeEventListener("afterprint",off)};addEventListener("afterprint",off);window.print();setTimeout(off,1500)}})}
-function stuPanel(x,st){const isNew=stuIsNew(x);const k=isNew?"new":stuStat(x);const tab=st.stab==="en"?"en":st.stab==="gr"&&!isNew?"gr":"info";const es=isNew?[]:DB.enrolls.filter(e=>e.studentId===x.id).sort((a,b)=>(b.start||"").localeCompare(a.start||""));
+function stuPanel(x,st){const isNew=stuIsNew(x);const k=isNew?"new":stuStat(x);const tab=st.stab==="en"?"en":st.stab==="gr"&&!isNew?"gr":st.stab==="rp"&&!isNew?"rp":"info";const es=isNew?[]:DB.enrolls.filter(e=>e.studentId===x.id).sort((a,b)=>(b.start||"").localeCompare(a.start||""));
   const why={on:"수강 중인 등록이 있어요.",pre:"가장 최근 등록이 아직 시작 전이에요(등록일이 미래).",new:"등록이 없어요. 등록을 생성하면 바뀌어요.",hold:"[등록 보류]가 켜져 있어요. 끄면 등록에 따라 다시 정해져요.",end:"수강 중인 등록이 없고, 가장 최근 등록이 끝났어요.",err:"등록 날짜가 맞지 않아요. 등록을 열어 날짜를 고쳐 주세요."}[k];
   const bl=e=>DB.blocks.filter(b=>b.regs.includes(e.id)&&b.seasonId===curSeason()).sort((a,b)=>a.day-b.day||a.start-b.start).map(b=>DAYS[b.day]+" "+fmt(b.start)).join(" · ");
   const nEnC=isNew?0:DB.enrolls.filter(e=>e.studentId===x.id&&e.state==="draft").length;const nChg=(!isNew&&x.state==="draft"&&x._o?Object.keys(x._o).filter(f=>x._o[f]!==x[f]).length||1:0)+nEnC;
@@ -2294,7 +2294,7 @@ function stuPanel(x,st){const isNew=stuIsNew(x);const k=isNew?"new":stuStat(x);c
   /* 329판(대표): 머리 2줄 날짜 — 등록 중 = 등록일 - 현재, 종료 = 등록일 - 종료일, 등록 전 = 등록일 - 시작 전, 그 밖(신규문의·보류) = 문의일 */const hdD=k==="on"?`${D10(stuStart(x))} - 현재`:k==="end"?`${D10(stuStart(x))} - ${D10(stuEnd(x))}`:k==="pre"?`${D10(stuStart(x))} (등원 예정)`:`문의 ${inqS(x.inq)||"—"}`;
 
   const head=PANEL.head({icon:IC("user"),nameHtml:sh1,chipsHtml:stPill(k),help:"등록상태는 자동이에요. "+why+" 손으로 바꾸는 것은 [등록 보류]뿐이에요.",belong:isNew?"":`${x.school||"학교 빈칸"} ${x.grade||"학년 빈칸"}`,info:isNew?["이름을 넣으면 표에 생겨요"]:[hdD,k==="on"||k==="pre"?"수강 "+DB.enrolls.filter(e=>!e.del&&!e.ended&&e.studentId===x.id).length+"개":"",x.route==="상담 신청서"?"신청서":""],notion:isNew?"":'data-notion="students"'});/* 머리 = 창 모듈 한 틀: 이름 / 학교 학년 / 기간 */
-  const tabs=PANEL.tabs([["info","정보",""],["en","등록",String(live.length)],["sch","일정","",1],["gr","성적",isNew?"":String((DB.grades||[]).filter(g=>g.sid===x.id&&!g.del).length||"")]].map(([k2,n2,sub,later])=>({id:k2,label:n2,n:sub,later})),tab,"stab");
+  const tabs=PANEL.tabs([["info","정보",""],["en","등록",String(live.length)],["sch","일정","",1],["gr","성적",isNew?"":String((DB.grades||[]).filter(g=>g.sid===x.id&&!g.del).length||"")],["rp","보고서",isNew?"":String(rpOfStu(x.id).length||"")]].map(([k2,n2,sub,later])=>({id:k2,label:n2,n:sub,later})),tab,"stab");
 
   const ctRow=(f,n,lab)=>`<div class="ct"><span class="cl">${lab||n}</span><input class="inp ${dirtyCls(f)}" data-sk="${f}" value="${esc(x[f]||"")}" placeholder="010-0000-0000" autocomplete="off">${n?`<button type="button" class="prb ${x.pre===n?"on":""}" data-pre="${n}" ${!x[f]&&x.pre!==n?"disabled":""} title="${x.pre===n?"우선 연락처":!x[f]?"번호를 넣으면 우선 연락처로 정할 수 있어요":"이 번호를 우선 연락처로"}">우선</button>`:"<span></span>"}</div>`;
   /* 299판(대표 '연결'): 학생 창 칸 = 입력칸 모듈(field.js) — 아이콘·모양은 규칙 파일·모듈 한 곳에서. 형제자매 고르기(hpStu)와 연락처 줄은 다음 판 */
@@ -2343,7 +2343,7 @@ function stuPanel(x,st){const isNew=stuIsNew(x);const k=isNew?"new":stuStat(x);c
   const SI={trash:IC("trash","s"),undo:IC("undo"),save:IC("save","s")};
   const foot=x._fresh?PANEL.foot({hint:isNew?"이름을 먼저 입력해 주세요":"작성 중",save:"학생 저장",saveOn:true,primary:true,ids:{save:"spSave"},icons:SI,saveTitle:"이 학생을 저장해요"})
     :PANEL.foot({del:true,undo:!!nChg,save:"학생 저장",saveOn:!!nChg,count:nChg||"",ids:{del:"spDel",undo:"spRev",save:"spSave"},icons:SI,delTitle:"이 학생 삭제",undoTitle:"저장 상태로 되돌리기 — 이 학생에서 고친 것 모두",saveTitle:"이 학생(과 이 학생 등록)에서 고친 것만 바로 저장해요. 모두 저장하려면 위 [저장]을 눌러요"});
-  return `${head}${tabs}${tab==="info"?infoTab:tab==="gr"?stuGrTab(x):enTab}${foot}`}
+  return `${head}${tabs}${tab==="info"?infoTab:tab==="gr"?stuGrTab(x):tab==="rp"?rpListBox(rpOfStu(x.id),"아직 받은 보고서가 없어요"):enTab}${foot}`}
 function bindStuPanel(p,x,t){const st=t.state;const isNew=stuIsNew(x);
   const focusName=()=>setTimeout(()=>{const n=document.querySelector("#sp .hname");if(n)n.focus()},0);
   const set=(k,v)=>{if(!stuIsNew(x))return setTimeout(()=>{const keep=ddPop&&ddPop.classList.contains("sibpop")?ddPop.querySelector("input").value:null;stuEdit(x,k,v);if(keep!==null){const b2=document.querySelector("#sp #sibAdd");const y=byId(DB.students,activeTab.state.sel);if(b2&&y){sibOpen(b2,y,(id,on)=>{const z=byId(DB.students,id);if(!z)return;const cur=y.sib||[];stuEdit(y,"sib",on?[...new Set([...cur,id])]:cur.filter(w=>w!==id));z.sib=on?[...new Set([...(z.sib||[]),y.id])]:(z.sib||[]).filter(w=>w!==y.id)});const i2=ddPop.querySelector("input");i2.value=keep;i2.dispatchEvent(new Event("input"))}}},0);x[k]=v;if(k==="name"&&v){x.state="draft";DB.students.unshift(x);st.sel=x.id;st.quick=false;st.nx=null;commit();toast(`${v} — 신규문의로 넣었어요(작성 중)`)}else render()};
@@ -2517,10 +2517,10 @@ Object.assign(LISTS,{
   filters:[["다가오는 일정",x=>(x.end||x.start)>=TODAY,true],["휴원",x=>x.kind==="휴원"],["상담",x=>x.guide==="상담"],["학부모 공개",x=>x.pub]],
   fields:[["name","일정 이름"],["kind","구분",["학원 일정","학사 일정","휴원","할일"]],["classIds","클래스",()=>DB.classes.filter(x=>!x.del).map(x=>x.id),"multi","구분이 휴원이면 쉬는 클래스를 골라요 — 고른 클래스의 그 기간 수업은 생기지 않아요. 클래스를 안 고르면 수업은 그대로 생겨요",x=>(cls(x)||{}).name||x],["guide","안내 구분",()=>EV_GUIDE.map(v=>({v,t:v})),"opt","학부모 안내에 쓰는 갈래(상담 · 테스트 · 휴강 · 휴원). 비워 둬도 돼요"],["start","시작일",null,"date"],["end","끝나는 날",null,"date","하루면 비워 두세요"],["who","담당자",oTch],["stat","진행상태",["예정","진행 중","완료"]],["pub","학부모 공개",["공개","공개 안 함"],"bool"],["memo","일정 안내 메모",null,"memo"]],
   blank:()=>({id:uid("ev"),name:"새 일정",kind:"학원 일정",start:TODAY,end:"",who:"",stat:"예정",pub:false,memo:""})},
- reports:{title:"학습 보고서",coll:"reports",unit:"건",ph:"클래스 검색",help:"클래스별 보고서 묶음(발송함)이에요. 일일은 수업 창에서, 주간·월간은 여기서 [보고서 생성] 뒤 [일괄 전송]해요. 보고서 본문은 노션에서 써요.",noAdd:1,noDel:true,
+ reports:{title:"학습 보고서",coll:"reports",unit:"건",ph:"클래스 검색",help:"한 줄 = 클래스별 보고서 묶음(노션 알림톡 발송함)이에요. 줄을 열면 [학생] 탭에 학생마다 보고서 한 장(노션 보고서 DB)이 있어 한마디를 쓰고 보내요. 일일은 수업 창에서, 주간·월간은 여기서 [보고서 생성] 뒤 보내요. 보고서 본문은 노션 페이지에 써요.",noAdd:1,noDel:true,
   cols:[["클래스",x=>nmCls(x.classId),"classId"],["보고서 구분",x=>x.kind,"kind"],["기간",x=>D10(x.from)+" - "+D10(x.to)],["대상",x=>x.n+"명"],["전송 전",x=>x.sent&&!x.left?"—":(x.left||x.n)+"명"],["상태",x=>x.left?"보내는 중":x.sent?"모두 전송":"생성","stat"]],
   filters:[["전송 전",x=>!!x.left||!x.sent],["주간",x=>x.kind==="주간",false,null,"kind"],["월간",x=>x.kind==="월간",false,null,"kind"],["수료",x=>x.kind==="수료",false,null,"kind"]],
-  fields:[["classId","클래스",oCls,"req"],["kind","보고서 구분",["주간","월간","수료"],"seg"],["from","기간 시작",null,"date"],["to","기간 끝",null,"date"],["note","선생님 한마디(클래스 공통)",null,"memo"]]},
+  fields:[["classId","클래스",oCls,"req"],["kind","보고서 구분",["주간","월간","수료"],"seg"],["from","기간 시작",null,"date"],["to","기간 끝",null,"date"]]},
  tuition:{title:"수강료",coll:"tuition",unit:"건",cntUnit:x=>clsQU(cls(x.classId)),ph:"학생·클래스 검색",help:"달마다 등록 하나에 수강료 하나예요. 청구 금액 = 클래스 수강료 × 실제 수업량 ÷ 한 달 수업량 + 조정 + 기타경비. 안내문은 학생마다 한 통(여러 클래스 합산)으로 나가요.",noAdd:1,noDel:true,
   cols:[["학생",x=>nmStu(x.studentId)],["클래스",x=>nmCls(x.classId)],["청구 기간",x=>x.month],["실제 수업량",x=>x.qty+"/"+(x.full||8)+clsQU(cls(x.classId)),"qty"],["조정",x=>x.adj?WON(x.adj):"—","adj"],["청구 금액",x=>WON(tuAmt(x))],["안내",x=>x.sent?"전송 완료":"전송 전","sent"],["결제",x=>x.pay,"pay"],["결제일",x=>D10(x.paidOn),"paidOn"]],
   byMonth:x=>x.month,note:rows=>{const u=rows.filter(x=>x.pay==="미납");return u.length?`미납 ${u.length}건 · ${WON(u.reduce((a,x)=>a+tuAmt(x)-(+x.got||0),0))}`:"미납 없음"},filters:[["미납",x=>x.pay==="미납"],["전송 전",x=>!x.sent&&x.pay!=="완료"]],
@@ -2590,7 +2590,7 @@ LISTS.reports.acts=[
  {id:"aGen",icon:"plussq",name:"보고서 생성",n:()=>rpNeed().length,tip:n=>n?`보고서 생성 — 이번 주(${D10(wkR(0)[0])}-${D10(wkR(0)[1])}) 주간 보고서가 없는 클래스 ${n}개`:"보고서 생성 — 이번 주 주간 보고서가 모두 있어요",
   run:n=>askRun("이번 주 보고서를 생성할까요?",`${D10(wkR(0)[0])}-${D10(wkR(0)[1])} 주간 보고서가 없는 클래스 <b>${n}개</b>에 생성해요. 학생별 본문은 출결·과제·평가에서 채워져요.${toList(rpNeed().map(c=>esc(c.name)))}`,"생성",()=>{rpNeed().forEach(c=>{const k=liveEnr().filter(e=>e.classId===c.id).length;DB.reports.unshift({id:uid("rp"),classId:c.id,kind:"주간",from:wkR(0)[0],to:wkR(0)[1],n:k,left:0,sent:false,note:"",state:"saved"})});commit();toast(`보고서 ${n}건을 생성했어요 — Ctrl+Z로 되돌려요`)})},
  {id:"aSend",icon:"send",name:"일괄 전송",n:()=>rpTo().reduce((a,r)=>a+(r.left||r.n),0),tip:n=>n?`일괄 전송 — 아직 안 보낸 학생 ${n}명`:"일괄 전송 — 보낼 것이 없어요",
-  run:n=>askRun("보고서를 보낼까요?",`아직 안 보낸 <b>${n}명</b>에게 보고서 알림톡을 보내요.${toList(rpTo().map(r=>`${esc(nmCls(r.classId))} <span class="hint">${r.kind} · ${D10(r.from)} - ${D10(r.to)} · ${r.left||r.n}명</span>`))}${sendNote}`,"보내기",()=>{rpTo().forEach(r=>{r.left=0;r.sent=true});commit();toast(`${n}명에게 전송 완료로 표시했어요 — Ctrl+Z로 되돌려요`)})}];
+  run:n=>askRun("보고서를 보낼까요?",`아직 안 보낸 <b>${n}명</b>에게 보고서 알림톡을 보내요.${toList(rpTo().map(r=>`${esc(nmCls(r.classId))} <span class="hint">${r.kind} · ${D10(r.from)} - ${D10(r.to)} · ${r.left||r.n}명</span>`))}${sendNote}`,"보내기",()=>{rpTo().forEach(rpSendAll);commit();toast(`${n}명에게 전송 완료로 표시했어요 — Ctrl+Z로 되돌려요`)})}];
 LISTS.letters.acts=[
  {id:"aGen",icon:"plussq",name:"가정통신문 생성",n:()=>DB.classes.filter(c=>liveCls(c)&&liveEnr().some(e=>e.classId===c.id)&&!DB.letters.some(l=>l.classId===c.id&&l.month===curM())).length,tip:n=>n?`가정통신문 생성 — ${curM()} 가정통신문이 없는 클래스 ${n}개`:`가정통신문 생성 — ${curM()} 것이 모두 있어요`,
   run:n=>askRun(`${curM()} 가정통신문을 생성할까요?`,`가정통신문이 없는 클래스 <b>${n}개</b>에 생성해요. 그 달 학부모 공개 일정이 함께 들어가요.`,"생성",()=>{DB.classes.filter(c=>liveCls(c)&&liveEnr().some(e=>e.classId===c.id)&&!DB.letters.some(l=>l.classId===c.id&&l.month===curM())).forEach(c=>DB.letters.unshift({id:uid("lt"),classId:c.id,month:curM(),note:"",n:liveEnr().filter(e=>e.classId===c.id).length,sent:false,state:"saved"}));commit();toast(`가정통신문 ${n}건을 생성했어요 — Ctrl+Z로 되돌려요`)})},
@@ -2813,7 +2813,7 @@ const pgLast=x=>pgRecs(x).find(r=>r.kind==="학습"&&r.range);const pgRange=x=>{
 /* 460판: 진도 줄 펼치기 · 수료 단계(기준 3장 "진도 진행도 · 수료" · "진도 줄 펼치기" · "진도 탭 교재·프로그램") */
 const pgDoneBtn=(x,cls,attr)=>x.done?"":`<button type="button" class="${cls}" ${attr}${x.stat==="완료"?"":` disabled title="진행상태가 완료일 때 눌러요"`}>${IC("award","s")}수료</button>`;
 const pgRepOf=x=>DB.reports.find(z=>!z.del&&z.kind==="수료"&&z.pgId===x.id);
-function pgSend(x){const z=pgRepOf(x);if(!z)return;askRun("수료 보고서를 보낼까요?",`<div><b>${esc(nmBook(x.bookId))}</b> · ${esc(nmCls(x.classId))}</div><b>${z.left||z.n}명</b>에게 수료 보고서 알림톡을 보내요. 선생님 한마디는 [수료 보고서]에서 먼저 써요.${typeof sendNote!=="undefined"?sendNote:""}`,"보내기",()=>{z.sent=true;z.left=0;commit();toast(`${z.n}명에게 전송 완료로 표시했어요 — Ctrl+Z로 되돌려요`)})}
+function pgSend(x){const z=pgRepOf(x);if(z)rpAllAsk(z)}
 function pgSetStat(x,to){const L=LISTS.progress;if(x.stat===to)return;L.beforeSet(x,"stat");x.stat=to;L.onSet(x,"stat");markDirty(L,x);commit()}
 /* 수업 [학습기록] 열기(한 곳): 수업 키(블록|날짜 · mk:보강) → 시간표 화면 수업 보기 */
 function lsnOpen(k,nt){let dd,season;if(k.startsWith("mk:")){const m=DB.mk.find(z=>"mk:"+z.id===k);if(!m)return;dd=m.d}else{const [bid,d0]=k.split("|");dd=d0;season=(byId(DB.blocks,bid)||{}).seasonId}panelOpen=true;openScreen("timetable",nt,Object.assign({view:"lesson",week:dPlus(dd,-dow(dd)),lsel:k},season?{season}:{}))}
@@ -2821,15 +2821,63 @@ function pgMore(x){const r=pgRecs(x)[0],pr=pgIsProg(x),z=pgRepOf(x);
   return `<div class="bkm"><span class="seg pgst" title="진행상태">${PG_ORDER.map(k=>`<button type="button" data-pgst="${x.id}|${k}" class="${x.stat===k?"on":""}">${k}</button>`).join("")}</span>
   <span class="k">최근 학습 범위</span><span>${esc(pgRange(x)||"—")}</span>
   <span class="k">최근 학습</span>${r?`<button type="button" class="lnk bkrec" data-pgrec="${esc(r.key)}" title="이 수업의 [학습기록] 열기">${D10(r.d)} ${esc(r.kind)}${r.kind==="학습"&&r.content?" · "+esc(r.content):""}${IC("right","s")}</button>`:'<span class="hint">아직 학습기록이 없어요</span>'}
-  <div class="bkma">${x.done?`${z?`<button type="button" class="btn sm" data-pgdo="rep|${x.id}" title="선생님 한마디를 쓰고 확인해요(학습 보고서 화면)">수료 보고서</button>${z.sent?'<span class="hint">보냄</span>':`<button type="button" class="btn sm pri" data-pgdo="send|${x.id}">${IC("send","s")}보내기</button>`}`:""}`:pgDoneBtn(x,"btn sm",`data-pgdo="done|${x.id}"`)}<span class="sp"></span><button type="button" class="lnk" data-drill="progress|${x.id}">${pr?"프로그램":"교재"}로 이동${IC("right","s")}</button></div></div>`}
+  <div class="bkma">${x.done?`${z?`<button type="button" class="btn sm" data-pgdo="rep|${x.id}" title="선생님 한마디를 쓰고 확인해요(학습 보고서 화면)">수료 보고서</button>${z.sent&&!z.left?'<span class="hint">전송 완료</span>':`<button type="button" class="btn sm pri" data-pgdo="send|${x.id}">${IC("send","s")}보내기</button>`}`:""}`:pgDoneBtn(x,"btn sm",`data-pgdo="done|${x.id}"`)}<span class="sp"></span><button type="button" class="lnk" data-drill="progress|${x.id}">${pr?"프로그램":"교재"}로 이동${IC("right","s")}</button></div></div>`}
 function pgKind(pg){const nb=pg.filter(x=>!pgIsProg(x)).length,np=pg.length-nb;let k=LS.get("panelPgKind","b");if(k==="b"&&!nb&&np)k="p";if(k==="p"&&!np&&nb)k="b";
   return {k,list:pg.filter(x=>pgIsProg(x)===(k==="p")),seg:`<span class="seg pgk">${[["b","교재",nb],["p","프로그램",np]].map(([v,t,n])=>`<button type="button" data-pgk="${v}" class="${k===v?"on":""}">${t} <small>${n}</small></button>`).join("")}</span>`}}
 document.addEventListener("click",ev=>{if(!activeTab||!ev.target.closest)return;const t=ev.target;
   const k=t.closest("[data-pgk]");if(k){LS.set("panelPgKind",k.dataset.pgk);return render()}
   const s=t.closest("[data-pgst]");if(s){ev.stopPropagation();const [id,to]=s.dataset.pgst.split("|"),x=byId(DB.progress,id);if(x){pgSetStat(x,to);render()}return}
   const rc=t.closest("[data-pgrec]");if(rc){ev.stopPropagation();return lsnOpen(rc.dataset.pgrec,ev.ctrlKey||ev.metaKey)}
-  const d=t.closest("[data-pgdo]");if(d){ev.stopPropagation();const [a,id]=d.dataset.pgdo.split("|"),x=byId(DB.progress,id);if(!x)return;if(a==="done")pgDoneAsk(x);if(a==="send")pgSend(x);if(a==="rep"){const z=pgRepOf(x);if(z)openScreen("reports",ev.ctrlKey||ev.metaKey,{sel:z.id,lf:{}})}return}
+  const d=t.closest("[data-pgdo]");if(d){ev.stopPropagation();const [a,id]=d.dataset.pgdo.split("|"),x=byId(DB.progress,id);if(!x)return;if(a==="done")pgDoneAsk(x);if(a==="send")pgSend(x);if(a==="rep"){const z=pgRepOf(x);if(z)openScreen("reports",ev.ctrlKey||ev.metaKey,{sel:z.id,ltab:"stu",lf:{}})}return}
   const row=t.closest("[data-pgx]");if(!row||t.closest(".bkm"))return;const st=activeTab.state,id=row.dataset.pgx;st.pgX=st.pgX===id?null:id;render()});
+/* 461판: 보고서 = 묶음(DB.reports = 노션 알림톡 발송함) + 개별(DB.rpStu = 노션 보고서 DB 한 페이지) — 기준 3장 "보고서 묶음·개별" */
+const RP_ST={ok:["nc-green","전송 완료"],wait:["nc-gray","전송 전"],err:["nc-red","전송 오류"]};
+function rpTpl(z){if(z.kind==="수료"){const pg=z.pgId&&byId(DB.progress,z.pgId);return pg&&pgIsProg(pg)?"프로그램 수료 보고서":"교재 수료 보고서"}return z.kind==="월간"?"월간 학습 보고서":"주간 학습 보고서"}
+function rpSync(z){const its=(DB.rpStu||[]).filter(i=>i.rpId===z.id&&!i.del),ok=its.filter(i=>i.st==="ok").length;z.n=its.length;z.sent=ok>0;z.left=ok?its.length-ok:0}
+/* 묶음의 학생 보고서(없으면 그 클래스 수강생으로 생성 — 노션 [보고서 생성]과 같음) */
+function rpItems(z){if(!DB.rpStu)DB.rpStu=[];let its=DB.rpStu.filter(i=>i.rpId===z.id&&!i.del);
+  if(!its.length&&!z._rpSeed){z._rpSeed=1;const es=liveEn(z.classId),n=Math.min(z.n||es.length,es.length)||es.length,ok=z.sent?Math.max(0,n-(z.left||0)):0;
+    its=es.slice(0,n).map((e,i)=>({id:uid("ri"),rpId:z.id,enId:e.id,studentId:e.studentId,note:"",st:i<ok?"ok":"wait",sentAt:i<ok?z.to:""}));DB.rpStu.push(...its);rpSync(z)}
+  return its}
+function rpSum(z,it){const pg=z.pgId&&byId(DB.progress,z.pgId);const recs=pg?pgRecsAll(pg):(DB.recs||[]).filter(r=>!r.del&&r.classId===z.classId&&r.d>=z.from&&r.d<=z.to);
+  let p=0,t=0;const bl=DB.blocks.filter(b=>b.regs.includes(it.enId)&&b.classId===z.classId);for(let d=z.from;d&&d<=z.to&&t<400;d=dPlus(d,1)){bl.forEach(b=>{if(dow(d)!==b.day||!lessonMade(b,d))return;const a=attOf(b,d,it.studentId);if(!a)return;t++;if(a!=="결석")p++})}
+  const hw=recs.filter(r=>r.kind==="과제"&&r.acts&&r.acts[it.studentId]&&r.acts[it.studentId].hw),hd=hw.filter(r=>r.acts[it.studentId].hw==="완료").length;
+  const ev=recs.filter(r=>r.kind==="평가"&&r.acts&&r.acts[it.studentId]).map(r=>recPct(r,r.acts[it.studentId])).filter(v=>v!=null);
+  return {att:t?`${p}/${t}회`:"—",hw:hw.length?`${hd}/${hw.length} 완료`:"—",ev:ev.length?`평균 ${Math.round(ev.reduce((a,v)=>a+v,0)/ev.length)}점`:"—"}}
+const rpAllBtn=(z,todo)=>`<button type="button" class="btn sm" data-rpdo="all|${z.id}" ${todo?"":"disabled"} title="${todo?`${rpTpl(z)} — ${todo}명에게 보내요`:"모두 보냈어요"}">${IC("send","s")}전송 ${todo}</button>`;
+function rpSendBox(z){const its=rpItems(z),ok=its.filter(i=>i.st==="ok").length,er=its.filter(i=>i.st==="err").length,todo=its.length-ok,miss=its.filter(i=>!preNo(stu(i.studentId)||{})).length;
+  return `<div class="box"><h3>보내기${HELP("학생마다 보고서가 한 장씩(노션 보고서 DB) 있고, 이 묶음(노션 알림톡 발송함)에서 전송 전인 학생에게 한 번에 보내요. 한마디는 [학생] 탭에서 학생마다 써요.")}<span class="sp"></span>${rpAllBtn(z,todo)}</h3><div class="pgsum"><span><small>전송 완료</small><b>${ok}명</b></span><span><small>전송 전</small><b>${todo-er}명</b></span><span><small>오류</small><b>${er}명</b></span></div>${miss?`<div class="hint bad" style="margin-top:8px">우선 연락처 번호가 없는 학생 ${miss}명 — 학생 창에서 넣어요</div>`:""}</div>`}
+function rpMore(it,z,who){const ok=it.st==="ok",fin=z.kind==="수료";
+  return `<div class="bkm"><div class="hf rpn"><span class="hf-lbl">선생님 한마디</span><div class="hf-box hf-memo"><textarea rows="3" data-rpnote="${it.id}" placeholder="이 학생에게 남길 말 — 보고서·알림톡의 선생님 한마디">${esc(it.note||"")}</textarea></div></div>
+  <div class="hf rcpt"><span class="hf-lbl">${esc(rpTpl(z))} 알림톡</span><button type="button" class="btn rcb ${ok?"sent":""}" data-rpdo="one|${it.id}" title="누르면 알림톡 미리보기가 떠요 — 보고 [보내기]">${IC("send","s")}${ok?"다시 전송":(fin?"수료 보고서":"보고서")+" 전송"}</button><div class="hint ${ok?"":"mut"}">${ok?"전송 완료 · "+D10(it.sentAt||""):it.st==="err"?"전송 오류 — 다시 전송해요":"전송 전"}</div></div>
+  <div class="bkma"><span class="hint">본문은 노션 보고서 페이지에 써요</span><span class="sp"></span><button type="button" class="btn sm" data-rpdo="notion|${it.id}" title="이 학생 보고서를 노션에서 열기">${IC("notion","s")}노션에서 열기</button>${who==="stu"?`<button type="button" class="lnk" data-rpdo="stu|${it.studentId}">학생으로 이동${IC("right","s")}</button>`:`<button type="button" class="lnk" data-rpdo="open|${z.id}">묶음 열기${IC("right","s")}</button>`}</div></div>`}
+/* 학생 보고서 줄(묶음 [학생] = who "stu" · 학생·등록 [보고서] = who "z") — 진도 줄과 같은 부품 */
+function rpRow(it,z,who){const S=rpSum(z,it),op=activeTab.state.rpX===it.id,[c,t]=RP_ST[it.st]||RP_ST.wait,s=stu(it.studentId)||{};
+  return {drill:"",attr:`data-rpx="${it.id}"`,on:op,title:who==="stu"?s.name||"—":`${z.kind==="수료"?"수료 보고서":z.kind} · ${nmCls(z.classId)}`,modeHtml:`<span class="spill ${c}">${t}</span>`,pct:"",
+    range:who==="stu"?"":`${D10(z.from).slice(5)} - ${D10(z.to).slice(5)}`,notes:[`출석 ${S.att}`,`과제 ${S.hw}`,`평가 ${S.ev}`,it.note?"":"한마디 없음",who==="stu"&&!preNo(s)?"번호 없음":""],more:op?rpMore(it,z,who):""}}
+function rpStuBox(z){const st=activeTab.state,its=rpItems(z),f=st.rpF||"all";const F={all:["전체",()=>true],todo:["전송 전",i=>i.st!=="ok"],nonote:["한마디 없음",i=>!i.note]};const list=its.filter((F[f]||F.all)[1]);
+  return `<div class="box"><h3><span class="seg">${Object.entries(F).map(([k,[t,fn]])=>`<button type="button" data-rpf="${k}" class="${f===k?"on":""}">${t} <small>${its.filter(fn).length}</small></button>`).join("")}</span><span class="sp"></span>${rpAllBtn(z,its.filter(i=>i.st!=="ok").length)}</h3>${list.length?PANEL.bookRows(list.map(i=>rpRow(i,z,"stu"))):'<div class="hint">해당하는 학생이 없어요</div>'}</div>`}
+const rpOfStu=sid=>{DB.reports.forEach(z=>{if(!z.del)rpItems(z)});return (DB.rpStu||[]).filter(i=>!i.del&&i.studentId===sid).map(i=>({i,z:byId(DB.reports,i.rpId)})).filter(o=>o.z&&!o.z.del).sort((a,b)=>(b.z.to||"").localeCompare(a.z.to||""))};
+const rpOfEn=e=>rpOfStu(e.studentId).filter(o=>o.z.classId===e.classId);
+function rpListBox(os,empty){const st=activeTab.state,f=st.rpK||"all",K=["주간","월간","수료"].filter(k=>os.some(o=>o.z.kind===k)),list=os.filter(o=>f==="all"||o.z.kind===f);
+  return `<div class="box"><h3><span class="seg"><button type="button" data-rpk="all" class="${f==="all"?"on":""}">전체 <small>${os.length}</small></button>${K.map(k=>`<button type="button" data-rpk="${k}" class="${f===k?"on":""}">${k} <small>${os.filter(o=>o.z.kind===k).length}</small></button>`).join("")}</span>${HELP("이 학생이 받은 보고서(노션 보고서 DB)예요. 눌러서 한마디를 고치거나 다시 보내요. 한 클래스를 한꺼번에 보내려면 [묶음 열기].")}</h3>${list.length?PANEL.bookRows(list.map(o=>rpRow(o.i,o.z,"z"))):`<div class="hint">${empty}</div>`}</div>`}
+function rpSendAll(z){rpItems(z).forEach(i=>{if(i.st!=="ok"){i.st="ok";i.sentAt=TODAY}});rpSync(z)}
+function rpAllAsk(z){const todo=rpItems(z).filter(i=>i.st!=="ok");if(!todo.length)return toast("모두 보냈어요");askRun("보고서를 보낼까요?",`<div><b>${esc(nmCls(z.classId))}</b> · ${esc(rpTpl(z))} · ${D10(z.from)} - ${D10(z.to)}</div>전송 전 <b>${todo.length}명</b>에게 한 통씩 보내요.${todo.some(i=>!i.note)?` 한마디가 없는 학생 ${todo.filter(i=>!i.note).length}명은 한마디 없이 나가요.`:""}${typeof sendNote!=="undefined"?sendNote:""}`,"보내기",()=>{rpSendAll(z);markDirty(LISTS.reports,z);commit();toast(`${todo.length}명에게 전송 완료로 표시했어요 — Ctrl+Z로 되돌려요`)})}
+function rpSendOne(it){const z=byId(DB.reports,it.rpId);if(!z)return;const s=stu(it.studentId)||{},S=rpSum(z,it),fin=z.kind==="수료",pg=fin&&z.pgId&&byId(DB.progress,z.pgId),per=`${D10(z.from).slice(5)}~${D10(z.to).slice(5)}`,say=it.note?`\n\n💬 선생님 한마디\n${it.note}`:"";
+  const vals=fin?{학생이름:s.name||"",클래스:nmCls(z.classId),수료과정:`${pg&&pgIsProg(pg)?"🎨 프로그램":"📚 교재"}  ${pg?nmBook(pg.bookId):""}\n📅 기간  ${per}\n✅ 출석  ${S.att}`,수료요약:`📋 과제  ${S.hw}\n📄 평가  ${S.ev}${say}`}:{학생이름:s.name||"",클래스:nmCls(z.classId),학습기간:per,학습기록:DB.progress.filter(x=>!x.del&&x.classId===z.classId&&x.stat==="진행 중").map(x=>`#${nmBook(x.bookId)} (~${pgPct(x)===""?"—":pgPct(x)+"%"})`).join("\n")||"—",학습요약:`✅ 출석  ${S.att}\n📋 과제  ${S.hw}\n📄 평가  ${S.ev}${say}`};
+  askRun(`${esc(s.name||"")} ${fin?"수료 보고서":"보고서"} ${it.st==="ok"?"다시 전송":"전송"}`,`${window.ALIMV?ALIMV.render(rpTpl(z),"","",false,vals):""}<div class="hint">받는 사람: ${esc(s.name||"")} 학생의 우선 연락처${preNo(s)?"":" — 번호가 없어요"}. 시제품이라 알림톡은 실제로 나가지 않아요.</div>`,"보내기",()=>{it.st="ok";it.sentAt=TODAY;rpSync(z);markDirty(LISTS.reports,z);commit();toast(`${s.name||""} 보고서를 보낸 것으로 적었어요(시제품: 실제 발송 없음)`)})}
+document.addEventListener("click",ev=>{if(!activeTab||!ev.target.closest)return;const t=ev.target;
+  const f=t.closest("[data-rpf]");if(f){activeTab.state.rpF=f.dataset.rpf;return render()}
+  const k=t.closest("[data-rpk]");if(k){activeTab.state.rpK=k.dataset.rpk;return render()}
+  const d=t.closest("[data-rpdo]");if(d){ev.stopPropagation();const [a,id]=d.dataset.rpdo.split("|"),nt=ev.ctrlKey||ev.metaKey;
+    if(a==="all"){const z=byId(DB.reports,id);if(z)rpAllAsk(z)}
+    if(a==="one"){const it=byId(DB.rpStu||[],id);if(it)rpSendOne(it)}
+    if(a==="notion")toast("이 학생의 노션 보고서 페이지를 열어요(시제품: 노션 주소 없음)");
+    if(a==="open"){panelOpen=true;openScreen("reports",nt,{sel:id,ltab:"stu",lf:{}})}
+    if(a==="stu")openScreen("students",nt,{sel:id});return}
+  const row=t.closest("[data-rpx]");if(!row||t.closest(".bkm"))return;const st=activeTab.state,id=row.dataset.rpx;st.rpX=st.rpX===id?null:id;render()});
+document.addEventListener("input",ev=>{const n=ev.target.closest&&ev.target.closest("[data-rpnote]");if(!n)return;const it=byId(DB.rpStu||[],n.dataset.rpnote);if(!it)return;it.note=n.value;const z=byId(DB.reports,it.rpId);if(z)markDirty(LISTS.reports,z);commitQuiet()});
+try{DB.reports.forEach(z=>{if(!z.del)rpItems(z)})}catch(e){}
 /* [수료] 확인 창(한 곳): [수료] 단추 · 진행상태 고르기 칸 · 표에서 완료를 고를 때 */
 function pgDoneAsk(r){if(r.stat!=="완료")return toast("진행상태가 완료일 때 수료해요");const n=r.mode==="개별"?(r.studentId?1:0):liveEn(r.classId).length;askRun("이 교재를 수료할까요?",`<div><b>${esc(nmBook(r.bookId))}</b> · ${esc(nmCls(r.classId))}${r.mode==="개별"&&r.studentId?" · "+esc(nmStu(r.studentId)):""}</div><div class="hint">수료일이 오늘로 바뀌어요. ${n?`수료 보고서 발송함이 하나 생겨요(${n}명). 보내기는 수료한 뒤 [보내기]로 따로 해요.`:"수강 중인 학생이 없어 수료 보고서는 생성하지 않아요."}</div>`,"수료",()=>{r.done=TODAY;r.state="draft";const first=pgRecs(r).slice(-1)[0];if(n&&!DB.reports.some(z=>z.kind==="수료"&&z.pgId===r.id&&!z.del))DB.reports.unshift({id:uid("rp"),classId:r.classId,kind:"수료",pgId:r.id,from:first?first.d:TODAY,to:TODAY,n,left:0,sent:false,note:"",state:"draft"});commit();toast(n?"수료했어요 — 수료 보고서 발송함 1건을 생성했어요":"수료했어요")})}
 const pgPct=x=>{if(x.stat==="완료")return 100;if(x.stat==="다음 교재")return 0;if(x.stat==="미사용")return "";const bk=DB.books.find(b=>b.id===x.bookId)||{};const ps=pgRecs(x).filter(r=>r.range).map(r=>{const m=String(r.range).match(/(\d+)\s*$/);return m&&+bk.total?Math.min(100,Math.round(+m[1]/+bk.total*100)):null}).filter(v=>v!=null);return ps.length?Math.max(...ps):(x.pct===0||x.pct?x.pct:"")};
@@ -2861,7 +2909,7 @@ function pgFinBox(x){const bk=DB.books.find(b=>b.id===x.bookId)||{},pr=pgIsProg(
   const att=e=>{if(!from)return "—";let p=0,t=0;const bl=DB.blocks.filter(b=>b.regs.includes(e.id)&&b.classId===x.classId);for(let d=from;d<=end&&t<400;d=dPlus(d,1)){bl.forEach(b=>{if(dow(d)!==b.day||!lessonMade(b,d))return;const a=attOf(b,d,e.studentId);if(!a)return;t++;if(a!=="결석")p++})}return t?`${p}/${t}회`:"—"};
   const hw=e=>{const c={"완료":0,"일부 완료":0,"미제출":0};let k=0;rs.forEach(r=>{const a=r.kind==="과제"&&r.acts&&r.acts[e.studentId];if(a&&a.hw){c[a.hw]=(c[a.hw]||0)+1;k++}});return k?`${Math.round(c["완료"]/k*100)}% 완료`:"—"};
   const ev=e=>{const ps=rs.filter(r=>r.kind==="평가"&&r.acts&&r.acts[e.studentId]).map(r=>recPct(r,r.acts[e.studentId])).filter(v=>v!=null);return ps.length?`평균 ${Math.round(ps.reduce((a,v)=>a+v,0)/ps.length)}점`:(pr?"완료":"—")};
-  const head=x.stat==="완료"&&x.done?`<div class="pgfin done">${IC("award","l")}<div><b>${esc(pr?"프로그램을":"교재를")} 모두 마쳤어요</b><div class="hint">수료일 ${D10(x.done)||"—"}</div></div>${rep?`<span class="sp"></span><button type="button" class="btn sm" data-act="pgRep" title="선생님 한마디를 쓰고 확인해요(학습 보고서 화면)">수료 보고서${IC("right","s")}</button>${rep.sent?`<span class="hint">보냄</span>`:`<button type="button" class="btn sm pri" data-act="pgSend">${IC("send","s")}보내기</button>`}`:""}</div>`
+  const head=x.stat==="완료"&&x.done?`<div class="pgfin done">${IC("award","l")}<div><b>${esc(pr?"프로그램을":"교재를")} 모두 마쳤어요</b><div class="hint">수료일 ${D10(x.done)||"—"}</div></div>${rep?`<span class="sp"></span><button type="button" class="btn sm" data-act="pgRep" title="선생님 한마디를 쓰고 확인해요(학습 보고서 화면)">수료 보고서${IC("right","s")}</button>${rep.sent&&!rep.left?`<span class="hint">전송 완료</span>`:`<button type="button" class="btn sm pri" data-act="pgSend">${IC("send","s")}보내기</button>`}`:""}</div>`
     :`<div class="pgfin">${IC("award","l")}<div><b>아직 수료 전이에요</b><div class="hint">${x.stat==="완료"?"[수료]를 누르면 수료일 오늘 · 수료 보고서 발송함과 학생별 수료 보고서가 생겨요. 보내기는 그다음에 따로 해요.":"진행상태가 완료일 때 [수료]를 눌러요."}</div></div><span class="sp"></span>${pgDoneBtn(x,"btn sm pri","data-act=\"pgDone\"")}</div>`;
   return `<div class="box"><h3>수료${HELP("노션 진도관리 DB의 [수료] 버튼과 보고서 DB의 수료 보고서예요. 보고서 기간 = 이 교재 첫 학습일부터 수료한 날까지, 이 교재의 학습기록·출석만 이어져요. 개별 진도는 학생 개별 교재에서 수료해요.")}</h3>${head}
   <div class="pgsum"><span><small>${pr?"프로그램":"교재"}</small><b>${esc(title)}</b></span><span><small>기간</small><b>${from?D10(from)+" - "+D10(end):"—"}</b></span><span><small>수업</small><b>${n}회</b></span></div></div>
@@ -2972,7 +3020,7 @@ document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest
 function rcptBox(classId,title,note){const es=liveEn(classId);const sts=es.map(e=>stu(e.studentId)).filter(Boolean);const miss=sts.filter(s=>!preNo(s)).length;
   return `<div class="box"><h3>${title} <span class="hint">${sts.length}명${miss?` · <span class="bad">번호 없음 ${miss}명</span>`:""}</span>${HELP(note)}</h3>${PANEL.rows(sts.map(s=>({t:s.name,subHtml:`${esc(s.pre||"어머니")} ${preNo(s)?esc(preNo(s)):'<span class="bad">번호 없음</span>'}`,arrow:false})),"지금 수강 중인 학생이 없어요")}</div>`}
 LISTS.letters.infoX=x=>rcptBox(x.classId,"받는 학생","이 클래스를 지금 수강 중인 학생에게 한 통씩 나가요. 받는 번호는 학생마다 정한 우선 연락처예요.");
-LISTS.reports.infoX=x=>rcptBox(x.classId,"받는 학생",`보고서는 학생마다 한 장씩 생성돼 우선 연락처로 나가요.${x.left?" 아직 보내지 않은 학생 "+x.left+"명이 있어요.":""}`);LISTS.bookfees.infoX=x=>chBillBox("bookfee",x);
+LISTS.reports.infoX=x=>rpSendBox(x);LISTS.bookfees.infoX=x=>chBillBox("bookfee",x);
 /* ═════ 236판: 청구 — 재무 > 청구 한 화면에 탭 넷 [교재비 | 재료비 | 기타경비 | 전체 줄].
    묶음(DB.bookfees)마다 갈래 cat 하나(교재비 · 재료비 · 기타경비) — 탭도, 줄의 종류·항목도 갈래가 정한다(한 묶음에 갈래를 섞지 않는다).
    교재비 → 그 밖/교재비 · 재료비 → 기타경비/재료비 · 기타경비 → 기타경비/고른 항목. 갈래가 없는 옛 묶음은 첫 책의 [기타경비 항목]으로 본다 ═════ */
@@ -3190,12 +3238,13 @@ const LTABS={
     ["tt","시간표",ttBl(c.id).length,ttPanel(c.id,null)],
     ["stu","학생",en.length,`<div class="box"><h3>수강 중인 학생 <span class="hint">${en.length}명</span></h3>${PANEL.rows(en.map(e=>{const x=stu(e.studentId);return {attr:`data-gostu="${x.id}"`,title:"학생 화면에서 열기",t:x.name,sub:[x.school,x.grade].filter(Boolean).join(" ")}}),"아직 수강 중인 학생이 없어요 — 학생 창 [등록]에서 넣어요")}</div>`],
     ["bk","진도",DB.progress.filter(x=>x.classId===c.id&&!x.del).length,pgBox(c)]]},
-  enrolls:e=>{const bl=DB.blocks.filter(b=>b.classId===e.classId&&b.seasonId==="s1");return [["sum","현황","",enSumBox(e)],["tt","시간표",ttBl(e.classId).filter(b=>b.regs.includes(e.id)).length+"/"+ttBl(e.classId).length,ttPanel(e.classId,e)],["bk","진도",enPg(e).length,enPgBox(e)],["fee","수강료",DB.tuition.filter(x=>x.studentId===e.studentId&&x.classId===e.classId&&!x.del).length||"",enFeeBox(e)]]},
+  enrolls:e=>{const bl=DB.blocks.filter(b=>b.classId===e.classId&&b.seasonId==="s1");return [["sum","현황","",enSumBox(e)],["tt","시간표",ttBl(e.classId).filter(b=>b.regs.includes(e.id)).length+"/"+ttBl(e.classId).length,ttPanel(e.classId,e)],["bk","진도",enPg(e).length,enPgBox(e)],["fee","수강료",DB.tuition.filter(x=>x.studentId===e.studentId&&x.classId===e.classId&&!x.del).length||"",enFeeBox(e)],["rp","보고서",rpOfEn(e).length||"",rpListBox(rpOfEn(e),"이 등록으로 받은 보고서가 없어요")]]},
   teachers:x=>{const cs=DB.classes.filter(c=>c.teacherId===x.id&&DB.blocks.some(b=>b.classId===c.id&&b.seasonId==="s1"));return [["cls","클래스",cs.length,`<div class="box"><h3>이 시즌 맡은 클래스 <span class="hint">${cs.length}개</span><span class="sp"></span><button class="lnk" data-act="ttT">주간 시간표${IC("right","s")}</button></h3>${PANEL.rows(cs.map(c=>{const bl=DB.blocks.filter(b=>b.classId===c.id&&b.seasonId==="s1");return {attr:`data-gocls="${c.id}"`,title:"클래스 화면에서 열기",t:c.name,sub:bl.map(b=>DAYS[b.day]+" "+fmt(b.start)).join(" · ")}}),"이 시즌에 맡은 클래스가 없어요")}</div>`]]},
   seasons:x=>{const bl=DB.blocks.filter(b=>b.seasonId===x.id);const byC=[...new Set(bl.map(b=>b.classId))];const sv=LS.get("panelTtView","l");return [["tt","시간표",bl.length,`<div class="box"><h3>클래스별 시간표 <span class="hint">${byC.length}개 클래스 · ${bl.length}개</span><span class="sp"></span><button class="lnk" data-act="ttS">시간표 열기${IC("right","s")}</button></h3><div class="ptool"></div>${"w"==="x"?"":PANEL.rows(byC.map(c=>{const b2=bl.filter(b=>b.classId===c);return {attr:`data-gocls="${c}"`,title:"클래스 화면에서 열기",t:cls(c).name,sub:b2.map(b=>DAYS[b.day]+" "+fmt(b.start)).join(" · ")}}),"이 시즌에 아직 시간표가 없어요")}${x.state!=="확정"?'<div class="row"><button class="btn sm" data-act="confirmS">운영 시작…</button></div>':""}</div>`]]},
   subjects:x=>[["bk","교재",DB.books.filter(b=>b.subjectId===x.id).length,LISTS.subjects.extra(x)]],
   books:b=>[["use","진도관리",bookPg(b).length,LISTS.books.extra(b)],["unit","단원",(b.units||[]).length||"",bookUnitBox(b)]],
   exams:x=>[["gr","성적",exGr(x).length,exBox(x)]],
+  reports:z=>[["stu","학생",rpItems(z).length,rpStuBox(z)]],
   progress:x=>[["rec",pgIsProg(x)?"기록":"기록",pgRecsAll(x).length,pgRecBox(x)],["fin","수료",x.stat==="완료"?"완료":"",pgFinBox(x)]]
 };
 /* 261판: 창 제목 — 클래스 창은 클래스 색 점과 같이 */
@@ -3347,7 +3396,7 @@ function bindDetail(p,L,r,t){mountDetail(p,L,r);if(L.coll==="enrolls")enTypeMoun
     if(a==="unitClr")askRun("단원을 모두 삭제할까요?",`<div>${esc(r.name)} · 단원 ${(r.units||[]).length}개</div><div class="hint">저장하기 전에는 Ctrl+Z나 [모두 되돌리기]로 되살릴 수 있어요.</div>`,"모두 삭제",()=>{r.units=[];r.state="draft";commit()});
     if(a==="genPg1"){const todo=pgGen(r.classId).filter(x=>x.e.id===r.id);todo.forEach(({t,e})=>DB.progress.push({id:uid("pg"),bookId:t.bookId,classId:r.classId,mode:"개별",studentId:e.studentId,stat:"진행 중",range:"",pct:"",done:"",topic:t.topic||"",state:"draft"}));commit();toast(`개별 교재 ${todo.length}권을 생성했어요 — Ctrl+Z로 되돌려요`)}
     if(a==="pgSend")pgSend(r);
-    if(a==="pgRep"){const z=DB.reports.find(q=>!q.del&&q.kind==="수료"&&q.pgId===r.id);if(z)openScreen("reports",nt,{sel:z.id,lf:{}})}
+    if(a==="pgRep"){const z=DB.reports.find(q=>!q.del&&q.kind==="수료"&&q.pgId===r.id);if(z)openScreen("reports",nt,{sel:z.id,ltab:"stu",lf:{}})}
     if(a==="pgDone")pgDoneAsk(r);
     if(a==="addBook"){const n=Object.assign(LISTS.books.blank(),{subjectId:r.id,name:r.name+" 교재",state:"draft"});DB.books.unshift(n);openScreen("books",nt,{sel:n.id});toast("새 교재(작성 중) — 이름·출판사를 넣어요")}
     if(a==="allgroup"){DB.blocks.filter(x=>x.classId===r.classId&&x.mode==="group"&&x.seasonId==="s1").forEach(x=>{if(!x.regs.includes(r.id)){x.regs.push(r.id);x.state="draft"}});commit()}
