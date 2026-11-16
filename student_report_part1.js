@@ -900,12 +900,13 @@ function normBookTitle(v) {
   return String(v || "").trim()
 }
 // (v2.8.0 예체능) 라이브러리 구분이 프로그램이면 교재→프로그램, 단원→차시, 쪽→차시로 보인다.
-// 반 전체 이름(탭·목록 제목)은 이 반 교재가 모두 프로그램일 때만 "프로그램"이다.
+// (11/16 사용자) 탭·목록 제목은 "진도"로 고정 — 교과 반도 프로그램을 쓰고 한 반에 섞일 수 있어서. 안내 문장의 이름은
+// 이 반이 모두 프로그램이면 "프로그램", 섞이면 "교재·프로그램", 아니면 "교재".
 function isProgram(b) { return !!b && b.kind === "프로그램" }
 function bookNoun(b) { return isProgram(b) ? "프로그램" : "교재" }
-function regBookNoun(r) { const bs = (r && r.books) || []; return bs.length && bs.every(isProgram) ? "프로그램" : "교재" }
+function regBookNoun(r) { const bs = (r && r.books) || []; return bs.length && bs.every(isProgram) ? "프로그램" : bs.some(isProgram) ? "교재·프로그램" : "교재" }
 // 받침: 프로그램(ㅁ) → 을·이·과, 교재 → 를·가·와
-function josa(noun, withFinal, withoutFinal) { return noun + (noun === "프로그램" ? withFinal : withoutFinal) }
+function josa(noun, withFinal, withoutFinal) { return noun + (noun.endsWith("프로그램") ? withFinal : withoutFinal) }
 // (10/31 사용자) 라이브러리 `진도 단위`: 적은 글자 그대로 보이고 "-"가 숫자 자리다("P.-" → P.50-70, "-차시" → 3-4차시, "DAY -" → DAY 7-8).
 // "-"가 없으면 한글은 숫자 뒤, 영문은 앞. 비어 있으면 교재 "P.-", 프로그램 "-차시". Notion 수식 `범위(표시)`와 같은 규칙.
 function unitTemplate(b) {
@@ -938,7 +939,7 @@ function regTabsList() {
   const testsOnly = typeof currentReg === "function" && isTestsOnly(currentReg())
   return [
     { id: "home", icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>`, label: "홈" },
-    { id: "books", icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>`, label: typeof currentReg === "function" ? regBookNoun(currentReg()) : "교재" },
+    { id: "books", icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>`, label: "진도" },
     { id: "calendar", icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`, label: "캘린더" },
     { id: "study", icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>`, label: "학습기록" },
     { id: "report", icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>`, label: "보고서" },
@@ -1012,7 +1013,7 @@ function renderBookDetail() {
             <span class="crumb-sep">›</span>
             <span class="crumb" onclick="closeBookDetail()">${esc(r.class_name)}</span>
             <span class="crumb-sep">›</span>
-            <span class="crumb" onclick="closeBookDetail()">${regBookNoun(r)}</span>
+            <span class="crumb" onclick="closeBookDetail()">진도</span>
             <span class="crumb-sep">›</span>
             <span class="crumb current">${esc(selectedBookTitle)}</span>
           </div>
