@@ -20,8 +20,10 @@ Deno.test("지울·남길 DB 목록이 PC 스크립트와 같다", async () => {
 const RENAMES = [
   ["진도교재(학원) DB", "진도관리(학원) DB", "수업·학습"],
   ["교재배부(학원) DB", "청구 항목(학원) DB", "수납"],
-  ["교재비(학원) DB", "청구(학원) DB", "수납"],
+  ["교재비(학원) DB", "청구서(학원) DB", "수납"],
   ["교재결제(학원) DB", "청구 결제(학원) DB", "수납"],
+  // (11/16) 청구 → 청구서
+  ["청구(학원) DB", "청구서(학원) DB", "수납"],
 ]
 
 Deno.test("바뀐 이름 표: 새 이름만 비울 목록·화면 묶음에 있고 옛 이름은 표에만 있다", () => {
@@ -37,7 +39,7 @@ Deno.test("바뀐 이름 표: 새 이름만 비울 목록·화면 묶음에 있�
 Deno.test("새 이름 DB는 그대로 계획에 들어간다", () => {
   const sources = new Map(RENAMES.map(([, n], i) => [n, [`n${i}`]]))
   const { plan, missing, unknown } = buildPlan(sources)
-  assertEquals(plan.map((p) => p.name), ["진도관리(학원) DB", "청구 결제(학원) DB", "청구 항목(학원) DB", "청구(학원) DB"])
+  assertEquals(plan.map((p) => p.name), ["진도관리(학원) DB", "청구 결제(학원) DB", "청구 항목(학원) DB", "청구서(학원) DB"])
   assertEquals(unknown, [])
   for (const [, n] of RENAMES) assert(!missing.includes(n))
 })
@@ -47,28 +49,28 @@ Deno.test("옛 이름 DB는 새 이름 항목으로 계획에 들어가고 모�
   const { plan, missing, unknown } = buildPlan(sources)
   assertEquals(plan, [
     { name: "진도관리(학원) DB", ds: "o0" }, { name: "청구 결제(학원) DB", ds: "o3" },
-    { name: "청구 항목(학원) DB", ds: "o1" }, { name: "청구(학원) DB", ds: "o2" },
+    { name: "청구 항목(학원) DB", ds: "o1" }, { name: "청구서(학원) DB", ds: "o2" }, { name: "청구서(학원) DB", ds: "o4" },
   ])
   assertEquals(unknown, [])
   for (const [o, n] of RENAMES) assert(!missing.includes(n) && !missing.includes(o))
 })
 
 Deno.test("옛 이름과 새 이름이 함께 있으면 한 항목으로 모으고 같은 소스는 한 번만", async () => {
-  const sources = new Map([["교재비(학원) DB", ["old", "same"]], ["청구(학원) DB", ["new", "same"]]])
-  assertEquals(mergeRenamed(sources), new Map([["청구(학원) DB", ["new", "same", "old"]]]))
+  const sources = new Map([["교재비(학원) DB", ["old", "same"]], ["청구서(학원) DB", ["new", "same"]]])
+  assertEquals(mergeRenamed(sources), new Map([["청구서(학원) DB", ["new", "same", "old"]]]))
   const { plan } = buildPlan(sources)
-  assertEquals(plan, [{ name: "청구(학원) DB", ds: "new" }, { name: "청구(학원) DB", ds: "same" }, { name: "청구(학원) DB", ds: "old" }])
+  assertEquals(plan, [{ name: "청구서(학원) DB", ds: "new" }, { name: "청구서(학원) DB", ds: "same" }, { name: "청구서(학원) DB", ds: "old" }])
   const counts = await countPlan(plan, async () => ["p1", "p2"])
-  assertEquals([...counts.keys()], ["청구(학원) DB"])
-  assertEquals(counts.get("청구(학원) DB"), { count: 6, capped: false })
+  assertEquals([...counts.keys()], ["청구서(학원) DB"])
+  assertEquals(counts.get("청구서(학원) DB"), { count: 6, capped: false })
 })
 
 Deno.test("옛 이름으로 고르거나 남겨도 새 이름으로 받는다", () => {
-  assertEquals(selectionKeep(["교재비(학원) DB"]), selectionKeep(["청구(학원) DB"]))
+  assertEquals(selectionKeep(["교재비(학원) DB"]), selectionKeep(["청구서(학원) DB"]))
   assert(!selectionKeep(["진도교재(학원) DB"]).includes("진도관리(학원) DB"))
   const sources = new Map([["교재비(학원) DB", ["c"]], ["출석(학원) DB", ["a"]]])
   assertEquals(buildPlan(sources, ["교재비(학원) DB"]).plan.map((p) => p.name), ["출석(학원) DB"])
-  assertEquals(buildPlan(sources, ["청구(학원) DB"]).plan.map((p) => p.name), ["출석(학원) DB"])
+  assertEquals(buildPlan(sources, ["청구서(학원) DB"]).plan.map((p) => p.name), ["출석(학원) DB"])
 })
 
 Deno.test("시즌 DB는 학생·수강 묶음에서 시간표 바로 다음에 비우고, 없어도 못 찾은 DB로 내지 않는다", () => {

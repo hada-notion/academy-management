@@ -89,7 +89,7 @@ export async function ensureCartForRegistration(
 	const studentName = anyTitleText(registration) || "학생"
 	const textbookConfig = await getScheduleConfig("교재비 안내")
 	const cart = await createPage(DATA_SOURCE_TEXTBOOK_CART, {
-		[PROP_CART_TITLE]: { title: [{ text: { content: `${studentName} 교재비` } }] },
+		[PROP_CART_TITLE]: { title: [{ text: { content: `${studentName} 교재비 청구서` } }] },
 		[PROP_CART_REGISTRATION]: { relation: [{ id: registrationId }] },
 		...(textbookConfig ? { "알림톡 설정": { relation: [{ id: textbookConfig.rowId }] } } : {}),
 	})

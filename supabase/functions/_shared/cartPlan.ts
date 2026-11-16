@@ -6,7 +6,10 @@
 // 서버가 하던 등록 읽기·진도교재 한 권씩 읽기·라이브러리 교재 한 권씩 읽기(제목)가 없어지고 배부 만들기만 남는다.
 // 두 번 만들기 막기: 만들기 전에 이 등록의 교재배부를 한 번 조회해 이미 배부된 라이브러리 교재는 건너뛴다
 // (예전 서버 규칙과 같다 — 다른 교재비에 배부된 것도 건너뜀). 버튼을 두 번 눌러도, 큐가 다시 시도해도 한 권씩만.
-import { createPage, getPage, mapWithConcurrency, queryAllPages, todaySeoulDate, updatePageProperties } from "./notionClient.ts"
+// (v2.8.0 항목 71, 11/16 사용자) 청구서 한 장 = 한 종류. 담기 계획 항목의 "k"(라이브러리 구분: 교재 / 프로그램)로
+// 교재는 "교재비" 청구서, 프로그램은 "재료비" 청구서에 담는다. 누른 청구서가 비어 있거나 같은 종류면 그 장에,
+// 아니면 같은 등록의 그 종류 청구서(수식 `구분`)에, 없으면 "등록 이름 + 구분 + 청구서"로 새로 만든다. k가 없으면 예전처럼 누른 장에.
+import { anyTitleText, createPage, getPage, mapWithConcurrency, queryAllPages, todaySeoulDate, updatePageProperties } from "./notionClient.ts"
 import { LIBRARY_PROP, libraryIds, libraryPropOf } from "./libraryProp.ts"
 import { PROP_LAST_ERROR, PROP_SYNCED_AT } from "./constants.ts"
 import { CART_STATUS_SPEC, distributeFromCartPage } from "./textbookDistributionTarget.ts"
@@ -14,8 +17,12 @@ import { markError } from "./statusTracking.ts"
 
 export const CART_PLAN_PROP = "담기 계획"
 const DS_DISTRIBUTION = () => Deno.env.get("DATA_SOURCE_TEXTBOOK_DISTRIBUTION_ID")!
+const DS_CART = () => Deno.env.get("DATA_SOURCE_TEXTBOOK_CART_ID")!
+export const CART_KIND_PROP = "구분"
+const cartKindOf = (cart: any): string => String(cart?.properties?.[CART_KIND_PROP]?.formula?.string ?? "").trim()
+const cartEmpty = (cart: any): boolean => !(cart?.properties?.["교재배부"]?.relation ?? []).length
 
-export type CartPlan = { reg: string; items: { lib: string; title: string }[] }
+export type CartPlan = { reg: string; items: { lib: string; title: string; kind?: string }[] }
 
 const ID = /^[0-9a-f]{32}$/
 const cleanId = (v: unknown): string | null => {
@@ -37,7 +44,8 @@ export function cartPlanFromText(text: unknown): CartPlan | null {
 	for (const it of raw.items) {
 		const lib = cleanId(it?.l)
 		if (!lib) throw new Error("담기 계획의 라이브러리 교재 값이 올바르지 않습니다.")
-		items.push({ lib, title: String(it?.t ?? "").trim() || `${todaySeoulDate()} 교재 배부` })
+		const k = String(it?.k ?? "").trim()
+		items.push({ lib, title: String(it?.t ?? "").trim() || `${todaySeoulDate()} 교재 배부`, ...(k ? { kind: k === "프로그램" ? "재료비" : "교재비" } : {}) })
 	}
 	return { reg, items }
 }
@@ -92,12 +100,13 @@ export async function processCartPlanQueueItem(payload: { cartId: string; plan?:
 			const todo = plan.items.filter((it) => !billed.has(it.lib))
 			if (todo.length) {
 				const libProp = await deps.libraryProp(DS_DISTRIBUTION()).catch(() => LIBRARY_PROP)
+				const targets = await cartTargets(cartId, plan.reg, todo)
 				await mapWithConcurrency(todo, 3, (it) => deps.createPage(DS_DISTRIBUTION(), {
 					이름: { title: [{ text: { content: it.title } }] },
 					등록: { relation: [{ id: plan!.reg }] },
 					[libProp]: { relation: [{ id: it.lib }] },
 					배부일: { date: { start: deps.today() } },
-					교재비: { relation: [{ id: cartId }] },
+					교재비: { relation: [{ id: targets.get(it.kind ?? "") ?? cartId }] },
 				}))
 				made = todo.length
 			}
@@ -113,4 +122,31 @@ export async function processCartPlanQueueItem(payload: { cartId: string; plan?:
 		await deps.markError(cartId, (err as Error).message).catch(() => {})
 		throw err
 	}
+}
+
+// 종류(교재비 / 재료비)마다 담을 청구서 id. k가 없는 항목("")은 누른 장.
+export async function cartTargets(cartId: string, regId: string, items: { kind?: string }[]): Promise<Map<string, string>> {
+	const deps = cartPlanDeps
+	const out = new Map<string, string>([["", cartId]])
+	const kinds = [...new Set(items.map((it) => it.kind).filter((k): k is string => !!k))].sort() // 교재비 → 재료비
+	if (!kinds.length) return out
+	const cart = await deps.getPage(cartId)
+	let own = cartEmpty(cart) ? "" : cartKindOf(cart) || "교재비"
+	let others: any[] | null = null
+	for (const kind of kinds) {
+		if (!own) own = kind
+		if (own === kind) { out.set(kind, cartId); continue }
+		others ??= (await deps.queryAllPages(DS_CART(), { property: "등록", relation: { contains: regId } }))
+			.filter((p: any) => !p?.archived && !p?.in_trash && key(p.id) !== key(cartId))
+		const hit = others.find((p) => !cartEmpty(p) && cartKindOf(p) === kind)
+		if (hit) { out.set(kind, hit.id); continue }
+		const reg = await deps.getPage(regId).catch(() => null)
+		const regTitle = (reg ? anyTitleText(reg) : "").trim() || "학생"
+		const made = await deps.createPage(DS_CART(), {
+			이름: { title: [{ text: { content: `${regTitle} ${kind} 청구서` } }] },
+			등록: { relation: [{ id: regId }] },
+		})
+		out.set(kind, made.id)
+	}
+	return out
 }

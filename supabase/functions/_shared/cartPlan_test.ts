@@ -78,3 +78,47 @@ Deno.test("v2.8.0 예체능: 프로그램은 가격(재료비)이 있을 때만 
 	const lib = (kind: string | null, price: number | null) => ({ properties: { "구분": { type: "select", select: kind ? { name: kind } : null }, "가격": { type: "number", number: price } } })
 	eq([lib(null, null), lib("교재", 0), lib("프로그램", null), lib("프로그램", 0), lib("프로그램", 20000), { properties: {} }].map(isBillableLibrary), [true, true, false, false, true, true])
 })
+
+// (v2.8.0 항목 71) 청구서 한 장 = 한 종류: 담기 계획 k로 교재 → 교재비 청구서, 프로그램 → 재료비 청구서
+function fake2(opts: { cart: any; others: any[] }) {
+	const calls = { created: [] as { db: string; props: any }[], updates: [] as any[] }
+	const saved = { ...cartPlanDeps }
+	Object.assign(cartPlanDeps, {
+		getPage: async (id: string) => id === REG ? { properties: { 이름: { type: "title", title: [{ plain_text: "박서준 중2 영어" }] } } } : opts.cart,
+		createPage: async (db: string, props: any) => { calls.created.push({ db, props }); return { id: db === "carts" ? "new-cart" : "d" } },
+		queryAllPages: async (db: string) => db === "carts" ? opts.others : [],
+		update: async (_id: string, props: any) => { calls.updates.push(props) },
+		libraryProp: async () => "라이브러리",
+		markError: async () => {},
+		legacy: async () => {},
+		today: () => "2026-11-16",
+	})
+	return { calls, restore: () => Object.assign(cartPlanDeps, saved) }
+}
+const kindCart = (id: string, kind: string, lines = 1) => ({ id, properties: { 구분: { formula: { string: kind } }, 교재배부: { relation: Array.from({ length: lines }, () => ({ id: "l" })) } } })
+
+Deno.test("항목 71 담기: 빈 청구서에 교재·프로그램이 같이 오면 교재는 누른 장, 프로그램은 새 재료비 청구서", async () => {
+	const { calls, restore } = fake2({ cart: kindCart("cart-1", "교재비", 0), others: [] })
+	try {
+		await processCartPlanQueueItem({ cartId: "cart-1", plan: plan([{ l: L1, t: "예시 영문법 2", k: "교재" }, { l: L2, t: "영어 발표", k: "프로그램" }]) })
+		const carts = calls.created.filter((c) => c.db === "carts"), dist = calls.created.filter((c) => c.db === "distributions")
+		eq(carts.length, 1)
+		eq(carts[0].props["이름"].title[0].text.content, "박서준 중2 영어 재료비 청구서")
+		eq(dist.map((d) => [d.props["이름"].title[0].text.content, d.props["교재비"].relation[0].id]), [["예시 영문법 2", "cart-1"], ["영어 발표", "new-cart"]])
+	} finally { restore() }
+})
+
+Deno.test("항목 71 담기: 교재비 청구서에서 눌렀는데 프로그램만 오면 같은 등록의 재료비 청구서에, k가 없으면 누른 장", async () => {
+	let t = fake2({ cart: kindCart("cart-1", "교재비"), others: [kindCart("cart-2", "재료비")] })
+	try {
+		await processCartPlanQueueItem({ cartId: "cart-1", plan: plan([{ l: L2, t: "영어 발표", k: "프로그램" }]) })
+		eq(t.calls.created.filter((c) => c.db === "carts").length, 0)
+		eq(t.calls.created[0].props["교재비"].relation[0].id, "cart-2")
+	} finally { t.restore() }
+	t = fake2({ cart: kindCart("cart-1", "교재비"), others: [] })
+	try {
+		await processCartPlanQueueItem({ cartId: "cart-1", plan: plan([{ l: L2, t: "옛 수식" }]) })
+		eq(t.calls.created.length, 1)
+		eq(t.calls.created[0].props["교재비"].relation[0].id, "cart-1")
+	} finally { t.restore() }
+})
