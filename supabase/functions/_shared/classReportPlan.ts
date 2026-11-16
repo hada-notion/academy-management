@@ -4,10 +4,12 @@
 // 예전(v2.7)에는 사람이 발송함을 먼저 만들어 클래스 '보고서 생성 대상'에 고른 뒤, 버튼이 등록을 ⚪ 대기로 바꾸고
 // 등록 DB 자동화 [생성] 보고서가 보고서를 만들었다. 이제 클래스에 '보고서 구분'·'보고서 기간'만 넣고 누르면
 // 서버가 발송함까지 만든다. 순서를 서버 한 곳에서 지키므로 임시로 값을 맡겨 둘 속성이 필요 없다.
+// (v2.8.0 항목 69) 클래스 '보고서 생성 대상'에는 더 적지 않는다. '해당기간 보고서 생성 내역'은 보고서 구분·기간과
+// 클래스의 '알림톡 발송함'을 읽는다(항목 8). 반의 발송함은 클래스 '알림톡 발송함'에서 연다.
 //
 // 흐름(큐는 전체에서 한 번에 한 건씩, 쌓인 순서대로):
 //   1) 웹훅: 누른 순간의 구분·기간·클래스명을 검사해 큐에 "반 1건"을 넣는다(클래스 '보고서 생성 상태' ⏳ 대기열).
-//   2) 반 1건: 같은 반·구분·기간 발송함을 찾고 없으면 만든다 → 클래스 '보고서 생성 대상'을 그 발송함으로 →
+//   2) 반 1건: 같은 반·구분·기간 발송함을 찾고 없으면 만든다 →
 //      기간 안에 다니는 등록 중 이 발송함 보고서가 없는 학생마다 "학생 1건"을 큐에 넣는다.
 //      발송함이 생긴 뒤에야 학생 작업이 들어가므로 순서가 뒤집히지 않는다.
 //   3) 학생 1건: 이 등록·이 발송함 보고서가 이미 있으면 건너뛰고, 없으면 보고서 한 페이지를 한 번에 만든다.
@@ -34,7 +36,6 @@ export const REPORT_KINDS = ["주간 보고서", "월간 보고서"]
 const PROP_CLASS_KIND = "보고서 구분"
 const PROP_CLASS_PERIOD = "보고서 기간"
 const PROP_CLASS_NAME = "클래스명"
-const PROP_CLASS_BATCH = "보고서 생성 대상"
 // 알림톡 발송함(학원) DB
 const PROP_BATCH_TITLE = "이름"
 const PROP_BATCH_KIND = "구분"
@@ -210,8 +211,6 @@ export async function processClassReportsQueueItem(payload: ClassReportsPayload)
 	try {
 		await deps.markRunning(p.classId)
 		const batch = await findOrCreateBatch(p)
-		// 클래스 화면의 '해당기간 보고서 생성 내역' 수식이 이 발송함으로 누락·중복을 보여 주도록 연결해 둔다.
-		await deps.update(p.classId, { [PROP_CLASS_BATCH]: { relation: [{ id: batch.id }] } })
 		const regs = (await deps.queryAllPages(DS_REGISTRATION, { property: "클래스", relation: { contains: p.classId } }))
 			.filter((r: any) => !r?.in_trash && !r?.archived && inPeriodRegistration(r, p))
 		const existing = await deps.queryAllPages(DS_REPORT, { property: PROP_REPORT_BATCH, relation: { contains: batch.id } })

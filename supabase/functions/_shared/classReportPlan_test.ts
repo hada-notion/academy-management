@@ -82,9 +82,8 @@ Deno.test("v2.8.0 반별 보고서: 같은 반·구분·기간 발송함을 다�
 	})
 	await m.processClassReportsQueueItem(P)
 	eq(calls.created.length, 0)
-	eq(calls.updates, [
-		{ id: "cls", props: { "보고서 생성 대상": { relation: [{ id: "b-same" }] } } },
-	])
+	// (항목 69) 클래스 '보고서 생성 대상'에는 적지 않는다.
+	eq(calls.updates, [])
 	eq(calls.enqueued, [{ target: "registration-report", payload: { ...P, batchId: "b-same", regId: "r1", last: true } }])
 	eq(calls.marks, ["running:cls"])
 })
@@ -98,7 +97,7 @@ Deno.test("v2.8.0 반별 보고서: 발송함이 없으면 반·구분·기간�
 		"기간": { date: { start: "2026-10-19", end: "2026-10-25" } },
 		"클래스": { relation: [{ id: "cls" }] },
 	} }])
-	eq(calls.updates[0].props["보고서 생성 대상"].relation[0].id, "new-1")
+	eq(calls.updates, [])
 	eq(calls.enqueued.length, 0)
 	eq(calls.marks, ["running:cls", "done:cls"])
 })
