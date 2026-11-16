@@ -41,6 +41,7 @@ export const WEBHOOK_ROUTES: WebhookRoute[] = [
   { id: "class-report-create", db: "클래스(학원)", name: "보고서 생성", kind: "button", fn: "create-class-reports", path: "" },
   { id: "class-tuition-create", db: "클래스(학원)", name: "월 수강료 생성", kind: "button", fn: "send-monthly-notice", path: "/create" },
   { id: "class-letter-create", db: "클래스(학원)", name: "가정통신문 생성", kind: "button", fn: "send-monthly-notice", path: "/create-letter" },
+  { id: "class-etc-charge", db: "클래스(학원)", name: "기타경비 청구", kind: "button", fn: "sync-textbook-distribution", path: "/class-etc/queue" },
   { id: "menu-bulk-classes", db: "메뉴(학원)", name: "다음주 수업 일괄 생성", kind: "button", fn: "generate-classes", path: "?mode=bulk" },
   { id: "session-record", db: "수업(학원)", name: "학습기록 생성", kind: "button", fn: "create-learning-record", path: "" },
   { id: "session-routine-checks", db: "수업(학원)", name: "루틴 체크 생성", kind: "button", fn: "create-class-reports", path: "/routine-checks" },
