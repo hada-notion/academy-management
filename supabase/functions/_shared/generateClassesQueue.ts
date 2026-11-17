@@ -13,12 +13,16 @@ import { createSessionFromPlan, type SessionPlan } from "./timetableSessionPlan.
 export async function processGenerateClassesQueueItem(payload: { timetableId: string; date?: string; plan?: SessionPlan }): Promise<void> {
 	const plan = payload.plan
 	if (plan && (!payload.date || payload.date === plan.date)) {
-		let pageId: string
+		let pageId: string | null
 		try {
 			pageId = await createSessionFromPlan(payload.timetableId, plan)
 		} catch (err) {
 			console.error("[generate-classes] 수업추가 정보로 만들기 실패 → 시간표를 새로 읽는 항목으로 다시 넣음:", payload.timetableId, (err as Error).message)
 			await enqueueSync("generate-classes", { timetableId: payload.timetableId, date: plan.date })
+			return
+		}
+		if (!pageId) {
+			console.log("[generate-classes] 학원 휴원이라 수업을 만들지 않음:", payload.timetableId, plan.date)
 			return
 		}
 		console.log("[generate-classes] 수업추가 정보로 수업 생성:", payload.timetableId, plan.date, "명단", plan.regIds.length)
