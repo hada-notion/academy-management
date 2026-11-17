@@ -1,5 +1,5 @@
 import { isParentPublicEvent, publicNoticeFields, noticeReportSyncNotNeeded, NOTICE_VISIBILITY_POLICY } from "./scheduleVisibility.ts"
-import { buildStudentNotices, clearNoticeCache, noticeDeps } from "./reportCacheBuilder.ts"
+import { buildStudentNotices, clearNoticeCache, noticeDeps, withFreshNotices } from "./reportCacheBuilder.ts"
 function assert(v: unknown, msg = "assertion failed") { if (!v) throw new Error(msg) }
 function event(hidden: unknown = false, published: unknown = true, category = "📆 학원 일정"): any {
  return {id:"event", properties:{"숨김":{type:"checkbox",checkbox:hidden},"학부모 공개":{type:"checkbox",checkbox:published},"구분":{type:"select",select:{name:category}},"날짜":{type:"date",date:{start:new Date().toISOString().slice(0,10)}},"이름":{type:"title",title:[{plain_text:"공개 행사"}]}}}
@@ -81,4 +81,16 @@ Deno.test("대상을 A → B로 바꾼 직후 조회가 옛 결과(A)를 돌려�
  noticeDeps.query=(async(_ds:string,filter:any)=>{const r=filter.and.find((f:any)=>f.relation);return r&&r.property==="학생"&&r.relation.contains==="A"?[moved]:[]}) as any
  const n=await buildStudentNotices("A",{},async id=>({id,properties:{}}))
  assert(n.length===0,JSON.stringify(n))
+})
+
+Deno.test("조회가 바뀌기 전 속성까지 돌려줘도, 방금 바뀐 일정 값(웹훅 본문)으로 A에서 빼고 B에 싣는다",async()=>{
+ const stale=event();stale.id="moved";stale.properties["학생"]=rel(["A"])      // 조회가 주는 옛 모습
+ const fresh=event();fresh.id="moved";fresh.properties["학생"]=rel(["B"])      // 웹훅 본문의 새 모습
+ clearNoticeCache()
+ noticeDeps.query=(async(_ds:string,filter:any)=>{const r=filter.and.find((f:any)=>f.relation);return r&&r.property==="학생"&&r.relation.contains==="A"?[stale]:[]}) as any
+ const getA=withFreshNotices(async (id:string)=>({id,properties:{}}),[fresh])
+ assert((await buildStudentNotices("A",{},getA)).length===0)
+ clearNoticeCache()
+ const getB=withFreshNotices(async (id:string)=>({id,properties:{}}),[fresh])
+ assert((await buildStudentNotices("B",{},getB)).length===1)
 })
