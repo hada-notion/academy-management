@@ -2,7 +2,7 @@
 // 찾아 시험정보 `시험일정`에 잇는다. 하나면 잇고(✅), 없거나 여럿이면 잇지 않고 `마지막 오류`에 이유(⚠️).
 // 시험일이 그 기간 밖이면 잇되 `마지막 오류`에 경고를 남긴다.
 // 순수 판단(pickExamPeriod)과 노션 읽기·쓰기(linkExamPeriod, deps로 주입)를 나눴다 — 시험은 판단과 흐름을 따로 본다.
-import { categoryName, SCHOOL_EXAM } from "./scheduleCategory.ts"
+import { categoryName, SCHOOL_EXAM, PAPER_EXAM_WORDS, MOCK_EXAM_WORDS, hasAnyWord } from "./scheduleCategory.ts"
 
 const squash = (s: unknown) => String(s ?? "").replace(/\s+/g, "")
 const selectName = (page: any, prop: string) => String(page?.properties?.[prop]?.select?.name ?? "").trim()
@@ -25,6 +25,21 @@ export function nameMatches(eventName: string, target: string): boolean {
   const m = /^(\d)학기(중간|기말)/.exec(t)
   return !!m && e.includes(`${m[1]}학기`) && e.includes(m[2])
 }
+// 낱말로 찾을 때 다른 시험이 분명한 일정은 뺀다: 학기가 다름(1학기 ↔ 2학기), 중간 ↔ 기말, "N월" 다름.
+export function conflictsWith(eventName: string, target: string): boolean {
+  const e = squash(eventName), t = squash(target)
+  const sem = (s: string) => /(\d)학기/.exec(s)?.[1]
+  const half = (s: string) => s.includes("중간") ? "중간" : s.includes("기말") ? "기말" : ""
+  const mon = (s: string) => /(\d{1,2})월/.exec(s)?.[1]
+  const differs = (a?: string, b?: string) => !!a && !!b && a !== b
+  return differs(sem(e), sem(t)) || differs(half(e), half(t)) || differs(mon(e), mon(t))
+}
+// 시험 종류 낱말: 시험 `시험 구분`이 모의고사이거나 `모의고사(수능)`만 고른 시험 → 모의 낱말, 그 밖 → 지필 낱말.
+export function examKindWords(exam: any): string[] {
+  const kind = selectName(exam, "시험 구분")
+  const mock = kind === "모의고사" || (!kind && !selectName(exam, "지필고사") && !!selectName(exam, "모의고사(수능)"))
+  return mock ? MOCK_EXAM_WORDS : PAPER_EXAM_WORDS
+}
 // 학년도: 3월~다음 해 2월.
 export function academicYearOf(iso: string): number | null {
   if (!/^\d{4}-\d{2}-\d{2}/.test(iso)) return null
@@ -43,18 +58,22 @@ export function pickExamPeriod(info: any, exam: any, events: any[]): PickResult 
   const examDay = dateStart(info, "시험일")
   const year = Number(selectName(exam, "연도")) || academicYearOf(examDay)
   if (!year) return { ok: false, error: "시험 연도가 비어 있습니다. 시험의 연도나 시험정보의 시험일을 넣으세요." }
-  let found = events.filter(e => !e?.archived && !e?.in_trash &&
+  const pool = events.filter(e => !e?.archived && !e?.in_trash &&
     categoryName(e?.properties?.["구분"]?.select?.name) === SCHOOL_EXAM &&
-    nameMatches(titleOf(e), target) &&
     academicYearOf(dateStart(e, "날짜")) === year)
-  // 여럿이면 시험정보 학년으로 좁힌다(일정 학년이 비었거나 그 학년을 포함한 것).
+  // 1) 이름에 시험 이름(예: "1학기 중간고사")이 든 것. 2) 없으면 시험 종류 낱말(scheduleCategory 표 —
+  // 지필고사 ↔ 지필·고사·정기, 모의고사 ↔ 모의·학력평가·수능·수학능력)이 든 것.
+  let found = pool.filter(e => nameMatches(titleOf(e), target))
+  if (!found.length) found = pool.filter(e => hasAnyWord(titleOf(e), examKindWords(exam)) && !conflictsWith(titleOf(e), target))
+  // 여럿이면 차례로 좁힌다(좁힌 결과가 비면 앞 단계 그대로): 시험정보 학년 → 시험일이 기간 안 → "N월" 시험이면 그 달 시작.
+  const narrow = (keep: (e: any) => boolean) => { if (found.length > 1) { const n = found.filter(keep); if (n.length) found = n } }
   const grade = relIds(info, "학년")[0]
-  if (found.length > 1 && grade) {
-    const narrowed = found.filter(e => { const g = relIds(e, "학년").map(plain); return !g.length || g.includes(plain(grade)) })
-    if (narrowed.length) found = narrowed
-  }
+  if (grade) narrow(e => { const g = relIds(e, "학년").map(plain); return !g.length || g.includes(plain(grade)) })
+  if (examDay) narrow(e => { const s = dateStart(e, "날짜"), t = dateEnd(e, "날짜") || s; return examDay >= s && examDay <= t })
+  const month = /(\d{1,2})월/.exec(target)?.[1]
+  if (month) narrow(e => Number(dateStart(e, "날짜").slice(5, 7)) === Number(month))
   const label = (e: any) => { const s = dateStart(e, "날짜"), t = dateEnd(e, "날짜"); return `${titleOf(e)}(${t && t !== s ? `${s}~${t}` : s})` }
-  if (!found.length) return { ok: false, error: `${year}학년도 이 학교의 구분 "시험" 일정 중 이름에 "${target}"가 든 것이 없습니다. 학교에서 [학사일정 가져오기]를 먼저 누르거나 일정 이름·구분을 확인하세요.` }
+  if (!found.length) return { ok: false, error: `${year}학년도 이 학교의 구분 "시험" 일정 중 이름에 "${target}"(또는 ${examKindWords(exam).join("·")})가 든 것이 없습니다. 학교에서 [학사일정 가져오기]를 먼저 누르거나 일정 이름·구분을 확인하세요.` }
   if (found.length > 1) return { ok: false, error: `맞는 시험 기간이 ${found.length}개입니다: ${found.slice(0, 5).map(label).join(", ")}${found.length > 5 ? " 외" : ""}. 시험정보 시험일정에서 직접 고르세요.` }
   const ev = found[0], s = dateStart(ev, "날짜"), t = dateEnd(ev, "날짜") || s
   const warning = examDay && (examDay < s || examDay > t) ? `경고: 시험일(${examDay})이 시험 기간(${t !== s ? `${s}~${t}` : s}) 밖입니다.` : ""

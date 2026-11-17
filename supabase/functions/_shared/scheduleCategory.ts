@@ -14,3 +14,19 @@ export function categoryOf(page: any): string {
 export function isSchoolCategory(raw: unknown): boolean {
   return SCHOOL_NAMES.has(categoryName(raw))
 }
+
+// ── 시험 낱말 표 한 곳(2.8, 담당 261118) ──────────────────────────────────────────
+// 나이스 가져오기의 `구분` 판단과 시험정보 [시험 기간 연결] 찾기가 같은 표를 쓴다(띄어쓰기 무시).
+// 시험 일정: 이름에 고사·시험·지필·평가 중 하나(예: "지필평가(2,3학년)", "전국연합학력평가", "수능모의평가").
+export const EXAM_WORDS = ["고사", "시험", "지필", "평가"]
+// 시험정보 쪽 시험 종류별로 일정 이름에서 찾을 낱말: 지필고사 ↔ 지필·고사·정기, 모의고사 ↔ 모의·학력평가·수능·수학능력.
+export const PAPER_EXAM_WORDS = ["지필", "고사", "정기"]
+export const MOCK_EXAM_WORDS = ["모의", "학력평가", "수능", "수학능력"]
+const squashName = (s: unknown) => String(s ?? "").replace(/\s+/g, "")
+export function hasAnyWord(name: unknown, words: string[]): boolean {
+  const n = squashName(name)
+  return words.some(w => n.includes(w))
+}
+export function isExamName(name: unknown): boolean {
+  return hasAnyWord(name, EXAM_WORDS)
+}
