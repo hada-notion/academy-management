@@ -17,6 +17,7 @@
       try {
         await appLoad({ url: cfg.url, anonKey: cfg.anonKey, session });
         appSaveMark(DB); /* 불러온 값을 기준으로 적어 둠 — 저장 때 달라진 칸만 보냄 */
+        try { liveOptions(await liveApi({ url: cfg.url, anonKey: cfg.anonKey, session }, { action: "options" })); } catch (_) { /* 선택지를 못 받아도 화면은 열린다(저장 때 서버가 거름) */ }
         window.LIVE = { url: cfg.url, anonKey: cfg.anonKey, session, at: new Date().toISOString() };
         liveHooks();
         if (typeof snapshot === "function") lastSnap = snapshot();
@@ -46,12 +47,41 @@
 
 /* 실제 자료 모드의 [저장]: 작성 중인 줄(입력 범위 12개 묶음)을 app-api save로 노션에 쓴다. 저장 창의 [저장]이 부른다(LIVE일 때만).
    성공한 줄은 저장됨으로, 실패 · 충돌 줄은 작성 중으로 남기고 이유를 보여 준다. 지우기는 보내지 않는다(노션에서 직접). */
+async function liveApi(conn, body) {
+  const res = await fetch(String(conn.url).replace(/\/+$/, "") + "/functions/v1/app-api", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-admin-key": conn.session, Authorization: "Bearer " + conn.anonKey, apikey: conn.anonKey },
+    body: JSON.stringify(body),
+  });
+  const out = await res.json().catch(() => null);
+  if (!res.ok || !out || !out.ok) throw new Error((out && out.error) || "요청 실패 (" + res.status + ")");
+  return out;
+}
+/* 고르기 목록을 노션 선택지로 바꾼다(저장은 노션에 없는 값을 받지 않으므로 앱도 있는 값만 고르게).
+   앱 목록 이름 ↔ 노션 [DB · 칸]. 노션 목록이 비었거나 못 받은 것은 앱 목록 그대로 둔다. LIVE_OPTS = 새 값 만들기를 막을 목록. */
+const LIVE_OPT_MAP = { role: ["강사(학원) DB", "직책"], series: ["라이브러리(학원) DB", "시리즈"], pub: ["라이브러리(학원) DB", "출판사"], curr: ["라이브러리(학원) DB", "교육과정"], unit: ["라이브러리(학원) DB", "진도 단위"], btype: ["라이브러리(학원) DB", "교재 유형"] };
+function liveOptions(res) {
+  const dbs = (res && res.dbs) || {};
+  if (!DB.opts) DB.opts = {};
+  window.LIVE_OPTS = {};
+  for (const [k, [db, prop]] of Object.entries(LIVE_OPT_MAP)) {
+    const list = dbs[db] && dbs[db][prop];
+    if (Array.isArray(list) && list.length) { DB.opts[k] = list.slice(); window.LIVE_OPTS[k] = prop; }
+  }
+  const route = dbs["학생(학원) DB"] && dbs["학생(학원) DB"]["문의 경로"];
+  if (Array.isArray(route) && route.length && typeof ROUTES !== "undefined") { ROUTES.length = 0; ROUTES.push(...route); window.LIVE_OPTS.route = "문의 경로"; }
+}
 /* 실제 자료 모드에서 앱의 두 곳을 바꿔 끼운다(한 번만):
    - 저장 숫자(dirtyCount): 작성 중 표시가 아니라 "노션에 아직 안 간 줄 수"(새 줄 + 불러온 값과 달라진 줄)도 센다.
    - 알림(toast): 창 아래 [ㅇㅇ 저장]처럼 앱 안에서만 저장하던 곳("(시제품: 노션에 쓰지 않음)")은 그 말을 떼고 바로 노션 저장을 잇는다. */
 function liveHooks() {
   if (window._liveHooked) return; window._liveHooked = true;
-  const dc0 = dirtyCount, toast0 = toast;
+  const dc0 = dirtyCount, toast0 = toast, optAdd0 = optAdd;
+  /* 노션 선택지로 바꾼 목록에는 앱에서 새 값을 만들지 않는다(노션에서 선택지를 먼저 만든다) */
+  optAdd = (k, t) => {
+    if (window.LIVE && window.LIVE_OPTS && window.LIVE_OPTS[k]) { toast0(`'${String(t || "").trim()}'은(는) 노션 [${window.LIVE_OPTS[k]}] 선택지에 없어요 — 노션에서 선택지를 먼저 만들어요`); return null; }
+    return optAdd0(k, t);
+  };
   const pending = () => { try { return appSaveCollect(DB).changes.length; } catch (_) { return 0; } };
   dirtyCount = () => Math.max(dc0(), window.LIVE ? pending() : 0);
   toast = (msg) => {
