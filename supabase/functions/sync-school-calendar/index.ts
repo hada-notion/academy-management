@@ -2,8 +2,8 @@
 import { CORS_HEADERS, requireAdminKey, getCurrentAdminKey } from "../_shared/adminShared.ts"
 import { queryAllPages, getPage, updatePageProperties } from "../_shared/notionClient.ts"
 import { runInBackground, respondAccepted } from "../_shared/backgroundTask.ts"
-import { neisRows, textOf, eventGrades, eventKey, ownedProperties, newEventProperties, richText, type NeisRow } from "../_shared/neisSchool.ts"
-import { academicRange, sameOwnedEvent, buttonSchoolId, retryDelayMs } from "../_shared/neisManual.ts"
+import { neisRows, textOf, eventGrades, eventKey, ownedProperties, newEventProperties, richText, groupNeisRows, memberRows, type NeisRow } from "../_shared/neisSchool.ts"
+import { importRange, sameOwnedEvent, buttonSchoolId, retryDelayMs } from "../_shared/neisManual.ts"
 import { schoolNotion, schoolSources, compactId } from "../_shared/schoolNotion.ts"
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store" } })
 async function db(path: string, method = "GET", body?: unknown) {
@@ -39,11 +39,13 @@ async function kick(runId: string) {
   })
   if (!response.ok) throw new Error("후속 처리 요청 실패 " + response.status)
 }
-async function startSchool(pageId: string, range: ReturnType<typeof academicRange>) {
+async function startSchool(pageId: string, requestedYear?: unknown) {
   let ownedId: string | undefined
   let run: any
   try {
     const { page } = await checkedSchool(pageId); ownedId = page.id
+    // 학교 `학사일정 기간`이 있으면 그 기간만, 비면 학년도 전체. 이상하면 여기서 오류(가져오지 않음).
+    const range = importRange(page, new Date(), requestedYear)
     const office = textOf(page,"교육청 코드"), code = textOf(page,"학교 코드")
     if (!/^[A-Z]\d{2}$/.test(office) || !/^\d{7}$/.test(code)) throw new Error("학교 검색에서 학교 코드부터 연결하세요.")
     run = (await db("rpc/begin_neis_manual_run","POST",{p_school:page.id,p_office:office,p_code:code,p_year:range.year,p_from:range.from,p_to:range.to}))[0]
@@ -81,10 +83,17 @@ async function processRun(runId: string) {
     const created: Record<string,string> = {...(run.created_keys ?? {})}
     for(const [key,id] of Object.entries(created))if(!byKey.has(key))byKey.set(key,{id,notIndexedYet:true})
     const grades = await queryAllPages(sources.grades)
+    // 이어진 날은 한 줄로(같은 행사·대상 학년·수업공제일명, 사이에 주말·공휴일만). 커서는 묶은 목록 기준.
+    const items=groupNeisRows(rows)
     let cursor=run.row_cursor
-    const end=Math.min(cursor+4,rows.length)
+    const end=Math.min(cursor+4,items.length)
     for(;cursor<end && Date.now()-startedAt<55000;cursor++){
-      const row=rows[cursor], key=await eventKey(row,page.id)
+      const item=items[cursor], members=memberRows(item)
+      // 옛 날짜별 줄이 하나라도 있으면 그 묶음은 예전처럼 날마다 맞춘다(묶음 줄과 겹치지 않게, 옛 줄은 그대로).
+      const memberKeys=members.length>1?await Promise.all(members.map(r=>eventKey(r,page.id))):[]
+      const targets=memberKeys.some(k=>byKey.has(k))?members:[item]
+      for(const row of targets){
+      const key=await eventKey(row,page.id)
       const gradeIds=eventGrades(row).flatMap(n=>{
         const matches=grades.filter(p=>p.properties?.["학교구분"]?.select?.name?.endsWith(row.SCHUL_CRSE_SC_NM) && new RegExp(`(?:^|\\D)${n}(?:학년)?$`).test(textOf(p,"이름")))
         if(matches.length>1)throw new Error("학년 중복: "+n)
@@ -100,11 +109,12 @@ async function processRun(runId: string) {
       }
       if(previous){if(!sameOwnedEvent(previous,row,page.id,key,gradeIds))await updatePageProperties(previous.id,properties)}
       else{const p=await schoolNotion("/pages","POST",{parent:{data_source_id:sources.events},properties:newEventProperties(row,page.id,key,gradeIds,sources.categoryOptions,sources.hasLock)});byKey.set(key,p);created[key]=p.id}
+      }
       await db(path,"PATCH",{row_cursor:cursor+1,created_keys:created,updated_at:new Date().toISOString()})
       await new Promise(resolve=>setTimeout(resolve,400))
     }
-    const done=cursor>=rows.length
-    await markSchool(page.id,done?"✅ 완료":"🔄 작업중",`${run.academic_year}학년도 · ${cursor}/${rows.length}건`,"",done)
+    const done=cursor>=items.length
+    await markSchool(page.id,done?"✅ 완료":"🔄 작업중",`${run.academic_year}학년도 · ${cursor}/${items.length}건`,"",done)
     await db(path,"PATCH",{status:done?"done":"pending",attempts:0,lease_until:null,last_error:null,updated_at:new Date().toISOString()})
     if(!done){
       try{await kick(run.id)}catch{
@@ -147,8 +157,7 @@ Deno.serve(async req=>{
       return json({runs})
     }
     if(body.action && body.action!=="start")return json({error:"지원하지 않는 action"},400)
-    const range=academicRange(new Date(),body.academicYear)
-    runInBackground(()=>startSchool(pageId,range))
-    return respondAccepted({pageId,academicYear:range.year,from:range.from,to:range.to})
+    runInBackground(()=>startSchool(pageId,body.academicYear))
+    return respondAccepted({pageId})
   }catch(e){return json({error:e instanceof Error?e.message:"요청 실패"},400)}
 })

@@ -1,5 +1,14 @@
 import { idFromString } from "./notionClient.ts"
-import { type NeisRow, eventGrades, ownedProperties, textOf } from "./neisSchool.ts"
+import { type NeisRow, eventGrades, ownedProperties, textOf, schoolPeriod } from "./neisSchool.ts"
+
+// 가져올 기간: 학교 `학사일정 기간`이 있으면 그 기간(학년도 = 시작일의 학년도), 비면 학년도 전체(3/1~2월 말).
+// 기간이 이상하면 schoolPeriod가 오류를 던진다(가져오지 않음).
+export function importRange(schoolPage: any, now = new Date(), requested?: unknown) {
+  const period = schoolPeriod(schoolPage)
+  if (!period) return academicRange(now, requested)
+  const y = Number(period.from.slice(0, 4)), m = Number(period.from.slice(4, 6))
+  return { year: m < 3 ? y - 1 : y, from: period.from, to: period.to }
+}
 export function academicRange(now = new Date(), requested?: unknown) {
   const kst = new Date(now.getTime() + 9 * 3600000)
   const current = kst.getUTCFullYear() - (kst.getUTCMonth() < 2 ? 1 : 0)
@@ -12,7 +21,7 @@ export function sameOwnedEvent(page: any, row: NeisRow, schoolId: string, key: s
   const props = ownedProperties(row, schoolId, key, gradeIds)
   return textOf(page, "이름") === row.EVENT_NM &&
     page.properties?.["날짜"]?.date?.start === props["날짜"].date.start &&
-    !page.properties?.["날짜"]?.date?.end &&
+    (page.properties?.["날짜"]?.date?.end ?? null) === props["날짜"].date.end &&
     textOf(page, "원본 행사내용") === (row.EVENT_CNTNT ?? "") &&
     textOf(page, "수업공제일명") === (row.SBTR_DD_SC_NM ?? "") &&
     textOf(page, "대상 학년") === (eventGrades(row).map(n => `${n}학년`).join(", ") || "미지정") &&

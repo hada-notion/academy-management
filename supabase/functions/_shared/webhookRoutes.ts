@@ -66,6 +66,7 @@ export const WEBHOOK_ROUTES: WebhookRoute[] = [
   { id: "student-inquiry-auto", db: "학생(학원)", name: "[웹훅] 접수안내 전송", kind: "automation", fn: "send-inquiry-receipt", path: "" },
   { id: "student-inquiry", db: "학생(학원)", name: "접수안내 전송", kind: "button", fn: "send-inquiry-receipt", path: "/resend" },
   { id: "school-calendar", db: "학교(학원)", name: "학사일정 가져오기", kind: "button", fn: "sync-school-calendar", path: "" },
+  { id: "exam-period-link", db: "시험정보(학원)", name: "시험 기간 연결", kind: "button", fn: "link-exam-period", path: "" },
   { id: "dashboard-link", db: "대시보드(학원)", name: "[웹훅] 대시보드 연결 · 날짜 편집", kind: "automation", fn: "sync-dashboard-link", path: "" },
   { id: "dashboard-link-new", db: "대시보드(학원)", name: "[웹훅] 대시보드 연결 · 페이지 추가", kind: "automation", fn: "sync-dashboard-link", path: "" },
   { id: "book-report-sync", db: "라이브러리(학원)", name: "[웹훅] 리포트 반영 · 속성 편집", kind: "automation", fn: "sync-report-cache", path: "" },
