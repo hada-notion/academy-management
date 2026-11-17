@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=508">
-<link rel="stylesheet" href="app.css?v=508">
-<link rel="stylesheet" href="pick.css?v=508">
-<link rel="stylesheet" href="field.css?v=508">
+<link rel="stylesheet" href="hada-tokens.css?v=509">
+<link rel="stylesheet" href="app.css?v=509">
+<link rel="stylesheet" href="pick.css?v=509">
+<link rel="stylesheet" href="field.css?v=509">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=508"><script src="hada-rules.js?v=508"></script><script src="alim-preview.js?v=508"></script><script src="pick.js?v=508"></script><script src="field.js?v=508"></script><script src="panel.js?v=508"></script>
+<link rel="stylesheet" href="alim.css?v=509"><script src="hada-rules.js?v=509"></script><script src="alim-preview.js?v=509"></script><script src="pick.js?v=509"></script><script src="field.js?v=509"></script><script src="panel.js?v=509"></script>
 <script>
 "use strict";
 
@@ -881,7 +881,7 @@ function bindLessonHover(grid,items){bindHoverCard(document.createElement("div")
     el.addEventListener("mouseleave",()=>{if(HC_SUP===el.dataset.l)HC_SUP=null;hcHide()});el.addEventListener("mousedown",()=>{card.hidden=true;HC_SUP=el.dataset.l})})}
 function makeWeekDialog(missing,wk){modal(`<h2>수업 생성${HELP("이 주 시간표 중 수업이 없는 것을 노션 수업 페이지로 생성해요(원본 [다음 주 수업 일괄 생성]과 같음). 학생 출석 칸도 함께 생겨요. 이미 있는 수업은 건드리지 않아요. 일정에 휴원으로 적은 클래스·날짜는 건너뛰어요.")}</h2>
   <div class="box"><div>${md(wk.from)}-${md(wk.to)} · 수업 ${missing.length}개</div><ul class="savelist">${missing.slice().sort((a,b)=>a.d.localeCompare(b.d)||a.b.start-b.b.start).map(({b,d})=>`<li><span class="dotc" style="background:${classBar(cls(b.classId))}"></span>${mdw(d)} ${esc(cls(b.classId).name)} <span class="sl-t">(${fmt(b.start)}-${fmt(b.end)} · ${studentsOfBlock(b).length}명)</span></li>`).join("")}</ul></div>
-  <div class="actions"><span class="sp"></span><button class="btn" id="mc">취소</button><button class="btn pri" id="mo">생성</button></div>`,(m,close)=>{m.querySelector("#mc").onclick=close;m.querySelector("#mo").onclick=()=>{makeLessons(missing.map(x=>[x.b,x.d]));close();toast(`수업 ${missing.length}개를 생성했어요 (시제품: 노션에 쓰지 않음)`)}})}
+  <div class="actions"><span class="sp"></span><button class="btn" id="mc">취소</button><button class="btn pri" id="mo">생성</button></div>`,(m,close)=>{m.querySelector("#mc").onclick=close;m.querySelector("#mo").onclick=()=>{if(window.LIVE){close();liveRunClasses([...new Set(missing.map(x=>x.b.id))]);return}/* 실제 자료 모드: 노션 수업 생성 큐에 맡김(live.js) */makeLessons(missing.map(x=>[x.b,x.d]));close();toast(`수업 ${missing.length}개를 생성했어요 (시제품: 노션에 쓰지 않음)`)}})}
 const clsItems=()=>[{v:"",label:"클래스 없음"},...DB.classes.filter(x=>!x.close||x.close>=TODAY).map(x=>({v:x.id,label:x.name,sub:`${tch(x.teacherId).name} · ${DB.enrolls.filter(e=>e.classId===x.id&&!e.ended).length}명`,dot:classBar(x),grp:x.open&&x.open>TODAY?"오픈 예정":"운영 중"})).sort((a,b)=>(a.grp===b.grp?0:a.grp==="운영 중"?-1:1))];
 function panelMakeup(p,t){const st=t.state;const m=st.mkNew;if(!m.sids)m.sids=[];
   const make=()=>{const id=uid("mk");const nm={id,classId:m.classId,d:m.d,start:m.start,end:m.end,sids:m.sids.slice(),att:{}};DB.mk.push(nm);(st.mkFrom||[]).forEach(k=>{if(nm.sids.includes(k.split("|").pop()))DB.mkw[k]=Object.assign({},DB.mkw[k],{mk:id})});st.mkFrom=null;LUN.add("mk:"+id);if(m.classId)st.mkCls=m.classId;st.mkNew=null;st.mkPick=false;st.lsel="mk:"+id;st.lmode="att";st.ltab="att";commit();clashToast(nm.d,nm.start,nm.end,nm.sids,nm.classId?cls(nm.classId).teacherId:null,"mk:"+id,`${nm.classId?`${mkName(nm)}을`:"보강을"} 생성했어요 — ${mdw(m.d)} ${fmt(m.start)} · ${m.sids.length}명`)};
@@ -4051,6 +4051,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del).slice().sort(
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="appdata.js?v=508"></script><script src="appsave.js?v=508"></script><script src="live.js?v=508"></script>
+<script src="appdata.js?v=509"></script><script src="appsave.js?v=509"></script><script src="live.js?v=509"></script>
 </body>
 </html>
