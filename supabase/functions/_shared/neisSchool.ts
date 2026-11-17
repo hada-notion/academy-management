@@ -1,4 +1,4 @@
-import { SCHOOL_EVENT, SCHOOL_EXAM, SCHOOL_BREAK, LEGACY_SCHOOL, LEGACY_SCHOOL_OPTION, categoryName } from "./scheduleCategory.ts"
+import { SCHOOL_EVENT, SCHOOL_EXAM, SCHOOL_BREAK, LEGACY_SCHOOL, LEGACY_SCHOOL_OPTION, categoryName, isExamName } from "./scheduleCategory.ts"
 // 학교별 행사 종류를 필터링하지 않는다. 모든 원본 행을 보존한다.
 export type NeisRow = Record<string, string | null>
 const gradeFields = ["ONE_GRADE_EVENT_YN", "TW_GRADE_EVENT_YN", "THREE_GRADE_EVENT_YN", "FR_GRADE_EVENT_YN", "FIV_GRADE_EVENT_YN", "SIX_GRADE_EVENT_YN"]
@@ -75,11 +75,11 @@ export function ownedProperties(row: NeisRow, pageId: string, key: string, grade
 }
 
 // 일정 `구분` 규칙(새로 만들 때만): ① 수업공제일명 공휴일 또는 이름에 "토요휴업일" → 방학/휴교(숨김 그대로)
-// ② 수업공제일명 휴업일 → 방학/휴교 ③ 이름에 "고사"·"시험" → 시험 ④ 그 밖 → 학교 행사.
+// ② 수업공제일명 휴업일 → 방학/휴교 ③ 이름에 시험 낱말(고사·시험·지필·평가, scheduleCategory EXAM_WORDS) → 시험 ④ 그 밖 → 학교 행사.
 export function schoolCategory(row: NeisRow): typeof SCHOOL_EVENT | typeof SCHOOL_EXAM | typeof SCHOOL_BREAK {
   const deduct = (row.SBTR_DD_SC_NM ?? "").trim(), name = row.EVENT_NM ?? ""
   if (deduct === "공휴일" || name.includes("토요휴업일") || deduct === "휴업일") return SCHOOL_BREAK
-  if (/고사|시험/.test(name)) return SCHOOL_EXAM
+  if (isExamName(name)) return SCHOOL_EXAM
   return SCHOOL_EVENT
 }
 
