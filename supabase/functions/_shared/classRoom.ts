@@ -1065,6 +1065,28 @@ export async function loadRoutines(sessionId: string) {
 		}).sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || a.routineName.localeCompare(b.routineName, "ko")),
 	}
 }
+// (2.8, 담당 261118) 루틴 체크 했음/안 했음: 루틴 체크 줄의 `완료` 칸만 쓴다(보내기 없음).
+// 루틴 체크 줄이 아닌 페이지(완료 체크·루틴 관계가 없음)는 쓰지 않는다. 학부모 리포트가 다음 재계산 때 바뀐 값을 싣도록
+// 그 줄의 출석에 "학습정보 수정일"을 적는다(출석 저장과 같은 방식).
+export async function saveRoutines(items: unknown) {
+	if (!Array.isArray(items) || items.length === 0 || items.length > MAX_ITEMS) throw new ClassRoomError(400, "저장할 내용이 없습니다.")
+	const wants = items.map((it: any) => {
+		if (!isId(it?.checkId) || typeof it?.done !== "boolean") throw new ClassRoomError(400, "루틴 체크 형식이 올바르지 않습니다.")
+		return { id: it.checkId as string, done: it.done as boolean }
+	})
+	const pages = await routineDeps.getPages(wants.map((w) => w.id))
+	const byId = new Map(pages.map((p: Page) => [String(p.id).replaceAll("-", ""), p]))
+	for (const w of wants) {
+		const p = byId.get(w.id.replaceAll("-", ""))
+		if (!p || p.archived || p.in_trash || p.properties?.["완료"]?.type !== "checkbox" || !p.properties?.["루틴"]) throw new ClassRoomError(400, "루틴 체크 줄이 아닙니다.")
+	}
+	await mapWithConcurrency(wants, 3, (w) => updatePageProperties(w.id, { "완료": { checkbox: w.done } }))
+	const attendanceIds = dedupe(wants.flatMap((w) => rel(byId.get(w.id.replaceAll("-", "")) as Page, "출석")))
+	await mapWithConcurrency(attendanceIds, 3, (id) => updatePageProperties(id, touched()).catch((err: unknown) =>
+		console.warn("[class-room] 루틴 체크 뒤 출석 수정일 건너뜀:", id, (err as Error).message)))
+	return { saved: wants.length }
+}
+
 // [루틴 체크 생성]과 같은 길(create-class-reports/routine-checks와 같은 잠금 → ⏳ 대기열 → 큐 routine-checks).
 export async function createRoutineChecks(sessionId: string) {
 	if (!isId(sessionId)) throw new ClassRoomError(400, "수업 형식이 올바르지 않습니다.")
@@ -1081,6 +1103,7 @@ export async function handleClassRoom(body: any): Promise<unknown> {
 		case "update-session": return await updateSession(body)
 		case "routines": return await loadRoutines(body.sessionId)
 		case "create-routine-checks": return await createRoutineChecks(body.sessionId)
+		case "save-routines": return await saveRoutines(body.items)
 		case "teachers": return { teachers: await listTeachers() }
 		case "day": return await loadDay(String(body.date ?? ""), body.teacherId)
 		case "days": return await loadDays(String(body.from ?? ""), String(body.to ?? ""), body.teacherId)
