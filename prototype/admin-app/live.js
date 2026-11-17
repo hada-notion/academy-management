@@ -34,6 +34,11 @@
   window.liveRO = (s) => RO.has(s);
   window.liveScr = (t) => (t && t.screen === "timetable" && t.state && t.state.view === "lesson" ? "lesson" : t ? t.screen : "");
   let roBase = null, roScreen = null, roBusy = false;
+  /* 출결 쓰기(P3 걸음 2, 칸 P3w — 수업 칸 P3과 함께 켤 때만): 수업 창의 [출석][결석] · [모두 출석] · [되돌리기] · [수업 저장]만 풀고 나머지는 보기만 그대로 */
+  const ATTW = gOn.has("P3") && gOn.has("P3w"); window.LIVE_ATTW = ATTW;
+  const attw = () => ATTW && liveScr(typeof activeTab !== "undefined" ? activeTab : null) === "lesson";
+  const roPass = () => RO_PASS0 + (attw() ? ",.attseg,#allOk,#lsRev,#lsSave" : "");
+  const snapRo = () => { if (!attw()) return snapshot(); const a = DB.att; DB.att = {}; try { return snapshot(); } finally { DB.att = a; } };
   window.liveRoReset = () => { roBase = null; };
   const roCss = document.createElement("style");
   roCss.textContent = ".live-ro #view [data-gdel]{display:none!important}.ro-note{margin:0 0 10px;padding:8px 10px;border-radius:8px;background:#FFF6DA;color:#3A3226;font-size:13px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ro-note a{color:inherit;font-weight:600;text-decoration:underline}";
@@ -45,7 +50,8 @@
     q(".panel select,.panel input[type=checkbox],.panel input[type=radio]").forEach((i) => { i.disabled = true; });
     q(".panel .tdnone").forEach((n) => { const t = n.lastChild; if (t && /여기서 고쳐요/.test(t.textContent)) t.textContent = "줄을 누르면 여기서 봐요 — 고칠 것은 노션에서 고쳐요"; });
     /* 창 안의 누르는 것은 이동(RO_PASS)만 남기고 모두 끈다: 전송 · 삭제 · 생성 · 저장 · 켜고 끄기 · 고르기 */
-    q(".panel button,.panel .hf-box").forEach((b) => { if (b.closest(RO_PASS)) return; if ("disabled" in b) b.disabled = true; b.setAttribute("aria-disabled", "true"); b.title = why; });
+    /* 화면 위 줄 · 달력 · 창 어디든: 허용 목록(이동 · 보기 바꾸기 · 찾기 · 인쇄 · 입력 칸 저장 단추)에 없는 단추는 모두 끈다 — 새 단추가 생겨도 기본이 꺼짐 */
+    q("#view button,#view .hf-box,#view select").forEach((b) => { if (b.closest(roPass())) return; if ("disabled" in b) b.disabled = true; b.setAttribute("aria-disabled", "true"); b.title = why; });
     const p = document.querySelector(".panel"), id = String((activeTab.state || {}).sel || "");
     if (p && /^[0-9a-f-]{32,36}$/i.test(id) && !p.querySelector(".ro-note")) {
       const n = document.createElement("div"); n.className = "ro-note";
@@ -57,17 +63,18 @@
     const t = typeof activeTab !== "undefined" ? activeTab : null, scr = liveScr(t), on = !!(t && window.LIVE && window.LIVE.loaded && RO.has(scr));
     document.body.classList.toggle("live-ro", on);
     if (!on) { roBase = null; roScreen = null; return; }
-    const now = snapshot();
+    const now = snapRo();
     if (roBase === null || roScreen !== scr) { roBase = now; roScreen = scr; }
     else if (now !== roBase && !roBusy) {
       roBusy = true;
       try {
-        Object.assign(DB, JSON.parse(roBase)); lastSnap = snapshot();
-        try { LDIRTY.clear(); } catch (_) {} /* 수업 창에서 생긴 작성 중 표시도 지운다(수업 화면은 모두 보기만) */
-        if (undoStack.length && undoStack[undoStack.length - 1] === roBase) undoStack.pop();
+        const keep = attw() ? DB.att : null; /* 출결 쓰기가 켜진 수업 화면: 출결 값은 되돌리지 않는다 */
+        Object.assign(DB, JSON.parse(roBase)); if (keep) DB.att = keep; lastSnap = snapshot();
+        if (!keep) { try { LDIRTY.clear(); } catch (_) {} } /* 수업 창에서 생긴 작성 중 표시도 지운다(보기만일 때) */
+        if (undoStack.length && undoStack[undoStack.length - 1] === roBase) undoStack.pop(); /* 방금 고친 것의 되돌리기 기록 */
         r0(); say("이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요");
       } finally { roBusy = false; }
-      const after = snapshot(); if (after !== roBase) roBase = after; /* 그리면서 스스로 바뀌는 값은 받아들인다(되돌리기를 되풀이하지 않게) */
+      const after = snapRo(); if (after !== roBase) roBase = after; /* 그리면서 스스로 바뀌는 값은 받아들인다(되돌리기를 되풀이하지 않게) */
     }
     roDress();
   };
@@ -85,12 +92,17 @@
   /* 보기 칸의 쓰기는 여기 한 곳에서 막는다(화면마다 막지 않는다):
      ① 창 본문 · 창 아래 단추 줄의 누르는 것(단추 · 고르기 · 켜고 끄기 · 전송 · 삭제 · 생성)은 눌리기 전에 막는다. 이동(탭 · 줄 열기 · 도움말 · 노션 링크)만 지나간다.
      ② 그래도 값이 바뀌면(다시 그리지 않는 길 포함) 누른 바로 뒤에 견줘 되돌린다. */
-  const RO_PASS = "a,[data-help],[data-notion],[data-drill],[data-go],[data-gobook],[data-gochs],[data-pgfold],[data-entab],.phead,.ptabs,.ro-note,.tdr,.tdmore,.qhelp,summary";
+  /* 허용 목록(보기 화면에서 눌러도 되는 것 = 값이 바뀌지 않는 것). 여기 없는 단추 · 고르기 · 입력은 보기 화면에서 꺼지고 막힌다.
+     창: 링크 · 도움말 · 노션 · 줄 열기/이동 · 접기 · 탭 · 할 일 줄. 위 줄: 날짜 · 달 · 주 이동, 보기 탭, 찾기, 엑셀 · 인쇄, 크기, 창 고정,
+     그리고 입력 칸(P1)에서 고친 것을 다루는 실행 취소 · 다시 실행 · 모두 되돌리기 · 저장. */
+  const RO_PASS0 = "a,[data-help],[data-notion],.hnot,[data-drill],[data-go],[data-gobook],[data-gochs],[data-gobill],[data-act^=go],[data-rpdo^=open],[data-rpdo^=notion],[data-pgfold],[data-entab],.ptabs,.ro-note,.tdr,.tdmore,.qhelp,summary,"
+    + "[data-dn],[data-mn],[data-sub],[data-cfnav],[data-mtab],[data-view],[data-wkd],[data-evsel],#lq,.sbx,#xlB,#prB,#undoB,#redoB,#rvAll,#saveAll,#panelT,#mkPanelT,#seaChip,#wkP,#wkN,#wkT,#lmAtt,#cbFind,#zOut,#zIn";
   const RO_HIT = "button,input,select,textarea,label,[role],[tabindex],[contenteditable],.btn,.lnk,.hf-box";
   const roBlock = (e) => {
     if (!document.body.classList.contains("live-ro") || !e.target.closest) return;
-    if (!e.target.closest(".panel")) return;
-    if (e.target.closest(RO_PASS) || !e.target.closest(RO_HIT)) return;
+    if (!e.target.closest("#view")) return;
+    if (e.target.closest(roPass()) || !e.target.closest(RO_HIT)) return;
+    if (!e.target.closest(".panel") && !e.target.closest("button,select,[role=button],.btn,.lnk,.hf-box")) return; /* 창 밖은 단추 · 고르기만(표 줄 · 카드 · 찾기 칸은 그대로) */
     if (e.type === "keydown" && !["Enter", " ", "Delete", "Backspace"].includes(e.key)) return;
     e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
     if (e.type === "click") say("이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요");
@@ -232,7 +244,14 @@ async function liveSave() {
   if (!(window.LIVE && window.LIVE.loaded)) { toast("노션 자료를 다 받기 전에는 저장할 수 없어요"); return null; }
   if (window._liveSaving) return null;
   window._liveSaving = true;
-  try { return await liveSaveRun(); } finally { window._liveSaving = false; }
+  try {
+    /* 수업 출결(작성 중인 수업)이 있으면 먼저 수업 관리 서버로 보낸다(출결 쓰기 칸이 켜져 있을 때) */
+    let lessons = 0;
+    if (window.LIVE_ATTW && typeof liveLessonSave === "function") { for (const k of [...LDIRTY.keys()]) { if (!k.startsWith("mk:") && await liveLessonSave(k)) lessons++; } }
+    let pend = 0; try { pend = appSaveCollect(DB).changes.length; } catch (_) {}
+    if (lessons && !pend) return { ok: 0, failed: [], lessons };
+    return await liveSaveRun();
+  } finally { window._liveSaving = false; }
 }
 async function liveSaveRun() {
   const say = (m) => toast(m);

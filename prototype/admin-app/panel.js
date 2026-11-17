@@ -49,10 +49,12 @@
     const start = () => { new MutationObserver(later).observe(document.body, { childList: true, subtree: true }); addEventListener("resize", later); if (typeof ResizeObserver !== "undefined") { const ro = new ResizeObserver(later); new MutationObserver(() => document.querySelectorAll(".phead").forEach(e => { if (!e.__ro) { e.__ro = 1; ro.observe(e); } })).observe(document.body, { childList: true, subtree: true }); } later(); };
     document.body ? start() : addEventListener("DOMContentLoaded", start);
   }
-  // 2. 탭 바(탭이 없는 창도 '정보' 하나로 같은 자리). 탭 = {id, label, n, todo(할 일 수 알약), disabled, later, dot, mark}
+  // 2. 탭 바(탭이 없는 창도 '정보' 하나로 같은 자리). 탭 = {id, label, n, todo, disabled, later, dot, mark}
+  //    창 탭은 이름만 쓴다 — 숫자(n · 할 일 수)는 그리지 않는다(대표 261117 "탭 숫자 다 없애줘 … 없는 걸로 통일"). 숫자는 창 안 내용과 머리에서 본다.
+  //    아직 못 쓰는 탭(later = 준비 중)은 보이지 않는다. 폭 = 글자 폭 + 사이 16, 넘치면 가로로 민다(기준 5장 F2).
   function tabs(ts, on, attr) {
-    ts = ts && ts.length ? ts : [{ id: "info", label: "정보" }]; attr = attr || "ptab";
-    return `<div class="ptabs" role="tablist">${ts.map(t => `<button type="button" class="ptb ${t.id === on ? "on" : ""} ${t.later ? "later" : ""}" ${t.later ? `disabled title="${esc(t.label)} — 준비 중"` : `data-${attr}="${esc(t.id)}"`} ${t.disabled ? "disabled" : ""}>${esc(t.label)}${t.dot || ""}${t.todo ? `<span class="tn ${+t.n ? "w" : ""}">${esc(t.n)}</span>` : t.n != null && t.n !== "" ? ` <span class="sm">${esc(t.n)}</span>` : ""}${t.mark || ""}${t.later ? `<span class="soon">준비 중</span>` : ""}</button>`).join("")}</div>`;
+    ts = (ts || []).filter(t => !t.later); ts = ts.length ? ts : [{ id: "info", label: "정보" }]; attr = attr || "ptab";
+    return `<div class="ptabs" role="tablist">${ts.map(t => `<button type="button" class="ptb ${t.id === on ? "on" : ""}" data-${attr}="${esc(t.id)}" ${t.disabled ? "disabled" : ""}>${esc(t.label)}${t.dot || ""}${t.mark || ""}</button>`).join("")}</div>`;
   }
   // 3. 상자: 제목 + (?) + 오른쪽(링크·단추) + 내용
   function box(b) {

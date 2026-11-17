@@ -73,7 +73,7 @@ const telFmt=v=>{const d=v.replace(/\D/g,"").slice(0,11);if(d.startsWith("02")){
 const tel=(host,o={})=>typed(host,Object.assign({placeholder:"010-0000-0000"},o),o.icon||"tel",'inputmode="tel" autocomplete="off"',telFmt,v=>{const d=v.replace(/\D/g,"");return (d.startsWith("01")?d.length===11||(d.length===10&&!d.startsWith("010")):d.length>=9&&d.length<=11)?"":"번호 자리 수를 확인해 주세요"});
 // 목록에서 하나 고르기(드롭다운): 항목이 9개 이상이면 위에 검색 칸
 /* 299판: 아이콘 이름 → field.js 그림, 없으면 규칙 파일 아이콘 사전(FEATHER) */const UI_ICONS=new Set(["list","chevc","x","more","check","search","plus","type","left","right","toggle","split","drop","memo"]);/* 300판(연결): 뜻 아이콘은 규칙 파일 사전(FEATHER)이 먼저 — 표 열 머리와 같은 그림. 칸 조작 아이콘만 field.js 것 */
-const FE={cal:"calendar",tel:"phone",clock:"clock",hash:"hash",repeat:"repeat",loader:"loader"};
+const FE={cal:"calendar",tel:"phone",clock:"clock",hash:"hash",repeat:"repeat",/* 고르기 칸 아이콘은 규칙 파일 한 곳(ICON_SELECT). calc = 자동 계산 칸(고르기 아님) */loader:(typeof ICON_SELECT!=="undefined"?ICON_SELECT:"loader"),calc:"loader"};
 const icn=k=>{const g=typeof FEATHER!=="undefined"?FEATHER[FE[k]||k]:null;return !UI_ICONS.has(k)&&g?P+g+"</svg>":(I[k]||I.list)};
 function list(p,items,cur,onPick,o){let addK="";p.innerHTML=`${(items.length>8||(o&&o.add))&&!(o&&o.keepFocus)?`<label class="hf-q">${I.search}<input placeholder="${o&&o.add?"검색 또는 추가":"검색"}" autocomplete="off"></label>`:""}<div class="hf-list" role="listbox" tabindex="-1"></div>`;
   const L=p.querySelector(".hf-list"),q=p.querySelector(".hf-q input");let act=Math.max(0,items.findIndex(x=>x.v===cur)),xs=items;
