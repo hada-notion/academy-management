@@ -91,7 +91,7 @@ function appSaveX(DB, warn) {
 		// 개별 진도 줄의 반 교재(같은 클래스·같은 교재의 그룹 줄)
 		tplOf: (row) => {
 			if (row._tplId) return row._tplId
-			const g = (DB.progress || []).find((x) => !x.del && x !== row && x.mode !== "개별" && x.classId === row.classId && x.bookId === row.bookId)
+			const g = (DB.progress || []).find((x) => !x.del && x !== row && !x.studentId && x.classId === row.classId && x.bookId === row.bookId)
 			return g ? g.id : ""
 		},
 	}
@@ -223,16 +223,18 @@ const APPSAVE = {
 	progress: {
 		db: "진도관리(학원) DB",
 		props: (r, X) => {
-			const solo = r.mode === "개별", book = X.nameOf("books", r.bookId)
+			// solo = 학생 한 명의 줄(개별 진도 + 학생 있음). 개별 진도라도 학생이 없으면 그 반의 기준 교재(반 교재)다 — 클래스를 쓰고 제목은 "교재 · 반"
+			const solo = r.mode === "개별" && !!r.studentId, indiv = r.mode === "개별", book = X.nameOf("books", r.bookId)
 			const enId = solo ? X.enrollOf(r.studentId, r.classId, r._enrollId) : ""
 			// title: 개별 줄 "교재명 · 등록 이름", 반 교재(그룹 줄) "교재명 · 반 이름"
 			const title = X.join(" · ", book, solo ? X.enrollName(X.row("enrolls", enId)) : X.nameOf("classes", r.classId))
 			// 개별 줄에는 클래스 · 주제를 쓰지 않는다(서버 [교재 생성]과 같은 모양 — 반 교재 조회가 클래스로 하므로)
 			return appsPut({
 				"진도교재": title,
-				"라이브러리": X.rel(r.bookId), "클래스": solo ? undefined : X.rel(r.classId), "진도방식": solo ? "개별 진도" : "그룹 진도",
-				// 반 교재(그룹 줄)의 등록 = 그 반을 지금 다니는 등록 전부(서버 [교재 생성]과 같은 규칙 — 반 전체가 한 줄을 같이 씀)
-				"등록": solo ? X.rel(enId) : X.rels((DB_OF(X).enrolls || []).filter((e) => !e.del && e.classId === r.classId && !e.ended && !(e.end && e.end < X.today)).map((e) => e.id)),
+				"라이브러리": X.rel(r.bookId), "클래스": solo ? undefined : X.rel(r.classId), "진도방식": indiv ? "개별 진도" : "그룹 진도",
+				// 반 교재(그룹 줄)의 등록 = 그 반을 지금 다니는 등록 전부(서버 [교재 생성]과 같은 규칙 — 반 전체가 한 줄을 같이 씀).
+				// 개별 진도의 기준 교재는 학생마다 따로 줄이 생기므로 등록을 잇지 않는다
+				"등록": solo ? X.rel(enId) : indiv ? [] : X.rels((DB_OF(X).enrolls || []).filter((e) => !e.del && e.classId === r.classId && !e.ended && !(e.end && e.end < X.today)).map((e) => e.id)),
 				"반별교재": solo ? X.rel(X.tplOf(r)) : [],
 				"진행상태": X.str(r.stat) || "다음 교재", "주제": solo ? undefined : X.str(r.topic),
 			})
@@ -253,6 +255,7 @@ function appSaveMark(DB) {
 // ---------- 모으기 ----------
 function appSaveCollect(DB) {
 	const warn = [], changes = [], refs = [], noop = [], dels = []
+	let warnKeep = 0
 	appsEnsureSchools(DB)
 	const X = appSaveX(DB, warn)
 	const made = new Set() // 이 요청에서 먼저 만들어지는 tmp
@@ -261,6 +264,7 @@ function appSaveCollect(DB) {
 		if (coll === "progress") rows.sort((a, b) => (a.mode === "개별") - (b.mode === "개별")) // 반 교재(그룹) 먼저
 		for (const row of rows) {
 			if (!row || row._virtual) continue
+			warn.length = warnKeep // 앞 줄이 보낼 것 없이 넘어갔으면 그 줄의 알림은 버린다(이미 저장된 줄 알림이 저장마다 되풀이되지 않게)
 			const isNew = !appsIsId(row.id)
 			if (row.del) { if (!isNew) dels.push({ coll, id: row.id, name: row.name || "" }); continue } // 지우기는 보내지 않음(노션에서 직접)
 			// 창 아래 [ㅇㅇ 저장]은 앱 안에서만 "저장됨"으로 바꾸므로, 작성 중 표시가 없어도 불러온 값(기준)과 달라진 줄은 보낸다
@@ -278,7 +282,7 @@ function appSaveCollect(DB) {
 				const tmp = "tmp:" + row.id
 				changes.push({ op: "create", db: APPSAVE[coll].db, tmp, props })
 				made.add(tmp)
-				refs.push({ coll, row, partial })
+				refs.push({ coll, row, partial }); warnKeep = warn.length
 				continue
 			}
 			// 고친 줄: 기준 값이 있으면 달라진 칸만
@@ -298,9 +302,10 @@ function appSaveCollect(DB) {
 			const ch = { op: "update", db: APPSAVE[coll].db, id: row.id, props: send }
 			if (row._edited) ch.edited = row._edited
 			changes.push(ch)
-			refs.push({ coll, row, partial })
+			refs.push({ coll, row, partial }); warnKeep = warn.length
 		}
 	}
+	warn.length = warnKeep
 	return { changes, refs, noop, dels, warn }
 }
 
@@ -331,6 +336,8 @@ function appSaveRemap(DB, oldId, newId) {
 	}
 }
 async function appSaveSend(conn, DB) {
+	// 노션 자료를 이번에 끝까지 받은 뒤에만 보낸다(예시 자료 · 반쯤 받은 자료가 노션에 들어가는 것을 막음)
+	if (!conn || conn.loaded !== true) throw new Error("노션 자료를 다 받기 전에는 저장할 수 없어요")
 	const col = appSaveCollect(DB)
 	const out = { sent: 0, ok: 0, failed: [], skipped: col.noop.length, dels: col.dels, warn: col.warn, idMap: {} }
 	const real = new Map() // "tmp:<옛 id>" → 노션 id(앞 묶음에서 만든 것)
