@@ -16,7 +16,8 @@
       say("노션 자료를 불러오는 중이에요");
       try {
         await appLoad({ url: cfg.url, anonKey: cfg.anonKey, session });
-        window.LIVE = { url: cfg.url, at: new Date().toISOString() };
+        appSaveMark(DB); /* 불러온 값을 기준으로 적어 둠 — 저장 때 달라진 칸만 보냄 */
+        window.LIVE = { url: cfg.url, anonKey: cfg.anonKey, session, at: new Date().toISOString() };
         if (typeof snapshot === "function") lastSnap = snapshot();
         if (typeof render === "function") render();
         say("노션 자료로 바꿨어요");
@@ -41,3 +42,29 @@
   }
   setTimeout(start, 0);
 })();
+
+/* 실제 자료 모드의 [저장]: 작성 중인 줄(입력 범위 12개 묶음)을 app-api save로 노션에 쓴다. 저장 창의 [저장]이 부른다(LIVE일 때만).
+   성공한 줄은 저장됨으로, 실패 · 충돌 줄은 작성 중으로 남기고 이유를 보여 준다. 지우기는 보내지 않는다(노션에서 직접). */
+async function liveSave() {
+  const say = (m) => toast(m);
+  const esc2 = (s) => (typeof esc === "function" ? esc(s) : String(s));
+  say("노션에 저장하는 중이에요");
+  let res;
+  try { res = await appSaveSend(window.LIVE, DB); }
+  catch (e) { say("저장하지 못했어요 — " + e.message); return null; }
+  /* 새 줄은 노션 id로 바뀐다: 열려 있는 탭이 가리키던 옛 id도 바꾼다 */
+  const map = res.idMap || {};
+  const fix = (st) => { if (!st) return; ["sel", "season"].forEach((k) => { if (map[st[k]]) st[k] = map[st[k]]; }); };
+  try { (typeof tabs !== "undefined" ? tabs : []).forEach((t) => fix(t.state)); if (typeof activeTab !== "undefined" && activeTab) fix(activeTab.state); } catch (_) {}
+  DB.blocks.forEach((b) => { delete b.t0; delete b.regs0; delete b.ending; delete b.addFrom; delete b.moveN; try { tSnap(b); } catch (_) {} });
+  try { UNLOCKED.clear(); ORIG.clear(); } catch (_) {}
+  if (!res.failed.length) { try { LDIRTY.clear(); } catch (_) {} }
+  /* 저장 뒤 실행 취소로 옛 id가 되살아나지 않게 되돌리기 기록을 비운다 */
+  try { undoStack.length = 0; if (typeof redoStack !== "undefined") redoStack.length = 0; lastSnap = snapshot(); } catch (_) {}
+  render(); try { savedSync(); } catch (_) {}
+  const dels = (res.dels || []).length, warn = (res.warn || []).length;
+  if (!res.failed.length && !dels && !warn) { say(`노션에 저장했어요 · ${res.ok}줄`); return res; }
+  const li = (a) => a.map((f) => `<li><b>${esc2(f.name || f.coll || "")}</b> — ${esc2(f.conflict ? "그사이 노션에서 바뀌었어요. 새로 고친 뒤 다시 저장해요" : f.error || f.msg || f)}</li>`).join("");
+  modal(`<h2>저장 결과</h2><div class="box"><p>노션에 저장 ${res.ok}줄${res.failed.length ? ` · 저장 안 됨 ${res.failed.length}줄(작성 중으로 남겼어요)` : ""}</p>${res.failed.length ? `<ul>${li(res.failed)}</ul>` : ""}${warn ? `<p class="hint">확인할 것 ${warn}건</p><ul>${li((res.warn || []).map((w) => (typeof w === "string" ? { error: w } : w)))}</ul>` : ""}${dels ? `<p class="hint">삭제 예정 ${dels}줄은 보내지 않았어요 — 노션에서 직접 지워요.</p>` : ""}</div><div class="actions"><span class="sp"></span><button class="btn pri" id="co">확인</button></div>`, (m, close) => { m.querySelector("#co").onclick = close; });
+  return res;
+}

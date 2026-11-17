@@ -1,0 +1,344 @@
+/* 앱 저장 층: 시제품 전역 DB에서 새 줄·고친 줄을 모아 노션 속성 값으로 바꿔 app-api save로 보낸다(appdata.js APPMAP의 역방향). 칸 대응은 앱자료-칸대응.md */
+
+// ---------- 보조(appdata.js가 먼저 불려 있으면 그 표를 그대로 쓴다 — 한 곳에서 정함) ----------
+const APPS_DAYS = typeof APP_DAYS !== "undefined" ? APP_DAYS : ["월", "화", "수", "목", "금", "토", "일"]
+const APPS_SEA_COLOR_IN = typeof APP_SEA_COLOR !== "undefined" ? APP_SEA_COLOR : { 초록: "green", 파랑: "blue", 보라: "purple", 분홍: "pink", 주황: "orange", 노랑: "yellow", 빨강: "red", 갈색: "brown", 회색: "gray" }
+const APPS_SEA_COLOR = Object.fromEntries(Object.entries(APPS_SEA_COLOR_IN).map(([ko, en]) => [en, ko])) // 영문 키 → 노션 옵션
+const APPS_CLS_HEX = typeof APP_CLS_HEX !== "undefined" ? APP_CLS_HEX : { 빨강: "#E5484D", 주황: "#F0A35E", 노랑: "#E8C547", 초록: "#5BBF8A", 파랑: "#7FA6D9", 보라: "#B794F6", 분홍: "#E88FB5", 갈색: "#B08D6E", 회색: "#A3A3A3", 기본: "#CFC8BE" }
+const APPS_SEASON_STATE = { 초안: "준비 중", 확정: "운영 중" } // 끝남은 노션에서(앱은 보내지 않음)
+const APPS_PRE = ["어머니", "아버지", "기타 보호자"] // 학생 [우선 연락 대상] 노션 선택지("학생"은 없음)
+// 시즌 색: 노션 9색에 있는 것만(기본 등 그 밖은 빈 값)
+const appsSeaColor = (k) => (typeof k === "string" && Object.prototype.hasOwnProperty.call(APPS_SEA_COLOR, k) ? APPS_SEA_COLOR[k] : Object.values(APPS_SEA_COLOR).includes(k) ? k : "")
+// 관계 대상이 먼저 오는 순서
+const APPS_ORDER = ["areas", "glevels", "schools", "subjects", "teachers", "seasons", "books", "classes", "students", "enrolls", "blocks", "progress"]
+const APPS_MAX = 60 // app-api 한 요청 줄 수
+// 마지막으로 노션과 같았던 값(id → 노션 속성 값). 고친 줄은 이것과 다른 칸만 보낸다(읽을 때 뭉개진 칸을 덮어쓰지 않게)
+const APPS_BASE = new Map()
+
+const appsIsId = (s) => typeof s === "string" && s.length <= 36 && /^[0-9a-f]{32}$/i.test(s.replace(/-/g, ""))
+const appsDirty = (coll, row) => (coll === "seasons" ? !!row.dirty : row.state === "draft")
+
+function appSaveX(DB, warn) {
+	const say = (m) => { if (warn) warn.push(m) }
+	const X = {
+		// 관계 값: 노션 id는 그대로, 저장 전 새 줄 id는 "tmp:<id>", 앱 전용(_none 등)·빈 값은 뺀다
+		ref: (id) => (!id || String(id).startsWith("_") ? null : appsIsId(id) ? String(id) : "tmp:" + id),
+		rel: (id) => { const v = X.ref(id); return v ? [v] : [] },
+		rels: (ids) => [...new Set((Array.isArray(ids) ? ids : []).map(X.ref).filter(Boolean))],
+		// 이름 → 그 컬렉션 줄의 관계 값. 이름이 비면 [], 못 찾으면 undefined(그 칸은 보내지 않음)
+		byName: (coll, name, what) => {
+			if (!name) return []
+			const r = (DB[coll] || []).find((x) => !x.del && x.name === name)
+			if (!r) { say(`${what}: '${name}'을(를) ${coll}에서 찾지 못해 그 칸은 보내지 않았어요`); return undefined }
+			return X.rel(r.id)
+		},
+		byNames: (coll, names, what) => {
+			const out = []
+			for (const n of Array.isArray(names) ? names : []) { const v = X.byName(coll, n, what); if (v) out.push(...v) }
+			return [...new Set(out)]
+		},
+		str: (v) => (v == null ? "" : String(v)),
+		// 제목(title) 만들기: 그 줄 · 그 줄의 이름 · 빈 조각을 뺀 이어 붙이기(다 비면 undefined = 보내지 않음)
+		row: (coll, id) => (id ? (DB[coll] || []).find((x) => x && x.id === id) || null : null),
+		nameOf: (coll, id) => { const r = X.row(coll, id); return r ? X.str(r.name).trim() : "" },
+		join: (sep, ...parts) => parts.filter(Boolean).join(sep) || undefined,
+		enrollName: (e) => (e ? X.join(" ", X.nameOf("students", e.studentId), X.nameOf("classes", e.classId)) : undefined), // 등록 이름 = "학생 반"
+		// 학생 [우선 연락 대상]: 노션 선택지에 없는 값(예: 학생)은 보내지 않고 알린다
+		pre: (v, who) => {
+			const s = X.str(v)
+			if (!s || APPS_PRE.includes(s)) return s
+			say(`학생 ${who || ""}: 우선 연락 대상 '${s}'은(는) 노션 선택지(${APPS_PRE.join(" · ")})에 없어 그 칸은 보내지 않았어요`)
+			return undefined
+		},
+		num: (v) => (v === "" || v == null || !isFinite(+v) ? null : +v),
+		d: (v) => (v ? String(v).slice(0, 10) : null),
+		// "YYYY-MM-DDTHH:MM" → 시각이 있으면 한국 시각(+09:00)
+		dt: (v) => { const s = X.str(v); return !s ? null : s.length > 10 ? s.slice(0, 16) + ":00+09:00" : s },
+		range: (a, b) => (a ? { start: String(a).slice(0, 10), end: b && b !== a ? String(b).slice(0, 10) : null } : null),
+		hhmm: (m) => (typeof m === "number" && isFinite(m) ? String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0") : ""),
+		// 클래스 색: 10색이면 [색]=이름·[색 코드] 비움, 아니면 [색 코드]=#RRGGBB + [색]=가장 가까운 이름
+		color: (hex) => {
+			const h = X.str(hex).toUpperCase()
+			if (!/^#[0-9A-F]{6}$/.test(h)) return { name: "", code: "" }
+			const rgb = (s) => [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16))
+			let best = "", gap = Infinity
+			for (const [name, v] of Object.entries(APPS_CLS_HEX)) {
+				if (v.toUpperCase() === h) return { name, code: "" }
+				const a = rgb(h), b = rgb(v.toUpperCase()), g = (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2
+				if (g < gap) { gap = g; best = name }
+			}
+			return { name: best, code: h }
+		},
+		// 개별 진도: 학생 + 클래스 → 등록 id(앞서 읽은 등록이 맞으면 그것, 아니면 끝나지 않은 등록 먼저)
+		enrollOf: (studentId, classId, pref) => {
+			const L = (DB.enrolls || []).filter((e) => !e.del && e.studentId === studentId && e.classId === classId)
+			const e = L.find((x) => x.id === pref) || L.find((x) => !x.end && !x.ended) || L[0]
+			return e ? e.id : ""
+		},
+		// 개별 진도 줄의 반 교재(같은 클래스·같은 교재의 그룹 줄)
+		tplOf: (row) => {
+			if (row._tplId) return row._tplId
+			const g = (DB.progress || []).find((x) => !x.del && x !== row && x.mode !== "개별" && x.classId === row.classId && x.bookId === row.bookId)
+			return g ? g.id : ""
+		},
+	}
+	return X
+}
+// 값이 정해진 칸만 넣는다(undefined = 보내지 않음)
+const appsPut = (o) => { for (const k of Object.keys(o)) if (o[k] === undefined) delete o[k]; return o }
+
+// 시간표 제목: "반이름 (요일) HH:mm~HH:mm". 반을 모르면 보내지 않음
+function appsBlockName(r, X) {
+	const cls = X.nameOf("classes", r.classId), day = APPS_DAYS[r.day] || "", s = X.hhmm(r.start), e = X.hhmm(r.end)
+	return cls ? [cls, day && `(${day})`, (s || e) && `${s}~${e}`].filter(Boolean).join(" ") : undefined
+}
+// 서버가 줄을 거절한 이유를 사람이 알 수 있는 안내로("선택지에 없음: 칸 = 값")
+function appsFailText(coll, error) {
+	const m = /^선택지에 없음:\s*(.+?)\s*=\s*(.*)$/.exec(String(error || ""))
+	if (!m) return error
+	const db = String((APPSAVE[coll] && APPSAVE[coll].db) || "").replace("(학원)", "")
+	return `노션 ${db}의 [${m[1]}] 선택지에 '${m[2]}'이(가) 없어요 — 노션에서 선택지를 먼저 만들거나 있는 것으로 골라요`
+}
+
+// ---------- 컬렉션 대응(시제품 줄 → 노션 속성) ----------
+const APPSAVE = {
+	areas: {
+		db: "영역(학원) DB",
+		props: (r, X) => appsPut({
+			"이름": X.str(r.name), "교습과정": X.str(r.course),
+			"순서": r._order === undefined ? undefined : X.num(r._order), "사용": r._on === undefined ? undefined : !!r._on,
+		}),
+	},
+	glevels: {
+		db: "학년(학원) DB",
+		props: (r, X) => appsPut({
+			"이름": X.str(r.name), "사용": !!r.on,
+			"순서": r._order === undefined ? undefined : X.num(r._order), "학교구분": r._kind === undefined ? undefined : X.str(r._kind),
+		}),
+	},
+	schools: {
+		db: "학교(학원) DB",
+		props: (r, X) => ({ "이름": X.str(r.name), "학교 구분": X.str(r.kind), "주소": X.str(r.addr) }),
+	},
+	subjects: {
+		db: "과목(학원) DB",
+		props: (r, X) => appsPut({
+			"이름": X.str(r.name), "이모지": X.str(r.emoji),
+			"영역": X.byName("areas", r.area, "과목 영역"), "학년": X.byNames("glevels", r.grades, "과목 학년"), "비고": X.str(r.memo),
+		}),
+	},
+	teachers: {
+		db: "강사(학원) DB",
+		props: (r, X) => ({
+			"이름": X.str(r.name), "직책": X.str(r.role), "연락처": X.str(r.phone),
+			"출근 요일": APPS_DAYS.filter((d) => X.str(r.days).split(",").map((s) => s.trim()).includes(d)),
+		}),
+	},
+	seasons: {
+		db: "시즌(학원) DB",
+		props: (r, X) => ({
+			"이름": X.str(r.name), "기간": X.range(r.start, r.end),
+			"상태": APPS_SEASON_STATE[r.state] || "준비 중", "색": appsSeaColor(r.color),
+		}),
+	},
+	books: {
+		db: "라이브러리(학원) DB",
+		props: (r, X) => ({
+			"교재명": X.str(r.name), "과목": X.rel(r.subjectId), "구분": X.str(r.kind),
+			"시리즈": X.str(r.series), "교재 유형": Array.isArray(r.types) ? r.types.map(String).filter(Boolean) : [], "교육과정": X.str(r.curr), "출판사": X.str(r.pub),
+			"전체 분량": X.num(r.total), "진도 단위": X.str(r.unit), "가격": X.num(r.price), "사용중": !!r.using,
+			"ISBN13": X.str(r.isbn), "기타경비 항목": X.str(r.etcItem),
+		}),
+	},
+	classes: {
+		db: "클래스(학원) DB",
+		props: (r, X) => {
+			const c = X.color(r.hex)
+			return appsPut({
+				"클래스명": X.str(r.name), "약칭": X.str(r.short), "영역": X.byName("areas", r.subject, "클래스 영역"),
+				"담당강사": X.rel(r.teacherId), "수강료": X.num(r.fee), "월간 수업 총량": X.num(r.qty),
+				"단위": X.str(r.unit), "클래스 유형": X.str(r.kind), "클래스 구분": X.str(r.arts),
+				"개강일": X.d(r.open), "종강일": X.d(r.close), // 운영 기간은 쓰지 않는다
+				"색": c.name, "색 코드": c.code, "신고 교습과정명": X.str(r.course), "기타경비": X.rels(r.etcIds),
+				"이모지": r._emoji === undefined ? undefined : X.str(r._emoji),
+			})
+		},
+	},
+	students: {
+		db: "학생(학원) DB",
+		props: (r, X) => appsPut({
+			"학생이름": X.str(r.name),
+			"학교": X.byName("schools", r.school, "학생 학교"), "학년": X.byName("glevels", r.grade, "학생 학년"),
+			"어머니 연락처": X.str(r.mom), "아버지 연락처": X.str(r.dad), "학생 연락처": X.str(r.sp),
+			"기타 보호자 연락처": X.str(r.gp), "학생과의 관계": X.str(r.gprel),
+			"우선 연락 대상": X.pre(r.pre, r.name), "등록 보류": !!r.hold, "메모(내부용)": X.str(r.memo),
+			"문의일": X.dt(r.inq), "문의 경로": X.str(r.route), "희망 시작일": X.d(r.hope), "개인정보 동의": !!r.consent,
+			"생년월일": X.d(r.birth), "성별": X.str(r.gender), "주소": X.str(r.addr), "형제/자매": X.rels(r.sib),
+		}),
+	},
+	enrolls: {
+		db: "등록(학원) DB",
+		props: (r, X) => appsPut({
+			"이름": X.enrollName(r), // title "학생 반"
+			"학생정보": X.rel(r.studentId), "클래스": X.rel(r.classId), "등록일": X.d(r.start), "종료일": X.d(r.end),
+			"수강료 조정": +r.discount ? 0 - +r.discount : null, // 시제품 discount(깎는 금액, 양수) → 조정(음수 = 할인). 0은 비움
+			"등록 안내 메모": X.str(r.note), "메모(내부용)": X.str(r.memo),
+		}),
+	},
+	blocks: {
+		db: "시간표(학원) DB",
+		props: (r, X) => appsPut({
+			"이름": appsBlockName(r, X), // title "반 (요일) HH:mm~HH:mm"
+			"시즌": X.rel(r.seasonId), "클래스": X.rel(r.classId), "요일": APPS_DAYS[r.day] || "",
+			"등원시간(HH:mm)": X.hhmm(r.start), "하원시간(HH:mm)": X.hhmm(r.end),
+			"등록": X.rels(r.regs), "수업 방식": r.mode === "individual" ? "개별 수업" : "그룹 수업",
+			"적용 기간": r.from ? X.range(r.from, r.to) : r.to ? undefined : null, // 끝만 있는 기간은 노션 날짜로 못 적어 보내지 않음
+		}),
+	},
+	progress: {
+		db: "진도관리(학원) DB",
+		props: (r, X) => {
+			const solo = r.mode === "개별", book = X.nameOf("books", r.bookId)
+			const enId = solo ? X.enrollOf(r.studentId, r.classId, r._enrollId) : ""
+			// title: 개별 줄 "교재명 · 등록 이름", 반 교재(그룹 줄) "교재명 · 반 이름"
+			const title = X.join(" · ", book, solo ? X.enrollName(X.row("enrolls", enId)) : X.nameOf("classes", r.classId))
+			// 개별 줄에는 클래스 · 주제를 쓰지 않는다(서버 [교재 생성]과 같은 모양 — 반 교재 조회가 클래스로 하므로)
+			return appsPut({
+				"진도교재": title,
+				"라이브러리": X.rel(r.bookId), "클래스": solo ? undefined : X.rel(r.classId), "진도방식": solo ? "개별 진도" : "그룹 진도",
+				"등록": solo ? X.rel(enId) : [],
+				"반별교재": solo ? X.rel(X.tplOf(r)) : [],
+				"진행상태": X.str(r.stat) || "다음 교재", "주제": solo ? undefined : X.str(r.topic),
+			})
+		},
+	},
+}
+
+// ---------- 기준 값(불러온 직후 · 저장 직후) ----------
+// appLoad 뒤에 한 번 부른다. 고치지 않은 노션 줄의 지금 값을 적어 둔다.
+function appSaveMark(DB) {
+	const X = appSaveX(DB, null)
+	for (const coll of APPS_ORDER) for (const row of DB[coll] || []) {
+		if (row._virtual || !appsIsId(row.id) || appsDirty(coll, row) || row.del) continue
+		APPS_BASE.set(row.id, JSON.stringify(APPSAVE[coll].props(row, X)))
+	}
+}
+
+// ---------- 모으기 ----------
+function appSaveCollect(DB) {
+	const warn = [], changes = [], refs = [], noop = [], dels = []
+	const X = appSaveX(DB, warn)
+	const made = new Set() // 이 요청에서 먼저 만들어지는 tmp
+	for (const coll of APPS_ORDER) {
+		let rows = (DB[coll] || []).slice()
+		if (coll === "progress") rows.sort((a, b) => (a.mode === "개별") - (b.mode === "개별")) // 반 교재(그룹) 먼저
+		for (const row of rows) {
+			if (!row || row._virtual) continue
+			const isNew = !appsIsId(row.id)
+			if (row.del) { if (!isNew) dels.push({ coll, id: row.id, name: row.name || "" }); continue } // 지우기는 보내지 않음(노션에서 직접)
+			if (!isNew && !appsDirty(coll, row)) continue
+			const props = APPSAVE[coll].props(row, X)
+			// 아직 만들어지지 않은 줄(뒤에 오는 새 줄 · 삭제 예정 새 줄)을 가리키는 관계는 이번엔 빼고, 그 줄은 작성 중으로 남긴다
+			let partial = false
+			for (const [k, v] of Object.entries(props)) {
+				if (!Array.isArray(v) || !v.some((s) => typeof s === "string" && s.startsWith("tmp:"))) continue
+				const keep = v.filter((s) => !String(s).startsWith("tmp:") || made.has(s))
+				if (keep.length !== v.length) { props[k] = keep; partial = true }
+			}
+			if (partial) warn.push(`${coll} ${row.name || row.id}: 아직 저장 전인 줄과의 연결은 다음 저장 때 들어가요`)
+			if (isNew) {
+				const tmp = "tmp:" + row.id
+				changes.push({ op: "create", db: APPSAVE[coll].db, tmp, props })
+				made.add(tmp)
+				refs.push({ coll, row, partial })
+				continue
+			}
+			// 고친 줄: 기준 값이 있으면 달라진 칸만
+			let send = props
+			const base = APPS_BASE.has(row.id) ? JSON.parse(APPS_BASE.get(row.id)) : null
+			if (base) {
+				send = {}
+				for (const [k, v] of Object.entries(props)) if (JSON.stringify(v) !== JSON.stringify(base[k])) send[k] = v
+				if (!Object.keys(send).length) { noop.push({ coll, row }); continue }
+			}
+			const ch = { op: "update", db: APPSAVE[coll].db, id: row.id, props: send }
+			if (row._edited) ch.edited = row._edited
+			changes.push(ch)
+			refs.push({ coll, row, partial })
+		}
+	}
+	return { changes, refs, noop, dels, warn }
+}
+
+// ---------- 보내기 ----------
+async function appSavePost({ url, anonKey, session }, changes) {
+	const res = await fetch(String(url).replace(/\/+$/, "") + "/functions/v1/app-api", {
+		method: "POST",
+		headers: { "Content-Type": "application/json", "x-admin-key": session, Authorization: "Bearer " + anonKey, apikey: anonKey },
+		body: JSON.stringify({ action: "save", changes }),
+	})
+	let body = null
+	try { body = await res.json() } catch (_) { /* 아래에서 던짐 */ }
+	if (!res.ok || !body || !Array.isArray(body.results)) throw new Error(`저장 실패 (${res.status}${body && body.error ? " · " + body.error : ""})`)
+	return body.results
+}
+// DB 전체에서 옛 id를 가리키는 칸(글자 · 글자 배열)을 새 id로
+function appSaveRemap(DB, oldId, newId) {
+	for (const list of Object.values(DB)) {
+		if (!Array.isArray(list)) continue
+		for (const row of list) {
+			if (!row || typeof row !== "object") continue
+			for (const k of Object.keys(row)) {
+				const v = row[k]
+				if (v === oldId) row[k] = newId
+				else if (Array.isArray(v) && v.includes(oldId)) row[k] = v.map((x) => (x === oldId ? newId : x))
+			}
+		}
+	}
+}
+async function appSaveSend(conn, DB) {
+	const col = appSaveCollect(DB)
+	const out = { sent: 0, ok: 0, failed: [], skipped: col.noop.length, dels: col.dels, warn: col.warn, idMap: {} }
+	const real = new Map() // "tmp:<옛 id>" → 노션 id(앞 묶음에서 만든 것)
+	const done = [] // 성공한 줄(기준 값은 id를 다 바꾼 뒤에 적는다)
+	const fail = (ref, error, conflict, row) => out.failed.push({ coll: ref.coll, id: ref.row.id, name: ref.row.name || "", error, conflict: !!conflict, ...(row ? { row } : {}) })
+	let stop = ""
+	for (let at = 0; at < col.changes.length; at += APPS_MAX) {
+		const refs = col.refs.slice(at, at + APPS_MAX)
+		if (stop) { refs.forEach((ref) => fail(ref, "앞 묶음 저장이 실패해 보내지 않았어요")); continue }
+		const batch = col.changes.slice(at, at + APPS_MAX).map((c) => {
+			const props = {}
+			for (const [k, v] of Object.entries(c.props)) props[k] = Array.isArray(v) ? v.map((s) => (real.has(s) ? real.get(s) : s)) : v
+			return { ...c, props }
+		})
+		let results
+		try { results = await appSavePost(conn, batch) } catch (e) { stop = e.message; refs.forEach((ref) => fail(ref, e.message)); continue }
+		out.sent += batch.length
+		refs.forEach((ref, i) => {
+			const r = results.find((x) => x.i === i)
+			if (!r || !r.ok) return fail(ref, appsFailText(ref.coll, (r && r.error) || "결과가 없어요"), r && r.conflict, r && r.conflict ? r.row : null)
+			const { coll, row } = ref
+			if (batch[i].op === "create" && r.id && r.id !== row.id) {
+				const old = row.id
+				real.set("tmp:" + old, r.id)
+				out.idMap[old] = r.id
+				appSaveRemap(DB, old, r.id) // row.id 자신도 여기서 바뀐다
+				row.id = r.id
+			}
+			if (r.row && r.row.notion_edited_at) row._edited = r.row.notion_edited_at
+			if (!ref.partial) { if (coll === "seasons") delete row.dirty; if (row.state === "draft") row.state = "saved" }
+			else if (coll === "seasons") row.dirty = true
+			else row.state = "draft"
+			out.ok++
+			done.push(ref)
+		})
+	}
+	// 달라진 칸이 없던 작성 중 줄은 저장된 것으로
+	col.noop.forEach(({ coll, row }) => { if (coll === "seasons") delete row.dirty; else row.state = "saved" })
+	// 기준 값 새로 적기(연결이 덜 들어간 줄은 기준을 비워 다음 저장 때 전부 보낸다)
+	const X = appSaveX(DB, null)
+	done.forEach(({ coll, row, partial }) => { if (partial) APPS_BASE.delete(row.id); else APPS_BASE.set(row.id, JSON.stringify(APPSAVE[coll].props(row, X))) })
+	return out
+}
+
+if (typeof window === "undefined" && typeof module !== "undefined") module.exports = { APPSAVE, APPS_ORDER, APPS_MAX, APPS_BASE, APPS_DAYS, APPS_SEA_COLOR, APPS_CLS_HEX, APPS_PRE, appsFailText, appSaveX, appSaveMark, appSaveCollect, appSaveRemap, appSaveSend }

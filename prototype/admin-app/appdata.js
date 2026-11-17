@@ -165,12 +165,15 @@ const APPMAP = {
 		row: (r, X, p = r.props) => {
 			const solo = p["진도방식"] === "개별 진도"
 			const en = X.raw("등록(학원) DB", X.id1(p["등록"]))
+			const tpl = X.raw("진도관리(학원) DB", X.id1(p["반별교재"]))
+			// 개별 줄은 노션 [클래스]가 비어 있다(서버 규칙) → 등록의 클래스, 없으면 반 교재의 클래스
+			const cls = X.id1(p["클래스"]) || (solo ? (en ? X.id1(en.props["클래스"]) : "") || (tpl ? X.id1(tpl.props["클래스"]) : "") : "")
 			const pv = p["진행도"]
 			let pct = ""
 			if (typeof pv === "number") pct = Math.round(pv <= 1 ? pv * 100 : pv)
 			else if (pv) { const m = /(\d+(?:\.\d+)?)\s*%/.exec(String(pv)); if (m) pct = Math.round(+m[1]) }
 			return {
-				id: r.id, bookId: X.id1(p["라이브러리"]), classId: X.id1(p["클래스"]),
+				id: r.id, bookId: X.id1(p["라이브러리"]), classId: cls,
 				mode: solo ? "개별" : "그룹", studentId: solo && en ? X.id1(en.props["학생정보"]) : "",
 				stat: X.str(p["진행상태"]) || "다음 교재", range: X.str(p["최근 학습 범위"]), pct,
 				done: X.d(p["수료일"]), topic: X.str(p["주제"]), state: "saved",
@@ -212,7 +215,8 @@ function appApply(raw, out) {
 	const X = appX(raw, mapped)
 	for (const [coll, m] of Object.entries(APPMAP)) {
 		const rows = raw[m.db] ? [...raw[m.db].values()] : []
-		const list = rows.map((r) => m.row({ ...r, props: r.props || {} }, X))
+		// _edited = 노션에서 마지막으로 고친 시각(저장할 때 그사이 노션에서 바뀌었는지 확인)
+		const list = rows.map((r) => Object.assign(m.row({ ...r, props: r.props || {} }, X), { _edited: r.notion_edited_at || "" }))
 		if (m.sort) list.sort(m.sort)
 		mapped[coll] = list
 		out[coll] = list

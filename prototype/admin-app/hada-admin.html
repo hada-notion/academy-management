@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=505">
-<link rel="stylesheet" href="app.css?v=505">
-<link rel="stylesheet" href="pick.css?v=505">
-<link rel="stylesheet" href="field.css?v=505">
+<link rel="stylesheet" href="hada-tokens.css?v=506">
+<link rel="stylesheet" href="app.css?v=506">
+<link rel="stylesheet" href="pick.css?v=506">
+<link rel="stylesheet" href="field.css?v=506">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=505"><script src="hada-rules.js?v=505"></script><script src="alim-preview.js?v=505"></script><script src="pick.js?v=505"></script><script src="field.js?v=505"></script><script src="panel.js?v=505"></script>
+<link rel="stylesheet" href="alim.css?v=506"><script src="hada-rules.js?v=506"></script><script src="alim-preview.js?v=506"></script><script src="pick.js?v=506"></script><script src="field.js?v=506"></script><script src="panel.js?v=506"></script>
 <script>
 "use strict";
 
@@ -1824,7 +1824,7 @@ function saveDialog(only){if(DB.enrolls.some(e=>e.state==="draft"&&!e.del&&(!e.s
           const sd=m.querySelector("#rqS");if(sd)sd.innerHTML=sideHtml(`<b>${mdw(p)}부터</b> ${tc.length?tc.map(b=>`${DAYS[b.day]} ${fmt(b.start)}-${fmt(b.end)}`).join(" · ")+"으로":"학생이"} 바뀌어요.`,`이미 생성한 수업에서 ${parts}.`,trows.concat(rows),"이미 생성한 수업은 없어요. 다음에 생성하는 수업부터 바뀌어요.")}})}
     const rqMode=()=>rqCal?rqCal.get():null;
     const re=m.querySelector("#rqEnd");if(re)re.onclick=()=>{close();openScreen("enrolls",false,{})};
-    m.querySelector("#so").onclick=()=>{const done=rc.length?cnt(rqMode()):null;const when=rc.length||tc.length?md(rqMode())+"부터":"";
+    m.querySelector("#so").onclick=()=>{if(window.LIVE){close();liveSave();return}/* 실제 자료 모드: 노션에 저장(live.js) */const done=rc.length?cnt(rqMode()):null;const when=rc.length||tc.length?md(rqMode())+"부터":"";
       // 시간 바뀐 운영 중 블록: 예전 시간표는 고른 날 전날까지, 새 시간표를 고른 날부터(이미 생성한 수업은 함께 옮김)
       const fromD=rqMode();let mvN=0;tc.forEach(b=>{const nv={day:b.day,start:b.start,end:b.end};const t0=b.t0;delete b.t0;Object.assign(b,t0);
         const n=madeFrom(b,fromD);mvN+=n;const nb=Object.assign(JSON.parse(JSON.stringify(b)),nv,{id:uid("b"),from:fromD,lessons:true,state:"saved"});delete nb.regs0;if(!b.to)delete nb.to;
@@ -1891,7 +1891,7 @@ const LISTS={
   filters:[["클래스 없는 학생",s=>stuStat(s)==="new"],["빈칸 있음",s=>!s.grade||(!s.mom&&!s.dad)]],
    /* 학생 칸 정의 하나(기준 3장 "표 그리는 곳"): 학생 표의 칸 고치기가 이 정의를 쓴다 — 학생 창도 같은 이름·같은 입력칸 */
    fields:[["name","이름"],["school","학교",()=>schNames().map(v=>({v,t:v})),"opt"],["grade","학년",r=>{const sl=/초$/.test(r.school||"")?"ele":/중$/.test(r.school||"")?"mid":/고$/.test(r.school||"")?"high":"";const o=gradesOn();return (sl?[...o.filter(v=>gradeLevel(v)===sl),...o.filter(v=>gradeLevel(v)!==sl)]:o).map(v=>({v,t:v,cls:"gchip "+gradeLevel(v)}))},"opt"],["gender","성별",["여학생","남학생"],"seg"],["birth","생년월일",null,"date"],["addr","주소"],
-     ["sp","학생 연락처",null,"tel"],["mom","어머니 연락처",null,"tel"],["dad","아버지 연락처",null,"tel"],["gp","기타 보호자 연락처",null,"tel"],["gprel","학생과 관계"],["pre","우선 연락처",["학생","어머니","아버지","기타 보호자"],"seg"],
+     ["sp","학생 연락처",null,"tel"],["mom","어머니 연락처",null,"tel"],["dad","아버지 연락처",null,"tel"],["gp","기타 보호자 연락처",null,"tel"],["gprel","학생과 관계"],["pre","우선 연락처",["어머니","아버지","기타 보호자"],"seg"],
      ["inq","문의일시",null,"datetime"],["route","문의 경로",()=>optList("route").map(v=>({v,t:v})),"opt"],["hope","희망 시작일",null,"date"],["hold","등록 보류",["보류 중","보류 안 함"],"sw"],["consent","개인정보 동의",["동의함","동의 전"],"sw"],["memo","메모(내부용)",null,"memo"]],
    upFields:[["name","이름"],["school","학교(짧게: 운양중)"],["grade","학년 (예: 중2)"],["mom","어머니 연락처"],["dad","아버지 연락처"]],
    req:["name","inq"],edk:{preno:"pre"},beforeSet:x=>{if(x.state!=="draft"||!x._o)x._o=stuSnapO(x)},
@@ -2186,7 +2186,7 @@ function stuCellEdit(v,t,id,k){const x=byId(DB.students,id);const td=v.querySele
 // 새 학생은 이름을 넣기 전엔 표에 없음(닫으면 아무것도 안 남음). 이름을 넣는 순간 '작성 중' 학생이 되고, 아래 [저장]·[저장하고 다음]
 const ROUTES=["전화·방문","지인 소개","형제·재원생 소개","블로그·검색","전단·현수막","상담 신청서","기타"]/* 324판(대표): 전화·방문 추가 */;
 const BRANCHES=["본관","운양관"];
-const ddOpts=k=>k==="pre"?["학생","어머니","아버지","기타 보호자"]:k==="gender"?["여학생","남학생"]:k==="sib"?DB.students.filter(s=>!s.del).map(s=>s.id):k==="branch"?BRANCHES:k==="school"?schNames():k==="grade"?gradesOn():k==="route"?ROUTES:[];
+const ddOpts=k=>k==="pre"?["어머니","아버지","기타 보호자"]:k==="gender"?["여학생","남학생"]:k==="sib"?DB.students.filter(s=>!s.del).map(s=>s.id):k==="branch"?BRANCHES:k==="school"?schNames():k==="grade"?gradesOn():k==="route"?ROUTES:[];
 const ddBox=(k,val,ph,cls2="")=>`<button type="button" class="inp pdd ${cls2}" data-dd="${k}">${val?(k==="grade"?gchip(val):esc(val)):`<span class="ph">${ph}</span>`}</button>`;
 let ddPop=null;function ddClose(){if(ddPop){ddPop.remove();ddPop=null}}
 // 163판: 떠 있는 목록 자리 = 고르기 모듈과 같은 규칙(아래 → 위 → 넓은 쪽에 그 높이만큼, 칸은 가리지 않음, 위로 열면 아래 끝을 칸 위 4에 붙임)
@@ -3770,7 +3770,7 @@ async function xlTemplate(){let X;try{X=await xlLib()}catch(e){dlFile("students-
   const ex=["박새봄","하다중","중2","","010-0000-0000","","010-0000-0009","할머니","어머니","토요일 상담 희망"];
   for(let r=5;r<56;r++){heads.forEach((h,i)=>{const c=ws.getCell(r,i+1);c.border=xBorder;c.alignment={vertical:"middle",horizontal:i===0||i===heads.length-1?"left":"center",indent:i===0||i===heads.length-1?1:0};if(r===5){c.value=ex[i];c.font={name:"Pretendard",size:11,italic:true,color:{argb:"FFA8A098"}};c.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFF3F1EE"}}}else{c.font={name:"Pretendard",size:11,color:{argb:XC.ink}};if([3,4,5,6].includes(i))c.numFmt="@"}});ws.getRow(r).height=22}
   const dv=(col,list)=>{for(let r=6;r<56;r++)ws.getCell(r,col).dataValidation={type:"list",allowBlank:true,formulae:['"'+list.join(",")+'"'],showErrorMessage:col===3,errorTitle:"학년",error:"목록에서 골라요(예: 중2)"}};
-  dv(heads.indexOf("학년")+1,GRADES.filter(Boolean));dv(heads.indexOf("학생과 관계")+1,["할머니","할아버지","이모","고모","삼촌","기타"]);dv(heads.indexOf("우선 연락")+1,["학생","어머니","아버지","기타 보호자"]);
+  dv(heads.indexOf("학년")+1,GRADES.filter(Boolean));dv(heads.indexOf("학생과 관계")+1,["할머니","할아버지","이모","고모","삼촌","기타"]);dv(heads.indexOf("우선 연락")+1,["어머니","아버지","기타 보호자"]);
   wb.views=[{activeTab:0}];await xSave(wb,"students-template.xlsx");toast("양식을 내려받았어요 — 첫 시트 '작성 안내'를 먼저 보고, '학생 입력'에 써요")}
 async function xlReadFile(f){if(/\.xlsx$/i.test(f.name)){const X=await xlLib();const wb=new X.Workbook();await wb.xlsx.load(await f.arrayBuffer());const ws=wb.getWorksheet("학생 입력")||wb.worksheets.find(w=>{let hit=false;w.eachRow((r,i)=>{if(i<10&&r.values.some(v=>String(v||"").replace(/\s*\*$/,"")==="이름"))hit=true});return hit})||wb.worksheets[0];
     const rows=[];ws.eachRow({includeEmpty:false},r=>{const a=[];for(let i=1;i<=Math.max(r.cellCount,XL_HEAD.length);i++){const c=r.getCell(i);a.push(c.text==null?"":String(c.text))}rows.push(a)});return rows}
@@ -4051,6 +4051,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del).slice().sort(
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="appdata.js?v=505"></script><script src="live.js?v=505"></script>
+<script src="appdata.js?v=506"></script><script src="appsave.js?v=506"></script><script src="live.js?v=506"></script>
 </body>
 </html>
