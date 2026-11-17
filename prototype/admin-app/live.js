@@ -279,6 +279,8 @@ async function liveRunClasses(blockIds) {
     });
     const body = await res.json().catch(() => null);
     if (!res.ok || !body || !body.ok) throw new Error((body && body.error) || "요청 실패 (" + res.status + ")");
+    /* 맡긴 시간표는 30분 동안 [수업 생성] 대상에서 뺀다 — 서버가 만들고 사본에 오기 전에 한 번 더 눌러 뒤 주 수업이 또 생기지 않게(원본 검수 H6) */
+    try { if (typeof liveGenMark === "function") liveGenMark(ids); render(); } catch (_) {}
     toast(`수업 생성을 맡겼어요 · 시간표 ${body.queued}개 — 1~2분 뒤 노션 수업에 생겨요${unsaved ? ` (저장 전 시간표 ${unsaved}개는 빠짐)` : ""}`);
     return body;
   } catch (e) { toast("수업 생성을 맡기지 못했어요 — " + e.message); return null; }
