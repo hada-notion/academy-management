@@ -52,6 +52,9 @@ jobs:
       - name: Test attendance scheduled-only modes
         run: deno test --allow-env supabase/functions/sync-attendance/index_test.ts supabase/functions/_shared/attendanceSyncShared_test.ts
 
+      - name: Test inquiry receipt snapshot
+        run: deno test --allow-env supabase/functions/send-inquiry-receipt/index_test.ts
+
       - name: Test textbook search and table-of-contents units
         run: deno test --allow-env supabase/functions/_shared/textbookToc_test.ts supabase/functions/_shared/textbookSearch_test.ts supabase/functions/_shared/libraryProp_test.ts supabase/functions/_shared/libraryCopy_test.ts supabase/functions/_shared/selectedUnits_test.ts
 

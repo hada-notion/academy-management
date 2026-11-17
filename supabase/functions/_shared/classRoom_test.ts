@@ -167,6 +167,9 @@ Deno.test("roster: school, grade and phones from the student page, priority phon
  // v2.6.9: 학생정보 페이지(↗)와 연락처 전체
  assert(a.studentId === "stA" && a.primary === "기타 보호자" && a.motherPhone === "010-0000-0004" && a.fatherPhone === "" && a.guardianPhone === "010-0000-0002" && a.guardianRelation === "할아버지", JSON.stringify(a))
  assert(b.studentId === null && b.primary === "" && b.motherPhone === "", "no student page: " + JSON.stringify(b))
+ // v2.0.0: 학생과의 관계가 선택 칸이어도 같은 값
+ f.pages.stA.properties["학생과의 관계"] = { type: "select", select: { name: "조부모" } }
+ assert((await room.loadRoster("s1")).students[0].guardianRelation === "조부모", "select relation")
  assert(b.reportToken === null && b.reportOff && b.school === "" && b.parentPhone === "", "disabled report link gives no token: " + JSON.stringify(b))
  await rejects(() => room.loadRoster("../x"), 400)
 }))

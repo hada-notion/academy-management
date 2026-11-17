@@ -119,7 +119,7 @@ function phoneText(page: any, propertyName: string): string {
   return plainText(value?.phone_number ?? value)
 }
 
-function snapshotFromPage(page: any): StudentSnapshot {
+export function snapshotFromPage(page: any): StudentSnapshot {
   const recipientType = selectText(page, "우선 연락 대상")
   const phoneProperty =
     recipientType === "어머니"
@@ -134,7 +134,8 @@ function snapshotFromPage(page: any): StudentSnapshot {
     recipientType,
     recipientPhone:
       formulaText(page, "우선 연락처") || (phoneProperty ? phoneText(page, phoneProperty) : ""),
-    guardianRelation: richText(page, "학생과의 관계"),
+    // v2.0.0: "학생과의 관계"는 글 → 선택. 옛 글 칸도 그대로 읽는다(selectText는 선택이 없으면 글을 읽음).
+    guardianRelation: selectText(page, "학생과의 관계"),
     school: formulaText(page, "학교(설문)") || richText(page, "학교(설문)"),
     grade: formulaText(page, "학년(설문)") || richText(page, "학년(설문)"),
     status: selectText(page, STATUS_PROP),
