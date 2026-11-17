@@ -2,7 +2,24 @@
 // Notion · Supabase는 모두 가짜 응답. 실제 키 · 데이터 없음.
 import { assertEquals, assertThrows } from "https://deno.land/std@0.224.0/assert/mod.ts"
 for (const [k, v] of Object.entries({ NOTION_TOKEN: "test-only", SB_URL: "https://mock.supabase", SB_SERVICE_ROLE_KEY: "test-only" })) Deno.env.set(k, v)
-const { toNotionProps, checkChanges, saveChanges, SaveError, isWriteDb } = await import("./appSave.ts")
+const { toNotionProps, checkChanges, saveChanges, runGenerateClasses, SaveError, isWriteDb } = await import("./appSave.ts")
+
+Deno.test("수업 생성 실행: 복사본에 있는 시간표만 기존 큐(generate-classes)에, 없는 id는 건너뜀", async () => {
+  const A = "a".repeat(32), B = "b".repeat(32), Z = "c".repeat(32)
+  const queued: any[] = []
+  globalThis.fetch = (async (input: Request | URL | string, init?: RequestInit) => {
+    const url = String(input)
+    if (url.includes("/rest/v1/app_rows?select=id")) return new Response(JSON.stringify([{ id: A }, { id: B }]), { status: 200 })
+    if (url.includes("/rest/v1/sync_queue") && init?.method === "POST") { queued.push(...JSON.parse(String(init.body))); return new Response(null, { status: 201 }) }
+    return new Response("{}", { status: 200 })
+  }) as typeof fetch
+  assertEquals(await runGenerateClasses([A, Z]), { queued: 1, skipped: 1 })
+  assertEquals(await runGenerateClasses(), { queued: 2, skipped: 0 })
+  assertEquals(queued.length, 3)
+  assertEquals(queued.every((q) => q.target === "generate-classes" && typeof q.payload?.timetableId === "string"), true)
+  let err: unknown; try { await runGenerateClasses([Z]) } catch (e) { err = e }
+  assertEquals(err instanceof SaveError, true)
+})
 
 const schema = {
   이름: { type: "title" }, 메모: { type: "rich_text" }, 수강료: { type: "number" },
