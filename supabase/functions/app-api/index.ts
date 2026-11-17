@@ -8,7 +8,7 @@
 // 읽기 로직은 _shared/appCopy.ts.
 import { CORS_HEADERS, requireAdminKey } from "../_shared/adminShared.ts"
 import { APP_DBS, isAppDb, listApp, statusApp } from "../_shared/appCopy.ts"
-import { checkChanges, saveChanges, SaveError } from "../_shared/appSave.ts"
+import { checkChanges, saveChanges, runGenerateClasses, SaveError } from "../_shared/appSave.ts"
 
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store" } })
@@ -35,7 +35,12 @@ Deno.serve(async (req: Request) => {
       const results = await saveChanges(checkChanges(body.changes))
       return json({ ok: results.every((r) => r.ok), results })
     }
-    return json({ error: 'action은 "list", "status", "save" 중 하나여야 합니다.' }, 400)
+    // (항목 76) 시간표마다 다음 수업 한 번을 기존 수업 생성 큐에 넣는다. timetableIds가 없으면 시간표 전부.
+    if (body?.action === "run") {
+      if (body.name !== "generate-classes") return json({ error: 'run의 name은 "generate-classes"여야 합니다.' }, 400)
+      return json({ ok: true, ...(await runGenerateClasses(body.timetableIds)) })
+    }
+    return json({ error: 'action은 "list", "status", "save", "run" 중 하나여야 합니다.' }, 400)
   } catch (err) {
     if (err instanceof SaveError) return json({ error: err.message }, err.status)
     console.error("[app-api]", (err as Error).message)

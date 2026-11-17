@@ -16,6 +16,7 @@ import { NOTION_API } from "./constants.ts"
 import { createPage, fetchWithRetry, notionHeaders, updatePageProperties, getPage } from "./notionClient.ts"
 import { fetchSupabaseWithRetry } from "./reportCacheShared.ts"
 import { appSources, pageRow, type AppDb } from "./appCopy.ts"
+import { enqueueSync, wakeSyncQueueWorker } from "./syncQueue.ts"
 
 export const WRITE_DBS = [
 	"강사(학원) DB", "학생(학원) DB", "클래스(학원) DB", "시즌(학원) DB", "시간표(학원) DB", "등록(학원) DB", "진도관리(학원) DB",
@@ -175,4 +176,27 @@ export async function saveChanges(changes: Change[]): Promise<ChangeResult[]> {
 		}
 	}
 	return out
+}
+
+// ---------- 실행(run) ----------
+// (항목 76) 입력을 마친 뒤 수업 만들기: 시간표마다 다음 수업 한 번을 기존 큐("generate-classes" — 시간표 [수업 추가]와 같은 처리)에 넣는다.
+// 새 로직은 없다. 워커가 시간표 하나씩 처리하고 출석은 출석 조정 큐가 만든다. 이미 그날 수업이 있으면 기존 처리가 건너뛴다.
+// ids를 주지 않으면 복사본의 시간표 전부. 복사본에 없는(= 시간표가 아닌) id는 받지 않는다.
+export const MAX_RUN = 300
+export async function runGenerateClasses(ids?: unknown): Promise<{ queued: number; skipped: number }> {
+	const res = await fetchSupabaseWithRetry(`${SB_URL()}/rest/v1/app_rows?select=id&db=eq.${encodeURIComponent("시간표(학원) DB")}&limit=2000`, { headers: sbHeaders() })
+	if (!res.ok) throw new Error(`시간표 조회 실패: ${res.status}`)
+	const known = new Set(((await res.json()) as { id: string }[]).map((r) => r.id))
+	let want: string[]
+	if (ids === undefined || ids === null) want = [...known]
+	else {
+		if (!Array.isArray(ids) || ids.some((v) => !isId(v))) throw new SaveError(400, "timetableIds 형식이 올바르지 않습니다.")
+		want = [...new Set(ids.map(String))]
+	}
+	const ok = want.filter((id) => known.has(id))
+	if (!ok.length) throw new SaveError(400, "수업을 만들 시간표가 없습니다.")
+	if (ok.length > MAX_RUN) throw new SaveError(400, `한 번에 시간표 ${MAX_RUN}개까지 실행합니다.`)
+	for (const id of ok) await enqueueSync("generate-classes", { timetableId: id })
+	wakeSyncQueueWorker()
+	return { queued: ok.length, skipped: want.length - ok.length }
 }
