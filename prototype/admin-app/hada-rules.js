@@ -58,19 +58,20 @@ function menuIcon(k){for(const g of MENU)for(const x of g[1])if(x[0]===k)return 
 const GATES={P1:["teachers","students","schools","glevels","classes","enrolls","timetable","seasons","subjects","areas","books","progress"],
  P2:["today","events","exams","reports","completion","letters","tuition","bill","bookfees","charges","etcs","costs","profit","files","alims"],
  P3:["lesson"],P3b:["makeup","records"],P6:["admin"]};
-const GATES_ON=["P1"];
+const GATES_ON=["P1","P2","P3"];/* 출시 판(동결 261118): P1 입력(좁힌 범위) + P2 보기 + P3 수업 보기. P3w(출결 쓰기) · P3b(보강 · 학습기록) · P6은 꺼짐 */
 /* 1) 메뉴와 연결된 칸 = 그 메뉴 아이콘(대표 261115). 메뉴 아이콘을 바꾸면 같이 바뀜 */
 const MENU_LINK=[[/^(학생|받는 학생|대상 학생|응시 학생|형제자매|형제·자매|학생\(개별일 때\)|학생 이름|학생이름)$/,"students"],[/^(선생님|담당 강사|담당자|강사|담당 선생님|담당)$/,"teachers"],[/^(클래스|등록 클래스|수강 클래스|클래스 이름)$/,"classes"],[/^학교$/,"schools"],[/^학년$/,"@gradcap"],[/^시험$/,"exams"],[/^시즌$/,"seasons"],[/^(과목|영역)$/,"subjects"],[/^(교재|프로그램|교재·프로그램)$/,"books"],[/^일정$/,"events"],[/^(보고서|학습 보고서)$/,"reports"],[/^수강료$/,"tuition"],[/^청구$/,"bill"],[/^교재비$/,"bookfees"],[/^등록$/,"enrolls"],[/^시간표$/,"timetable"],[/^가정통신문$/,"letters"],[/^진도$/,"progress"]];
 /* 2) 뜻을 보여 주는 예외(대표 지정) — 칸 종류 규칙보다 먼저 */
 const ICON_SELECT="downc";/* 고르기 칸(목록에서 하나 고르는 칸: 구분 · 직책 · 사용 · 진행 · 결제 · 상태) 아이콘은 여기 한 곳 — 표 머리 · 창 칸 · 표 편집이 모두 이 값을 쓴다 */
-const ICON_EXC=[[/상태$/,ICON_SELECT],[/^메모\(내부용\)$|^메모$/,"lock"],[/안내 메모$/,"msg"],[/^선생님 한마디/,"msgc"],[/^학부모 공개$/,"eye"],[/^개인정보 동의$/,"shield"],[/^등록 보류$/,"pausec"],[/^결제 수단$/,"creditcard"],[/^주소$/,"mappin"],[/^문의 경로$/,"navigation"],[/^우선 연락처$/,"phonecall"],[/^성별$/,"user"],[/^학생과 관계$/,"users"],[/^형제자매$/,"users"],[/요일/,"repeat"]];
+/* 518판(대표 261117 "칸 형식 → 아이콘 한 규칙, 예외 두지 않음"): 고르기 칸은 뜻 아이콘을 따로 두지 않고 모두 ICON_SELECT — 결제 수단 · 문의 경로 · 우선 연락처 · 성별 · 학생과 관계 · 요일 포함 */
+const ICON_EXC=[[/상태$|^결제 수단$|^문의 경로$|^우선 연락처$|^성별$|^학생과 관계$|요일/,ICON_SELECT],[/^메모\(내부용\)$|^메모$/,"lock"],[/안내 메모$/,"msg"],[/^선생님 한마디/,"msgc"],[/^학부모 공개$/,"eye"],[/^개인정보 동의$/,"shield"],[/^등록 보류$/,"pausec"],[/^주소$/,"mappin"],[/^형제자매$/,"users"]];
 /* 3) 칸 종류 규칙 */
 function iconRule(label,type){const l=String(label||"").replace(/\s*\(.*\)\s*$/,"").trim(),t=type||"";
   const raw=String(label||"").trim();for(const [re,k] of ICON_EXC)if(re.test(raw)&&FEATHER[k])return k;
   if(t==="won"||/^수강료$/.test(l))return "won";/* 404판(대표): 돈 칸은 메뉴 연결보다 ₩ 먼저 */
   for(const [re,k] of MENU_LINK)if(re.test(l))return k[0]==="@"?k.slice(1):menuIcon(k);
   if(/^(이름|받는 사람)$/.test(l))return "user";
-  if(t==="date"||t==="datetime"||/일$|일시$|날짜|기간|개강|종강/.test(l))return "calendar";if(t==="tel"||/연락처|전화|발신번호/.test(l))return "phone";if(t==="days"||/요일/.test(l))return "repeat";
+  if(t==="date"||t==="datetime"||/일$|일시$|날짜|기간|개강|종강/.test(l))return "calendar";if(t==="tel"||/연락처|전화|발신번호/.test(l))return "phone";if(t==="days"||/요일/.test(l))return ICON_SELECT;
   if(t==="won"||/(금액|가격|재료비|교습비|매출|지출|순이익|손익|합계|단가|할인|미납액|환불액|받을 돈|받은 돈|기타경비|교재비 등|조정)$/.test(l))return "won";if(/분량|범위/.test(l))return "book";if(/발송|안내|전달|템플릿/.test(l))return "msg";
   if(/진행|사용|구분|직책|결제 수단|결제$/.test(l))return ICON_SELECT;return ""}
 /* 요소: 그룹|개별 알약 — 그룹 = 여러 사람 + 파랑 바탕, 개별 = 한 사람 + 초록 바탕(글자·아이콘은 색 알약 한 색) */

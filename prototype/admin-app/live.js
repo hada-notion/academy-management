@@ -30,7 +30,8 @@
   } catch (_) {}
   /* 보기만(P2 보기 칸): 이 칸의 화면은 노션 값을 보여 주기만 한다. 쓰는 단추는 끄고, 창의 칸은 잠그고, 그래도 값이 바뀌면 그 자리에서 되돌린다.
      고칠 것은 창 위 [노션에서 열기]로. (이 묶음들은 저장 층 대상이 아니라 노션에 갈 길도 없다) */
-  const P2ON = gOn.has("P2"), RO = new Set([...GATES.P2, ...GATES.P3, ...GATES.P3b]); /* P3 수업은 걸음 1 = 보기만 */
+  /* 0단계(대표 261117): 입력 칸(P1) 안에서도 노션 버튼 · 서버 동작이 따로 있는 화면은 보기만 — 라이브러리(교재 등록 = 서버가 단원까지) · 학교(학교 검색 = 학교 코드까지) */
+  const P2ON = gOn.has("P2"), RO = new Set([...GATES.P2, ...GATES.P3, ...GATES.P3b, "books", "schools"]); /* P3 수업은 걸음 1 = 보기만 */
   window.liveRO = (s) => RO.has(s);
   window.liveScr = (t) => (t && t.screen === "timetable" && t.state && t.state.view === "lesson" ? "lesson" : t ? t.screen : "");
   let roBase = null, roScreen = null, roBusy = false;
@@ -85,7 +86,39 @@
     if (t && t.screen === "timetable" && t.state && t.state.view === "lesson" && !gateOn("lesson")) { t.state.view = "tt"; t.state.lsel = null; say("수업 화면은 아직 열지 않았어요 — 노션에서 봐요"); }
   };
   roCss.textContent += gateOn("lesson") ? "" : '#view [data-view="lesson"]{display:none!important}';
-  render = function () { try { lessonGate(); } catch (_) {} const out = r0.apply(this, arguments); try { roLock(); } catch (_) {} try { if (typeof liveLessonNeed === "function") liveLessonNeed(); } catch (_) {} return out; };
+  /* 0단계 — 입력 화면(P1)에서 잠그는 것(두 길로 갈라지는 일): 노션 버튼이 딸린 일까지 하는 단추는 끄고 [노션에서 해요]로 알린다.
+     등록 [종료 처리] · [링크 재발급], 진도 [교재 생성] · [수료], 안내 전송 · 접수 안내 · 학사일정, 시간표 [잠금 해제](수업이 만들어진 시간표의 요일 · 시간),
+     학생 [개인정보 동의](체크하면 노션 자동화가 접수 안내 알림톡을 보낸다 — 앱은 그 칸을 보내지 않는다). 저장 층(appsave.js appsOff)도 같은 것을 보내지 않는다. */
+  const P1_DENY = "[data-act=end],[data-act=enReissue],[data-act=genPg],[data-act=genPg1],[data-act=pgDone],[data-act=pgRep],[data-pgdo],#bfM,#pLock";
+  const P1_DENY_TEXT = /(접수 안내|등록 안내|안내 전송|안내문 전송|재발급|학사일정 가져오기|종료 처리|교재 생성|교재비에 담기)\s*\d*\s*$/; /* 담기 = 노션 [담기](서버가 청구서까지 만듦) */
+  const P1_WHY = "노션에서 해요 — 이 일은 노션 버튼이 딸린 일(출석 · 교재 · 안내)까지 함께 해요";
+  const p1Denied = (el) => { const hf = el && el.closest && el.closest(".hf"); if (hf && hf.closest("#view")) { const lb = hf.querySelector(".hf-lbl"); if (lb && /^개인정보 동의/.test(lb.textContent.trim())) return el.closest(".qhelp,[data-help]") ? null : hf; } const b = el && el.closest && el.closest("button,[role=button],.btn,.lnk,label,.swf,[data-hf]"); if (!b || !b.closest("#view")) return null; if (b.matches(P1_DENY) || b.closest(P1_DENY)) return b; const t = (b.textContent || "").trim(); if (b.matches("button,.btn,.lnk") && P1_DENY_TEXT.test(t)) return b; if (/개인정보 동의/.test(t) && t.length < 40) return b; return null; };
+  const p1Dress = () => {
+    if (!(window.LIVE && window.LIVE.loaded) || document.body.classList.contains("live-ro")) return;
+    document.querySelectorAll("#view button,#view .lnk,#view .swf,#view [data-hf],#view .hf").forEach((el) => { if (p1Denied(el) !== el) return; if ("disabled" in el) el.disabled = true; el.setAttribute("aria-disabled", "true"); el.title = /개인정보 동의/.test(el.textContent) ? "개인정보 동의는 노션에서 체크해요 — 체크하면 접수 안내 알림톡이 나가요" : P1_WHY; el.classList.add("live-off"); });
+  };
+  /* 꺼진 것은 꺼진 모양으로(원본 검수 H3): 실제 자료 모드에서 잠근 단추 · 칸은 글자까지 흐리게 */
+  roCss.textContent += ".live-off,.live-ro #view button[aria-disabled=true],.live-ro #view .hf-box[aria-disabled=true]{opacity:.45!important;filter:grayscale(1);cursor:not-allowed!important}";
+  const p1Block = (e) => { if (!(window.LIVE && window.LIVE.loaded) || document.body.classList.contains("live-ro")) return; const b = p1Denied(e.target); if (!b) return; if (e.type === "keydown" && !["Enter", " "].includes(e.key)) return; e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); if (e.type === "click") say(/개인정보 동의/.test(b.textContent) ? "개인정보 동의는 노션에서 체크해요 — 체크하면 접수 안내 알림톡이 나가요" : P1_WHY); };
+  ["click", "mousedown", "pointerdown", "keydown", "change"].forEach((ev) => document.addEventListener(ev, p1Block, true));
+  /* 수업이 만들어진 시간표의 요일 · 시간 · 명단, 이미 있는 등록의 종료일은 그 자리에서 되돌린다(끌어 옮기기 · 명단 넣기처럼 단추가 아닌 길까지) */
+  const p1Guard = () => {
+    if (!(window.LIVE && window.LIVE.loaded)) return;
+    let hit = "";
+    DB.blocks.forEach((b) => { if (!b.lessons || b.del || !TSAVED.has(b.id)) return; const o = JSON.parse(TSAVED.get(b.id)); if (!o.lessons) return; if (b.day === o.day && b.start === o.start && b.end === o.end && JSON.stringify(b.regs) === JSON.stringify(o.regs)) return; Object.keys(b).forEach((k) => delete b[k]); Object.assign(b, o); hit = "수업이 만들어진 시간표의 요일 · 시간 · 명단은 노션에서 바꿔요 — 출석이 함께 맞춰져야 해요"; });
+    const S = typeof SAVEDC !== "undefined" ? SAVEDC.enrolls : null;
+    if (S) DB.enrolls.forEach((e, i) => { const sv = S.get(e.id); if (!sv) return; /* 불러온(저장된) 등록만 — 새 등록의 종료일은 그대로 */ const o = JSON.parse(sv); if ((e.end || "") === (o.end || "") && !!e.ended === !!o.ended) return; e.end = o.end; e.ended = o.ended; if (JSON.stringify(Object.assign({}, e, { state: 0 })) === JSON.stringify(Object.assign({}, o, { state: 0 }))) e.state = o.state; hit = hit || "등록 종료는 노션 [종료 처리]로 해요 — 남은 수업 · 출석 정리까지 함께 해요"; });
+    /* 학교는 앱이 만들지 않는다(원본 검수 H1): 고르기 목록의 "+ 생성"으로 생긴 학교 줄은 그 자리에서 빼고, 그 학교를 적은 학생의 학교 칸은 비운다 */
+    const isId = (v) => /^[0-9a-f-]{32,36}$/i.test(String(v));
+    const fresh = (DB.schools || []).filter((s) => !isId(s.id));
+    if (fresh.length) { const gone = new Set(fresh.map((s) => s.name)); DB.schools = DB.schools.filter((s) => isId(s.id)); (DB.students || []).forEach((s) => { if (gone.has(s.school)) s.school = ""; }); hit = hit || "학교는 노션 [학교 검색]으로 먼저 넣어요 — 학교 코드 · 학사일정이 함께 들어가요"; }
+    else { const have = new Set((DB.schools || []).map((s) => s.name)); (DB.students || []).forEach((s) => { if (s.school && !have.has(s.school) && s.state === "draft") { s.school = ""; hit = hit || "없는 학교예요 — 학교는 노션 [학교 검색]으로 먼저 넣어요"; } }); }
+    if (hit) { try { savedSync(); lastSnap = snapshot(); } catch (_) {} r0(); say(hit); }
+  };
+  /* 칸을 고친 바로 뒤에도 본다(다시 그리지 않는 길 — 원본 검수 H2: 종료일이 저장 전까지 고친 값으로 보였음) */
+  let p1Tick = null;
+  ["change", "click", "focusout"].forEach((ev) => document.addEventListener(ev, () => { if (!(window.LIVE && window.LIVE.loaded) || p1Tick) return; p1Tick = setTimeout(() => { p1Tick = null; try { p1Guard(); p1Dress(); } catch (_) {} }, 0); }, true));
+  render = function () { try { lessonGate(); } catch (_) {} const out = r0.apply(this, arguments); try { p1Guard(); } catch (_) {} try { roLock(); } catch (_) {} try { p1Dress(); } catch (_) {} try { if (typeof liveLessonNeed === "function") liveLessonNeed(); } catch (_) {} return out; };
   /* 되돌리기 · 다시 하기 · 모두 되돌리기는 입력 칸(P1)의 값을 움직이는 일이라 보기 화면에서도 막지 않는다 */
   ["undo", "redo", "revertAll"].forEach((k) => { try { const f0 = eval(k); eval(k + " = function () { roBase = null; return f0.apply(this, arguments); }"); } catch (_) {} });
   document.addEventListener("beforeinput", (e) => { if (document.body.classList.contains("live-ro") && e.target.closest && e.target.closest(".panel,#view table")) e.preventDefault(); }, true);
@@ -96,10 +129,12 @@
      창: 링크 · 도움말 · 노션 · 줄 열기/이동 · 접기 · 탭 · 할 일 줄. 위 줄: 날짜 · 달 · 주 이동, 보기 탭, 찾기, 엑셀 · 인쇄, 크기, 창 고정,
      그리고 입력 칸(P1)에서 고친 것을 다루는 실행 취소 · 다시 실행 · 모두 되돌리기 · 저장. */
   const RO_PASS0 = "a,[data-help],[data-notion],.hnot,[data-drill],[data-go],[data-gobook],[data-gochs],[data-gobill],[data-act^=go],[data-rpdo^=open],[data-rpdo^=notion],[data-pgfold],[data-entab],.ptabs,.ro-note,.tdr,.tdmore,.qhelp,summary,"
-    + "[data-dn],[data-mn],[data-sub],[data-cfnav],[data-mtab],[data-view],[data-wkd],[data-evsel],#lq,.sbx,#xlB,#prB,#undoB,#redoB,#rvAll,#saveAll,#panelT,#mkPanelT,#seaChip,#wkP,#wkN,#wkT,#lmAtt,#cbFind,#zOut,#zIn";
+    + "[data-dn],[data-mn],[data-sub],[data-cfnav],[data-mtab],[data-view],[data-wkd],[data-evsel],.foldchip,#lq,.sbx,#xlB,#prB,#undoB,#redoB,#rvAll,#saveAll,#panelT,#mkPanelT,#seaChip,#wkP,#wkN,#wkT,#lmAtt,#cbFind,#zOut,#zIn,#makeWeek"; /* #makeWeek = 수업 생성: 노션 버튼과 같은 서버 함수(generate-classes)를 부르는 run이라 보기 화면에서도 켠다(대표 261117 "수업 생성은 앱에서도") */
   const RO_HIT = "button,input,select,textarea,label,[role],[tabindex],[contenteditable],.btn,.lnk,.hf-box";
   const roBlock = (e) => {
     if (!document.body.classList.contains("live-ro") || !e.target.closest) return;
+    /* 보기 화면의 엑셀은 내려받기만: [한번에 올리기]는 어디에 떠 있든(메뉴 · 창) 막는다 */
+    { const up = e.target.closest("button,label,[role=menuitem],.btn,input[type=file]"); if (up && (up.matches("input[type=file]") || /올리기/.test(up.textContent || ""))) { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); if (e.type === "click") say("이 화면은 보기만 해요 — 올리기는 노션에서 해요"); return; } }
     if (!e.target.closest("#view")) return;
     if (e.target.closest(roPass()) || !e.target.closest(RO_HIT)) return;
     if (!e.target.closest(".panel") && !e.target.closest("button,select,[role=button],.btn,.lnk,.hf-box")) return; /* 창 밖은 단추 · 고르기만(표 줄 · 카드 · 찾기 칸은 그대로) */
