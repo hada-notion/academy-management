@@ -70,11 +70,30 @@ export function ownedProperties(row: NeisRow, pageId: string, key: string, grade
   }
 }
 
-// 최초 생성 전용. 기존 일정 업데이트에는 ownedProperties만 사용한다.
-export function newEventProperties(row: NeisRow, pageId: string, key: string, gradeIds: string[]) {
+// 일정 `학사 구분` 규칙: ① 수업공제일명 공휴일 또는 이름에 "토요휴업일" → 비움 ② 수업공제일명 휴업일 → 방학/휴교
+// ③ 이름에 "고사"·"시험" → 시험 ④ 그 밖 → 행사.
+export function academicCategory(row: NeisRow): "행사" | "시험" | "방학/휴교" | null {
+  const deduct = (row.SBTR_DD_SC_NM ?? "").trim(), name = row.EVENT_NM ?? ""
+  if (deduct === "공휴일" || name.includes("토요휴업일")) return null
+  if (deduct === "휴업일") return "방학/휴교"
+  if (/고사|시험/.test(name)) return "시험"
+  return "행사"
+}
+
+// 일정 DB 스키마에서 `학사 구분` 선택 칸의 옵션 이름. 칸이 없거나 선택 칸이 아니면 빈 목록(→ 채우지 않음).
+export function categoryOptionsOf(schema: any): string[] {
+  const p = schema?.properties?.["학사 구분"]
+  return p?.type === "select" ? (p.select?.options ?? []).map((o: any) => o?.name).filter((n: unknown) => typeof n === "string" && n) : []
+}
+
+// 최초 생성 전용. 기존 일정 업데이트에는 ownedProperties만 사용한다(숨김·학부모 공개·학사 구분은 사람이 고친 값 유지).
+// categoryOptions = 일정 DB `학사 구분` 옵션 이름. 칸이 없는 학원(빈 목록)이나 옵션이 없는 값은 채우지 않는다.
+export function newEventProperties(row: NeisRow, pageId: string, key: string, gradeIds: string[], categoryOptions: string[] = []) {
+  const category = academicCategory(row)
   return {
     ...ownedProperties(row, pageId, key, gradeIds),
     "숨김": { checkbox: true },
     "학부모 공개": { checkbox: false },
+    ...(category && categoryOptions.includes(category) ? { "학사 구분": { select: { name: category } } } : {}),
   }
 }

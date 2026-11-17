@@ -1,4 +1,4 @@
-import { eventKey, eventGrades, ownedProperties, newEventProperties, safeWebsite, type NeisRow } from "./neisSchool.ts"
+import { eventKey, eventGrades, ownedProperties, newEventProperties, academicCategory, categoryOptionsOf, safeWebsite, type NeisRow } from "./neisSchool.ts"
 function assert(v: unknown, message = "assertion failed") { if (!v) throw new Error(message) }
 const row: NeisRow = { ATPT_OFCDC_SC_CODE: "B10", SD_SCHUL_CODE: "7041238", AY: "2026", AA_YMD: "20261002", EVENT_NM: "중간고사", EVENT_CNTNT: "", SCHUL_CRSE_SC_NM: "중학교", ONE_GRADE_EVENT_YN: "N", TW_GRADE_EVENT_YN: "Y", THREE_GRADE_EVENT_YN: "N", SBTR_DD_SC_NM: "해당없음" }
 Deno.test("대상 학년 Y만 연결", () => assert(JSON.stringify(eventGrades(row)) === "[2]"))
@@ -42,4 +42,31 @@ Deno.test("신규 학사일정만 숨김 체크/학부모 비공개", () => {
  assert(props["학부모 공개"].checkbox === false)
  assert(!("숨김" in ownedProperties(row, "school", "key", ["grade2"])))
  assert(!("학부모 공개" in ownedProperties(row, "school", "key", ["grade2"])))
+})
+
+const OPTIONS = ["행사", "시험", "방학/휴교"]
+Deno.test("학사 구분 규칙 4줄", () => {
+ // ① 공휴일·토요휴업일 → 비움
+ assert(academicCategory({ ...row, EVENT_NM: "개천절", SBTR_DD_SC_NM: "공휴일" }) === null)
+ assert(academicCategory({ ...row, EVENT_NM: "토요휴업일", SBTR_DD_SC_NM: "휴업일" }) === null)
+ // ② 휴업일 → 방학/휴교 (이름에 시험이 있어도 휴업일이 먼저)
+ for (const name of ["여름방학", "재량휴업일", "개교기념일", "시험 후 재량휴업"]) assert(academicCategory({ ...row, EVENT_NM: name, SBTR_DD_SC_NM: "휴업일" }) === "방학/휴교", name)
+ // ③ 고사·시험 → 시험
+ for (const name of ["중간고사", "2학기 기말고사", "전국연합학력평가 시험"]) assert(academicCategory({ ...row, EVENT_NM: name, SBTR_DD_SC_NM: "해당없음" }) === "시험", name)
+ // ④ 그 밖 → 행사 (수업공제일명이 비어도)
+ for (const [name, deduct] of [["현장체험학습", "해당없음"], ["방학식", "해당없음"], ["체육대회", null]] as const) assert(academicCategory({ ...row, EVENT_NM: name, SBTR_DD_SC_NM: deduct }) === "행사", name)
+})
+Deno.test("학사 구분은 새로 만들 때만, 다시 가져오기(ownedProperties)는 건드리지 않음", () => {
+ assert(newEventProperties(row, "school", "key", [], OPTIONS)["학사 구분"]?.select.name === "시험")
+ assert(!("학사 구분" in newEventProperties({ ...row, EVENT_NM: "토요휴업일", SBTR_DD_SC_NM: "휴업일" }, "school", "key", [], OPTIONS)))
+ assert(!("학사 구분" in ownedProperties(row, "school", "key", [])))
+})
+Deno.test("학사 구분 칸이 없는 학원·없는 옵션은 건너뜀", () => {
+ assert(categoryOptionsOf({ properties: {} }).length === 0)
+ assert(categoryOptionsOf({ properties: { "학사 구분": { type: "rich_text", rich_text: {} } } }).length === 0)
+ assert(JSON.stringify(categoryOptionsOf({ properties: { "학사 구분": { type: "select", select: { options: OPTIONS.map(name => ({ name })) } } } })) === JSON.stringify(OPTIONS))
+ assert(!("학사 구분" in newEventProperties(row, "school", "key", [])))
+ assert(!("학사 구분" in newEventProperties(row, "school", "key", [], ["행사", "방학/휴교"])))
+ const props = newEventProperties(row, "school", "key", [])
+ assert(props["숨김"].checkbox === true && props["학부모 공개"].checkbox === false)
 })
