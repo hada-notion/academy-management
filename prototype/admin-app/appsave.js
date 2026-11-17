@@ -197,7 +197,8 @@ const APPSAVE = {
 			"어머니 연락처": X.str(r.mom), "아버지 연락처": X.str(r.dad), "학생 연락처": X.str(r.sp),
 			"기타 보호자 연락처": X.str(r.gp), "학생과의 관계": X.str(r.gprel),
 			"우선 연락 대상": X.pre(r.pre, r.name), "등록 보류": !!r.hold, "메모(내부용)": X.str(r.memo),
-			"문의일": X.dt(r.inq), "문의 경로": X.str(r.route), "희망 시작일": X.d(r.hope), "개인정보 동의": !!r.consent,
+			/* 개인정보 동의는 보내지 않는다: 노션 학생 DB 자동화가 "페이지 추가 + 개인정보 동의 ☑"에서 접수 안내 알림톡을 보낸다 — 체크는 노션에서 */
+			"문의일": X.dt(r.inq), "문의 경로": X.str(r.route), "희망 시작일": X.d(r.hope),
 			"생년월일": X.d(r.birth), "성별": X.str(r.gender), "주소": X.str(r.addr), "형제/자매": X.rels(r.sib),
 		}),
 	},
@@ -252,11 +253,24 @@ function appSaveMark(DB) {
 	}
 }
 
+// ---------- 보내지 않는 것(0단계, 대표 261117 "앱 → 서버 → 노션") ----------
+// 노션 버튼 · 서버 동작이 딸린 일까지 하는 것은 앱이 "임의 칸 쓰기"로 보내지 않는다(같은 일의 길이 둘이 되지 않게). 화면도 같은 것을 잠근다(live.js).
+//   통째로: 라이브러리(서버 textbook-api가 단원까지 함) · 학교(school-api가 학교 코드까지 함)
+//   진도관리: 학생 한 명의 줄(개별 진도 복사 = 노션 [교재 생성]) · 이미 있는 줄의 진행상태(수료 = 노션 [수료])
+//   등록: 이미 있는 줄의 종료일(노션 [종료 처리]) / 시간표: 수업이 만들어진 줄의 요일 · 시간 · 명단 · 적용 기간(출석이 함께 맞춰져야 함)
+const APPS_OFF = ["books", "schools"]
+function appsOff(coll, row, isNew, send) {
+	if (APPS_OFF.includes(coll)) return "all"
+	if (coll === "progress") { if (row.mode === "개별" && row.studentId) return "all"; if (!isNew) delete send["진행상태"] }
+	if (coll === "enrolls" && !isNew) delete send["종료일"]
+	if (coll === "blocks" && !isNew && row.lessons) ["요일", "등원시간(HH:mm)", "하원시간(HH:mm)", "등록", "적용 기간", "이름"].forEach((k) => delete send[k])
+	return ""
+}
+
 // ---------- 모으기 ----------
 function appSaveCollect(DB) {
 	const warn = [], changes = [], refs = [], noop = [], dels = []
 	let warnKeep = 0
-	appsEnsureSchools(DB)
 	const X = appSaveX(DB, warn)
 	const made = new Set() // 이 요청에서 먼저 만들어지는 tmp
 	for (const coll of APPS_ORDER) {
@@ -270,6 +284,7 @@ function appSaveCollect(DB) {
 			// 창 아래 [ㅇㅇ 저장]은 앱 안에서만 "저장됨"으로 바꾸므로, 작성 중 표시가 없어도 불러온 값(기준)과 달라진 줄은 보낸다
 			if (!isNew && !appsDirty(coll, row) && !APPS_BASE.has(coll + ":" + row.id)) continue
 			const props = APPSAVE[coll].props(row, X)
+			if (appsOff(coll, row, isNew, {}) === "all") { warn.length = warnKeep; continue } // 보내지 않는 묶음 · 줄
 			// 아직 만들어지지 않은 줄(뒤에 오는 새 줄 · 삭제 예정 새 줄)을 가리키는 관계는 이번엔 빼고, 그 줄은 작성 중으로 남긴다
 			let partial = false
 			for (const [k, v] of Object.entries(props)) {
@@ -291,6 +306,7 @@ function appSaveCollect(DB) {
 			if (base) {
 				send = {}
 				for (const [k, v] of Object.entries(props)) if (JSON.stringify(v) !== JSON.stringify(base[k])) send[k] = v
+				appsOff(coll, row, false, send) // 노션 버튼이 하는 칸은 뺀다
 				// 작성 중 표시가 없는 줄은 사람이 고친 칸만: 다른 줄 이름에서 만들어지는 제목(등록 · 시간표 `이름`, 진도 `진도교재`)은 따라 보내지 않는다
 				if (!appsDirty(coll, row)) {
 					if (coll === "enrolls" || coll === "blocks") delete send["이름"]
@@ -299,6 +315,7 @@ function appSaveCollect(DB) {
 				}
 				if (!Object.keys(send).length) { noop.push({ coll, row }); continue }
 			}
+			if (!base) { appsOff(coll, row, false, send); if (!Object.keys(send).length) { noop.push({ coll, row }); continue } }
 			const ch = { op: "update", db: APPSAVE[coll].db, id: row.id, props: send }
 			if (row._edited) ch.edited = row._edited
 			changes.push(ch)
