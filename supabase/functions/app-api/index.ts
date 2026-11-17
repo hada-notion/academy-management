@@ -8,7 +8,7 @@
 // 읽기 로직은 _shared/appCopy.ts.
 import { CORS_HEADERS, requireAdminKey } from "../_shared/adminShared.ts"
 import { APP_DBS, isAppDb, listApp, statusApp } from "../_shared/appCopy.ts"
-import { checkChanges, saveChanges, runGenerateClasses, SaveError } from "../_shared/appSave.ts"
+import { checkChanges, saveChanges, runGenerateClasses, writeOptions, SaveError } from "../_shared/appSave.ts"
 
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store" } })
@@ -40,7 +40,9 @@ Deno.serve(async (req: Request) => {
       if (body.name !== "generate-classes") return json({ error: 'run의 name은 "generate-classes"여야 합니다.' }, 400)
       return json({ ok: true, ...(await runGenerateClasses(body.timetableIds)) })
     }
-    return json({ error: 'action은 "list", "status", "save", "run" 중 하나여야 합니다.' }, 400)
+    // 쓸 수 있는 DB의 고르기 칸 선택지(앱이 Notion에 있는 값만 고르게).
+    if (body?.action === "options") return json({ ok: true, dbs: await writeOptions() })
+    return json({ error: 'action은 "list", "status", "save", "run", "options" 중 하나여야 합니다.' }, 400)
   } catch (err) {
     if (err instanceof SaveError) return json({ error: err.message }, err.status)
     console.error("[app-api]", (err as Error).message)
