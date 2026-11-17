@@ -1,14 +1,13 @@
 // 내부 운영 표시 여부와 학부모 공개 여부를 분리한다. 누락/잘못된 공개 값은 비공개.
 export const NOTICE_VISIBILITY_POLICY = 1
-import { categoryName, isSchoolCategory } from "./scheduleCategory.ts"
-// 학부모 공개 대상 구분: 학원 일정·휴원·학교 일정(학교 행사·시험·방학/휴교, 옛 학사 일정). 할일은 내부용.
-const isPublicCategory = (raw: unknown) => { const n = categoryName(raw); return n === "학원 일정" || n === "휴원" || isSchoolCategory(raw) }
+import { eventKind, isPublicKind, isEventPage } from "./scheduleCategory.ts"
+// 학부모 공개 대상 종류(2.8 2단계): 세부 구분이 직원 회의·할일이 아닌 것(옛 구분·안내 구분도 같은 뜻으로 읽음, scheduleCategory.eventKind).
 export function isParentPublicEvent(page: any): boolean {
   const p = page?.properties
   return !page?.archived && !page?.in_trash &&
     p?.["숨김"]?.checkbox === false &&
     p?.["학부모 공개"]?.checkbox === true &&
-    isPublicCategory(p?.["구분"]?.select?.name)
+    isPublicKind(eventKind(page))
 }
 // 기존 캐시에는 공개 결정의 근거가 없다. 재동기화 전까지 일정만 비공개로 반환한다.
 export function publicNoticeFields(fields: Record<string, unknown>): Record<string, unknown> {
@@ -26,7 +25,7 @@ export function publicNoticeFields(fields: Record<string, unknown>): Record<stri
 // 바꾸는 길이 생기면 이 조건을 다시 본다.
 export function noticeReportSyncNotNeeded(page: any, botUserId: string | null): boolean {
   const p = page?.properties
-  if (!p || p["구분"]?.type !== "select" || p["날짜"] === undefined) return false
+  if (!p || !isEventPage(page)) return false
   const neisKey = (p["NEIS 동기화키"]?.rich_text ?? []).map((t: any) => t?.plain_text ?? t?.text?.content ?? "").join("").trim()
   if (!neisKey) return false
   if (isParentPublicEvent(page)) return false

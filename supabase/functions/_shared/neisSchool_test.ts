@@ -56,10 +56,10 @@ Deno.test("구분 규칙 4줄", () => {
  for (const [name, deduct] of [["현장체험학습", "해당없음"], ["방학식", "해당없음"], ["체육대회", null]] as const) assert(schoolCategory({ ...row, EVENT_NM: name, SBTR_DD_SC_NM: deduct }) === "학교 행사", name)
 })
 Deno.test("새로 만들 때만 구분을 쓰고, 다시 가져오기(ownedProperties)는 구분을 건드리지 않음", () => {
- assert(newEventProperties(row, "school", "key", [], OPTIONS)["구분"].select.name === "📝 시험")
+ assert(newEventProperties(row, "school", "key", [], OPTIONS)["구분"]?.select.name === "📝 시험")
  const holiday = newEventProperties({ ...row, EVENT_NM: "토요휴업일", SBTR_DD_SC_NM: "휴업일" }, "school", "key", [], OPTIONS)
- assert(holiday["구분"].select.name === "🏖️ 방학/휴교" && holiday["숨김"].checkbox === true)
- assert(newEventProperties({ ...row, EVENT_NM: "체육대회" }, "school", "key", [], OPTIONS)["구분"].select.name === "🏫 학교 행사")
+ assert(holiday["구분"]?.select.name === "🏖️ 방학/휴교" && holiday["숨김"].checkbox === true)
+ assert(newEventProperties({ ...row, EVENT_NM: "체육대회" }, "school", "key", [], OPTIONS)["구분"]?.select.name === "🏫 학교 행사")
  assert(!("구분" in ownedProperties(row, "school", "key", [])))
 })
 Deno.test("구분 옵션 이름은 학원 DB의 것(이모지가 달라도 글자로), 새 값이 없으면 옛 학사 일정", () => {

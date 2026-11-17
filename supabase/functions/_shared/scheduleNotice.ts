@@ -7,7 +7,7 @@
 // 월간 일정 안내는 학생 단위다(학생 월간 안내, _shared/monthlyNotice.ts). 이 파일의 한 줄·구역 함수를 같이 쓴다.
 // 큐 모양은 반별 보고서와 같다: 일정 1건이 학생 1건씩을 다시 넣고, 마지막 학생이 상태를 마친다(✅, 중간 실패가 있으면 ⚠️).
 // 발송 규칙은 수업 안내와 같다(설정 행이 꺼졌거나 비면 ⚠️, 연락처 없음 ⚠️, 발송 단계 실패는 다시 보내지 않음). 전송로그는 등록에.
-import { isSchoolCategory } from "./scheduleCategory.ts"
+import { eventKind, categoryOf, categoryName, propName, isSchoolKind, kindSection, KIND, DETAIL_PROP } from "./scheduleCategory.ts"
 import { createSendLogEntry, extractErrorMessage, getBotUserId, type AlimtalkConfigCategory } from "./adminShared.ts"
 import { EVENT_NOTICE_MEMO, propRich } from "./propAlias.ts"
 import { getFormulaText } from "./alimtalkShared.ts"
@@ -67,7 +67,7 @@ export function eventLine(event: any): { day: string; line: string } | null {
 	const start = seoulDay(p["날짜"]?.date?.start)
 	if (!start) return null
 	const end = seoulDay(p["날짜"]?.date?.end)
-	const name = textOf(p["이름"]?.title).trim() || String(p["구분"]?.select?.name ?? "").replace(/^\S+\s/, "")
+	const name = textOf(p["이름"]?.title).trim() || categoryOf(event) || eventKind(event)
 	const tail = end && end !== start ? `~${end.slice(0, 7) === start.slice(0, 7) ? shortDay(end).replace(/^\d+\//, "") : shortDay(end)}` : ""
 	return { day: start, line: `${shortDay(start)}${tail} ${name}`.trim() }
 }
@@ -87,21 +87,24 @@ export function isAcademyWide(event: any): boolean {
 }
 
 // 일정 안내의 구분: "안내 구분"(선택) → 없으면 구분으로. 본문이 "학생의 #{일정구분} 일정을"이라 "일정"을 붙이지 않는다.
+// (2.8 2단계) `세부 구분`이 있으면 그것으로(상담 → 상담, 테스트 → 테스트, 학원 휴원 → 휴원, 학교 4종 → 학사, 그 밖 → 학원).
+// 세부 구분이 없으면(이관 전) 옛 방식: 안내 구분 → 구분.
 export function eventLabel(event: any): string {
 	const p = event?.properties ?? {}
+	if (categoryName(propName(p[DETAIL_PROP]))) {
+		const k = eventKind(event)
+		return k === KIND.COUNSEL ? "상담" : k === KIND.TEST ? "테스트" : k === KIND.CLOSED ? "휴원" : isSchoolKind(k) ? "학사" : "학원"
+	}
 	const custom = String(p[PROP_EVENT_LABEL]?.select?.name ?? textOf(p[PROP_EVENT_LABEL]?.rich_text)).trim()
 	if (custom) return custom
-	const cat = String(p["구분"]?.select?.name ?? "")
-	if (cat.includes("휴원")) return "휴원"
-	if (isSchoolCategory(cat)) return "학사"
-	return "학원"
+	const k = eventKind(event)
+	return k === KIND.CLOSED ? "휴원" : isSchoolKind(k) ? "학사" : "학원"
 }
 
-// 월간 일정 안내의 구역: 💤 휴원 → 휴원, 학교 일정(학교 행사·시험·방학/휴교, 옛 🏫 학사 일정) → 학교, 그 밖(📆 학원 일정) → 학원.
+// 월간 일정 안내의 구역: 학원 휴원 → 휴원, 학교 행사·시험·방학·학교 휴업(옛 학사 일정 포함) → 학교, 그 밖 → 학원(scheduleCategory.kindSection).
 export type Section = "휴원" | "학원" | "학교"
 export function sectionOf(event: any): Section {
-	const cat = String(event?.properties?.["구분"]?.select?.name ?? "")
-	return cat.includes("휴원") ? "휴원" : isSchoolCategory(cat) ? "학교" : "학원"
+	return kindSection(eventKind(event))
 }
 
 // 월간 일정 안내 한 구역의 일정 수 한도(넘치면 "외 N건"). 알림톡 1,000자를 넘지 않게 한다.
@@ -247,7 +250,7 @@ export async function processScheduleEventItem(p: EventPayload): Promise<void> {
 		}
 		if (!targets.length) return await deps.markError(p.eventId, noTargetMessage(ev, linkedStudents.length + linkedClasses.length > 0))
 		// (v2.8.0 구역, 10/30 사용자) 개별 일정 알림은 상담만. 휴강은 수업 [휴강 안내], 휴원·학원·학사 일정은 월간 일정 안내로 알린다.
-		if (eventLabel(ev) !== "상담") return await deps.markError(p.eventId, "일정 안내는 '안내 구분'이 상담인 일정만 보냅니다. 휴강은 수업의 [수업 안내 전송](수업 구분 휴강)으로, 휴원·학원·학사 일정은 월간 일정 안내로 알려 주세요.")
+		if (eventLabel(ev) !== "상담") return await deps.markError(p.eventId, "일정 안내는 세부 구분이 상담인 일정만 보냅니다. 휴강은 수업의 [수업 안내 전송](수업 구분 휴강)으로, 휴원·학원·학사 일정은 월간 일정 안내로 알려 주세요.")
 		// 다른 알림톡처럼 일정 페이지의 "변수(알림톡)" 수식 값을 보낸다(없으면 옛 (일정안내) 수식, 그것도 비면 같은 규칙으로 계산).
 		// (v2.8.0 통일안) 새 템플릿의 #{일정정보}와 옛 템플릿의 #{일정일시}·#{전달사항}을 함께 만든다. 보낼 때 템플릿에 있는 것만 남는다.
 		// (11/2) 예전 일정 `전달사항(일정안내)` 수식(메모 50자, 같은 값)은 읽지 않는다.

@@ -42,9 +42,11 @@ const DATA_SOURCE_PROGRESS_BOOK = Deno.env.get("DATA_SOURCE_PROGRESS_BOOK_ID")!
 // 일정(학원) 페이지 식별: "구분"(select)과 "날짜"(date) 조합은 일정(학원) DB에만 있다. 등록/학습기록/
 // 학습활동/보고서/라이브러리 교재는 모두 아래에서 "등록" 관계 또는 "북커버" 속성으로 먼저 걸러지므로, 이
 // 함수는 그 다음 단계에서만 호출된다.
+// (2.8 2단계) `구분`이 수식이 되거나 `세부 구분`만 있어도 알아본다(구분 선택·수식 또는 세부 구분 선택 + 날짜).
 export function isNoticePage(page: any): boolean {
   const props = page?.properties ?? {}
-  return props["구분"]?.type === "select" && props["날짜"] !== undefined
+  const kindProp = ["select", "formula"].includes(props["구분"]?.type) || props["세부 구분"]?.type === "select"
+  return kindProp && props["날짜"] !== undefined
 }
 
 // 일정 페이지 하나로부텀, 그 일정이 실제로 노출되는 학생들의 등록 id를 모두 찾는다.
