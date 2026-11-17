@@ -456,3 +456,15 @@ Deno.test("routines: 수업의 루틴 체크(이름·출석·완료, 순서대�
  assert(q.queued === false && q.message === "already_processing")
  await rejects(() => room.handleClassRoom({ action: "create-routine-checks", sessionId: "../x" }), 400)
 }))
+Deno.test("save-routines: 루틴 체크 줄의 완료만 쓰고 출석 수정일을 적는다, 루틴 체크가 아니면·형식이 틀리면 400", () => withMock(async (f) => {
+ Object.assign(f.pages, {
+  ck1: { id: "ck1", db: "checks", properties: { "이름": title("단어 암기 · aa"), "루틴": rel("rt1"), "출석": rel("aa"), "완료": { type: "checkbox", checkbox: false } } },
+ })
+ const r = await room.handleClassRoom({ action: "save-routines", items: [{ checkId: "ck1", done: true }] }) as any
+ assert(r.saved === 1 && f.pages.ck1.properties["완료"].checkbox === true)
+ const ckWrite = f.writes.find((w: any) => w.id === "ck1"); assert(Object.keys(ckWrite.body.properties).join() === "완료")
+ assert(f.writes.some((w: any) => w.id === "aa" && w.body.properties["학습정보 수정일"]), "출석 수정일")
+ await rejects(() => room.handleClassRoom({ action: "save-routines", items: [{ checkId: "aa", done: true }] }), 400) // 출석 줄은 루틴 체크가 아님
+ await rejects(() => room.handleClassRoom({ action: "save-routines", items: [{ checkId: "ck1", done: "yes" }] }), 400)
+ await rejects(() => room.handleClassRoom({ action: "save-routines", items: [] }), 400)
+}))
