@@ -63,6 +63,24 @@ function liveHooks() {
     toast0(m);
   };
 }
+/* 실제 자료 모드의 [수업 생성]: 시간표마다 다음 수업 한 번을 노션 수업 생성 큐에 맡긴다(app-api run — 시간표 [수업 추가]와 같은 처리).
+   저장 전인 새 시간표는 노션에 아직 없으므로 먼저 저장하라고 알린다. 수업 · 출석은 1~2분 뒤 노션에 생긴다(앱 화면에는 그리지 않음). */
+async function liveRunClasses(blockIds) {
+  const isId = (v) => /^[0-9a-f-]{32,36}$/i.test(String(v));
+  const ids = (blockIds || []).filter(isId), unsaved = (blockIds || []).length - ids.length;
+  if (!ids.length) { toast("먼저 [저장]으로 시간표를 노션에 보내요 — 저장 전인 시간표는 수업을 만들 수 없어요"); return null; }
+  try {
+    const res = await fetch(String(window.LIVE.url).replace(/\/+$/, "") + "/functions/v1/app-api", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-key": window.LIVE.session, Authorization: "Bearer " + window.LIVE.anonKey, apikey: window.LIVE.anonKey },
+      body: JSON.stringify({ action: "run", name: "generate-classes", timetableIds: ids }),
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok || !body || !body.ok) throw new Error((body && body.error) || "요청 실패 (" + res.status + ")");
+    toast(`수업 생성을 맡겼어요 · 시간표 ${body.queued}개 — 1~2분 뒤 노션 수업에 생겨요${unsaved ? ` (저장 전 시간표 ${unsaved}개는 빠짐)` : ""}`);
+    return body;
+  } catch (e) { toast("수업 생성을 맡기지 못했어요 — " + e.message); return null; }
+}
 async function liveSave() {
   if (window._liveSaving) return null;
   window._liveSaving = true;
