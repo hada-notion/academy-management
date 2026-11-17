@@ -16,7 +16,7 @@
 
 import { requireAdminKey, getBotUserId, CORS_HEADERS as ADMIN_CORS } from "../_shared/adminShared.ts"
 import { noticeReportSyncNotNeeded } from "../_shared/scheduleVisibility.ts"
-import { selectReportCacheByToken, selectRegistrationIdsByNoticeId } from "../_shared/reportCacheShared.ts"
+import { selectReportCacheByToken, selectRegistrationIdsByNoticeId, text, dateStartOf } from "../_shared/reportCacheShared.ts"
 import { isNoticePage } from "../_shared/syncReportCacheTarget.ts"
 import { queryAllPages, mapWithConcurrency, extractPageId } from "../_shared/notionClient.ts"
 import { makePageCache } from "../_shared/reportCacheShared.ts"
@@ -91,7 +91,12 @@ Deno.serve(async (req: Request) => {
     // 일정이면 지금 대상 + 지금 이 일정을 싣고 있는 리포트(옛 대상 — 대상이 바뀌었거나 비공개가 된 경우 빠지게).
     const currentIds = await resolveRegistrationIds(rawId, cachedGetPage)
     const registrationIds = isNoticePage(sourcePage)
-      ? [...new Set([...currentIds, ...await selectRegistrationIdsByNoticeId(sourcePage.id)])]
+      ? [...new Set([...currentIds, ...await selectRegistrationIdsByNoticeId(
+        sourcePage.id,
+        // 옛 캐시(일정 id 목록 없음)는 리포트에 실린 제목·날짜로 찾는다 — reportCacheBuilder와 같은 계산.
+        text(sourcePage.properties?.["이름"]) || text(sourcePage.properties?.["구분"]),
+        dateStartOf(sourcePage.properties?.["날짜"]) ?? undefined,
+      )])]
       : currentIds
 
     if (!keyed && typeof body?.registrationId !== "string" && isRegistrationPage(sourcePage)) {
