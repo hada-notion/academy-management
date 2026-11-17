@@ -3,7 +3,7 @@ import { CORS_HEADERS, requireAdminKey, getCurrentAdminKey } from "../_shared/ad
 import { queryAllPages, getPage, updatePageProperties } from "../_shared/notionClient.ts"
 import { runInBackground, respondAccepted } from "../_shared/backgroundTask.ts"
 import { neisRows, textOf, eventGrades, eventKey, ownedProperties, newEventProperties, richText, type NeisRow } from "../_shared/neisSchool.ts"
-import { academicRange, sameOwnedEvent, buttonSchoolId } from "../_shared/neisManual.ts"
+import { academicRange, sameOwnedEvent, buttonSchoolId, retryDelayMs } from "../_shared/neisManual.ts"
 import { schoolNotion, schoolSources, compactId } from "../_shared/schoolNotion.ts"
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store" } })
 async function db(path: string, method = "GET", body?: unknown) {
@@ -119,7 +119,7 @@ async function processRun(runId: string) {
       const retry=run.attempts<3
       const changed=await db(`neis_manual_runs?id=eq.${run.id}&lease_token=eq.${run.lease_token}&status=eq.processing`,"PATCH",{status:retry?"pending":"failed",lease_until:null,last_error:message}).catch(()=>null)
       if(!changed?.length)return // 임대를 잃었다면 다른 실행의 상태를 수정하지 않는다.
-      if(retry){try{await new Promise(r=>setTimeout(r,1500));await kick(run.id);return}catch{
+      if(retry){try{await new Promise(r=>setTimeout(r,retryDelayMs(message,run.attempts)));await kick(run.id);return}catch{
         const stopped=await db(`neis_manual_runs?id=eq.${run.id}&lease_token=eq.${run.lease_token}&status=eq.pending`,"PATCH",{status:"failed",last_error:message}).catch(()=>null)
         if(!stopped?.length)return
       }}
