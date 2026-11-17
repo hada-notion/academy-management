@@ -477,7 +477,7 @@ async function processTimetable(timetable: any, log: string[], mode: ProcessMode
     // 미연결 출석 조회 + 출석 생성을 하고 수업 상태를 작업중 → 완료로 따로 썼다.
     // 수식 속성이 없는 운영은 출석 조정 큐가 예전 방식(fixAttendanceForClassSession)으로 같은 결과를 만든다.
     const createSessionStartedAt = Date.now()
-    const classPage = { id: await createSessionFromPlan(timetableId, {
+    const createdId = await createSessionFromPlan(timetableId, {
       date: nextDate,
       start: startTime,
       end: endTime,
@@ -485,7 +485,13 @@ async function processTimetable(timetable: any, log: string[], mode: ProcessMode
       className,
       teacherIds,
       regIds: registrationIds,
-    }) }
+    })
+    // (2.8) 그날 그 반이 학원 휴원이면 만들지 않는다(시간표 기준일 수식이 휴원을 놓쳐도).
+    if (!createdId) {
+      log.push(`[skip] ${timetableName}: ${nextDate}은 학원 휴원이라 수업을 만들지 않음`)
+      return { done: true }
+    }
+    const classPage = { id: createdId }
     log.push(`[timing] ${timetableName}: 수업 페이지 생성 ${Date.now() - createSessionStartedAt}ms`)
     log.push(`[created] ${timetableName}: class session created (${nextDate}), 등록 ${registrationIds.length}건 연결 → 출석 조정 큐`)
     if (registrationIds.length > 0) await enqueueSync("fix-attendance", { pageId: classPage.id })

@@ -3,8 +3,9 @@
 // 서버는 시간표·클래스 페이지 읽기와 등록 조회를 하지 않는다. 메뉴 일괄 생성은 시간표 DB를 한 번 조회할 때
 // 수식 값이 함께 오므로 그 값을 큐 항목에 담고, 워커는 그 값으로 바로 만든다. 출석은 출석 조정 큐가 만든다.
 import { SESSION_KIND_PROP, SESSION_KIND_REGULAR } from "./sessionKind.ts"
-import { createPage, pickProp, relIds } from "./notionClient.ts"
-import { DS_CLASS_SESSION } from "./constants.ts"
+import { createPage, pickProp, relIds, queryAllPages } from "./notionClient.ts"
+import { DS_CLASS_SESSION, DS_SCHEDULE_EVENT } from "./constants.ts"
+import { eventKind, KIND } from "./scheduleCategory.ts"
 import { STATUS_DONE } from "./statusTracking.ts"
 
 export const PROP_SESSION_PLAN = "수업 추가 정보"
@@ -74,8 +75,25 @@ export function sessionTitle(className: string, date: string): string {
 	return `${className} ${date.slice(5, 7)}.${date.slice(8, 10)}(${wd})`
 }
 
+// (2.8, 261118 원본 검수) 만들기 직전 그 날짜에 그 반의 학원 휴원 일정(세부 구분 학원 휴원, 옛 구분 💤 휴원·안내 구분 휴원)이
+// 있는지 한 번 더 본다 — 시간표 기준일 수식이 휴원을 안 보거나 늦어도 휴원 날 수업이 생기지 않게. 반에 걸린 일정만(예전 휴원 규칙과 같음).
+export const closureDeps = { query: queryAllPages }
+export async function isClosedOn(classId: string, date: string): Promise<boolean> {
+	const events = await closureDeps.query(DS_SCHEDULE_EVENT, {
+		and: [{ property: "클래스", relation: { contains: classId } }, { property: "날짜", date: { on_or_before: date } }],
+	})
+	return events.some((e: any) => {
+		if (e?.archived || e?.in_trash || eventKind(e) !== KIND.CLOSED) return false
+		const s = String(e.properties?.["날짜"]?.date?.start ?? "").slice(0, 10)
+		const t = String(e.properties?.["날짜"]?.date?.end ?? "").slice(0, 10) || s
+		return !!s && s <= date && date <= t
+	})
+}
+
 // 수업 페이지를 명단과 함께 ✅ 완료로 만든다(출석 조정 큐 적재는 호출부 — 만들기 성공 뒤 실패를 따로 다루려고).
-export async function createSessionFromPlan(timetableId: string, plan: SessionPlan): Promise<string> {
+// 그날 그 반이 학원 휴원이면 만들지 않고 null.
+export async function createSessionFromPlan(timetableId: string, plan: SessionPlan): Promise<string | null> {
+	if (await isClosedOn(plan.classId, plan.date)) return null
 	const page = await createPage(DS_CLASS_SESSION, {
 		이름: { title: [{ text: { content: sessionTitle(plan.className, plan.date) } }] },
 		수업일시: { date: { start: `${plan.date}T${plan.start}:00+09:00`, end: `${plan.date}T${plan.end}:00+09:00` } },
