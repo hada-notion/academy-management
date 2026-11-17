@@ -246,6 +246,7 @@ Deno.test("records: group book links the class, repeat returns the existing reco
  const r1 = await room.createRecords({ sessionId: "s1", kind: "학습", bookIds: ["group"] })
  const rec = f.created[0]; assert(r1.records[0].created && ids(rec, "등록") === "ra,rb" && ids(rec, "출석") === "aa,ab" && ids(rec, "교재") === "regular" && ids(rec, "과목") === "math")
  assert(rec.properties["학습"].title[0].text.content === "[학습] 개념원리 1-2 · 중1 B 10.13(화)" && rec.properties["보강"] === undefined && rec.properties["학습정보 수정일"])
+ assert(ids(rec, "클래스") === "cls", "v2.8.0 item 81: the record carries the session's class")
  f.pages.s1.properties["학습기록"] = rel(rec.id)
  const r2 = await room.createRecords({ sessionId: "s1", kind: "학습", bookIds: ["group"] })
  assert(!r2.records[0].created && r2.records[0].id === rec.id && f.created.length === 1)
@@ -330,6 +331,11 @@ Deno.test("student space: recent homework, scored tests and past memos for the r
  f.pages.aOld = { id: "aOld", db: "attendance", properties: { "등록": rel("ra"), "수업일시": { date: { start: "2026-10-10T08:00:00.000Z" } }, "메모": text("지각 15분") } }
  const s = await room.loadStudent("ra")
  assert(s.homework.length === 1 && s.homework[0].submitted && s.homework[0].due === "2026-10-13" && s.homework[0].range === "p.31-35")
+ // v2.8.0 항목 81: 마감일 수식이 글자(string)로 와도 날짜 모양이면 읽고, 아니면 비움
+ f.pages.hw1.properties["과제 마감일"] = { type: "formula", formula: { type: "string", string: "2026-10-14" } }
+ assert((await room.loadStudent("ra")).homework[0].due === "2026-10-14", "string date formula")
+ f.pages.hw1.properties["과제 마감일"] = { type: "formula", formula: { type: "string", string: "dddd-dd-dd" } }
+ assert((await room.loadStudent("ra")).homework[0].due === null, "non-date string")
  assert(s.tests.length === 1 && s.tests[0].correct === 18 && s.tests[0].total === 20)
  assert(s.memos.map((m) => m.memo).sort().join() === "지각 15분,집중 좋음")
 }))
