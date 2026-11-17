@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=522">
-<link rel="stylesheet" href="app.css?v=522">
-<link rel="stylesheet" href="pick.css?v=522">
-<link rel="stylesheet" href="field.css?v=522">
+<link rel="stylesheet" href="hada-tokens.css?v=524">
+<link rel="stylesheet" href="app.css?v=524">
+<link rel="stylesheet" href="pick.css?v=524">
+<link rel="stylesheet" href="field.css?v=524">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=522"><script src="hada-rules.js?v=522"></script><script src="alim-preview.js?v=522"></script><script src="pick.js?v=522"></script><script src="field.js?v=522"></script><script src="panel.js?v=522"></script>
+<link rel="stylesheet" href="alim.css?v=524"><script src="hada-rules.js?v=524"></script><script src="alim-preview.js?v=524"></script><script src="pick.js?v=524"></script><script src="field.js?v=524"></script><script src="panel.js?v=524"></script>
 <script>
 "use strict";
 
@@ -996,7 +996,7 @@ function mkwBind(p,st,W){const setDec=(k,dec)=>{const n=Object.assign({},DB.mkw[
 const stuLine=x=>`<div class="ck2 ro"><span class="ckx"></span><span class="nm">${stuHtml(x)}</span></div>`;
 function panelLesson(p,t,items){const st=t.state;if(st.mkNew)return panelMakeup(p,t);if(st.lsel&&st.lsel.startsWith("mk:"))return panelMk(p,t,st.lsel.slice(3));const it=items.find(x=>lkey(x.b,x.d)===st.lsel);
   if(!it){const wkI=items;const un=wkI.filter(x=>lessonMade(x.b,x.d)&&x.d<=TODAY&&attSum(x.b,x.d).미입력>0),ms=wkI.filter(x=>!lessonMade(x.b,x.d));const act=st.ltodo||"un";const W=mkWait();
-    const card=x=>`<div class="dcard" data-lgo="${lkey(x.b,x.d)}"><span class="dotc" style="background:${classBar(cls(x.b.classId))}"></span>${esc(cls(x.b.classId).name)}<span class="dcls">${mdw(x.d)} ${fmt(x.b.start)}${act==="un"?` · 미입력 ${attSum(x.b,x.d).미입력}`:""}</span></div>`;
+    const card=x=>`<div class="dcard" data-lgo="${lkey(x.b,x.d)}"><span class="dotc" style="background:${classBar(cls(x.b.classId))}"></span>${esc(cls(x.b.classId).name)}<span class="dcls">${mdw(x.d)} ${fmt(lessonEff(x.b,x.d).start)/* 523판: 달력 카드와 같은 시각(실제 자료 모드 = 노션 수업 시각) */}${act==="un"?` · 미입력 ${attSum(x.b,x.d).미입력}`:""}</span></div>`;
     const list=act==="un"?un:ms;
     p.innerHTML=`${PANEL.head({icon:panelIcon(),name:"할 일",belong:TITLES[activeTab.screen]||"",info:[" "],help:("미입력 = 지난·오늘 수업 중 출결이 덜 들어간 수업. 수업 없음 = 이 주 시간표 중 수업 페이지가 아직 없는 것. 보강 = [보강 대기] 등록(학생+클래스)마다 카드, 숫자 = 보강해야 할 횟수. 카드를 누르면 결석이 열리고, 아이콘으로 보강 필요 ↔ 보강 없음(사유 입력). 카드를 끌어 그 클래스 보강 수업에 놓고, 보강에 출석하면 그 결석이 사라져요. [최근 결석]에서 실수로 보강 없음 한 결석을 되돌려요.")})}
     ${PANEL.tabs([{id:"un",label:"미입력",n:un.length,todo:true},{id:"ms",label:"수업 없음",n:ms.length,todo:true},{id:"mk",label:"보강",n:mkCardN(),todo:true}],act,"lt")}
@@ -4054,6 +4054,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del).slice().sort(
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="appdata.js?v=522"></script><script src="appsave.js?v=522"></script><script src="appview.js?v=522"></script><script src="livelesson.js?v=522"></script><script src="live.js?v=522"></script>
+<script src="appdata.js?v=524"></script><script src="appsave.js?v=524"></script><script src="appview.js?v=524"></script><script src="livelesson.js?v=524"></script><script src="live.js?v=524"></script>
 </body>
 </html>

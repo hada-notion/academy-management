@@ -119,7 +119,7 @@
   };
   /* 칸을 고친 바로 뒤에도 본다(다시 그리지 않는 길 — 원본 검수 H2: 종료일이 저장 전까지 고친 값으로 보였음) */
   let p1Tick = null;
-  ["change", "click", "focusout"].forEach((ev) => document.addEventListener(ev, () => { if (!(window.LIVE && window.LIVE.loaded) || p1Tick) return; p1Tick = setTimeout(() => { p1Tick = null; try { p1Guard(); p1Dress(); } catch (_) {} }, 0); }, true));
+  ["change", "click", "focusout"].forEach((ev) => document.addEventListener(ev, () => { if (!(window.LIVE && window.LIVE.loaded) || p1Tick) return; p1Tick = setTimeout(() => { p1Tick = null; try { p1Guard(); p1Dress(); } catch (_) {} /* 칸이 초점을 잃은 뒤 늦게 값을 다시 적는 길까지(원본 검수 521: 화면은 비는데 줄에 종료일이 남았음) */ setTimeout(() => { try { p1Guard(); p1Dress(); } catch (_) {} }, 250); }, 0); }, true));
   render = function () { try { lessonGate(); } catch (_) {} const out = r0.apply(this, arguments); try { p1Guard(); } catch (_) {} try { roLock(); } catch (_) {} try { p1Dress(); } catch (_) {} try { if (typeof liveLessonNeed === "function") liveLessonNeed(); } catch (_) {} return out; };
   /* 되돌리기 · 다시 하기 · 모두 되돌리기는 입력 칸(P1)의 값을 움직이는 일이라 보기 화면에서도 막지 않는다 */
   ["undo", "redo", "revertAll"].forEach((k) => { try { const f0 = eval(k); eval(k + " = function () { roBase = null; if (k === 'revertAll') { try { liveStuRestore(); } catch (_) {} } return f0.apply(this, arguments); }"); } catch (_) {} });
@@ -157,7 +157,7 @@
   wipe();
   banner("노션 자료를 받는 중이에요 — 받기 전에는 저장할 수 없어요");
   const sd0 = saveDialog;
-  saveDialog = (only) => { if (!(window.LIVE && window.LIVE.loaded)) { say("노션 자료를 다 받기 전에는 저장할 수 없어요"); return; } return sd0(only); };
+  saveDialog = (only) => { if (!(window.LIVE && window.LIVE.loaded)) { say("노션 자료를 다 받기 전에는 저장할 수 없어요"); return; } try { p1Guard(); } catch (_) {} /* 저장 창을 열기 전에 잠근 값(종료일 등)을 한 번 더 되돌린다 */ return sd0(only); };
   const stop = (msg) => { banner(msg + " — 저장할 수 없어요. 주소에서 ?live=1을 빼면 예시 자료로 열려요", true); };
   /* 판 확인: 브라우저가 옛 화면 파일을 들고 있으면(판 번호가 서버와 다름) 한 번 새로 받는다 */
   const fresh = async () => {
@@ -242,6 +242,10 @@ function liveOptions(res) {
   }
   const route = dbs["학생(학원) DB"] && dbs["학생(학원) DB"]["문의 경로"];
   if (Array.isArray(route) && route.length && typeof ROUTES !== "undefined") { ROUTES.length = 0; ROUTES.push(...route); window.LIVE_OPTS.route = "문의 경로"; }
+  /* 글일 수도 선택일 수도 있는 칸(524판): 노션이 선택 칸이면 그 선택지 목록을 적어 둔다 — 저장 층(appsave.js X.opt)이 목록에 없는 값은 그 칸만 빼고 알린다. 글 칸이면 목록이 없다 */
+  window.LIVE_SEL = {};
+  const rel = dbs["학생(학원) DB"] && dbs["학생(학원) DB"]["학생과의 관계"];
+  if (Array.isArray(rel) && rel.length) window.LIVE_SEL["학생과의 관계"] = rel.slice();
 }
 /* 실제 자료 모드에서 앱의 두 곳을 바꿔 끼운다(한 번만):
    - 저장 숫자(dirtyCount): 작성 중 표시가 아니라 "노션에 아직 안 간 줄 수"(새 줄 + 불러온 값과 달라진 줄)도 센다.
