@@ -5,32 +5,63 @@
   const ROOT = "../../";
   const load = (src) => new Promise((ok, no) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = () => no(new Error(src)); document.head.appendChild(s); });
   const say = (m) => (typeof toast === "function" ? toast(m) : console.log(m));
+  /* 실제 자료 모드에서는 예시 자료를 띄우지 않는다: 곧바로 모든 묶음을 비우고, 노션 자료를 다 받기 전(또는 못 받았을 때)에는
+     저장 창이 열리지 않는다. 예시 자료가 노션에 들어가는 길을 없앤다(저장 층 appSaveSend도 LIVE.loaded가 없으면 보내지 않는다). */
+  window.LIVE_MODE = true;
+  /* 실제 자료 모드의 오늘 = 진짜 오늘(예시 자료의 고정 기준일을 쓰지 않는다 — 새 학생 문의일 · 등록일 기본값) */
+  try { const n = new Date(), p = (v) => String(v).padStart(2, "0"); TODAY = `${n.getFullYear()}-${p(n.getMonth() + 1)}-${p(n.getDate())}`; if (window.HP) HP.today = TODAY; } catch (_) {}
+  const banner = (msg, bad) => {
+    let b = document.getElementById("liveBanner");
+    if (!msg) { if (b) b.remove(); return; }
+    if (!b) { b = document.createElement("div"); b.id = "liveBanner"; b.setAttribute("role", "status"); b.style.cssText = "position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:9999;padding:8px 14px;border-radius:10px;font-size:13px;box-shadow:0 2px 10px rgba(0,0,0,.12);max-width:90vw"; document.body.appendChild(b); }
+    b.style.background = bad ? "#FDECEC" : "#FFF6DA"; b.style.color = "#3A3226"; b.textContent = msg;
+  };
+  const wipe = () => { try { appApply({}, DB); if (typeof lastSnap !== "undefined" && typeof snapshot === "function") lastSnap = snapshot(); if (typeof undoStack !== "undefined") undoStack.length = 0; if (typeof render === "function") render(); } catch (_) {} };
+  wipe();
+  banner("노션 자료를 받는 중이에요 — 받기 전에는 저장할 수 없어요");
+  const sd0 = saveDialog;
+  saveDialog = (only) => { if (!(window.LIVE && window.LIVE.loaded)) { say("노션 자료를 다 받기 전에는 저장할 수 없어요"); return; } return sd0(only); };
+  const stop = (msg) => { banner(msg + " — 저장할 수 없어요. 주소에서 ?live=1을 빼면 예시 자료로 열려요", true); };
+  /* 판 확인: 브라우저가 옛 화면 파일을 들고 있으면(판 번호가 서버와 다름) 한 번 새로 받는다 */
+  const fresh = async () => {
+    try {
+      const mine = (document.querySelector('script[src*="live.js?v="]') || {}).src || "", v0 = (/v=(\d+)/.exec(mine) || [])[1];
+      const txt = await (await fetch(location.pathname, { cache: "reload" })).text(), v1 = (/live\.js\?v=(\d+)/.exec(txt) || [])[1];
+      if (v0 && v1 && v0 !== v1 && sessionStorage.getItem("hada_live_reload") !== v1) { sessionStorage.setItem("hada_live_reload", v1); location.reload(); return false; }
+    } catch (_) {}
+    return true;
+  };
   async function start() {
+    if (!(await fresh())) return;
     try { await load(ROOT + "hada_config.js"); await load(ROOT + "admin_auth.js"); }
-    catch (_) { say("학원 연결 설정을 찾지 못했어요 — 예시 자료로 보여요"); return; }
+    catch (_) { stop("학원 연결 설정을 찾지 못했어요"); return; }
     let cfg;
-    try { cfg = HadaAdminAuth.config(); } catch (e) { say(e.message); return; }
+    try { cfg = HadaAdminAuth.config(); } catch (e) { stop(e.message); return; }
     let session = HadaAdminAuth.savedSession();
     const go = async () => {
       document.body.classList.add("live-loading");
-      say("노션 자료를 불러오는 중이에요");
+      window.LIVE = null; wipe();
+      banner("노션 자료를 받는 중이에요 — 받기 전에는 저장할 수 없어요");
       try {
         await appLoad({ url: cfg.url, anonKey: cfg.anonKey, session });
         appSaveMark(DB); /* 불러온 값을 기준으로 적어 둠 — 저장 때 달라진 칸만 보냄 */
         try { liveOptions(await liveApi({ url: cfg.url, anonKey: cfg.anonKey, session }, { action: "options" })); } catch (_) { /* 선택지를 못 받아도 화면은 열린다(저장 때 서버가 거름) */ }
-        window.LIVE = { url: cfg.url, anonKey: cfg.anonKey, session, at: new Date().toISOString() };
+        /* loaded = 이번에 노션 자료를 끝까지 받았다는 표시. 이 표시가 있을 때만 저장한다 */
+        window.LIVE = { url: cfg.url, anonKey: cfg.anonKey, session, at: new Date().toISOString(), loaded: true };
         liveHooks();
         if (typeof snapshot === "function") lastSnap = snapshot();
         if (typeof render === "function") render();
+        banner("");
         say("노션 자료로 바꿨어요");
       } catch (e) {
-        if (/\((401|403)/.test(e.message)) { HadaAdminAuth.saveSession(""); session = ""; ask(); }
-        else say("노션 자료를 불러오지 못했어요 — " + e.message);
+        window.LIVE = null; wipe(); /* 받다가 실패하면 반쯤 받은 자료도 버린다 */
+        if (/\((401|403)/.test(e.message)) { HadaAdminAuth.saveSession(""); session = ""; banner("관리자 로그인이 필요해요 — 로그인 전에는 저장할 수 없어요"); ask(); }
+        else stop("노션 자료를 불러오지 못했어요(" + e.message + ")");
       } finally { document.body.classList.remove("live-loading"); }
     };
     const ask = () => modal(`<h2>관리자 로그인</h2><div class="box"><p class="hint">노션 자료를 읽으려면 관리자 비밀번호를 넣어요.</p><input id="lvpw" type="password" autocomplete="current-password" aria-label="관리자 비밀번호"><p class="hint" id="lverr"></p></div><div class="actions"><span class="sp"></span><button class="btn" id="cc">예시 자료로 보기</button><button class="btn pri" id="co">로그인</button></div>`, (m, close) => {
       const pw = m.querySelector("#lvpw"), err = m.querySelector("#lverr");
-      m.querySelector("#cc").onclick = close;
+      m.querySelector("#cc").onclick = () => { location.href = location.pathname; }; /* 예시 자료 = 실제 자료 모드를 벗어난 주소 */
       const submit = async () => {
         err.textContent = "";
         try { session = await HadaAdminAuth.login(cfg.url, pw.value); HadaAdminAuth.saveSession(session); close(); go(); }
@@ -112,6 +143,7 @@ async function liveRunClasses(blockIds) {
   } catch (e) { toast("수업 생성을 맡기지 못했어요 — " + e.message); return null; }
 }
 async function liveSave() {
+  if (!(window.LIVE && window.LIVE.loaded)) { toast("노션 자료를 다 받기 전에는 저장할 수 없어요"); return null; }
   if (window._liveSaving) return null;
   window._liveSaving = true;
   try { return await liveSaveRun(); } finally { window._liveSaving = false; }

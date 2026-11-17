@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=510">
-<link rel="stylesheet" href="app.css?v=510">
-<link rel="stylesheet" href="pick.css?v=510">
-<link rel="stylesheet" href="field.css?v=510">
+<link rel="stylesheet" href="hada-tokens.css?v=511">
+<link rel="stylesheet" href="app.css?v=511">
+<link rel="stylesheet" href="pick.css?v=511">
+<link rel="stylesheet" href="field.css?v=511">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=510"><script src="hada-rules.js?v=510"></script><script src="alim-preview.js?v=510"></script><script src="pick.js?v=510"></script><script src="field.js?v=510"></script><script src="panel.js?v=510"></script>
+<link rel="stylesheet" href="alim.css?v=511"><script src="hada-rules.js?v=511"></script><script src="alim-preview.js?v=511"></script><script src="pick.js?v=511"></script><script src="field.js?v=511"></script><script src="panel.js?v=511"></script>
 <script>
 "use strict";
 
@@ -231,7 +231,7 @@ const CLS_EXTRA=["#4FB6B0","#6B7FD7","#9BC25B","#D9779B"];
 function freeClsHex(cid){const used=new Set(DB.classes.filter(x=>x.id!==cid&&liveCls(x)).map(x=>clsHex(x).toUpperCase()));const pool=[...(window.HF?HF.COLORS.filter(k=>k[0]!=="기본").map(k=>k[1]):[]),...CLS_EXTRA];return pool.find(h=>!used.has(h.toUpperCase()))||pool[0]}
 function seasonOf(id){return byId(DB.seasons,id)}
 function classInSeason(c,s){if(!s)return true;const st=s.start,en=s.end;return (!c.open||c.open<=en)&&(!c.close||c.close>=st)}
-function classBadges(c){let h="";if(c.kind==="특강")h+='<span class="tag b">특강</span>';if(c.open&&c.open>"2026-11-11")h+=`<span class="tag">${md(c.open)} 개강</span>`;if(c.close)h+=`<span class="tag w">${md(c.close)} 종료</span>`;return h}
+function classBadges(c){let h="";if(c.kind==="특강")h+='<span class="tag b">특강</span>';if(c.open&&c.open>TODAY)h+=`<span class="tag">${md(c.open)} 개강</span>`;if(c.close)h+=`<span class="tag w">${md(c.close)} 종료</span>`;return h}
 
 /* ================= 메뉴·탭 ================= */
 const TITLES={today:"홈",timetable:"시간표",students:"학생",classes:"클래스",enrolls:"등록",teachers:"직원",seasons:"시즌",admin:"관리자 설정",subjects:"과목",books:"라이브러리",progress:"진도",events:"일정",reports:"정기 보고서",tuition:"수강료",bookfees:"교재비",bill:"청구서",makeup:"보강",records:"학습기록",files:"자료실",completion:"수료 보고서",etcs:"기타경비",letters:"가정통신문",schools:"학교",glevels:"학년",areas:"영역",exams:"시험",costs:"비용",alims:"알림톡 설정"};
@@ -396,7 +396,7 @@ function laneLayout(list){ // 같은 요일 겹치는 블록 나란히
 function studentsOfBlock(b){return b.regs.map(r=>enr(r)).filter(Boolean).map(e=>stu(e.studentId)).filter(Boolean)}
 
 /* 적용 기간(261112 대표): 기본 = 시즌 기간을 클래스 기간(개강-종강)으로 좁힌 것. 시간표에서 직접 고칠 수 있고(직접 정함), 그 범위 밖으로는 못 나감 */
-const TODAY="2026-11-11";
+let TODAY="2026-11-11";/* 예시 자료의 기준일. 실제 자료 모드(live.js)는 오늘 날짜로 바꾼다 */
 const pad2=n=>String(n).padStart(2,"0");
 function dPlus(d,n){const x=new Date(d+"T12:00:00");x.setDate(x.getDate()+n);return `${x.getFullYear()}-${pad2(x.getMonth()+1)}-${pad2(x.getDate())}`}
 function dow(d){return (new Date(d+"T12:00:00").getDay()+6)%7} // 0=월
@@ -1229,7 +1229,7 @@ function startBlockDrag(e,blkEl,col,t,pph,snap,yToMin){
   const cancelMe=()=>{document.removeEventListener("mousemove",mv);document.removeEventListener("mouseup",up);if(fol)fol.end();Object.assign(b,orig)};if(!resize){DS.cancel=cancelMe;DS.key=`#grid .blk[data-id="${b.id}"]`}
   document.addEventListener("mousemove",mv);document.addEventListener("mouseup",up);
 }
-function addStudentToBlock(b,sid){snapRegs(b);let en=DB.enrolls.find(e=>e.studentId===sid&&e.classId===b.classId&&!e.ended);if(!en){en={id:uid("e"),studentId:sid,classId:b.classId,start:"2026-11-11",discount:0,state:"draft"};DB.enrolls.push(en)}if(!b.regs.includes(en.id)){b.regs.push(en.id);b.state="draft"}}
+function addStudentToBlock(b,sid){snapRegs(b);let en=DB.enrolls.find(e=>e.studentId===sid&&e.classId===b.classId&&!e.ended);if(!en){en={id:uid("e"),studentId:sid,classId:b.classId,start:TODAY,discount:0,state:"draft"};DB.enrolls.push(en)}if(!b.regs.includes(en.id)){b.regs.push(en.id);b.state="draft"}}
 
 /* 오른쪽 창 고정 머리(261112 대표): 제목 17 굵게 + 한 줄, 내려도 위에 남음, 오른쪽 닫기(Esc) */
 // 닫기 단추 없음(261112 대표): 창 바깥 누르기 · 위쪽 창 단추 · Esc로 닫음. 오른쪽 자리는 자물쇠 같은 창 동작용
@@ -1945,7 +1945,7 @@ const LISTS={
   fields:[["kind","구분",["교재","프로그램"],"seg"],["name","교재명"],["subjectId","과목",()=>DB.subjects.map(x=>({v:x.id,t:x.name,sub:x.area||"예체능"})),"req","없는 과목은 적어서 생성해요 — 과목 화면에 줄이 생겨요"],["using","사용",["사용 중","미사용"],"bool"],["pub","출판사",()=>optItems("pub"),"opt"],["series","시리즈",()=>optItems("series"),"opt"],["types","교재 유형",()=>optList("btype"),"multi"],["curr","교육과정",()=>optItems("curr"),"opt"],["total","전체 분량",null,"num","진도 단위로 센 양(쪽·차시·UNIT 수)"],["unit","진도 단위",()=>optItems("unit"),"opt","비우면 교재 P.n, 프로그램 n차시"],["price","가격",null,"won","프로그램은 재료비가 있을 때만"],["etcItem","기타경비 항목",()=>CH_ETC.map(v=>({v,t:v})),"opt","비우면 기타경비가 아니에요(일반 교재비). 교육지원청에 신고한 항목만 골라요"],["isbn","ISBN13",null,"isbn","하이픈 없이 13자리"]],
   blank:()=>({id:uid("bk"),name:"새 교재",subjectId:(DB.subjects[0]||{}).id,kind:"교재",series:"",types:[],curr:"",pub:"",total:"",unit:"",price:0,using:true,isbn:""}),
   extra:b=>{/* 422판(대표 "진도 관리로 하자"): 이 책의 진도관리 줄(책 × 클래스·학생) — 등록·클래스 창 [진도] 탭과 같은 줄 부품 */const pg=bookPg(b),us=bookUsers(b),left=us.filter(e=>!pg.some(x=>x.classId===e.classId&&(x.mode!=="개별"||x.studentId===e.studentId)));return `<div class="box"><h3>진도관리 <span class="hint">${pg.length}곳 · 학생 ${us.length}명</span>${HELP("이 교재를 쓰는 클래스(개별 진도는 학생)예요. 줄을 누르면 그 진도를 여기서 바로 봐요. 진행 상태와 진도율은 진도관리 화면과 같아요.")}</h3>${pg.length?pgGroups(pg,false,x=>`<span class="dotc" style="background:${classBar(cls(x.classId)||{})}"></span>${esc((x.mode==="개별"&&x.studentId?nmStu(x.studentId)+" · ":"")+nmCls(x.classId))}`,"곳"):'<div class="hint">아직 이 교재의 진도관리가 없어요 — [진도교재로 쓰기]로 클래스에 이어요</div>'}${left.length?`<div class="hint">등록 카드에만 적힌 학생 ${left.length}명이 있어요(진도관리 줄 없음)</div>`:""}<div class="row"><button class="btn sm" data-act="bkUse" title="이 교재로 진도교재를 생성해요 — 다음 화면에서 클래스를 골라요">${IC("plus","s")}진도교재로 쓰기</button></div></div>`}},
- seasons:{title:"시즌",coll:"seasons",unit:"개",add:()=>newSeasonDialog(),addLabel:"시즌 추가",cols:[["시즌",x=>x.name,"name"],["기본 기간",x=>md(x.start)+" - "+md(x.end)],["상태",x=>x.state==="확정"?(x.end<"2026-11-11"?"종료":"운영 중"):"예정"],["시간표",x=>DB.blocks.filter(b=>b.seasonId===x.id).length+"개"]],filters:[],
+ seasons:{title:"시즌",coll:"seasons",unit:"개",add:()=>newSeasonDialog(),addLabel:"시즌 추가",cols:[["시즌",x=>x.name,"name"],["기본 기간",x=>md(x.start)+" - "+md(x.end)],["상태",x=>x.state==="확정"?(x.end<TODAY?"종료":"운영 중"):"예정"],["시간표",x=>DB.blocks.filter(b=>b.seasonId===x.id).length+"개"]],filters:[],
   fields:[["name","이름"],["start","기본 시작일",null,"date"],["end","기본 종료일",null,"date"],["color","색",()=>SEA_COLORS.map(([c,t])=>({v:c,t,cls:"nc-"+c})),"opt","캘린더 띠 색이에요"]],help:"상태는 예정 → [운영 시작] → 운영 중. 끝난 날이 지나면 종료로 보여요.",extra:x=>`<div class="row"><button class="btn sm" data-act="ttS">시간표 열기${IC("right","s")}</button>${x.state!=="확정"?'<button class="btn sm" data-act="confirmS">운영 시작…</button>':''}</div>`}
 };
 // 학생(261112 대표, 원본 구조): 기본 정보는 표에서 바로(이름·학교·학년·우선 연락), 등록상태는 자동 표시, 등록·보류·연락처·메모는 오른쪽 창
@@ -3783,7 +3783,7 @@ function xlUpDialog(L){modal(`<h2>엑셀로 한번에 올리기${HELP("양식에
     m.querySelector("#xlF").onchange=async e=>{const f=e.target.files[0];if(!f)return;let rows;try{rows=await xlReadFile(f)}catch(err){m.querySelector("#xlR").textContent=err.message==="xls"?"옛 엑셀(.xls)은 못 읽어요. 엑셀에서 .xlsx로 저장해 올려 주세요.":"파일을 읽지 못했어요. 양식 파일인지 확인해 주세요.";return}
       let col=XL_COLS.map((c,i)=>i);{const nm=c=>String(c||"").trim().replace(/\s*\*$/,"");const hi=rows.findIndex(r=>r.some(c=>nm(c)==="이름"));if(hi>=0){const h=rows[hi].map(nm);col=XL_COLS.map(([,lb])=>h.indexOf(lb));rows=rows.slice(hi+1)}}let n=0,skip=0,dup=0;
       rows.forEach(c=>{const nm=(col[0]>=0?c[col[0]]||"":"").trim();if(!nm||nm==="박새봄"&&(c[col[1]]||"").trim()==="하다중"){skip++;return}const x=Object.assign(L.blank(),{state:"draft"});XL_COLS.forEach(([k],i)=>{const j=col[i];if(j>=0&&c[j]!==undefined&&String(c[j]).trim()!=="")x[k]=String(c[j]).trim()});
-        if(DB.students.some(y=>!y.del&&y.name===x.name&&(x.mom&&y.mom===x.mom||x.dad&&y.dad===x.dad||x.sp&&y.sp===x.sp||!x.mom&&!x.dad&&!x.sp&&y.school===x.school))){dup++;return}DB.students.unshift(x);n++});
+        if(DB.students.some(y=>!y.del&&y.name===x.name&&(x.mom&&y.mom===x.mom||x.dad&&y.dad===x.dad||x.sp&&y.sp===x.sp||x.gp&&y.gp===x.gp||!x.mom&&!x.dad&&!x.sp&&!x.gp&&y.school===x.school))){dup++;return}/* 같은 학생 = 이름 + 연락처 하나(어머니 · 아버지 · 학생 · 기타 보호자), 연락처가 하나도 없으면 이름 + 학교 */DB.students.unshift(x);n++});
       close();activeTab.state.sf="all";commit();toast(`${n}명을 올렸어요(작성 중)${dup?` · 이미 있는 학생 ${dup}명 건너뜀(이름·연락처 같음)`:""}${skip?` · 빈 줄·예시 ${skip}줄 건너뜀`:""} — 위 [저장]을 누르면 반영돼요`)}})}
 function pasteDialog(L){modal(`<h2>엑셀에서 붙여넣기 — ${L.title}${HELP(`엑셀에서 여러 줄을 복사해 붙여 넣어요. 칸 순서: ${(L.upFields||L.fields||[]).map(f=>f[1]).join(" · ")}. 붙여 넣은 줄은 작성 중으로 들어가고, 이관 양식과 같은 검사로 빨간 칸을 표시해요.`)}</h2><textarea id="pt" class="inp" style="width:100%;height:160px" placeholder="박새봄\t하다중\t중2\t010-0000-0000"></textarea><div class="actions"><span class="sp"></span><button class="btn" id="pc">취소</button><button class="btn pri" id="po">넣기</button></div>`,(m,close)=>{m.querySelector("#pc").onclick=close;m.querySelector("#po").onclick=()=>{const lines=m.querySelector("#pt").value.split(/\r?\n/).filter(x=>x.trim());let n=0;lines.forEach(line=>{if(!L.blank)return;const cells=line.split("\t");const r=Object.assign(L.blank(),{state:"draft"});(L.upFields||L.fields||[]).forEach(([k],i)=>{if(cells[i]!==undefined)r[k]=cells[i].trim()});DB[L.coll].unshift(r);n++});close();commit();toast(`${n}줄 넣음(작성 중)`)}})}
 /* 172판: 예시 클래스 색 = 노션 색 이름 그대로(옛 번호 이름 → 노션 색, 청록·남색·연두는 색 코드), 운영 중 겹치면 다음 빈 색 */
@@ -4051,6 +4051,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del).slice().sort(
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="appdata.js?v=510"></script><script src="appsave.js?v=510"></script><script src="live.js?v=510"></script>
+<script src="appdata.js?v=511"></script><script src="appsave.js?v=511"></script><script src="live.js?v=511"></script>
 </body>
 </html>

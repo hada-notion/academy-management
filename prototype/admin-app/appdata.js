@@ -98,13 +98,12 @@ const APPMAP = {
 	classes: {
 		db: "클래스(학원) DB",
 		row: (r, X, p = r.props) => {
-			const run = p["운영 기간"]
 			return {
 				id: r.id, name: X.str(p["클래스명"]), short: X.str(p["약칭"]),
 				subject: X.title("영역(학원) DB", X.id1(p["영역"]), "이름"),
 				teacherId: X.id1(p["담당강사"]), fee: X.num(p["수강료"]) || 0, qty: X.num(p["월간 수업 총량"]),
 				unit: X.str(p["단위"]) || "횟수", kind: X.str(p["클래스 유형"]) || "정규", arts: X.str(p["클래스 구분"]) || "교과",
-				open: X.d(p["개강일"]) || X.d(run), close: X.d(p["종강일"]) || X.dEnd(run),
+				open: X.d(p["개강일"]), close: X.d(p["종강일"]),
 				hex: (/^#[0-9a-f]{6}$/i.test(X.str(p["색 코드"])) ? X.str(p["색 코드"]).toUpperCase() : "") || APP_CLS_HEX[p["색"]] || "",
 				course: X.str(p["신고 교습과정명"]), etcIds: X.ids(p["기타경비"]),
 				_emoji: X.str(p["이모지"]) || r.icon || "",
@@ -230,6 +229,32 @@ function appApply(raw, out) {
 		seasons.push({ id: "_none", name: "시즌 없음", start: `${+y - 1}-01-01`, end: `${+y + 1}-12-31`, state: "확정", color: "", _virtual: true })
 		blocks.forEach((b) => { if (!b.seasonId || !seasons.some((s) => s.id === b.seasonId)) b.seasonId = "_none" })
 	}
+	appFixLinks(out)
+	return out
+}
+// 실제 노션 자료에는 끊긴 연결이 있을 수 있다(담당강사 없는 반, 학생 · 반이 휴지통에 간 등록, 반 없는 시간표, 교재 없는 진도).
+// 앱 화면은 연결된 줄이 꼭 있다고 보고 그리므로 여기서 한 번 맞춘다:
+//   - 담당강사가 없는 반 → 앱 전용 "담당 없음"(_virtual, 노션에 쓰지 않음 — 저장 층은 _로 시작하는 id를 빼고 보낸다)
+//   - 학생 · 반을 못 찾는 등록, 반을 못 찾는 시간표, 반 · 교재를 못 찾는 진도 → 화면에서 빼고 out._broken에 적어 둔다(노션은 그대로)
+//   - 시간표 명단 · 형제 연결에서 없는 줄 id는 뺀다
+function appFixLinks(out) {
+	const has = (coll) => new Set((out[coll] || []).map((x) => x.id))
+	const tIds = has("teachers")
+	if ((out.classes || []).some((c) => !tIds.has(c.teacherId))) {
+		;(out.teachers = out.teachers || []).push({ id: "_noteacher", name: "담당 없음", role: "", phone: "", days: "", _virtual: true })
+		out.classes.forEach((c) => { if (!tIds.has(c.teacherId)) c.teacherId = "_noteacher" })
+	}
+	const broken = []
+	const keep = (coll, ok, why) => { out[coll] = (out[coll] || []).filter((r) => { if (ok(r)) return true; broken.push({ coll, id: r.id, why }); return false }) }
+	const cIds = has("classes"), sIds = has("students"), bIds = has("books")
+	keep("enrolls", (e) => sIds.has(e.studentId) && cIds.has(e.classId), "학생 또는 클래스 연결 없음")
+	keep("blocks", (b) => cIds.has(b.classId), "클래스 연결 없음")
+	keep("progress", (p) => cIds.has(p.classId) && bIds.has(p.bookId), "클래스 또는 교재 연결 없음")
+	const eIds = has("enrolls")
+	;(out.blocks || []).forEach((b) => { b.regs = (b.regs || []).filter((id) => eIds.has(id)) })
+	;(out.students || []).forEach((s) => { if (Array.isArray(s.sib)) s.sib = s.sib.filter((id) => sIds.has(id)) })
+	;(out.progress || []).forEach((p) => { if (p.studentId && !sIds.has(p.studentId)) p.studentId = "" })
+	out._broken = broken
 	return out
 }
 
