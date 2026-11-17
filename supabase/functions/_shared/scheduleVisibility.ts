@@ -1,12 +1,14 @@
 // 내부 운영 표시 여부와 학부모 공개 여부를 분리한다. 누락/잘못된 공개 값은 비공개.
 export const NOTICE_VISIBILITY_POLICY = 1
-const PUBLIC_CATEGORIES = new Set(["📆 학원 일정", "🏫 학사 일정", "💤 휴원"])
+import { categoryName, isSchoolCategory } from "./scheduleCategory.ts"
+// 학부모 공개 대상 구분: 학원 일정·휴원·학교 일정(학교 행사·시험·방학/휴교, 옛 학사 일정). 할일은 내부용.
+const isPublicCategory = (raw: unknown) => { const n = categoryName(raw); return n === "학원 일정" || n === "휴원" || isSchoolCategory(raw) }
 export function isParentPublicEvent(page: any): boolean {
   const p = page?.properties
   return !page?.archived && !page?.in_trash &&
     p?.["숨김"]?.checkbox === false &&
     p?.["학부모 공개"]?.checkbox === true &&
-    PUBLIC_CATEGORIES.has(p?.["구분"]?.select?.name)
+    isPublicCategory(p?.["구분"]?.select?.name)
 }
 // 기존 캐시에는 공개 결정의 근거가 없다. 재동기화 전까지 일정만 비공개로 반환한다.
 export function publicNoticeFields(fields: Record<string, unknown>): Record<string, unknown> {
