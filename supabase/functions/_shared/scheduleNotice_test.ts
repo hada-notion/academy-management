@@ -36,7 +36,7 @@ Deno.test("v2.8.0 일정 안내: 다음 달, 한 줄·요약(5줄+외 N건), 학
 	eq(m.isAcademyWide(ev("e", { start: "2026-11-03", cls: ["c"] })), false)
 	eq(m.eventLabel(ev("e", { cat: "💤 휴원", start: "2026-11-03" })), "휴원")
 	eq(m.eventLabel(ev("e", { cat: "🏫 학사 일정", start: "2026-11-03" })), "학사")
-	for (const cat of ["🎒 학교 행사", "📝 시험", "🏖️ 방학/휴교"]) { eq(m.eventLabel(ev("e", { cat, start: "2026-11-03" })), "학사"); eq(m.sectionOf(ev("e", { cat, start: "2026-11-03" })), "학교") }
+	for (const cat of ["🏫 학교 행사", "📝 시험", "🏖️ 방학/휴교"]) { eq(m.eventLabel(ev("e", { cat, start: "2026-11-03" })), "학사"); eq(m.sectionOf(ev("e", { cat, start: "2026-11-03" })), "학교") }
 	eq(m.eventLabel(ev("e", { start: "2026-11-03" })), "학원")
 	eq(m.eventLabel(ev("e", { cat: "✅ 할일", start: "2026-11-03" })), "학원")
 	eq(m.eventLabel(ev("e", { start: "2026-11-03", label: "휴강" })), "휴강")

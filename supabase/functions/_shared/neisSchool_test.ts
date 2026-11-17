@@ -1,4 +1,4 @@
-import { eventKey, eventGrades, ownedProperties, newEventProperties, schoolCategory, newCategoryOption, categoryOptionsOf, safeWebsite, type NeisRow } from "./neisSchool.ts"
+import { eventKey, eventGrades, ownedProperties, newEventProperties, hasLockColumn, schoolCategory, newCategoryOption, categoryOptionsOf, safeWebsite, type NeisRow } from "./neisSchool.ts"
 function assert(v: unknown, message = "assertion failed") { if (!v) throw new Error(message) }
 const row: NeisRow = { ATPT_OFCDC_SC_CODE: "B10", SD_SCHUL_CODE: "7041238", AY: "2026", AA_YMD: "20261002", EVENT_NM: "중간고사", EVENT_CNTNT: "", SCHUL_CRSE_SC_NM: "중학교", ONE_GRADE_EVENT_YN: "N", TW_GRADE_EVENT_YN: "Y", THREE_GRADE_EVENT_YN: "N", SBTR_DD_SC_NM: "해당없음" }
 Deno.test("대상 학년 Y만 연결", () => assert(JSON.stringify(eventGrades(row)) === "[2]"))
@@ -44,7 +44,7 @@ Deno.test("신규 학사일정만 숨김 체크/학부모 비공개", () => {
  assert(!("학부모 공개" in ownedProperties(row, "school", "key", ["grade2"])))
 })
 
-const OPTIONS = ["✅ 할일", "📆 학원 일정", "🎒 학교 행사", "📝 시험", "🏖️ 방학/휴교", "💤 휴원"]
+const OPTIONS = ["✅ 할일", "📆 학원 일정", "🏫 학교 행사", "📝 시험", "🏖️ 방학/휴교", "💤 휴원"]
 Deno.test("구분 규칙 4줄", () => {
  // ① 공휴일·토요휴업일 → 방학/휴교
  for (const [name, deduct] of [["개천절", "공휴일"], ["토요휴업일", "휴업일"], ["토요휴업일", "해당없음"]] as const) assert(schoolCategory({ ...row, EVENT_NM: name, SBTR_DD_SC_NM: deduct }) === "방학/휴교", name)
@@ -59,7 +59,7 @@ Deno.test("새로 만들 때만 구분을 쓰고, 다시 가져오기(ownedPrope
  assert(newEventProperties(row, "school", "key", [], OPTIONS)["구분"].select.name === "📝 시험")
  const holiday = newEventProperties({ ...row, EVENT_NM: "토요휴업일", SBTR_DD_SC_NM: "휴업일" }, "school", "key", [], OPTIONS)
  assert(holiday["구분"].select.name === "🏖️ 방학/휴교" && holiday["숨김"].checkbox === true)
- assert(newEventProperties({ ...row, EVENT_NM: "체육대회" }, "school", "key", [], OPTIONS)["구분"].select.name === "🎒 학교 행사")
+ assert(newEventProperties({ ...row, EVENT_NM: "체육대회" }, "school", "key", [], OPTIONS)["구분"].select.name === "🏫 학교 행사")
  assert(!("구분" in ownedProperties(row, "school", "key", [])))
 })
 Deno.test("구분 옵션 이름은 학원 DB의 것(이모지가 달라도 글자로), 새 값이 없으면 옛 학사 일정", () => {
@@ -71,4 +71,14 @@ Deno.test("구분 옵션 이름은 학원 DB의 것(이모지가 달라도 글�
  assert(JSON.stringify(categoryOptionsOf({ properties: { "구분": { type: "select", select: { options: OPTIONS.map(name => ({ name })) } } } })) === JSON.stringify(OPTIONS))
  const props = newEventProperties(row, "school", "key", [])
  assert(props["숨김"].checkbox === true && props["학부모 공개"].checkbox === false)
+})
+
+Deno.test("나이스 새 일정은 잠금 켬(칸 있는 학원만), 다시 가져오기는 잠금을 건드리지 않음", () => {
+ assert(newEventProperties(row, "school", "key", [], OPTIONS, true)["잠금"]?.checkbox === true)
+ assert(!("잠금" in newEventProperties(row, "school", "key", [], OPTIONS, false)))
+ assert(!("잠금" in newEventProperties(row, "school", "key", [])))
+ assert(!("잠금" in ownedProperties(row, "school", "key", [])))
+ assert(hasLockColumn({ properties: { "잠금": { type: "checkbox", checkbox: {} } } }))
+ assert(!hasLockColumn({ properties: {} }))
+ assert(!hasLockColumn({ properties: { "잠금": { type: "rich_text", rich_text: {} } } }))
 })

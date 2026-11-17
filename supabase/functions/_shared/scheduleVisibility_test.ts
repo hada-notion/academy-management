@@ -11,7 +11,7 @@ Deno.test("공개/숨김 누락과 잘못된 값은 비공개",()=>{
  assert(!isParentPublicEvent({properties:{}}))
 })
 Deno.test("할일/미지정 구분은 공개하지 않음",()=>{for(const c of ["✅ 할일","","내부 일정"]) assert(!isParentPublicEvent(event(false,true,c)))})
-Deno.test("학원/학교(새 세 값·옛 학사)/휴원은 공개 조건 적용",()=>{for(const c of ["📆 학원 일정","🎒 학교 행사","📝 시험","🏖️ 방학/휴교","🏫 학사 일정","💤 휴원"]) assert(isParentPublicEvent(event(false,true,c)))})
+Deno.test("학원/학교(새 세 값·옛 학사)/휴원은 공개 조건 적용",()=>{for(const c of ["📆 학원 일정","🏫 학교 행사","📝 시험","🏖️ 방학/휴교","🏫 학사 일정","💤 휴원"]) assert(isParentPublicEvent(event(false,true,c)))})
 Deno.test("삭제/아카이브 일정은 비공개",()=>{for(const k of ["archived","in_trash"]) assert(!isParentPublicEvent({...event(),[k]:true}))})
 Deno.test("기존 캐시 일정 제거/다른 학생 필드 유지",()=>{const f=publicNoticeFields({student_name:"가상학생",notices:[{title:"직원회의"}]});assert(JSON.stringify(f.notices)==="[]");assert(f.student_name==="가상학생")})
 Deno.test("정책 확인된 캐시는 일정 보존/내부 정책값 비노출",()=>{const notices=[{title:"설명회"}];const f=publicNoticeFields({notice_visibility_policy:NOTICE_VISIBILITY_POLICY,notices});assert(f.notices===notices);assert(!("notice_visibility_policy" in f));assert(JSON.stringify(publicNoticeFields({notice_visibility_policy:NOTICE_VISIBILITY_POLICY,notices:null}).notices)==="[]")})
@@ -53,7 +53,7 @@ Deno.test("학원 전체 일정(연결 없음)은 모든 학생에게, 다른 �
 })
 
 Deno.test("리포트 반영 건너뜀: 비공개 나이스 일정 + 마지막 편집 봇일 때만",()=>{
- const neis=(hidden:boolean,published:boolean,editor:string,key="NEIS-1")=>{const e=event(hidden,published,"🎒 학교 행사");e.properties["NEIS 동기화키"]={type:"rich_text",rich_text:key?[{plain_text:key}]:[]};e.last_edited_by={object:"user",id:editor};return e}
+ const neis=(hidden:boolean,published:boolean,editor:string,key="NEIS-1")=>{const e=event(hidden,published,"🏫 학교 행사");e.properties["NEIS 동기화키"]={type:"rich_text",rich_text:key?[{plain_text:key}]:[]};e.last_edited_by={object:"user",id:editor};return e}
  // 나이스가 새로 만든 줄(숨김·비공개, 봇) → 건너뜀
  assert(noticeReportSyncNotNeeded(neis(true,false,"bot"),"bot"))
  assert(noticeReportSyncNotNeeded(neis(false,false,"bot"),"bot"))

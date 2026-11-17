@@ -66,7 +66,7 @@ export function ownedProperties(row: NeisRow, pageId: string, key: string, grade
     "대상 학년": richText(eventGrades(row).map(n => `${n}학년`).join(", ") || "미지정"),
     "수업공제일명": richText(row.SBTR_DD_SC_NM), "원본 행사내용": richText(row.EVENT_CNTNT),
     "NEIS 동기화키": richText(key),
-    // 구분/숨김/학부모 공개/메모/태그/담당자/진행상태/본문은 동기화 소유가 아니므로 절대 덮어쓰지 않는다(구분은 새로 만들 때만).
+    // 구분/숨김/학부모 공개/잠금/메모/태그/담당자/진행상태/본문은 동기화 소유가 아니므로 절대 덮어쓰지 않는다(구분은 새로 만들 때만).
   }
 }
 
@@ -94,11 +94,18 @@ export function newCategoryOption(row: NeisRow, categoryOptions: string[]): stri
 }
 
 // 최초 생성 전용. 기존 일정 업데이트에는 ownedProperties만 사용한다(구분·숨김·학부모 공개는 사람이 고친 값 유지).
-export function newEventProperties(row: NeisRow, pageId: string, key: string, gradeIds: string[], categoryOptions: string[] = []) {
+// 일정 DB에 체크 칸 `잠금`이 있나(없는 학원은 잠금을 쓰지 않음).
+export function hasLockColumn(schema: any): boolean {
+  return schema?.properties?.["잠금"]?.type === "checkbox"
+}
+
+// hasLock = 일정 DB에 `잠금` 체크 칸이 있음 → 나이스에서 온 새 일정은 잠금 켬(대표 261118, 숨김·학부모 공개처럼 처음 만들 때만).
+export function newEventProperties(row: NeisRow, pageId: string, key: string, gradeIds: string[], categoryOptions: string[] = [], hasLock = false) {
   return {
     ...ownedProperties(row, pageId, key, gradeIds),
     "구분": { select: { name: newCategoryOption(row, categoryOptions) } },
     "숨김": { checkbox: true },
     "학부모 공개": { checkbox: false },
+    ...(hasLock ? { "잠금": { checkbox: true } } : {}),
   }
 }
