@@ -31,6 +31,11 @@ Deno.test("속성마다 평평한 값: 제목·글·고르기·상태·여러 �
   })
 })
 
+Deno.test("복사하지 않는 칸: 리포트 토큰 · 웹훅 칸 · 노션 계정", () => {
+  const rt = [{ plain_text: "secret" }]
+  assertEquals(flattenProps({ 토큰: { type: "rich_text", rich_text: rt }, "웹훅 링크": { type: "formula", formula: { type: "string", string: "x" } }, "웹훅 버튼": { type: "select", select: { name: "a" } }, "노션 계정": { type: "people", people: [{ id: "u" }] }, 이름: { type: "title", title: [{ plain_text: "가" }] } }), { 이름: "가" })
+})
+
 Deno.test("빈 값: 고르기 없음은 빈 글자, 날짜 없음은 null, 숫자 없음은 null", () => {
   assertEquals(flattenProps({ a: { type: "select", select: null }, b: { type: "date", date: null }, c: { type: "number", number: null } }), { a: "", b: null, c: null })
 })
