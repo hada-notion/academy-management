@@ -14,6 +14,7 @@ import { LIBRARY_PROP, libraryIds, libraryPropOf } from "./libraryProp.ts"
 import { PROP_LAST_ERROR, PROP_SYNCED_AT } from "./constants.ts"
 import { CART_STATUS_SPEC, distributeFromCartPage } from "./textbookDistributionTarget.ts"
 import { markError } from "./statusTracking.ts"
+import { cartConfigRowId } from "./adminShared.ts"
 
 export const CART_PLAN_PROP = "담기 계획"
 const DS_DISTRIBUTION = () => Deno.env.get("DATA_SOURCE_TEXTBOOK_DISTRIBUTION_ID")!
@@ -61,6 +62,8 @@ export const cartPlanDeps = {
 	markError: (id: string, message: string) => markError(id, CART_STATUS_SPEC, message),
 	legacy: distributeFromCartPage,
 	today: todaySeoulDate,
+	// 표시용 "알림톡 설정" 관계에 넣을 행 id(항목 80) — 없으면 비워 둔다
+	configRow: cartConfigRowId,
 }
 
 export async function processCartPlanQueueItem(payload: { cartId: string; plan?: string | null }): Promise<void> {
@@ -142,9 +145,11 @@ export async function cartTargets(cartId: string, regId: string, items: { kind?:
 		if (hit) { out.set(kind, hit.id); continue }
 		const reg = await deps.getPage(regId).catch(() => null)
 		const regTitle = (reg ? anyTitleText(reg) : "").trim() || "학생"
+		const configRow = await deps.configRow(kind).catch(() => null)
 		const made = await deps.createPage(DS_CART(), {
 			이름: { title: [{ text: { content: `${regTitle} ${kind} 청구서` } }] },
 			등록: { relation: [{ id: regId }] },
+			...(configRow ? { "알림톡 설정": { relation: [{ id: configRow }] } } : {}),
 		})
 		out.set(kind, made.id)
 	}

@@ -173,3 +173,31 @@ Deno.test("워커 다시 넘기기: 지금 서버 키로 본문 그대로, 실�
 Deno.test("GET은 405", async () => {
   eq((await handleRouter(new Request("https://x/functions/v1/notion-router"), deps())).status, 405)
 })
+
+// (v2.8.0 항목 80) 체크리스트 괄호가 어긋나 항목이 DB 묶음 밖으로 떨어지면(예: class-etc-charge) ID 대조는 통과해도 화면 카드가 깨진다.
+// 모든 항목이 [DB 이름, [항목…]] 안(깊이 3)에 있고, 그 DB 이름이 연결표 db 라벨과 같은지 본다.
+Deno.test("체크리스트: 모든 항목이 DB 묶음 안, 묶음 이름 = 연결표 db", async () => {
+  const js = await Deno.readTextFile(new URL("../../../admin_settings.js", import.meta.url))
+  const start = js.indexOf("const CHECKLIST=[") + "const CHECKLIST=".length
+  const end = js.indexOf("function route(")
+  let depth = 0, group = ""
+  const seen: [string, string][] = []
+  for (let i = start; i < end; i++) {
+    const ch = js[i]
+    if (ch === "'") {
+      let j = i + 1
+      while (j < end && js[j] !== "'") j += js[j] === "\\" ? 2 : 1
+      const text = js.slice(i + 1, j)
+      if (depth === 2 && js[i - 1] === "[") group = text
+      if (depth === 4 && js[i - 1] === "[" && /^[a-z0-9-]+$/.test(text) && /^,'[^']*',(BUTTON|AUTO),/.test(js.slice(j + 1, j + 40))) seen.push([text, group])
+      if (depth !== 4 && js[i - 1] === "[" && /^[a-z0-9-]+$/.test(text) && /^,'[^']*',(BUTTON|AUTO),/.test(js.slice(j + 1, j + 40))) throw new Error(`항목 ${text}가 DB 묶음 밖(깊이 ${depth})`)
+      i = j
+      continue
+    }
+    if (ch === "[") depth++
+    else if (ch === "]") depth--
+    if (depth === 0) break
+  }
+  eq(seen.map(([id]) => id), WEBHOOK_ROUTES.map((r) => r.id), "items")
+  eq(seen.map(([, g]) => g), WEBHOOK_ROUTES.map((r) => r.db), "db labels")
+})

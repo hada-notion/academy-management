@@ -470,6 +470,19 @@ export async function getScheduleConfig(category: AlimtalkConfigCategory): Promi
   }
 }
 
+// (v2.8.0 항목 80) 서버가 새로 만드는 청구서([담기]가 만드는 교재비·재료비 청구서, [기타경비 청구])에도
+// 옛 교재비 청구서처럼 표시용 "알림톡 설정" 관계를 채운다. 행은 [안내문 전송]이 고르는 것과 같게
+// (noticeQueue: 재료비 → "재료비 안내", 교재비 → "교재비 안내", 그 밖 → "기타경비 안내"), 없으면 "교재비 안내" 행.
+export function cartConfigCategory(kind: string): AlimtalkConfigCategory {
+  return kind === "재료비" ? "재료비 안내" : !kind || kind === "교재비" ? "교재비 안내" : "기타경비 안내"
+}
+export async function cartConfigRowId(kind: string): Promise<string | null> {
+  const category = cartConfigCategory(kind)
+  const own = await getScheduleConfig(category)
+  if (own) return own.rowId
+  return category === "교재비 안내" ? null : (await getScheduleConfig("교재비 안내"))?.rowId ?? null
+}
+
 // [NEW] 연락처(휴대폰/유선) 형식 검증. 비정상이면 "연락처 오류: ..." 형태의 명확한 에러를 던져서,
 // 실패 사유(전송로그)에 그대로 남도록 한다.
 export function assertValidPhone(phone: string, label = "학부모 연락처"): void {
