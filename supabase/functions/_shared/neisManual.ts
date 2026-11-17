@@ -26,3 +26,9 @@ export function buttonSchoolId(body: any): string | null {
   }
   return null
 }
+
+// 실패 뒤 이어서 하기 전 기다릴 시간. 노션 한도(429)면 한도가 풀리도록 길게(1번째 실패 10초, 2번째 20초),
+// 그 밖은 짧게. 한 작업은 최대 3번(claim_neis_manual_run)이라 그 뒤는 "다시 눌러 이어서".
+export function retryDelayMs(message: string, attempts: number): number {
+  return /\b429\b/.test(message) ? 10000 * Math.min(Math.max(attempts, 1), 2) : 1500
+}

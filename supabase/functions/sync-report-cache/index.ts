@@ -14,7 +14,8 @@
 // 강제 재계산, 야간 점검, 수동 동기화가 나머지 안전망이다.
 // 실제 캐시 조립 로직은 _shared/reportCacheBuilder.ts에 있다.
 
-import { requireAdminKey, CORS_HEADERS as ADMIN_CORS } from "../_shared/adminShared.ts"
+import { requireAdminKey, getBotUserId, CORS_HEADERS as ADMIN_CORS } from "../_shared/adminShared.ts"
+import { noticeReportSyncNotNeeded } from "../_shared/scheduleVisibility.ts"
 import { selectReportCacheByToken } from "../_shared/reportCacheShared.ts"
 import { queryAllPages, mapWithConcurrency, extractPageId } from "../_shared/notionClient.ts"
 import { makePageCache } from "../_shared/reportCacheShared.ts"
@@ -78,6 +79,12 @@ Deno.serve(async (req: Request) => {
     }
 
     const sourcePage = await cachedGetPage(rawId)
+    // 서버가 만든·고친 비공개 나이스 일정은 리포트에 없으므로 대상 학생을 찾지 않고 바로 끝낸다(노션 한도 아끼기).
+    if (noticeReportSyncNotNeeded(sourcePage, await getBotUserId())) {
+      return new Response(JSON.stringify({ synced: 0, registrationIds: [], skipped: "비공개 나이스 일정(서버 편집)" }), {
+        headers: { ...ADMIN_CORS, "Content-Type": "application/json" },
+      })
+    }
     const registrationIds = await resolveRegistrationIds(rawId, cachedGetPage)
 
     if (!keyed && typeof body?.registrationId !== "string" && isRegistrationPage(sourcePage)) {
