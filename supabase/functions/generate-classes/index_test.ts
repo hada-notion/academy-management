@@ -12,7 +12,7 @@ function mock(){
  const timetables=[{id:"fri",day:"금",date:"2026-10-09"},{id:"wed",day:"수",date:"2026-10-07"},{id:"mon",day:"월",date:"2026-10-05"}].map(t=>{const p={id:t.id,properties:{"클래스":rel("class"),"요일":{select:{name:t.day}},"등원시간(HH:mm)":txt("20:00"),"하원시간(HH:mm)":txt("21:00"),"상태":{select:{name:"⚪ 대기"}}}};pages[t.id]=p;pages["old-"+t.id]={id:"old-"+t.id,db:"sessions",properties:{"시간표":rel(t.id),"수업일시":{date:{start:t.date+"T20:00:00+09:00"}},"학습기록":rel("record")}};return p})
  pages.record={id:"record",properties:{"구분":{select:{name:"과제"}},"등록":{relation:[{id:"a"},{id:"b"}]}}}
  for(const id of ["a","b"]){pages["source-"+id]={id:"source-"+id,db:"attendance",properties:{"등록":rel(id),"수업일시":{date:{start:"2026-10-09T20:00:00+09:00"}},"수업":rel("old-fri")}};pages["task-"+id]={id:"task-"+id,db:"activities",properties:{"등록":rel(id),"출석":rel("source-"+id),"학습기록":rel("record"),"과제상태":{select:{name:"🔴 미제출"}},"과제 마감":rel()}}}
- const created:any[]=[],calls:any[]=[]
+ const created:any[]=[],calls:any[]=[],events:any[]=[]
  const result=(results:any[])=>new Response(JSON.stringify({results,has_more:false}),{status:200})
  const fetch=async(input:any,init:any={})=>{
   const url=String(input),body=init.body?JSON.parse(init.body):{};calls.push({url,body})
@@ -22,7 +22,7 @@ function mock(){
   if(db){
    if(db==="timetables")return result(timetables)
    if(db==="sessions"){const tid=body.filter.relation.contains;return result(Object.values(pages).filter((p:any)=>p.db==="sessions"&&p.properties["시간표"].relation[0].id===tid).sort((a:any,b:any)=>b.properties["수업일시"].date.start.localeCompare(a.properties["수업일시"].date.start)).slice(0,1))}
-   if(db==="events")return result([])
+   if(db==="events")return result(events)
    if(db==="registrations")return result(["a","b"].map(id=>({id,properties:{}})))
    if(db==="activities"){const f0=body.filter.and[0];const regs=f0.or?f0.or.map((x:any)=>x.relation.contains):[f0.relation.contains];return result(regs.map((r:string)=>pages["task-"+r]).filter(Boolean))}
    if(db==="attendance")return result([])
@@ -33,7 +33,7 @@ function mock(){
   if(url.endsWith("/pages")&&init.method==="POST"){const page={id:"new-"+created.length,db:body.parent.data_source_id,properties:body.properties};pages[page.id]=page;created.push(page);return new Response(JSON.stringify(page))}
   throw new Error("unmocked request "+url)
  }
- return {pages,created,calls,fetch,tasks,drain:async()=>{for(let i=0;i<tasks.length;i++){assert(i<100,"chain did not stop");await tasks[i]}}}
+ return {pages,created,calls,events,fetch,tasks,drain:async()=>{for(let i=0;i<tasks.length;i++){assert(i<100,"chain did not stop");await tasks[i]}}}
 }
 Deno.test("실제 버튼 핸들러: 월수금 날짜순 수업 생성 → 출석 조정 큐 → 학생별 출석·백필·역순 워커·재실행 검증",async()=>{
  const f=mock(),originalFetch=globalThis.fetch;globalThis.fetch=f.fetch as typeof fetch;(globalThis as any).EdgeRuntime={waitUntil:(p:Promise<unknown>)=>f.tasks.push(p)}
@@ -74,7 +74,8 @@ Deno.test("v2.6.12 시간표 자동화: queue는 큐에만 넣고, 워커는 기
   const before=f.calls.length
   await processGenerateClassesQueueItem({timetableId:"mon"})
   const used=f.calls.slice(before).filter(c=>c.url.includes("/data_sources/"))
-  assert(!used.some(c=>c.url.includes("/data_sources/sessions/")||c.url.includes("/data_sources/events/")),"no latest-session / closure query with 기준일")
+  assert(!used.some(c=>c.url.includes("/data_sources/sessions/")),"no latest-session query with 기준일")
+  assert(used.filter(c=>c.url.includes("/data_sources/events/")).length===1,"(2.8) 만들기 직전 휴원 확인 한 번")
   const s=f.created.filter(p=>p.db==="sessions");assert(s.length===1&&s[0].properties["수업일시"].date.start.startsWith("2026-10-19T20:00"),JSON.stringify(s.map(p=>p.properties["수업일시"])))
   assert(f.pages.mon.properties["상태"].select.name==="✅ 완료")
   assert(f.calls.filter(c=>c.url.endsWith("/rest/v1/sync_queue")).at(-1).body[0].target==="fix-attendance","attendance via fix-attendance queue")
@@ -135,7 +136,8 @@ Deno.test("v2.6.14 메뉴 일괄 생성 + 수업 추가 정보: 큐 항목에 �
   const before=f.calls.length
   for(const q of enq)await processGenerateClassesQueueItem(q.payload)
   const notion=f.calls.slice(before).filter(c=>c.url.includes("api.notion.com"))
-  assert(notion.length===2&&notion.every(c=>c.url.endsWith("/pages")),"one create per timetable: "+notion.map(c=>c.url).join())
+  // (2.8) 만들기 1번 + 만들기 직전 휴원 확인 1번(일정 조회)
+  assert(notion.filter(c=>c.url.endsWith("/pages")).length===2&&notion.every(c=>c.url.endsWith("/pages")||c.url.includes("/data_sources/events/")),"one create (+ closure check) per timetable: "+notion.map(c=>c.url).join())
   assert(!f.calls.slice(before).some(c=>c.url.includes("/functions/v1/generate-classes")),"no HTTP hop to generate-classes")
   const s=f.created.filter(p=>p.db==="sessions")
   assert(s.map(p=>p.properties["이름"].title[0].text.content).join()==="중1 A 10.26(월),중1 A 10.30(금)",JSON.stringify(s.map(p=>p.properties["이름"])))
@@ -166,7 +168,7 @@ Deno.test("v2.6.14 버튼·재시도 경로(시간표를 읽음): 수업 추가 
   const before=f.calls.length
   await processGenerateClassesQueueItem({timetableId:"mon",date:"2026-10-26"})
   const used=f.calls.slice(before).filter(c=>c.url.includes("api.notion.com"))
-  assert(!used.some(c=>c.url.includes("/data_sources/")||c.url.includes("/pages/class")),"no registration query / class read: "+used.map(c=>c.url).join())
+  assert(!used.some(c=>(c.url.includes("/data_sources/")&&!c.url.includes("/data_sources/events/"))||c.url.includes("/pages/class")),"no registration query / class read: "+used.map(c=>c.url).join())
   const s=f.created.filter(p=>p.db==="sessions");assert(s.length===1&&s[0].properties["등록"].relation.length===2&&s[0].properties["이름"].title[0].text.content==="중1 A 10.26(월)")
  }finally{globalThis.fetch=originalFetch;delete(globalThis as any).EdgeRuntime}
 })
@@ -177,5 +179,27 @@ Deno.test("v2.6.14 generate-classes/queue: 자동화 본문에 수업추가 정�
   const q=await handler(new Request("https://mock.supabase/functions/v1/generate-classes/queue",{method:"POST",headers:{"x-admin-key":"test-only"},body:JSON.stringify({source:{type:"automation"},data:{object:"page",id:"mon",properties:props}})}))
   assert(q.status===202)
   const enq=f.calls.filter(c=>c.url.endsWith("/rest/v1/sync_queue")).map(c=>c.body[0]);assert(enq.length===1&&enq[0].payload.plan?.date==="2026-10-26"&&enq[0].payload.date==="2026-10-26",JSON.stringify(enq))
+ }finally{globalThis.fetch=originalFetch;delete(globalThis as any).EdgeRuntime}
+})
+Deno.test("(2.8) 만들기 직전 휴원 확인: 그날 그 반이 학원 휴원(세부·옛 구분)이면 수식이 놓쳐도 수업을 만들지 않는다",async()=>{
+ const f=mock(),originalFetch=globalThis.fetch;globalThis.fetch=f.fetch as typeof fetch;(globalThis as any).EdgeRuntime={waitUntil:(p:Promise<unknown>)=>f.tasks.push(p)}
+ try{
+  const { processGenerateClassesQueueItem } = await import("../_shared/generateClassesQueue.ts")
+  const { sessionPlanFromText } = await import("../_shared/timetableSessionPlan.ts")
+  const plan=sessionPlanFromText(planText({date:"2026-10-26",cls:U(7)}).formula.string)!
+  const ev=(id:string,kind:any,start:string,end:string|null=null)=>({id,properties:{"클래스":rel(U(7)),"날짜":{type:"date",date:{start,end}},...kind}})
+  // 세부 구분 학원 휴원(기간 안) → 만들지 않음
+  f.events.push(ev("c1",{"세부 구분":{type:"select",select:{name:"💤 학원 휴원"}}},"2026-10-25","2026-10-27"))
+  await processGenerateClassesQueueItem({timetableId:"mon",date:"2026-10-26",plan})
+  assert(f.created.filter(p=>p.db==="sessions").length===0,"휴원 날 수업 없음")
+  assert(!f.calls.some(c=>c.url.endsWith("/rest/v1/sync_queue")&&c.body?.[0]?.target==="fix-attendance"),"출석 조정도 없음")
+  // 옛 구분 💤 휴원도 같음
+  f.events.length=0;f.events.push(ev("c2",{"구분":{type:"select",select:{name:"💤 휴원"}}},"2026-10-26"))
+  await processGenerateClassesQueueItem({timetableId:"mon",date:"2026-10-26",plan})
+  assert(f.created.filter(p=>p.db==="sessions").length===0)
+  // 다른 날 휴원·학원 행사는 상관없음 → 만듦
+  f.events.length=0;f.events.push(ev("c3",{"세부 구분":{type:"select",select:{name:"학원 휴원"}}},"2026-10-19"),ev("c4",{"세부 구분":{type:"select",select:{name:"학원 행사"}}},"2026-10-26"))
+  await processGenerateClassesQueueItem({timetableId:"mon",date:"2026-10-26",plan})
+  assert(f.created.filter(p=>p.db==="sessions").length===1)
  }finally{globalThis.fetch=originalFetch;delete(globalThis as any).EdgeRuntime}
 })
