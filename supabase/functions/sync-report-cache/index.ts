@@ -80,7 +80,9 @@ Deno.serve(async (req: Request) => {
 
     const sourcePage = await cachedGetPage(rawId)
     // 서버가 만든·고친 비공개 나이스 일정은 리포트에 없으므로 대상 학생을 찾지 않고 바로 끝낸다(노션 한도 아끼기).
-    if (noticeReportSyncNotNeeded(sourcePage, await getBotUserId())) {
+    // 관리 앱 저장(appSave)은 같은 봇으로 쓰므로 키와 함께 force를 보내 건너뛰지 않게 한다(앱에서 공개를 끈 것도 반영).
+    const forced = keyed && body?.force === true
+    if (!forced && noticeReportSyncNotNeeded(sourcePage, await getBotUserId())) {
       return new Response(JSON.stringify({ synced: 0, registrationIds: [], skipped: "비공개 나이스 일정(서버 편집)" }), {
         headers: { ...ADMIN_CORS, "Content-Type": "application/json" },
       })
