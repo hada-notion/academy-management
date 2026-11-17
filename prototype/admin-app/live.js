@@ -242,6 +242,10 @@ function liveOptions(res) {
   }
   const route = dbs["학생(학원) DB"] && dbs["학생(학원) DB"]["문의 경로"];
   if (Array.isArray(route) && route.length && typeof ROUTES !== "undefined") { ROUTES.length = 0; ROUTES.push(...route); window.LIVE_OPTS.route = "문의 경로"; }
+  /* 글일 수도 선택일 수도 있는 칸(524판): 노션이 선택 칸이면 그 선택지 목록을 적어 둔다 — 저장 층(appsave.js X.opt)이 목록에 없는 값은 그 칸만 빼고 알린다. 글 칸이면 목록이 없다 */
+  window.LIVE_SEL = {};
+  const rel = dbs["학생(학원) DB"] && dbs["학생(학원) DB"]["학생과의 관계"];
+  if (Array.isArray(rel) && rel.length) window.LIVE_SEL["학생과의 관계"] = rel.slice();
 }
 /* 실제 자료 모드에서 앱의 두 곳을 바꿔 끼운다(한 번만):
    - 저장 숫자(dirtyCount): 작성 중 표시가 아니라 "노션에 아직 안 간 줄 수"(새 줄 + 불러온 값과 달라진 줄)도 센다.
