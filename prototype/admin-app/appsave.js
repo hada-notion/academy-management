@@ -21,6 +21,10 @@ const appsDirty = (coll, row) => (coll === "seasons" ? !!row.dirty : row.state =
 function appSaveX(DB, warn) {
 	const say = (m) => { if (warn) warn.push(m) }
 	const X = {
+		// 노션 칸이 글일 수도 고르기(선택)일 수도 있는 값(524판 — 학생 "학생과의 관계"가 글 → 선택으로 바뀐다). 앱은 어느 형식이든 글자 하나로 보내고
+		// 서버가 노션 칸 형식을 보고 글 · 선택으로 쓴다. 다만 선택일 때 선택지에 없는 값은 서버가 그 줄을 통째로 거절하므로(새 선택지를 만들지 않음),
+		// 노션 선택지 목록을 받았으면(live.js liveOptions → window.LIVE_SEL) 없는 값은 그 칸만 빼고 알린다. 목록이 없으면(= 글 칸) 그대로 보낸다.
+		opt: (prop, v, who) => { const s = X.str(v); const list = typeof globalThis !== "undefined" && globalThis.LIVE_SEL && globalThis.LIVE_SEL[prop]; if (s && Array.isArray(list) && list.length && !list.includes(s)) { say(`${who || ""} ${prop} '${s}'은(는) 노션 선택지에 없어 보내지 않았어요 — 노션에서 선택지를 먼저 만들어요`.trim()); return undefined } return s },
 		// 관계 값: 노션 id는 그대로, 저장 전 새 줄 id는 "tmp:<id>", 앱 전용(_none 등)·빈 값은 뺀다
 		ref: (id) => (!id || String(id).startsWith("_") ? null : appsIsId(id) ? String(id) : "tmp:" + id),
 		rel: (id) => { const v = X.ref(id); return v ? [v] : [] },
@@ -195,7 +199,7 @@ const APPSAVE = {
 			"학생이름": X.str(r.name),
 			"학교": X.byName("schools", r.school, "학생 학교"), "학년": X.byName("glevels", r.grade, "학생 학년"),
 			"어머니 연락처": X.str(r.mom), "아버지 연락처": X.str(r.dad), "학생 연락처": X.str(r.sp),
-			"기타 보호자 연락처": X.str(r.gp), "학생과의 관계": X.str(r.gprel),
+			"기타 보호자 연락처": X.str(r.gp), "학생과의 관계": X.opt("학생과의 관계", r.gprel, r.name),
 			"우선 연락 대상": X.pre(r.pre, r.name), "등록 보류": !!r.hold, "메모(내부용)": X.str(r.memo),
 			/* 개인정보 동의는 보내지 않는다: 노션 학생 DB 자동화가 "페이지 추가 + 개인정보 동의 ☑"에서 접수 안내 알림톡을 보낸다 — 체크는 노션에서 */
 			"문의일": X.dt(r.inq), "문의 경로": X.str(r.route), "희망 시작일": X.d(r.hope),
