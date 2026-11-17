@@ -29,6 +29,8 @@ function liveLessonInstall() {
   const roster0 = lessonRoster, sum0 = attSum, eff0 = lessonEff;
   lessonEff = (b, d) => { const L = LIVE_L[lkey(b, d)]; return L ? { d, start: L.start, end: L.end, off: false, moved: false } : eff0(b, d); };
   seedAtt = () => null;
+  /* 수업 창 [수업 저장] · Ctrl+Enter = 노션에 출결 쓰기(예시 모드의 "앱 안에서만 저장"을 쓰지 않는다) */
+  lSaveDialog = (k, after) => { liveLessonSave(k).then((ok) => { if (ok && after) after(); }); };
   lessonMade = (b, d) => !!LIVE_L[lkey(b, d)];
   lessonRoster = (b, d) => { const s = LIVE_LS[lkey(b, d)]; return s && s.state === "ok" ? s.roster.map((id) => stu(id)).filter(Boolean) : roster0(b, d); };
   attSum = (b, d) => { const k = lkey(b, d), s = LIVE_LS[k], L = LIVE_L[k]; if (s && s.state === "ok") return sum0(b, d); return (L && liveSum(L.sum, L.n)) || sum0(b, d); };
@@ -85,6 +87,8 @@ function liveLessonOpen(k) {
   liveLessonApi({ action: "session", sessionId: L.id }).then((res) => {
     if (!LIVE_LS[k] || LIVE_L[k] !== L) return;
     const [bid, d] = k.split("|"), b = byId(DB.blocks, bid), S = LIVE_LS[k];
+    DB.anotes = DB.anotes.filter((n) => n.key !== k);
+    Object.keys(DB.att).forEach((a) => { if (a.startsWith(k + "|")) delete DB.att[a]; });
     (res.students || []).forEach((x) => {
       const e = enr(x.registrationId); if (!e || !stu(e.studentId)) return;
       const sid = e.studentId; S.roster.push(sid); S.att[sid] = x.attendanceId;
@@ -98,6 +102,36 @@ function liveLessonOpen(k) {
     try { lastSnap = snapshot(); } catch (_) {}
     render();
   }, (e) => { delete LIVE_LS[k]; toast("수업을 불러오지 못했어요 — " + e.message); });
+}
+/* 출결 쓰기(P3 걸음 2, 칸 P3w): 이 수업에서 바뀐 학생의 출석 상태만 수업 관리 서버(save-attendance)로 노션에 쓴다.
+   한마디 · 메모 · 학습기록 · 휴강 · 옮기기는 보내지 않는다(화면에서도 잠겨 있다). 저장 뒤 그 수업과 그날 수업을 다시 받는다. */
+const LIVE_ATT_OUT = { 출석: "🟢 출석", 결석: "🔴 결석", 보강: "🔵 보강" };
+async function liveLessonSave(k) {
+  if (!(window.LIVE && window.LIVE.loaded && window.LIVE_ATTW)) { toast("이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요"); return false; }
+  const S = LIVE_LS[k], L = LIVE_L[k], c = lChanges(k);
+  if (!L || !S || S.state !== "ok") { toast("수업을 다 받은 뒤에 저장해요"); return false; }
+  if (!c || !c.att.length) { toast("저장할 출결이 없어요"); return false; }
+  const items = [];
+  for (const sid of c.att) {
+    const aid = S.att[sid];
+    if (!aid) { toast("출석 줄을 찾지 못한 학생이 있어 저장하지 않았어요 — 새로 고침 한 뒤 다시 해요"); return false; }
+    items.push({ attendanceId: aid, status: LIVE_ATT_OUT[DB.att[k + "|" + sid]] || "" });
+  }
+  if (window._liveLessonSaving) return false;
+  window._liveLessonSaving = true;
+  toast("노션에 저장하는 중이에요");
+  try {
+    let saved = 0;
+    for (let i = 0; i < items.length; i += 60) { const res = await liveLessonApi({ action: "save-attendance", items: items.slice(i, i + 60) }); saved += res.saved || 0; }
+    LDIRTY.delete(k);
+    delete LIVE_LS[k]; delete LIVE_LD[k.split("|")[1]]; /* 그 수업 · 그날을 노션 값으로 다시 받는다 */
+    if (window.liveRoReset) window.liveRoReset();
+    try { undoStack.length = 0; if (typeof redoStack !== "undefined") redoStack = []; lastSnap = snapshot(); } catch (_) {}
+    render();
+    toast(saved === items.length ? `노션에 저장했어요 · 출결 ${saved}명` : `노션에 저장 ${saved}명 · 보낸 것 ${items.length}명 — 새로 고침 해서 확인해요`);
+    return true;
+  } catch (e) { toast("저장하지 못했어요 — " + e.message); return false; }
+  finally { window._liveLessonSaving = false; }
 }
 /* 그릴 때마다(live.js render 뒤): 지금 화면이 보는 날짜 · 열린 수업을 받게 한다 */
 function liveLessonNeed() {

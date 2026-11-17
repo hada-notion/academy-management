@@ -2941,3 +2941,8 @@ table.stt.mkt{table-layout:auto}.stt.mkt td{overflow:visible}
 #view .list.calbody>.evcal{flex:1}
 #view .list.calbody .scal-bar{padding:var(--space-2) var(--space-4)}
 #view .list.calbody .scal-day,#view .list.calbody .scal-src{margin-left:var(--space-4);margin-right:var(--space-4)}
+
+/* 창 탭(기준 5장 F2, 대표 261117): 이름만(숫자 없음) · 폭 = 글자 폭 + 사이 16 · 넘치면 가로로 밀기(줄바꿈 · 글자 줄임 없음) */
+.ptabs{gap:16px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;flex:none}
+.ptabs::-webkit-scrollbar{display:none}
+.ptabs .ptb{flex:0 0 auto;padding:0 2px;justify-content:flex-start}

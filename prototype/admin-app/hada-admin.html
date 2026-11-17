@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=516">
-<link rel="stylesheet" href="app.css?v=516">
-<link rel="stylesheet" href="pick.css?v=516">
-<link rel="stylesheet" href="field.css?v=516">
+<link rel="stylesheet" href="hada-tokens.css?v=517">
+<link rel="stylesheet" href="app.css?v=517">
+<link rel="stylesheet" href="pick.css?v=517">
+<link rel="stylesheet" href="field.css?v=517">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=516"><script src="hada-rules.js?v=516"></script><script src="alim-preview.js?v=516"></script><script src="pick.js?v=516"></script><script src="field.js?v=516"></script><script src="panel.js?v=516"></script>
+<link rel="stylesheet" href="alim.css?v=517"><script src="hada-rules.js?v=517"></script><script src="alim-preview.js?v=517"></script><script src="pick.js?v=517"></script><script src="field.js?v=517"></script><script src="panel.js?v=517"></script>
 <script>
 "use strict";
 
@@ -178,7 +178,7 @@ function tbSlots(st,o){/* 표 화면 D3 앞 네 자리: 평소 [엑셀][표 편�
   return st.tedit?`<button class="btn tb-ic" id="colB" title="열 정리 — 열 순서·숨기기${o.hid?` (${o.hid}개 숨김)`:""}">${IC("eye","s")}</button><button class="btn pri tb-ic" id="tbEd" title="완료 — 편집을 마쳐요(고친 줄은 작성 중 → [저장])">${IC("check","s")}</button><button class="btn tb-ic" id="teCancel" title="취소 — 이번 편집을 모두 되돌리고 나가요">${IC("x","s")}</button>${add}`
    :`<button class="btn tb-ic" id="xlB" title="엑셀 — ${o.up?"내려받기 · 한번에 올리기":"내려받기"}">${IC("xls","s xl")}</button><button class="btn tb-ic" id="tbEd" ${o.ro?"disabled":""} title="${o.ro?"표 편집 — 보기만 하는 화면이에요(열을 숨기거나 정렬하려면 열 제목을 눌러요)":`표 편집 — 칸을 바로 고치고 열을 정리해요${o.hid?` (${o.hid}개 숨김)`:""}`}">${IC("pen","s")}</button><button class="btn tb-ic" id="prB" title="인쇄 — 지금 보는 목록(필터 조건 그대로)">${IC("printer","s")}</button>${add}`}
 const COLLNAME={classes:"클래스",enrolls:"등록",students:"학생",teachers:"선생님",seasons:"시즌",subjects:"과목",books:"라이브러리",progress:"진도교재",events:"일정",reports:"학습 보고서",tuition:"수강료",bookfees:"청구",letters:"가정통신문",schools:"학교",glevels:"학년",areas:"영역",exams:"시험",costs:"비용",alims:"알림톡 설정",recs:"학습기록",anotes:"출결 한마디·메모",grades:"성적",series:"시리즈",charges:"청구 항목",files:"자료"};
-function rowName(k,x){if(k==="grades")return esc(`${nmStu(x.sid)} · ${(DB.exams.find(e=>e.id===x.examId)||{}).name||"시험"}`);if(k==="anotes")return esc(`${D10(x.d)} ${nmCls(x.classId)} · ${nmStu(x.sid)}`);if(k==="recs")return esc(`${D10(x.d)} ${nmCls(x.classId)} · ${x.kind}`);const L=LISTS[k];if(!L)return esc(x.name||"");const d=document.createElement("div");const v0=L.head?"":String(L.cols[0][1](x));/* 첫 칸이 그림 값(h:…)이면 이름을 쓴다 — 태그 글자가 그대로 보이지 않게 */if(/^h:/.test(v0)&&x.name)return esc(x.name);d.innerHTML=L.head?L.head(x):/^h:/.test(v0)?v0.slice(2):esc(v0.replace(/^[!@]g?:?/,""));return esc(d.textContent.replace(/\s+/g," ").trim())}
+function rowName(k,x){if(k==="grades")return esc(`${nmStu(x.sid)} · ${(DB.exams.find(e=>e.id===x.examId)||{}).name||"시험"}`);if(k==="anotes")return esc(`${D10(x.d)} ${nmCls(x.classId)} · ${nmStu(x.sid)}`);if(k==="recs")return esc(`${D10(x.d)} ${nmCls(x.classId)} · ${x.kind}`);const L=LISTS[k];if(!L)return esc(x.name||"");const d=document.createElement("div");const v0=L.head?"":String(L.cols[0][1](x)).replace(/^[!@]g?:?/,"");/* 첫 칸이 그림 값(h:…)이면 이름을 쓴다 — 태그 글자가 그대로 보이지 않게 */if(/^h:/.test(v0)&&x.name)return esc(x.name);d.innerHTML=L.head?L.head(x):/^h:/.test(v0)?v0.slice(2):esc(v0.replace(/^[!@]g?:?/,""));return esc(d.textContent.replace(/\s+/g," ").trim())}
 const toList=(a,n=8)=>`<div class="svl">${a.slice(0,n).map(t=>`<div>${t}</div>`).join("")}${a.length>n?`<div class="hint">외 ${a.length-n}건</div>`:""}</div>`;
 function rvBtn(){const n=dirtyCount();return `<button class="btn icon tb-ic rvall" id="rvAll" ${n?"":"disabled"} title="${n?`저장 전으로 모두 되돌리기 (${n}건)`:"저장 전으로 모두 되돌리기 — 고친 것이 없어요"}">${IC("undo")}</button>`}
 function rvSync(){const n=dirtyCount();const b=document.getElementById("rvAll");if(b){b.disabled=!n;b.title=n?`저장 전으로 모두 되돌리기 (${n}건)`:"저장 전으로 모두 되돌리기 — 고친 것이 없어요"}const sv=document.getElementById("saveAll");if(sv){sv.disabled=!n;const m=sv.querySelector(".num");if(m)m.textContent=n;sv.title=dirtyTitle()}const ls=document.getElementById("lsSave");if(ls&&activeTab&&activeTab.state.lsel&&lxRows(activeTab.state.lsel).length)ls.disabled=false}
@@ -377,7 +377,7 @@ function viewScrollKeep(){const v=document.getElementById("view");if(!v)return n
 function viewScrollBack(o,late){/* 269판: 두 번째(다음 프레임) 복원은 그 사이 코드·사람이 옮긴 스크롤을 덮지 않음 */if(!o||o.k!==viewKey())return;const v=document.getElementById("view");if(!v)return;const cnt={};const els=[v,...v.querySelectorAll("*")].filter(e=>!e.closest(".panel"));o.out.forEach(([c,i,t,l])=>{let n=0;const e=els.find(e=>(e.id?"#"+e.id:String(e.className||e.tagName).split(" ")[0])===c&&++n===i);if(!e)return;if(late&&e._vsAt&&(Math.abs(e.scrollTop-e._vsAt[0])>1||Math.abs(e.scrollLeft-e._vsAt[1])>1))return;if(t&&Math.abs(e.scrollTop-t)>1)e.scrollTop=t;if(l&&Math.abs(e.scrollLeft-l)>1)e.scrollLeft=l;e._vsAt=[e.scrollTop,e.scrollLeft]})}
 function render(){{const st=activeTab&&activeTab.state;if(st){if(st.tedit&&panelOpen&&!st._tePH){st._tePH=1;panelOpen=false}else if(!st.tedit&&st._tePH){delete st._tePH;panelOpen=true}}}/* 표 편집 중엔 오른쪽 창 접기 — 기준 3장 "표 편집 칸 이동" *//* 282판: 열린 탭 모두 — 없는 시즌을 붙든 탭은 오늘이 든 시즌으로 */(typeof tabs!=="undefined"?tabs:[]).concat(activeTab?[activeTab]:[]).forEach(t=>{if(!t||!t.state)return;const bad=t.state.season&&!DB.seasons.some(z=>z.id===t.state.season&&!z.del);const need=t.screen==="timetable"&&!t.state.season;if(bad||need)t.state.season=seaToday()});const KS=scrollKeep(),VS=viewScrollKeep();panelSync();queueMicrotask(modeBar);setTimeout(fitBars,0);{const vw=document.getElementById("view");if(vw)vw.classList.toggle("tedit-on",!!(activeTab&&activeTab.screen==="students"&&activeTab.state.tedit))}setTimeout(saveTabs,0);applyDock();setTimeout(syncHead,0);const sd=document.getElementById("side");const wm=WMODE();document.body.dataset.w=wm;
   if(wm==="tabv"){sd.hidden=!drawerOpen;sd.classList.toggle("drawer",true)}else{sd.hidden=!sideOpen;sd.classList.remove("drawer");drawerOpen=false}renderSide();renderTabs();const v=document.getElementById("view");const t=activeTab;
-  if(t.screen==="timetable")renderTimetable(v,t);else if(t.screen==="admin")renderAdmin(v);else if(t.screen==="academy")renderAcademy(v);else if(t.screen==="today")renderToday(v,t);else if(t.screen==="makeup")renderMakeup(v,t);else renderList(v,t);panelAnim();scrollBack(KS);viewScrollBack(VS);requestAnimationFrame(()=>viewScrollBack(VS,1))}
+  if(t.screen==="timetable")renderTimetable(v,t);else if(t.screen==="admin")renderAdmin(v);else if(t.screen==="academy")renderAcademy(v);else if(t.screen==="today")renderToday(v,t);else if(t.screen==="makeup")renderMakeup(v,t);else renderList(v,t);/* 창 폭 손잡이는 여기 한 곳에서: 화면이 따로 붙이지 않았어도(보강 화면이 빠져 있었음 — 대표 261117) 창이 있으면 붙인다 */{const pn=v.querySelector(".panel:not(.stpanel)");if(pn&&pn.parentElement&&!pn.parentElement.querySelector(":scope > .rsz, :scope > .srsz"))addResizer(pn)}panelAnim();scrollBack(KS);viewScrollBack(VS);requestAnimationFrame(()=>viewScrollBack(VS,1))}
 // 오른쪽 창 움직임(261112 대표): 새로 열릴 때 오른쪽에서 밀려 들어옴, 고정·띄우기 바뀔 때 살짝, 닫을 때 오른쪽으로 빠짐. 다시 그릴 때마다는 안 움직임
 const RMO=()=>window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;let pPrev={open:false,dock:false};
 function panelAnim(){const pn=document.querySelector(".body>.panel");const now={open:!!pn,dock:!!dockOn};if(pn&&!RMO()){if(!pPrev.open)pn.classList.add("p-in");else if(pPrev.dock!==now.dock)pn.classList.add("p-sw")}pPrev=now}
@@ -1035,7 +1035,7 @@ function panelLesson(p,t,items){const st=t.state;if(st.mkNew)return panelMakeup(
       <div class="actions"><span class="sp"></span><button class="btn" id="cfC">취소</button><button class="btn pri" id="cfO">넣기</button></div>`,(md3,close)=>{md3.querySelector("#cfC").onclick=close;md3.querySelector("#cfO").onclick=()=>{close();doAdd()}})};
     const doAdd=()=>{let made2=0;w.sids.forEach(id=>{let en=DB.enrolls.find(x=>x.classId===b.classId&&!x.ended&&x.studentId===id);if(!en){en={id:uid("e"),studentId:id,classId:b.classId,start:w.from,discount:0};DB.enrolls.push(en);made2++}if(!b.regs.includes(en.id))b.regs.push(en.id)});
       const n=w.sids.length;st.addStu=null;st.addW=null;commit();toast(`${n}명을 시간표에 넣었어요 — ${md(w.from)} 수업부터${made2?` · 수강 등록 ${made2}건`:""} (시제품: 노션에 쓰지 않음)`)};return}
-  p.innerHTML=`${PANEL.head({dot:classBar(c),name:c.name,chipsHtml:`${kindPill(e.off?"휴강":"정규")}${draftPill(k)}`,lock:lockBtn,belong:`${mdw(d)} ${fmt(b.start)}-${fmt(b.end)}`,info:[tch(c.teacherId).name,`출석 ${sm.출석}/${sm.출석+sm.결석+sm.보강+sm.미입력}`],notion:'data-nl="lesson" data-nlname="수업"'})}
+  p.innerHTML=`${PANEL.head({dot:classBar(c),name:c.name,chipsHtml:`${kindPill(e.off?"휴강":"정규")}${draftPill(k)}`,lock:lockBtn,belong:`${mdw(d)} ${fmt(e.moved?b.start:e.start)}-${fmt(e.moved?b.end:e.end)}`/* 실제 자료 모드: 노션 수업의 시각(lessonEff) */,info:[tch(c.teacherId).name,`출석 ${sm.출석}/${sm.출석+sm.결석+sm.보강+sm.미입력}`],notion:'data-nl="lesson" data-nlname="수업"'})}
   ${PANEL.tabs([["att","출결",e.off?"":`${sm.출석+sm.보강}/${studs.length}`],["log","학습기록",nLog?String(nLog):""],["rep","보고서",(()=>{const n=Object.keys(lrepOf(k).sent).length;return n?String(n):""})()],["info","정보",e.moved?"옮김":e.off?"휴강":""]].map(([k2,n2,sub])=>({id:k2,label:n2,n:sub,dot:lTabDirty(typeof mk==="string"?mk:k,k2)?'<i class="tdot"></i>':""})),lt,"lt2")}
   <section class="ptab ${lt==="att"?"on":""}">
   ${e.off?`<div class="offbox">휴강한 수업이에요. 출결은 받지 않아요.<br>되돌리려면 [정보] 탭의 [정규].</div>`:(()=>{const n=studs.length,hw=hwSum(b,d),ev=evalAvg(b,d);const tl=[`<div class="tl"><div class="k">출석</div><div class="v">${sm.출석+sm.보강}<small> / ${n}</small></div>${segBar([["ok",sm.출석],["mk",sm.보강],["ab",sm.결석],["no",sm.미입력]])}</div>`];
@@ -3290,7 +3290,7 @@ function enBkList(e){return enPgAll(e).sort((a,b)=>(a.mode==="개별")-(b.mode==
 function enTtToggle(e,b,on){if(!e||!b)return false;enKeep(e);const has=b.regs.includes(e.id);if(on==null)on=!has;if(on&&!has)b.regs.push(e.id);if(!on&&has)b.regs=b.regs.filter(z=>z!==e.id);b.state="draft";e.state="draft";return true}
 function enBkToggle(e,g){if(!e||!g)return false;if(g.mode==="개별"&&g.studentId===e.studentId){toast("이 학생의 개별 진도교재예요 — 진도관리에서 바꿔요");return false}enKeep(e);const key=g.mode==="개별"?"bkOn":"bkOff";const S=new Set(e[key]||[]);S.has(g.id)?S.delete(g.id):S.add(g.id);e[key]=[...S];e.state="draft";return true}
 /* 계산 칸(기준 3장): 입력칸 모양 · 고칠 수 없음 · 아래 "자동 계산 — 이유" */
-function calcField(h,o){if(!h||!window.HF)return;HF.text(h,{label:o.label,value:"",disabled:true,icon:o.icon||"loader",help:"자동 계산 — "+o.why});const bx=h.querySelector(".hf-box");const inp=bx&&bx.querySelector("input");if(inp)inp.remove();if(bx)bx.insertAdjacentHTML("beforeend",`<span class="calcv">${o.html||'<span class="none">—</span>'}</span>`)}
+function calcField(h,o){if(!h||!window.HF)return;HF.text(h,{label:o.label,value:"",disabled:true,icon:o.icon||"calc",help:"자동 계산 — "+o.why});const bx=h.querySelector(".hf-box");const inp=bx&&bx.querySelector("input");if(inp)inp.remove();if(bx)bx.insertAdjacentHTML("beforeend",`<span class="calcv">${o.html||'<span class="none">—</span>'}</span>`)}
 function enStatCalc(e){if(!e.studentId||!e.classId)return {label:"등록상태",html:"",why:"학생 · 클래스 · 등록일을 넣으면 정해져요"};if(!e.start)return {label:"등록상태",html:"",why:"등록일을 넣으면 정해져요"};const k=e.ended?"end":enStat(e);
   return k==="pre"?{label:"등록상태",html:`${enPill("pre")}<span>${D10(e.start)}부터</span>`,why:"등록일이 아직 오지 않아서 수강 대기예요"}:k==="end"?{label:"등록상태",html:`${enPill("end")}<span>${D10(e.start)} - ${D10(e.end)||""}</span>`,why:e.ended&&!(e.end&&e.end<TODAY)?"종료 처리해서 수강 종료예요":"종료일이 지나서 수강 종료예요"}:{label:"등록상태",html:`${enPill("on")}<span>${D10(e.start)} - ${e.end?D10(e.end):"현재"}</span>`,why:`등록일이 지났고 종료일이 ${e.end?"아직 오지 않아서":"비어 있어서"} 수강 중이에요`}}
 /* 등록의 클래스 정하기(새 등록): 전 클래스 시간표에서 빼고, 새 클래스의 그룹 시간표에 넣기(노션 [시간표 설정]과 같음) */
@@ -4052,6 +4052,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del).slice().sort(
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="appdata.js?v=516"></script><script src="appsave.js?v=516"></script><script src="appview.js?v=516"></script><script src="livelesson.js?v=516"></script><script src="live.js?v=516"></script>
+<script src="appdata.js?v=517"></script><script src="appsave.js?v=517"></script><script src="appview.js?v=517"></script><script src="livelesson.js?v=517"></script><script src="live.js?v=517"></script>
 </body>
 </html>
