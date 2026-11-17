@@ -1,5 +1,6 @@
 import { NOTION_API, DS_SCHEDULE_EVENT } from "./constants.ts"
 import { fetchWithRetry, notionHeaders } from "./notionClient.ts"
+import { categoryOptionsOf } from "./neisSchool.ts"
 export async function schoolNotion(path: string, method = "GET", body?: unknown): Promise<any> {
   if (!DS_SCHEDULE_EVENT) throw new Error("DATA_SOURCE_SCHEDULE_EVENT_ID 설정 필요")
   const init = { method, headers: notionHeaders(), body: body === undefined ? undefined : JSON.stringify(body) }
@@ -15,6 +16,6 @@ export async function schoolSources() {
   const schools = db.properties?.["학교"]?.relation?.data_source_id
   const grades = db.properties?.["학년"]?.relation?.data_source_id
   if (!schools || !grades) throw new Error("일정 DB 학교/학년 관계 연결 확인 필요")
-  return { schools, grades, events: DS_SCHEDULE_EVENT }
+  return { schools, grades, events: DS_SCHEDULE_EVENT, categoryOptions: categoryOptionsOf(db) }
 }
 export function compactId(id: string): string { return id.replaceAll("-", "").toLowerCase() }

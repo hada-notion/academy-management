@@ -7,6 +7,7 @@
 // 월간 일정 안내는 학생 단위다(학생 월간 안내, _shared/monthlyNotice.ts). 이 파일의 한 줄·구역 함수를 같이 쓴다.
 // 큐 모양은 반별 보고서와 같다: 일정 1건이 학생 1건씩을 다시 넣고, 마지막 학생이 상태를 마친다(✅, 중간 실패가 있으면 ⚠️).
 // 발송 규칙은 수업 안내와 같다(설정 행이 꺼졌거나 비면 ⚠️, 연락처 없음 ⚠️, 발송 단계 실패는 다시 보내지 않음). 전송로그는 등록에.
+import { isSchoolCategory } from "./scheduleCategory.ts"
 import { createSendLogEntry, extractErrorMessage, getBotUserId, type AlimtalkConfigCategory } from "./adminShared.ts"
 import { EVENT_NOTICE_MEMO, propRich } from "./propAlias.ts"
 import { getFormulaText } from "./alimtalkShared.ts"
@@ -92,15 +93,15 @@ export function eventLabel(event: any): string {
 	if (custom) return custom
 	const cat = String(p["구분"]?.select?.name ?? "")
 	if (cat.includes("휴원")) return "휴원"
-	if (cat.includes("학사")) return "학사"
+	if (isSchoolCategory(cat)) return "학사"
 	return "학원"
 }
 
-// 월간 일정 안내의 구역: 💤 휴원 → 휴원, 🏫 학사 일정 → 학교, 그 밖(📆 학원 일정) → 학원.
+// 월간 일정 안내의 구역: 💤 휴원 → 휴원, 학교 일정(학교 행사·시험·방학/휴교, 옛 🏫 학사 일정) → 학교, 그 밖(📆 학원 일정) → 학원.
 export type Section = "휴원" | "학원" | "학교"
 export function sectionOf(event: any): Section {
 	const cat = String(event?.properties?.["구분"]?.select?.name ?? "")
-	return cat.includes("휴원") ? "휴원" : cat.includes("학사") ? "학교" : "학원"
+	return cat.includes("휴원") ? "휴원" : isSchoolCategory(cat) ? "학교" : "학원"
 }
 
 // 월간 일정 안내 한 구역의 일정 수 한도(넘치면 "외 N건"). 알림톡 1,000자를 넘지 않게 한다.

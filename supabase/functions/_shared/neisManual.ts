@@ -13,7 +13,6 @@ export function sameOwnedEvent(page: any, row: NeisRow, schoolId: string, key: s
   return textOf(page, "이름") === row.EVENT_NM &&
     page.properties?.["날짜"]?.date?.start === props["날짜"].date.start &&
     !page.properties?.["날짜"]?.date?.end &&
-    page.properties?.["구분"]?.select?.name === "🏫 학사 일정" &&
     textOf(page, "원본 행사내용") === (row.EVENT_CNTNT ?? "") &&
     textOf(page, "수업공제일명") === (row.SBTR_DD_SC_NM ?? "") &&
     textOf(page, "대상 학년") === (eventGrades(row).map(n => `${n}학년`).join(", ") || "미지정") &&
