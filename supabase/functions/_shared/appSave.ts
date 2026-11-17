@@ -15,7 +15,7 @@
 import { NOTION_API } from "./constants.ts"
 import { createPage, fetchWithRetry, notionHeaders, updatePageProperties, getPage } from "./notionClient.ts"
 import { fetchSupabaseWithRetry } from "./reportCacheShared.ts"
-import { appSources, pageRow, type AppDb } from "./appCopy.ts"
+import { appSources, pageRow, sourceProblem, SKIP_PROPS, type AppDb } from "./appCopy.ts"
 import { enqueueSync, wakeSyncQueueWorker } from "./syncQueue.ts"
 
 export const WRITE_DBS = [
@@ -63,6 +63,7 @@ export function toNotionProps(props: Record<string, unknown>, schema: Schema, re
 	for (const [name, value] of Object.entries(props ?? {})) {
 		const def = schema[name]
 		if (!def) throw new SaveError(400, `없는 칸: ${name}`)
+		if (SKIP_PROPS.has(name)) throw new SaveError(400, `앱에서 쓰지 않는 칸: ${name}`)
 		if (!WRITABLE.has(def.type)) throw new SaveError(400, `쓸 수 없는 칸(${def.type}): ${name}`)
 		switch (def.type) {
 			case "title": out[name] = { title: rt(value) }; break
@@ -152,6 +153,8 @@ export async function saveChanges(changes: Change[]): Promise<ChangeResult[]> {
 	const out: ChangeResult[] = []
 	for (const [i, c] of changes.entries()) {
 		try {
+			const problem = await sourceProblem(c.db as AppDb)
+			if (problem) throw new SaveError(409, `${c.db}: ${problem}`)
 			const ds = (sources.get(c.db as AppDb) ?? [])[0]
 			if (!ds) throw new SaveError(404, `Notion에서 ${c.db}를 찾지 못했습니다.`)
 			const props = toNotionProps(c.props, await dataSourceSchema(ds), resolve)
