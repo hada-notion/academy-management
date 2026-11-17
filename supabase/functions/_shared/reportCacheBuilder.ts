@@ -58,6 +58,15 @@ async function shareQueriedPages(pages: any[], cachedGetPage: (id: string) => Pr
 // 주므로 학사일정을 많이 가져온 학교(예: 한 해 200건)는 최근 일정이 빠져 리포트에 나오지 않았다.
 // 학원 전체 일정(클래스·학생·학교·학년이 모두 빈 공개 일정)도 여기서 함께 모은다. 같은 실행 안에서는 기준마다 한 번만 조회한다(1분).
 export const noticeDeps = { query: queryAllPages }
+// 일정 리포트 반영(sync-report-cache)이 방금 바뀐 일정 페이지를 페이지 읽기 함수에 붙여 넘긴다(freshNotices).
+// 같은 반영 안에서 다시 만드는 모든 리포트가 그 값을 쓴다.
+export function withFreshNotices<T extends (id: string) => Promise<any>>(getPage: T, pages: any[]): T {
+  (getPage as any).freshNotices = pages.filter((p) => p?.id && p?.properties)
+  return getPage
+}
+function freshNoticesOf(getPage: unknown): any[] {
+  return ((getPage as any)?.freshNotices ?? []) as any[]
+}
 const noticeQueryCache = new Map<string, { at: number; pages: Promise<any[]> }>()
 export function clearNoticeCache() { noticeQueryCache.clear() }
 function publicEvents(link: { prop: "학생" | "클래스" | "학교" | "학년"; id: string } | null, sinceIso: string): Promise<any[]> {
@@ -111,6 +120,12 @@ export async function buildStudentNotices(
   const schoolGradeIds = new Set<string>([...schoolEvents, ...gradeEvents].map((n: any) => n.id))
   const byId = new Map<string, any>()
   for (const n of [...studentEvents, ...classEvents, ...academyEvents, ...schoolEvents, ...gradeEvents]) byId.set(n.id, n)
+  // 방금 바뀐 일정(웹훅 본문·직접 읽은 값)은 조회 결과보다 먼저 쓴다 — 조회는 바뀌기 전 속성을 한동안 돌려준다(261118 원본 검수 2회).
+  // 조회에 아직 안 나온 새 대상(B)에게도 싣는다. 학교·학년이 있으면 학교·학년 맞추기로 본다.
+  for (const f of freshNoticesOf(cachedGetPage)) {
+    byId.set(f.id, f)
+    if (relationIds(f.properties?.["학교"]).length || relationIds(f.properties?.["학년"]).length) schoolGradeIds.add(f.id)
+  }
   const noticePages = await shareQueriedPages(Array.from(byId.values()), cachedGetPage)
   const plainId = (id: string) => String(id ?? "").replaceAll("-", "").toLowerCase()
   const activeClassKeys = new Set(activeClassIds.map(plainId))

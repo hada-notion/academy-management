@@ -17,7 +17,7 @@
 import { requireAdminKey, getBotUserId, CORS_HEADERS as ADMIN_CORS } from "../_shared/adminShared.ts"
 import { noticeReportSyncNotNeeded } from "../_shared/scheduleVisibility.ts"
 import { selectReportCacheByToken, selectRegistrationIdsByNoticeId, text, dateStartOf } from "../_shared/reportCacheShared.ts"
-import { isNoticePage } from "../_shared/syncReportCacheTarget.ts"
+import { isNoticePage, resolveRegistrationIdsForNotice } from "../_shared/syncReportCacheTarget.ts"
 import { queryAllPages, mapWithConcurrency, extractPageId } from "../_shared/notionClient.ts"
 import { makePageCache } from "../_shared/reportCacheShared.ts"
 import { upsertReportCacheRows, type ReportCacheRow } from "../_shared/reportCacheShared.ts"
@@ -25,6 +25,7 @@ import {
   buildCacheRowForRegistration,
   resolveSharedLearningRegistrationIds,
   syncReportCacheForRegistration,
+  withFreshNotices,
 } from "../_shared/reportCacheBuilder.ts"
 import { resolveRegistrationIds, DS_REGISTRATION } from "../_shared/syncReportCacheTarget.ts"
 import { refreshStudentReport } from "../_shared/dailyReportRefresh.ts"
@@ -88,9 +89,15 @@ Deno.serve(async (req: Request) => {
         headers: { ...ADMIN_CORS, "Content-Type": "application/json" },
       })
     }
-    // 일정이면 지금 대상 + 지금 이 일정을 싣고 있는 리포트(옛 대상 — 대상이 바뀌었거나 비공개가 된 경우 빠지게).
-    const currentIds = await resolveRegistrationIds(rawId, cachedGetPage)
-    const registrationIds = isNoticePage(sourcePage)
+    // 일정이면: 웹훅 본문에 온 새 속성을 가장 믿는다(Notion 조회는 바뀌기 전 값을 한동안 돌려줌). 그 값으로 지금 대상을 찾고,
+    // 다시 만드는 리포트들도 그 값으로 일정을 싣거나 뺀다(withFreshNotices). 그 위에 지금 이 일정을 싣고 있는 리포트(옛 대상).
+    const notice = isNoticePage(sourcePage)
+    const fromBody = body?.data?.properties && typeof body?.data?.id === "string" &&
+      body.data.id.replace(/-/g, "").toLowerCase() === String(sourcePage.id).replace(/-/g, "").toLowerCase()
+    const freshNotice = notice && fromBody ? { ...sourcePage, properties: { ...sourcePage.properties, ...body.data.properties } } : sourcePage
+    if (notice) withFreshNotices(cachedGetPage, [freshNotice])
+    const currentIds = notice ? await resolveRegistrationIdsForNotice(freshNotice, cachedGetPage) : await resolveRegistrationIds(rawId, cachedGetPage)
+    const registrationIds = notice
       ? [...new Set([...currentIds, ...await selectRegistrationIdsByNoticeId(
         sourcePage.id,
         // 옛 캐시(일정 id 목록 없음)는 리포트에 실린 제목·날짜로 찾는다 — reportCacheBuilder와 같은 계산.
