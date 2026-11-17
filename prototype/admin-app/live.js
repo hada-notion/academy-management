@@ -8,6 +8,8 @@
   /* 실제 자료 모드에서는 예시 자료를 띄우지 않는다: 곧바로 모든 묶음을 비우고, 노션 자료를 다 받기 전(또는 못 받았을 때)에는
      저장 창이 열리지 않는다. 예시 자료가 노션에 들어가는 길을 없앤다(저장 층 appSaveSend도 LIVE.loaded가 없으면 보내지 않는다). */
   window.LIVE_MODE = true;
+  /* 수업 · 출결은 지어내지 않는다(livelesson.js): 수업 관리 서버가 준 것만 보인다 */
+  if (typeof liveLessonInstall === "function") liveLessonInstall();
   /* 실제 자료 모드의 오늘 = 진짜 오늘(예시 자료의 고정 기준일을 쓰지 않는다 — 새 학생 문의일 · 등록일 기본값) */
   try { const n = new Date(), p = (v) => String(v).padStart(2, "0"); TODAY = `${n.getFullYear()}-${p(n.getMonth() + 1)}-${p(n.getDate())}`; if (window.HP) HP.today = TODAY; } catch (_) {}
   const banner = (msg, bad) => {
@@ -28,8 +30,9 @@
   } catch (_) {}
   /* 보기만(P2 보기 칸): 이 칸의 화면은 노션 값을 보여 주기만 한다. 쓰는 단추는 끄고, 창의 칸은 잠그고, 그래도 값이 바뀌면 그 자리에서 되돌린다.
      고칠 것은 창 위 [노션에서 열기]로. (이 묶음들은 저장 층 대상이 아니라 노션에 갈 길도 없다) */
-  const P2ON = gOn.has("P2"), RO = new Set(GATES.P2);
+  const P2ON = gOn.has("P2"), RO = new Set([...GATES.P2, ...GATES.P3, ...GATES.P3b]); /* P3 수업은 걸음 1 = 보기만 */
   window.liveRO = (s) => RO.has(s);
+  window.liveScr = (t) => (t && t.screen === "timetable" && t.state && t.state.view === "lesson" ? "lesson" : t ? t.screen : "");
   let roBase = null, roScreen = null, roBusy = false;
   window.liveRoReset = () => { roBase = null; };
   const roCss = document.createElement("style");
@@ -50,15 +53,16 @@
     }
   };
   const roLock = () => {
-    const t = typeof activeTab !== "undefined" ? activeTab : null, on = !!(t && window.LIVE && window.LIVE.loaded && RO.has(t.screen));
+    const t = typeof activeTab !== "undefined" ? activeTab : null, scr = liveScr(t), on = !!(t && window.LIVE && window.LIVE.loaded && RO.has(scr));
     document.body.classList.toggle("live-ro", on);
     if (!on) { roBase = null; roScreen = null; return; }
     const now = snapshot();
-    if (roBase === null || roScreen !== t.screen) { roBase = now; roScreen = t.screen; }
+    if (roBase === null || roScreen !== scr) { roBase = now; roScreen = scr; }
     else if (now !== roBase && !roBusy) {
       roBusy = true;
       try {
         Object.assign(DB, JSON.parse(roBase)); lastSnap = snapshot();
+        try { LDIRTY.clear(); } catch (_) {} /* 수업 창에서 생긴 작성 중 표시도 지운다(수업 화면은 모두 보기만) */
         if (undoStack.length && undoStack[undoStack.length - 1] === roBase) undoStack.pop();
         r0(); say("이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요");
       } finally { roBusy = false; }
@@ -67,11 +71,17 @@
     roDress();
   };
   const r0 = render;
-  render = function () { const out = r0.apply(this, arguments); try { roLock(); } catch (_) {} return out; };
+  /* 수업 화면 = 시간표 화면의 [수업] 보기. 수업 칸(P3)이 꺼져 있으면 그 보기로 못 넘어가게 한다(단추도 숨김) */
+  const lessonGate = () => {
+    const t = typeof activeTab !== "undefined" ? activeTab : null;
+    if (t && t.screen === "timetable" && t.state && t.state.view === "lesson" && !gateOn("lesson")) { t.state.view = "tt"; t.state.lsel = null; say("수업 화면은 아직 열지 않았어요 — 노션에서 봐요"); }
+  };
+  roCss.textContent += gateOn("lesson") ? "" : '#view [data-view="lesson"]{display:none!important}';
+  render = function () { try { lessonGate(); } catch (_) {} const out = r0.apply(this, arguments); try { roLock(); } catch (_) {} try { if (typeof liveLessonNeed === "function") liveLessonNeed(); } catch (_) {} return out; };
   /* 되돌리기 · 다시 하기 · 모두 되돌리기는 입력 칸(P1)의 값을 움직이는 일이라 보기 화면에서도 막지 않는다 */
   ["undo", "redo", "revertAll"].forEach((k) => { try { const f0 = eval(k); eval(k + " = function () { roBase = null; return f0.apply(this, arguments); }"); } catch (_) {} });
   document.addEventListener("beforeinput", (e) => { if (document.body.classList.contains("live-ro") && e.target.closest && e.target.closest(".panel,#view table")) e.preventDefault(); }, true);
-  const wipe = () => { try { appApply({}, DB); if (typeof lastSnap !== "undefined" && typeof snapshot === "function") lastSnap = snapshot(); if (typeof undoStack !== "undefined") undoStack.length = 0; if (typeof render === "function") render(); } catch (_) {} };
+  const wipe = () => { try { if (typeof liveLessonReset === "function") liveLessonReset(); appApply({}, DB); if (typeof lastSnap !== "undefined" && typeof snapshot === "function") lastSnap = snapshot(); if (typeof undoStack !== "undefined") undoStack.length = 0; if (typeof render === "function") render(); } catch (_) {} };
   wipe();
   banner("노션 자료를 받는 중이에요 — 받기 전에는 저장할 수 없어요");
   const sd0 = saveDialog;
