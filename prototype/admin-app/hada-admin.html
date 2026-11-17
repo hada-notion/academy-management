@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=514">
-<link rel="stylesheet" href="app.css?v=514">
-<link rel="stylesheet" href="pick.css?v=514">
-<link rel="stylesheet" href="field.css?v=514">
+<link rel="stylesheet" href="hada-tokens.css?v=516">
+<link rel="stylesheet" href="app.css?v=516">
+<link rel="stylesheet" href="pick.css?v=516">
+<link rel="stylesheet" href="field.css?v=516">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=514"><script src="hada-rules.js?v=514"></script><script src="alim-preview.js?v=514"></script><script src="pick.js?v=514"></script><script src="field.js?v=514"></script><script src="panel.js?v=514"></script>
+<link rel="stylesheet" href="alim.css?v=516"><script src="hada-rules.js?v=516"></script><script src="alim-preview.js?v=516"></script><script src="pick.js?v=516"></script><script src="field.js?v=516"></script><script src="panel.js?v=516"></script>
 <script>
 "use strict";
 
@@ -178,7 +178,7 @@ function tbSlots(st,o){/* 표 화면 D3 앞 네 자리: 평소 [엑셀][표 편�
   return st.tedit?`<button class="btn tb-ic" id="colB" title="열 정리 — 열 순서·숨기기${o.hid?` (${o.hid}개 숨김)`:""}">${IC("eye","s")}</button><button class="btn pri tb-ic" id="tbEd" title="완료 — 편집을 마쳐요(고친 줄은 작성 중 → [저장])">${IC("check","s")}</button><button class="btn tb-ic" id="teCancel" title="취소 — 이번 편집을 모두 되돌리고 나가요">${IC("x","s")}</button>${add}`
    :`<button class="btn tb-ic" id="xlB" title="엑셀 — ${o.up?"내려받기 · 한번에 올리기":"내려받기"}">${IC("xls","s xl")}</button><button class="btn tb-ic" id="tbEd" ${o.ro?"disabled":""} title="${o.ro?"표 편집 — 보기만 하는 화면이에요(열을 숨기거나 정렬하려면 열 제목을 눌러요)":`표 편집 — 칸을 바로 고치고 열을 정리해요${o.hid?` (${o.hid}개 숨김)`:""}`}">${IC("pen","s")}</button><button class="btn tb-ic" id="prB" title="인쇄 — 지금 보는 목록(필터 조건 그대로)">${IC("printer","s")}</button>${add}`}
 const COLLNAME={classes:"클래스",enrolls:"등록",students:"학생",teachers:"선생님",seasons:"시즌",subjects:"과목",books:"라이브러리",progress:"진도교재",events:"일정",reports:"학습 보고서",tuition:"수강료",bookfees:"청구",letters:"가정통신문",schools:"학교",glevels:"학년",areas:"영역",exams:"시험",costs:"비용",alims:"알림톡 설정",recs:"학습기록",anotes:"출결 한마디·메모",grades:"성적",series:"시리즈",charges:"청구 항목",files:"자료"};
-function rowName(k,x){if(k==="grades")return esc(`${nmStu(x.sid)} · ${(DB.exams.find(e=>e.id===x.examId)||{}).name||"시험"}`);if(k==="anotes")return esc(`${D10(x.d)} ${nmCls(x.classId)} · ${nmStu(x.sid)}`);if(k==="recs")return esc(`${D10(x.d)} ${nmCls(x.classId)} · ${x.kind}`);const L=LISTS[k];if(!L)return esc(x.name||"");const d=document.createElement("div");d.innerHTML=L.head?L.head(x):esc(String(L.cols[0][1](x)).replace(/^[!@]g?:?/,""));return esc(d.textContent.replace(/\s+/g," ").trim())}
+function rowName(k,x){if(k==="grades")return esc(`${nmStu(x.sid)} · ${(DB.exams.find(e=>e.id===x.examId)||{}).name||"시험"}`);if(k==="anotes")return esc(`${D10(x.d)} ${nmCls(x.classId)} · ${nmStu(x.sid)}`);if(k==="recs")return esc(`${D10(x.d)} ${nmCls(x.classId)} · ${x.kind}`);const L=LISTS[k];if(!L)return esc(x.name||"");const d=document.createElement("div");const v0=L.head?"":String(L.cols[0][1](x));/* 첫 칸이 그림 값(h:…)이면 이름을 쓴다 — 태그 글자가 그대로 보이지 않게 */if(/^h:/.test(v0)&&x.name)return esc(x.name);d.innerHTML=L.head?L.head(x):/^h:/.test(v0)?v0.slice(2):esc(v0.replace(/^[!@]g?:?/,""));return esc(d.textContent.replace(/\s+/g," ").trim())}
 const toList=(a,n=8)=>`<div class="svl">${a.slice(0,n).map(t=>`<div>${t}</div>`).join("")}${a.length>n?`<div class="hint">외 ${a.length-n}건</div>`:""}</div>`;
 function rvBtn(){const n=dirtyCount();return `<button class="btn icon tb-ic rvall" id="rvAll" ${n?"":"disabled"} title="${n?`저장 전으로 모두 되돌리기 (${n}건)`:"저장 전으로 모두 되돌리기 — 고친 것이 없어요"}">${IC("undo")}</button>`}
 function rvSync(){const n=dirtyCount();const b=document.getElementById("rvAll");if(b){b.disabled=!n;b.title=n?`저장 전으로 모두 되돌리기 (${n}건)`:"저장 전으로 모두 되돌리기 — 고친 것이 없어요"}const sv=document.getElementById("saveAll");if(sv){sv.disabled=!n;const m=sv.querySelector(".num");if(m)m.textContent=n;sv.title=dirtyTitle()}const ls=document.getElementById("lsSave");if(ls&&activeTab&&activeTab.state.lsel&&lxRows(activeTab.state.lsel).length)ls.disabled=false}
@@ -4052,6 +4052,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del).slice().sort(
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="appdata.js?v=514"></script><script src="appsave.js?v=514"></script><script src="appview.js?v=514"></script><script src="live.js?v=514"></script>
+<script src="appdata.js?v=516"></script><script src="appsave.js?v=516"></script><script src="appview.js?v=516"></script><script src="livelesson.js?v=516"></script><script src="live.js?v=516"></script>
 </body>
 </html>

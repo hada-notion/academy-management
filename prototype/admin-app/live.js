@@ -8,6 +8,8 @@
   /* 실제 자료 모드에서는 예시 자료를 띄우지 않는다: 곧바로 모든 묶음을 비우고, 노션 자료를 다 받기 전(또는 못 받았을 때)에는
      저장 창이 열리지 않는다. 예시 자료가 노션에 들어가는 길을 없앤다(저장 층 appSaveSend도 LIVE.loaded가 없으면 보내지 않는다). */
   window.LIVE_MODE = true;
+  /* 수업 · 출결은 지어내지 않는다(livelesson.js): 수업 관리 서버가 준 것만 보인다 */
+  if (typeof liveLessonInstall === "function") liveLessonInstall();
   /* 실제 자료 모드의 오늘 = 진짜 오늘(예시 자료의 고정 기준일을 쓰지 않는다 — 새 학생 문의일 · 등록일 기본값) */
   try { const n = new Date(), p = (v) => String(v).padStart(2, "0"); TODAY = `${n.getFullYear()}-${p(n.getMonth() + 1)}-${p(n.getDate())}`; if (window.HP) HP.today = TODAY; } catch (_) {}
   const banner = (msg, bad) => {
@@ -28,8 +30,9 @@
   } catch (_) {}
   /* 보기만(P2 보기 칸): 이 칸의 화면은 노션 값을 보여 주기만 한다. 쓰는 단추는 끄고, 창의 칸은 잠그고, 그래도 값이 바뀌면 그 자리에서 되돌린다.
      고칠 것은 창 위 [노션에서 열기]로. (이 묶음들은 저장 층 대상이 아니라 노션에 갈 길도 없다) */
-  const P2ON = gOn.has("P2"), RO = new Set(GATES.P2);
+  const P2ON = gOn.has("P2"), RO = new Set([...GATES.P2, ...GATES.P3, ...GATES.P3b]); /* P3 수업은 걸음 1 = 보기만 */
   window.liveRO = (s) => RO.has(s);
+  window.liveScr = (t) => (t && t.screen === "timetable" && t.state && t.state.view === "lesson" ? "lesson" : t ? t.screen : "");
   let roBase = null, roScreen = null, roBusy = false;
   window.liveRoReset = () => { roBase = null; };
   const roCss = document.createElement("style");
@@ -41,7 +44,8 @@
     q(".panel input:not([type=checkbox]):not([type=radio]),.panel textarea").forEach((i) => { i.readOnly = true; });
     q(".panel select,.panel input[type=checkbox],.panel input[type=radio]").forEach((i) => { i.disabled = true; });
     q(".panel .tdnone").forEach((n) => { const t = n.lastChild; if (t && /여기서 고쳐요/.test(t.textContent)) t.textContent = "줄을 누르면 여기서 봐요 — 고칠 것은 노션에서 고쳐요"; });
-    q(".panel button").forEach((b) => { if (/저장\s*$/.test(b.textContent) && !b.dataset.act2) { b.disabled = true; b.title = why; } }); /* 창 아래 [ㅇㅇ 저장] */
+    /* 창 안의 누르는 것은 이동(RO_PASS)만 남기고 모두 끈다: 전송 · 삭제 · 생성 · 저장 · 켜고 끄기 · 고르기 */
+    q(".panel button,.panel .hf-box").forEach((b) => { if (b.closest(RO_PASS)) return; if ("disabled" in b) b.disabled = true; b.setAttribute("aria-disabled", "true"); b.title = why; });
     const p = document.querySelector(".panel"), id = String((activeTab.state || {}).sel || "");
     if (p && /^[0-9a-f-]{32,36}$/i.test(id) && !p.querySelector(".ro-note")) {
       const n = document.createElement("div"); n.className = "ro-note";
@@ -50,15 +54,16 @@
     }
   };
   const roLock = () => {
-    const t = typeof activeTab !== "undefined" ? activeTab : null, on = !!(t && window.LIVE && window.LIVE.loaded && RO.has(t.screen));
+    const t = typeof activeTab !== "undefined" ? activeTab : null, scr = liveScr(t), on = !!(t && window.LIVE && window.LIVE.loaded && RO.has(scr));
     document.body.classList.toggle("live-ro", on);
     if (!on) { roBase = null; roScreen = null; return; }
     const now = snapshot();
-    if (roBase === null || roScreen !== t.screen) { roBase = now; roScreen = t.screen; }
+    if (roBase === null || roScreen !== scr) { roBase = now; roScreen = scr; }
     else if (now !== roBase && !roBusy) {
       roBusy = true;
       try {
         Object.assign(DB, JSON.parse(roBase)); lastSnap = snapshot();
+        try { LDIRTY.clear(); } catch (_) {} /* 수업 창에서 생긴 작성 중 표시도 지운다(수업 화면은 모두 보기만) */
         if (undoStack.length && undoStack[undoStack.length - 1] === roBase) undoStack.pop();
         r0(); say("이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요");
       } finally { roBusy = false; }
@@ -67,11 +72,34 @@
     roDress();
   };
   const r0 = render;
-  render = function () { const out = r0.apply(this, arguments); try { roLock(); } catch (_) {} return out; };
+  /* 수업 화면 = 시간표 화면의 [수업] 보기. 수업 칸(P3)이 꺼져 있으면 그 보기로 못 넘어가게 한다(단추도 숨김) */
+  const lessonGate = () => {
+    const t = typeof activeTab !== "undefined" ? activeTab : null;
+    if (t && t.screen === "timetable" && t.state && t.state.view === "lesson" && !gateOn("lesson")) { t.state.view = "tt"; t.state.lsel = null; say("수업 화면은 아직 열지 않았어요 — 노션에서 봐요"); }
+  };
+  roCss.textContent += gateOn("lesson") ? "" : '#view [data-view="lesson"]{display:none!important}';
+  render = function () { try { lessonGate(); } catch (_) {} const out = r0.apply(this, arguments); try { roLock(); } catch (_) {} try { if (typeof liveLessonNeed === "function") liveLessonNeed(); } catch (_) {} return out; };
   /* 되돌리기 · 다시 하기 · 모두 되돌리기는 입력 칸(P1)의 값을 움직이는 일이라 보기 화면에서도 막지 않는다 */
   ["undo", "redo", "revertAll"].forEach((k) => { try { const f0 = eval(k); eval(k + " = function () { roBase = null; return f0.apply(this, arguments); }"); } catch (_) {} });
   document.addEventListener("beforeinput", (e) => { if (document.body.classList.contains("live-ro") && e.target.closest && e.target.closest(".panel,#view table")) e.preventDefault(); }, true);
-  const wipe = () => { try { appApply({}, DB); if (typeof lastSnap !== "undefined" && typeof snapshot === "function") lastSnap = snapshot(); if (typeof undoStack !== "undefined") undoStack.length = 0; if (typeof render === "function") render(); } catch (_) {} };
+  /* 보기 칸의 쓰기는 여기 한 곳에서 막는다(화면마다 막지 않는다):
+     ① 창 본문 · 창 아래 단추 줄의 누르는 것(단추 · 고르기 · 켜고 끄기 · 전송 · 삭제 · 생성)은 눌리기 전에 막는다. 이동(탭 · 줄 열기 · 도움말 · 노션 링크)만 지나간다.
+     ② 그래도 값이 바뀌면(다시 그리지 않는 길 포함) 누른 바로 뒤에 견줘 되돌린다. */
+  const RO_PASS = "a,[data-help],[data-notion],[data-drill],[data-go],[data-gobook],[data-gochs],[data-pgfold],[data-entab],.phead,.ptabs,.ro-note,.tdr,.tdmore,.qhelp,summary";
+  const RO_HIT = "button,input,select,textarea,label,[role],[tabindex],[contenteditable],.btn,.lnk,.hf-box";
+  const roBlock = (e) => {
+    if (!document.body.classList.contains("live-ro") || !e.target.closest) return;
+    if (!e.target.closest(".panel")) return;
+    if (e.target.closest(RO_PASS) || !e.target.closest(RO_HIT)) return;
+    if (e.type === "keydown" && !["Enter", " ", "Delete", "Backspace"].includes(e.key)) return;
+    e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+    if (e.type === "click") say("이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요");
+  };
+  ["click", "mousedown", "pointerdown", "keydown", "change"].forEach((ev) => document.addEventListener(ev, roBlock, true));
+  let roTick = null;
+  const roSoon = () => { if (!document.body.classList.contains("live-ro") || roTick) return; roTick = setTimeout(() => { roTick = null; try { roLock(); } catch (_) {} }, 0); };
+  ["click", "change", "input", "keyup", "drop", "paste"].forEach((ev) => document.addEventListener(ev, roSoon, true));
+  const wipe = () => { try { if (typeof liveLessonReset === "function") liveLessonReset(); appApply({}, DB); if (typeof lastSnap !== "undefined" && typeof snapshot === "function") lastSnap = snapshot(); if (typeof undoStack !== "undefined") undoStack.length = 0; if (typeof render === "function") render(); } catch (_) {} };
   wipe();
   banner("노션 자료를 받는 중이에요 — 받기 전에는 저장할 수 없어요");
   const sd0 = saveDialog;
@@ -101,6 +129,8 @@
         /* 보기 칸(P2)이 켜져 있으면 보기 묶음(일정 · 보고서 · 수강료 · 청구 · 시험 · 알림톡 설정 · 자료)도 함께 받는다 */
         await (P2ON && typeof appViewLoad === "function" ? appViewLoad : appLoad)({ url: cfg.url, anonKey: cfg.anonKey, session });
         appSaveMark(DB); /* 불러온 값을 기준으로 적어 둠 — 저장 때 달라진 칸만 보냄 */
+        /* [모두 되돌리기]가 돌아갈 값도 불러온 값으로 적어 둔다(안 적으면 고친 줄이 되돌리기 때 화면에서 빠진다) */
+        try { savedSync(); DB.blocks.forEach((b) => { try { tSnap(b); } catch (_) {} }); } catch (_) {}
         try { liveOptions(await liveApi({ url: cfg.url, anonKey: cfg.anonKey, session }, { action: "options" })); } catch (_) { /* 선택지를 못 받아도 화면은 열린다(저장 때 서버가 거름) */ }
         /* loaded = 이번에 노션 자료를 끝까지 받았다는 표시. 이 표시가 있을 때만 저장한다 */
         window.LIVE = { url: cfg.url, anonKey: cfg.anonKey, session, at: new Date().toISOString(), loaded: true };
