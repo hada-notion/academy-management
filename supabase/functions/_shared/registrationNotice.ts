@@ -1,13 +1,13 @@
 // _shared/registrationNotice.ts
 //
-// (v2.8.0, 10/31) 등록 안내·클래스 변경 안내 알림톡. 상담 → 등록 → 시간표·클래스 변경으로 이어지는 안내 중 등록 단계.
-// 등록 페이지 [등록 안내]·[클래스 변경 안내] → send-lesson-notice/registration · /class-change → 큐 한 건(이 모듈).
+// (v2.8.0, 10/31) 등록 안내 알림톡. 상담 → 등록 → 시간표 변경으로 이어지는 안내 중 등록 단계.
+// 등록 페이지 [등록 안내] → send-lesson-notice/registration → 큐 한 건(이 모듈).
 //
 //   - 등록 안내: [기본 정보] 👤 학생 · 🏫 학교 · 🎓 학년(학생정보, 비면 "-") / [등록 정보] 🏛 클래스 · 📅 시작(등록일) · 🕒 시간(등록 시간표)
 //     / [전달 사항] 등록 `안내 메모`
 //     / 버튼 학부모 리포트(토큰이 없으면 만든다).
-//   - 클래스 변경 안내(10/31 사용자): 반을 옮기면 예전 등록을 종료하고 새 반 등록을 만든다(등록 = 학생 × 클래스). 새 등록에서
-//     누르며, 본문·변수는 등록 안내와 같고 제목만 다르다. 예전 반·옮기는 이유는 안내 메모(전달사항)에 적는다.
+//   - 반을 옮기거나 더해도 새 반 등록이 생기므로(등록 = 학생 × 클래스) 새 등록에서 [등록 안내]를 누른다. 예전 반·이유는
+//     안내 메모(전달사항)에 적는다. (따로 있던 클래스 변경 안내는 v2.8.0 항목 66, 11/15에 없앴다.)
 //   - 시간은 등록일에 적용되는 시간표(시간표 `적용 기간`, 등록일이 지났으면 오늘). 새 반 등록이면 새 반 시간표가 나온다.
 //   - 보낸 뒤 등록 `안내한 시간표`에 그 시간표를 적고(다음 시간표 변경 안내의 중복 확인, _shared/timetableNotice.ts),
 //     한 번 쓰는 `안내 메모`는 비운다.
@@ -15,6 +15,7 @@
 //     서버가 같은 모양으로 만든다(등록일은 날짜만이라 수식의 UTC 문제가 없다). 설정 행이 꺼져 있으면 보내지 않는다.
 //   - 상태는 등록 `안내 상태`(⏳→🔄→✅/⚠️), 실패 사유는 등록 `마지막 오류`.
 import { createSendLogEntry, extractErrorMessage, getBotUserId, type SendLogCategory } from "./adminShared.ts"
+import { propKey, propRich, REG_NOTICE_MEMO } from "./propAlias.ts"
 import { syncStudentReport } from "./alimtalkShared.ts"
 import { getPage, relIds, updatePageProperties } from "./notionClient.ts"
 import { PROP_LAST_ERROR, PROP_TIMETABLE } from "./constants.ts"
@@ -30,9 +31,9 @@ export const REGISTRATION_NOTICE_STATUS_SPEC: StatusSpec = {
 	startedAtProp: "안내 처리 시작 시각",
 }
 export const TARGET_REGISTRATION_NOTICE = "registration-notice"
-export const REGISTRATION_MEMO_PROP = REG_MEMO_PROP // 등록(학원) DB, 보낸 뒤 비운다(시간표 변경 안내와 함께 씀)
+export const REGISTRATION_MEMO_PROP = REG_MEMO_PROP // 등록(학원) DB `등록 안내 메모`(예전 `안내 메모`), 보낸 뒤 비운다(시간표 변경 안내와 함께 씀)
 
-export type RegistrationNoticeKind = "등록 안내" | "클래스 변경 안내"
+export type RegistrationNoticeKind = "등록 안내"
 export type RegistrationNoticePayload = { regId: string; kind: RegistrationNoticeKind; clickerUserId?: string | null }
 
 const REPORT_PATH = Deno.env.get("REPORT_PATH") ?? "/academy-management/student_report.html"
@@ -55,7 +56,7 @@ export function enrollInfoBlock(o: { startOn: string; time?: string }): string {
 
 export type RegistrationPlan = { error: string } | { variables: Record<string, string>; timetable: string }
 
-// 등록·반·시간표 페이지로 무엇을 보낼지 정한다(네트워크 없음). 등록 안내·클래스 변경 안내가 같은 변수를 쓴다.
+// 등록·반·시간표 페이지로 무엇을 보낼지 정한다(네트워크 없음). 등록 안내 변수.
 // reportLink는 버튼 #{페이지ID} 값, today는 서울 날짜(등록일이 지났으면 오늘 적용 중인 시간표).
 export function planRegistrationNotice(reg: any, cls: any, timetables: any[], reportLink: string, today: string, student: { school?: string; grade?: string } = {}): RegistrationPlan {
 	const startDay = seoulDay(reg?.properties?.["등록일"]?.date?.start)
@@ -69,7 +70,7 @@ export function planRegistrationNotice(reg: any, cls: any, timetables: any[], re
 		"#{학년}": alimtalkVar(reg, "학년", student.grade || "-"),
 		"#{클래스}": alimtalkVar(reg, "클래스", className),
 		"#{등록정보}": alimtalkVar(reg, "등록정보", enrollInfoBlock({ startOn: shortDay(startDay), time })),
-		"#{전달사항}": alimtalkVar(reg, "전달사항", noteText(textOf(reg?.properties?.[REGISTRATION_MEMO_PROP]?.rich_text))),
+		"#{전달사항}": alimtalkVar(reg, "전달사항", noteText(textOf(propRich(reg, REG_NOTICE_MEMO)))),
 		"#{페이지ID}": reportLink,
 	} }
 }
@@ -127,7 +128,7 @@ export async function processRegistrationNoticeQueueItem(payload: RegistrationNo
 	// 안내한 시간표를 적고(다음 시간표 변경 안내의 중복 확인), 한 번 쓰는 안내 메모는 비운다.
 	await deps.update(p.regId, {
 		...(plan.timetable ? { [TIMETABLE_SENT_PROP]: { rich_text: [{ text: { content: plan.timetable.slice(0, 1900) } }] } } : {}),
-		[REGISTRATION_MEMO_PROP]: { rich_text: [] },
+		[propKey(reg, REG_NOTICE_MEMO)]: { rich_text: [] },
 	}).catch(() => {})
 	await deps.markDone(p.regId)
 	console.log(`[registration-notice] ${p.kind} sent: reg=${p.regId}`)

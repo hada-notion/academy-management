@@ -84,6 +84,7 @@ import { processDailyReportQueueItem } from "../_shared/dailyReportQueue.ts"
 import { processAssignmentQueueItem } from "../_shared/assignmentPlan.ts"
 import { onNoticeFinalFailure, processNoticeQueueItem } from "../_shared/noticeQueue.ts"
 import { processCartPlanQueueItem } from "../_shared/cartPlan.ts"
+import { processClassEtcChargeQueueItem } from "../_shared/classEtcCharge.ts"
 import { processClassReportsQueueItem, processRegistrationReportQueueItem } from "../_shared/classReportPlan.ts"
 import { processRoutineChecksQueueItem } from "../_shared/routineCheck.ts"
 import { processCompletionQueueItem, processCompletionReportQueueItem } from "../_shared/completionReport.ts"
@@ -142,6 +143,8 @@ const HANDLERS: Record<string, (payload: any, cachedGetPage: (id: string) => Pro
   "notice": processNoticeQueueItem,
   // (v2.6.26) 교재비 [진도교재 담기] → sync-textbook-distribution/from-cart/queue (수식 "담기 계획"대로 배부만)
   "cart-plan": processCartPlanQueueItem,
+  // (v2.8.0 항목 72) 클래스 [기타경비 청구] → sync-textbook-distribution/class-etc/queue (한 번 받는 기타경비 → 등록마다 청구서)
+  "class-etc": processClassEtcChargeQueueItem,
   // (v2.8.0) 클래스 [보고서 생성] → create-class-reports. 반 1건(발송함 찾기·만들기)이 학생 1건씩을 다시 넣는다.
   "class-reports": processClassReportsQueueItem,
   "registration-report": processRegistrationReportQueueItem,
@@ -155,7 +158,7 @@ const HANDLERS: Record<string, (payload: any, cachedGetPage: (id: string) => Pro
   "lesson-notice": processLessonNoticeQueueItem,
   // (v2.8.0, 10/31) 등록 "시간표 안내 상태 ⚪ 대기" 자동화 → send-lesson-notice/timetable (등록 한 건)
   "timetable-notice": processTimetableNoticeQueueItem,
-  // (v2.8.0, 10/31) 등록 [등록 안내]·[클래스 변경 안내] → send-lesson-notice/registration · /class-change (등록 한 건)
+  // (v2.8.0, 10/31) 등록 [등록 안내] → send-lesson-notice/registration (등록 한 건)
   "registration-notice": processRegistrationNoticeQueueItem,
   // (v2.8.0) 일정 [일정 안내 전송] → send-schedule-notice/event. 일정 1건이 학생 1건씩을 다시 넣는다.
   "schedule-event": processScheduleEventItem,

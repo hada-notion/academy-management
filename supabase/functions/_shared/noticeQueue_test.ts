@@ -107,6 +107,36 @@ Deno.test("v2.6.24 교재비 안내문: 안내문 전송 상태, 일괄전송 �
 	} finally { restore() }
 })
 
+Deno.test("v2.8.0 항목 71 청구서 구분: 재료비·교재비·기타경비 행을 구분으로 고르고 반 구분은 읽지 않는다", async () => {
+	for (const [kind, want] of [["재료비", ["재료비 안내", ["교재비 안내"]]], ["교재비", ["교재비 안내"]], ["모의고사비", ["기타경비 안내", ["교재비 안내"]]]] as const) {
+		const cart = { id: "cart-3", properties: { "안내문 전송 상태": select("⚪ 대기"), 등록: rel(REG), "학생이름(표시)": rollup("조하은"), "클래스명(표시)": rollup("중2 영어"), 구분: formula(kind), "교재목록(알림톡)": formula("🧾 고등 모의고사비  20,000원" + String.fromCharCode(10) + "🧾 합계  20,000원") } }
+		const pages = { "cart-3": cart, [REG]: { properties: { 클래스: rel("cls-x") } }, "cls-x": { properties: { "클래스 구분": select("예체능") } } }
+		const t = fake(cart, { pages })
+		try {
+			await processNoticeQueueItem({ kind: "textbook", pageId: "cart-3" })
+			eq(t.calls.config[0], want)
+		} finally { t.restore() }
+	}
+})
+
+Deno.test("v2.8.0 항목 67 재료비: 예체능 반 청구는 재료비 안내 행부터(없으면 교재비 안내), 교과 반은 교재비 안내", async () => {
+	const cart = { id: "cart-2", properties: { "안내문 전송 상태": select("⚪ 대기"), 등록: rel(REG), "학생이름(표시)": rollup("조하은"), "클래스명(표시)": rollup("미술반"), "교재목록(알림톡)": formula("🎨 정물화 키트  10,000원\n🧾 합계  10,000원") } }
+	const pages = { "cart-2": cart, [REG]: { properties: { 클래스: rel("cls-art") } }, "cls-art": { properties: { "클래스 구분": select("예체능") } } }
+	const { calls, restore } = fake(cart, { pages })
+	try {
+		await processNoticeQueueItem({ kind: "textbook", pageId: "cart-2" })
+		eq(calls.config[0], ["재료비 안내", ["교재비 안내"]])
+		eq(calls.sent[0].vars["#{교재목록}"], "🎨 정물화 키트  10,000원\n🧾 합계  10,000원")
+		eq(calls.logs[0].category, "교재비 안내")
+	} finally { restore() }
+	const pages2 = { ...pages, "cls-art": { properties: { "클래스 구분": select("교과") } } }
+	const t2 = fake(cart, { pages: pages2 })
+	try {
+		await processNoticeQueueItem({ kind: "textbook", pageId: "cart-2" })
+		eq(t2.calls.config[0], ["교재비 안내"])
+	} finally { t2.restore() }
+})
+
 const tuitionPage = (id: string, status: string, extra: Record<string, unknown> = {}) => ({ id, properties: { "안내문 전송 상태": select(status), 등록: rel(REG), 학생정보: formula("테스트학생"), "학부모 연락처": rollup("010-1111-1111"), 청구기간: { date: { start: "2026-11-01", end: "2026-11-30" } }, ...extra } })
 const sibs = (...ids: string[]) => ({ relation: ids.map((id) => ({ id })) })
 

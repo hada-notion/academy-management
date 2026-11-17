@@ -7,8 +7,9 @@
 // (v2.8.0, 10/31) 경로 /timetable: 등록 DB 자동화 [웹훅] 시간표 안내(`시간표 안내 상태`가 ⚪ 대기가 되면). 클래스·등록
 // [시간표 변경 안내] 버튼은 상태만 바꾼다. 등록 한 건을 큐에 넣는다(_shared/timetableNotice.ts). 이미 대기열·작업중이면 두 번 넣지 않는다.
 //
-// (v2.8.0, 10/31) 경로 /registration·/class-change: 등록 [등록 안내]·[클래스 변경 안내](_shared/registrationNotice.ts).
-// 상태는 등록 '안내 상태'.
+// (v2.8.0, 10/31) 경로 /registration: 등록 [등록 안내](_shared/registrationNotice.ts). 상태는 등록 '안내 상태'.
+// (v2.8.0 항목 66, 11/15) 클래스 변경 안내(/class-change)는 없앴다. 반을 옮기거나 더하는 것 모두 새 등록이라 [등록 안내]로 보낸다.
+// 옛 버튼이 남은 학원에 404 대신 알아볼 수 있는 오류를 주려고 /class-change는 410만 돌려준다.
 import { authorizeKey, securityEnabled } from "../_shared/adminSecurity.ts"
 import { getCurrentAdminKey, resolveAdminKeyFromRequest } from "../_shared/adminShared.ts"
 import { describeBody, extractPageId, getPage } from "../_shared/notionClient.ts"
@@ -34,7 +35,7 @@ Deno.serve(async (req: Request) => {
 	const route = new URL(req.url).pathname.split("/").pop()
 	if (route === "timetable") return await queueTimetable(body)
 	if (route === "registration") return await queueRegistration(body, "등록 안내")
-	if (route === "class-change") return await queueRegistration(body, "클래스 변경 안내")
+	if (route === "class-change") return json({ error: "클래스 변경 안내는 v2.8.0 항목 66에서 없어졌어요 — 등록 [등록 안내]를 쓰세요" }, 410)
 	if (route !== "queue") return json({ error: "주소 끝에 /queue를 붙여 주세요." }, 400)
 	const attendanceId = extractPageId(body)
 	if (!attendanceId) return json({ error: "출석 페이지 id를 찾지 못했어요." }, 400)
@@ -62,7 +63,7 @@ async function queueTimetable(body: Record<string, any>): Promise<Response> {
 	}
 }
 
-// 등록 [등록 안내]·[클래스 변경 안내]: 등록 한 건을 큐에 넣는다.
+// 등록 [등록 안내]: 등록 한 건을 큐에 넣는다.
 async function queueRegistration(body: Record<string, any>, kind: RegistrationNoticeKind): Promise<Response> {
 	const regId = extractPageId(body)
 	if (!regId) return json({ error: "등록 페이지 id를 찾지 못했어요." }, 400)

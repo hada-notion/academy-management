@@ -6,6 +6,7 @@ Deno.env.delete("CLASS_ROOM_SOURCE")
 const room = await import("./classRoom.ts")
 const read = await import("./classRoomRead.ts")
 const copy = await import("./classRoomCopy.ts")
+const attMemo = await import("./attendanceMemo.ts")
 
 const rel = (...ids: string[]) => ({ relation: ids.map((id) => ({ id })) })
 const title = (s: string) => ({ type: "title", title: [{ plain_text: s, text: { content: s } }] })
@@ -119,6 +120,9 @@ function fixture() {
   const id = url.match(/\/pages\/([^/?]+)/)?.[1]
   if (id) {
    if (!pages[id]) return reply({ message: "missing " + id }, 404)
+   // 출석 메모(v2.8.0 항목 62): 이 출석 페이지에 없는 메모 이름으로 쓰면 Notion처럼 400
+   const badMemo = pages[id].db === "attendance" && ["메모", "메모(내부용)"].find((k) => body.properties?.[k] !== undefined && !(k in pages[id].properties))
+   if (method === "PATCH" && badMemo) return reply({ message: `${badMemo} is not a property that exists.` }, 400)
    if (method === "PATCH") { // 실제 Notion 응답처럼 type·plain_text를 채운 페이지를 돌려준다
     for (const [k, v] of Object.entries(body.properties ?? {}) as [string, any][]) {
      const type = ["rich_text", "title", "select", "number", "date", "relation", "checkbox"].find((t) => t in v)
@@ -132,8 +136,10 @@ function fixture() {
  }
  return { pages, store, sbCalls, fetch }
 }
-async function withMock(run: (f: ReturnType<typeof fixture>) => Promise<void>) {
+async function withMock(run: (f: ReturnType<typeof fixture>) => Promise<void>, prepare?: (f: ReturnType<typeof fixture>) => void) {
  const f = fixture(), original = globalThis.fetch
+ attMemo.resetAttMemoName()
+ prepare?.(f)
  globalThis.fetch = f.fetch as typeof fetch
  try {
   // 복사본 채우기: 지운 기록까지 포함한 모든 페이지를 동기화 함수와 같은 행 변환으로 넣는다
@@ -216,6 +222,18 @@ Deno.test("copy mode: saves update the copy before answering (the screen reads r
  assert(f.store.cr_activities.get("hw2").homework_status === "🔵 제출", "activity row updated")
  const after: any = await read.handleClassRoomWithSource({ action: "session", sessionId: "s1" })
  assert(after._source === "copy" && after.students.find((s: any) => s.attendanceId === "aa").memo === "새 메모")
+ assert(!("메모(내부용)" in f.pages.aa.properties) && f.pages.aa.properties["메모"].rich_text[0].text.content === "새 메모", "old-name academy keeps writing 메모")
+}))
+
+Deno.test("v2.8.0 항목 62 renamed 메모(내부용): copy and Notion reads match, saves write the new name", () => withMock(async (f) => {
+ const session = await read.loadSession("s1")
+ same("session renamed", await room.loadSession("s1"), session)
+ assert(session.students.find((s: any) => s.attendanceId === "aa")!.memo === " 집중 좋음 ", "memo read from 메모(내부용)")
+ Deno.env.set("CLASS_ROOM_SOURCE", "copy"); Deno.env.delete("CLASS_ROOM_COPY_WRITE")
+ await room.saveAttendance([{ attendanceId: "aa", memo: "새 이름" }])
+ assert(f.store.cr_attendance.get("aa").memo === "새 이름" && !("메모" in f.pages.aa.properties) && f.pages.aa.properties["메모(내부용)"].rich_text[0].text.content === "새 이름")
+}, (f) => {
+ for (const p of Object.values(f.pages).filter((x) => x.db === "attendance")) if ("메모" in p.properties) { p.properties["메모(내부용)"] = p.properties["메모"]; delete p.properties["메모"] }
 }))
 
 Deno.test("compareResults: same instant in different formats is equal, order-only differences are named", () => {

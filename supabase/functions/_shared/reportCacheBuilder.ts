@@ -1,5 +1,6 @@
 import { queryAllPages, mapWithConcurrency, pickProp } from "./notionClient.ts"
 import { routineRowsForRegistration, type RoutineRow } from "./routineCheck.ts"
+import { EVENT_NOTICE_MEMO, propKey } from "./propAlias.ts"
 import { readPageBodyBlocks } from "./feedBody.ts"
 import { buildLetterList } from "./reportLetter.ts"
 import { parseTokenValue } from "./adminShared.ts"
@@ -128,7 +129,7 @@ export async function buildStudentNotices(
       const start = dateStartOf(np["날짜"])
       const end = dateEndOf(np["날짜"])
       const range = start ? (end && end !== start ? `${fmtDateKr(start)} ~ ${fmtDateKr(end)}` : fmtDateKr(start)) : ""
-      const memo = text(np["메모"])
+      const memo = text(np[propKey(np, EVENT_NOTICE_MEMO)]) // `일정 안내 메모`(예전 `메모`, v2.8.0 항목 64)
       return {
         icon,
         category,

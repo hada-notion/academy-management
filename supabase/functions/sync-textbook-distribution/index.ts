@@ -38,6 +38,7 @@ import { respondAccepted } from "../_shared/backgroundTask.ts"
 import { enqueueSync, wakeSyncQueueWorker } from "../_shared/syncQueue.ts"
 import { resolveAdminKeyFromRequest, getCurrentAdminKey } from "../_shared/adminShared.ts"
 import { CART_PLAN_PROP, cartPlanText } from "../_shared/cartPlan.ts"
+// (v2.8.0 항목 72) 클래스 [기타경비 청구] → /class-etc/queue (큐 "class-etc", _shared/classEtcCharge.ts)
 
 Deno.serve(async (req: Request) => {
 	const url = new URL(req.url)
@@ -76,6 +77,11 @@ Deno.serve(async (req: Request) => {
 			await enqueueSync("cart-plan", { cartId: pageId, plan })
 			wakeSyncQueueWorker()
 			return respondAccepted({ pageId, route: "from-cart/queue", plan: !!plan })
+		}
+		if (route === "queue" && url.pathname.split("/").filter(Boolean).slice(-2)[0] === "class-etc") {
+			await enqueueSync("class-etc", { classId: pageId })
+			wakeSyncQueueWorker()
+			return respondAccepted({ pageId, route: "class-etc/queue" })
 		}
 		// (v2.7.11) 예전 /from-cart(바로 처리)·/from-class-carts(반 전체 교재비) 경로는 지웠다. 버튼이 v2.7부터
 		// 큐 경로와 Notion 자동화만 쓴다.

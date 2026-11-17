@@ -940,7 +940,7 @@ function buildHomeTabHtml(r) {
       </div>
       <h3 class="sec-title"><span class="sec-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span>남은 과제</h3>
       <div class="card">${pending.length ? pending.slice(0, 3).map((h) => kindBlockHtml("과제", { title: [h.book, h.range].filter(Boolean).join(" · ") || "과제", pill: h.status, pillTone: homeworkPillTone(h.status), sub: `마감 ${shortDateDow(h.due)}` })).join("") : `<div class="empty">남은 과제가 없어요.</div>`}</div>`}
-      <h3 class="sec-title"><span class="sec-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg></span>${regBookNoun(r)} 진도</h3>
+      <h3 class="sec-title"><span class="sec-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg></span>진도</h3>
       <div class="card">${books.length ? books.map((b) => `
         <div class="home-progress-row" onclick="openBookStudy(${jsArg(b.title)}, ${jsArg(b.id)})" style="cursor:pointer">
           <div class="home-progress-title">${esc(b.title)}</div>
@@ -963,7 +963,7 @@ function buildBooksTabHtml(r) {
   const countOf = (st) => books.filter((b) => normalizeBookStatus(b.status) === st).length
   const filtered = books.filter((b) => normalizeBookStatus(b.status) === bookStatusTab)
   return `
-    <h2><span class="page-title-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg></span>${regBookNoun(r)}</h2>
+    <h2><span class="page-title-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg></span>진도</h2>
     <div class="section-hint">진행상황별로 ${josa(regBookNoun(r), "을", "를")} 볼 수 있어요</div>
     <div class="seg-toggle">
       <button class="${bookStatusTab === "진행중" ? "active" : ""}" onclick="setBookStatusTab('진행중')">진행중 ${countOf("진행중")}</button>

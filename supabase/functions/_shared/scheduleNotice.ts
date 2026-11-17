@@ -8,6 +8,7 @@
 // 큐 모양은 반별 보고서와 같다: 일정 1건이 학생 1건씩을 다시 넣고, 마지막 학생이 상태를 마친다(✅, 중간 실패가 있으면 ⚠️).
 // 발송 규칙은 수업 안내와 같다(설정 행이 꺼졌거나 비면 ⚠️, 연락처 없음 ⚠️, 발송 단계 실패는 다시 보내지 않음). 전송로그는 등록에.
 import { createSendLogEntry, extractErrorMessage, getBotUserId, type AlimtalkConfigCategory } from "./adminShared.ts"
+import { EVENT_NOTICE_MEMO, propRich } from "./propAlias.ts"
 import { getFormulaText } from "./alimtalkShared.ts"
 import { fullRelationIds, getPage, queryAllPages, relIds, updatePageProperties } from "./notionClient.ts"
 import { DS_REGISTRATION, PROP_LAST_ERROR } from "./constants.ts"
@@ -249,7 +250,7 @@ export async function processScheduleEventItem(p: EventPayload): Promise<void> {
 		// 다른 알림톡처럼 일정 페이지의 "변수(알림톡)" 수식 값을 보낸다(없으면 옛 (일정안내) 수식, 그것도 비면 같은 규칙으로 계산).
 		// (v2.8.0 통일안) 새 템플릿의 #{일정정보}와 옛 템플릿의 #{일정일시}·#{전달사항}을 함께 만든다. 보낼 때 템플릿에 있는 것만 남는다.
 		// (11/2) 예전 일정 `전달사항(일정안내)` 수식(메모 50자, 같은 값)은 읽지 않는다.
-		const note = noteText(textOf(ev.properties?.["메모"]?.rich_text))
+		const note = noteText(textOf(propRich(ev, EVENT_NOTICE_MEMO))) // `일정 안내 메모`(예전 `메모`, v2.8.0 항목 64)
 		// 일시는 수식을 읽지 않는다(API의 수식 날짜는 UTC라 시각이 9시간 어긋남). 서버가 서울 시각으로.
 		const time = eventTimeText(ev)
 		const vars = {

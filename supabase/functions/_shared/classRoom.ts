@@ -50,6 +50,8 @@ import { runInBackground } from "./backgroundTask.ts"
 import { mirrorJobs, mirrorPageIds, mirrorSaved, removePages } from "./classRoomCopy.ts"
 import { libraryIds } from "./libraryProp.ts"
 import { isMakeupSession, SESSION_KIND_MAKEUP, SESSION_KIND_PROP } from "./sessionKind.ts"
+import { attMemoKey, withAttMemoName } from "./attendanceMemo.ts"
+import { ACTIVITY_MEMO, nameLearner, propKey } from "./propAlias.ts"
 
 type Page = Record<string, any>
 
@@ -506,7 +508,7 @@ export async function loadSession(sessionId: string) {
 			status: selectName(a, "출석 상태") ?? "",
 			arrivedAt: dateStart(a, "등원스템프"),
 			leftAt: dateStart(a, "하원스템프"),
-			memo: plain(a, "메모"),
+			memo: plain(a, attMemoKey(a)), // 출석 메모: `메모(내부용)`, 아직 안 바꾼 학원은 `메모`(v2.8.0 항목 62)
 			comment: plain(a, "선생님 한마디"),
 			dueActivityIds: rel(a, "과제"),
 		}))
@@ -673,7 +675,7 @@ export async function loadActivities(recordId: string) {
 					status: homeworkState(selectName(a, "과제상태")),
 					correct: numberOf(a, "정답 문항"),
 					total: numberOf(a, "전체 문항"),
-					memo: plain(a, "메모"),
+					memo: plain(a, propKey(a, ACTIVITY_MEMO)), // 학습활동 메모: `메모(내부용)`, 아직 안 바꾼 학원은 `메모`(v2.8.0 항목 64)
 				}
 			})
 			.sort((x, y) => x.name.localeCompare(y.name, "ko")),
@@ -693,11 +695,11 @@ export async function loadStudent(registrationId: string) {
 	if (!isId(registrationId)) throw new ClassRoomError(400, "학생 형식이 올바르지 않습니다.")
 	const [acts, memos] = await Promise.all([
 		queryDataSource(DS_STUDY_ACTIVITY, { filter: { property: "등록", relation: { contains: registrationId } }, sorts: [{ timestamp: "created_time", direction: "descending" }], page_size: 40 }),
-		queryDataSource(DS_ATTENDANCE, {
-			filter: { and: [{ property: "등록", relation: { contains: registrationId } }, { property: "메모", rich_text: { is_not_empty: true } }] },
+		withAttMemoName((memoProp) => queryDataSource(DS_ATTENDANCE, {
+			filter: { and: [{ property: "등록", relation: { contains: registrationId } }, { property: memoProp, rich_text: { is_not_empty: true } }] },
 			sorts: [{ property: "수업일시", direction: "descending" }],
 			page_size: 10,
-		}),
+		})),
 	])
 	const activities = ((acts as any).results ?? []) as Page[]
 	const recordIds = dedupe(activities.flatMap((a) => rel(a, "학습기록")))
@@ -707,7 +709,7 @@ export async function loadStudent(registrationId: string) {
 	return {
 		homework: activities.filter((a) => kindOf(a) === "과제").slice(0, 8).map((a) => ({ id: a.id as string, ...named(a), due: formulaDate(a, "과제 마감일"), submitted: selectName(a, "과제상태") === HOMEWORK_SUBMITTED })),
 		tests: activities.filter((a) => kindOf(a) === "평가" && numberOf(a, "전체 문항")).slice(0, 5).map((a) => ({ id: a.id as string, ...named(a), correct: numberOf(a, "정답 문항"), total: numberOf(a, "전체 문항") })),
-		memos: (((memos as any).results ?? []) as Page[]).map((m) => ({ attendanceId: m.id as string, date: dateStart(m, "수업일시"), memo: plain(m, "메모") })),
+		memos: (((memos as any).results ?? []) as Page[]).map((m) => ({ attendanceId: m.id as string, date: dateStart(m, "수업일시"), memo: plain(m, attMemoKey(m)) })),
 	}
 }
 
@@ -721,14 +723,19 @@ export async function saveAttendance(items: unknown) {
 			if (it.status !== "" && !(ATTENDANCE_STATUSES as readonly string[]).includes(it.status)) throw new ClassRoomError(400, "출석 상태가 올바르지 않습니다.")
 			props["출석 상태"] = { select: it.status ? { name: it.status } : null }
 		}
-		if (it.memo !== undefined) props["메모"] = richText(String(it.memo))
 		if (it.comment !== undefined) props["선생님 한마디"] = richText(String(it.comment))
-		return { id: it.attendanceId as string, props }
+		return { id: it.attendanceId as string, props, memo: it.memo === undefined ? undefined : richText(String(it.memo)) }
 	})
-	const saved = await mapWithConcurrency(updates, 3, (u) => updatePageProperties(u.id, u.props)) as Page[]
+	// 출석 메모는 `메모(내부용)`으로 쓰고, 아직 안 바꾼 학원이면 `메모`로 다시 쓴다(v2.8.0 항목 62).
+	const saved = await mapWithConcurrency(updates, 3, (u) => u.memo === undefined
+		? updatePageProperties(u.id, u.props)
+		: withAttMemoName((memoProp) => updatePageProperties(u.id, { ...u.props, [memoProp]: u.memo }))) as Page[]
 	await mirrorSaved("cr_attendance", saved) // 복사본 함께 쓰기(v2.5.115, v2.5.116부터 Notion 수정 응답을 그대로)
 	return { saved: updates.length }
 }
+
+const activityMemoName = nameLearner(ACTIVITY_MEMO)
+export function resetActivityMemoName() { activityMemoName.reset() }
 
 export async function saveActivities(items: unknown) {
 	if (!Array.isArray(items) || items.length === 0 || items.length > MAX_ITEMS) throw new ClassRoomError(400, "저장할 내용이 없습니다.")
@@ -740,9 +747,10 @@ export async function saveActivities(items: unknown) {
 			props["과제상태"] = { select: it.status ? { name: HOMEWORK_OPTION[it.status] } : null }
 		} else if (it.submitted !== undefined) props["과제상태"] = { select: { name: it.submitted ? HOMEWORK_SUBMITTED : HOMEWORK_MISSING } }
 		// 학습활동 메모(v2.6.9, 내부용 — 학부모 리포트에 보이지 않음)
+		let memo: unknown = undefined
 		if (it.memo !== undefined) {
 			if (typeof it.memo !== "string") throw new ClassRoomError(400, "메모 형식이 올바르지 않습니다.")
-			props["메모"] = richText(it.memo.trim().slice(0, 2000))
+			memo = richText(it.memo.trim().slice(0, 2000))
 		}
 		for (const [key, prop] of [["correct", "정답 문항"], ["total", "전체 문항"]] as const) {
 			if (it[key] === undefined) continue
@@ -751,9 +759,12 @@ export async function saveActivities(items: unknown) {
 			props[prop] = { number: v }
 		}
 		if (typeof it.correct === "number" && typeof it.total === "number" && it.correct > it.total) throw new ClassRoomError(400, "맞힌 문항이 전체 문항보다 많습니다.")
-		return { id: it.activityId as string, props }
+		return { id: it.activityId as string, props, memo }
 	})
-	const saved = await mapWithConcurrency(updates, 3, (u) => updatePageProperties(u.id, u.props)) as Page[]
+	// 학습활동 메모는 `메모(내부용)`으로 쓰고, 아직 안 바꾼 학원이면 `메모`로 다시 쓴다(v2.8.0 항목 64).
+	const saved = await mapWithConcurrency(updates, 3, (u) => u.memo === undefined
+		? updatePageProperties(u.id, u.props)
+		: activityMemoName.run((memoProp) => updatePageProperties(u.id, { ...u.props, [memoProp]: u.memo }))) as Page[]
 	await mirrorSaved("cr_activities", saved) // 복사본 함께 쓰기(v2.5.115, v2.5.116부터 Notion 수정 응답을 그대로)
 	return { saved: updates.length }
 }

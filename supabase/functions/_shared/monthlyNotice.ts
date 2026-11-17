@@ -1,14 +1,15 @@
 // _shared/monthlyNotice.ts
 //
 // (v2.8.0) 클래스 [월 수강료 생성](send-monthly-notice/create → 큐). 보고서 생성과 같은 모양이다.
-//   클래스 `수강료 기간`의 달(비면 누른 날의 다음 달, 서울)의 반 수강료 발송함(구분 "수강료", 반 × 달)을 찾거나 만들어 클래스
-//   `수강료 생성 대상`에 잇고, 그 반을 다니는 등록마다 그 달 수강료가 없으면 만들어 발송함에 연결한다. 같은 학생의 그 달 다른 반
+//   클래스 `수강료 기간`의 달(비면 누른 날의 다음 달, 서울)의 반 수강료 발송함(구분 "수강료", 반 × 달)을 찾거나 만들고,
+//   그 반을 다니는 등록마다 그 달 수강료가 없으면 만들어 발송함에 연결한다. 같은 학생의 그 달 다른 반
 //   수강료와 `같은 달 수강료`로 서로 잇는다. 보내기는 수강료 DB 큐(_shared/noticeQueue.ts)가 같은 달 수강료를 한 통으로 보낸다.
 // (10/28) 가정통신문(월간 일정 안내)도 같은 모양이다: 클래스 [가정통신문 생성](send-monthly-notice/create-letter) → 클래스 `안내 기간`의
 //   달의 반 가정통신문 발송함(구분 "가정통신문") → 등록마다 가정통신문 한 장 → 같은 학생의 그 달 다른 반 가정통신문과 `같은 달 가정통신문`.
 //   학생·반에 연결된 일정은 Notion 수식이 모으고, 연결 안 된 일정(학원 전체, 학생의 학교·학년)은 서버가 `학원 일정`에 넣는다
 //   (만들 때 한 번, 보내기 직전에 다시). 보내기는 수강료와 같은 큐(_shared/noticeQueue.ts, kind "letter")다.
 import { getScheduleConfig } from "./adminShared.ts"
+import { LETTER_NOTICE_MEMO, propRich } from "./propAlias.ts"
 import { getRollupText, syncStudentReport } from "./alimtalkShared.ts"
 import { anyTitleText, createPage, fetchWithRetry, fullRelationIds, getPage, notionHeaders, queryAllPages, relIds, updatePageProperties } from "./notionClient.ts"
 import { DS_REGISTRATION, DS_SCHEDULE_EVENT, DS_TUITION, NOTION_API, PROP_LAST_ERROR } from "./constants.ts"
@@ -43,14 +44,10 @@ const PROP_TUITION_MAILBOX = "알림톡 발송함"
 export const PROP_CLASS_NOTICE_PERIOD = "안내 기간"
 // 클래스(학원) DB: 수강료의 달(1일~말일, 보고서 기간과 같은 방식). 비면 누른 날의 다음 달.
 export const PROP_CLASS_TUITION_PERIOD = "수강료 기간"
-// 클래스(학원) DB: [월 수강료 생성]이 만든(또는 찾은) 이 반의 수강료 발송함(보고서 생성 대상과 같은 방식).
-const PROP_CLASS_TUITION_MAILBOX = "수강료 생성 대상"
+// (v2.8.0 항목 69) 클래스 `수강료 생성 대상`·`가정통신문 생성 대상`에는 더 적지 않는다. 반의 발송함은 클래스 `알림톡 발송함`에서 연다.
 // 수강료(학원) DB: 같은 학생의 같은 달 다른 반 수강료(한쪽 자기 관계, 서로 모두 잇는다).
 const PROP_TUITION_SIBLINGS = "같은 달 수강료"
-// 클래스(학원) DB: [가정통신문 생성]이 만든(또는 찾은) 이 반의 가정통신문 발송함.
-const PROP_CLASS_LETTER_MAILBOX = "가정통신문 생성 대상"
 // 알림톡 발송함(학원) DB: 가정통신문 발송함의 반 전달사항(그 반 학생 모두, 그 달만). (10/29) 클래스 '안내 메모'를 대신한다.
-const PROP_BOX_LETTER_NOTE = "가정통신문 전달사항"
 // 알림톡 발송함(학원) DB: 이 발송함의 가정통신문(가정통신문 DB '알림톡 발송함'의 짝). 가정통신문 DB id를 여기서 찾는다.
 const PROP_MAILBOX_LETTERS = "가정통신문"
 // 가정통신문(학원) DB: 등록 × 달 한 장
@@ -281,10 +278,6 @@ export async function processMonthlyCreateClassItem(p: CreateClassPayload): Prom
 		if (!regs.length) return await deps.markError(p.classId, spec, `${monthLabel(p.month)}에 이 반을 다니는 학생이 없습니다.`)
 		const mailbox = await findClassMailbox(p.classId, p.month, { className: anyTitleText(cls).trim() || "클래스" }, KIND_TUITION)
 		const mailboxId = String(mailbox.id)
-		// 보고서 생성 대상처럼 클래스에서 이 달 수강료 발송함을 바로 열 수 있게 잇는다(칸이 없는 운영은 건너뜀).
-		if (!relIds(cls?.properties?.[PROP_CLASS_TUITION_MAILBOX]).some((id: string) => key(id) === key(mailboxId))) {
-			await deps.update(p.classId, { [PROP_CLASS_TUITION_MAILBOX]: { relation: [{ id: mailboxId }] } }).catch((err: unknown) => console.warn("[monthly-create] 수강료 생성 대상 연결 건너뜀:", (err as Error).message))
-		}
 		for (let i = 0; i < regs.length; i++) {
 			const item: CreateRegPayload = { classId: p.classId, month: p.month, regId: String(regs[i].id), amount, mailboxId, ...(i === regs.length - 1 ? { last: true } : {}) }
 			await deps.enqueue(TARGET_MONTHLY_CREATE_REG, item)
@@ -340,7 +333,7 @@ export async function processMonthlyCreateRegItem(p: CreateRegPayload): Promise<
 }
 
 // ── 2) 클래스 [가정통신문 생성] ─────────────────────────────────────────────────
-// 수강료와 같은 모양: 반 가정통신문 발송함을 찾거나 만들어 클래스 '가정통신문 생성 대상'에 잇고, 그 달 다니는 등록마다 큐.
+// 수강료와 같은 모양: 반 가정통신문 발송함을 찾거나 만들고, 그 달 다니는 등록마다 큐.
 export async function processLetterCreateClassItem(p: CreateClassPayload): Promise<void> {
 	const deps = monthlyDeps
 	const spec = CLASS_LETTER_GEN_STATUS_SPEC
@@ -352,9 +345,6 @@ export async function processLetterCreateClassItem(p: CreateClassPayload): Promi
 		if (!regs.length) return await deps.markError(p.classId, spec, `${monthLabel(p.month)}에 이 반을 다니는 학생이 없습니다.`)
 		const mailbox = await findClassMailbox(p.classId, p.month, { className: anyTitleText(cls).trim() || "클래스" }, KIND_MONTHLY)
 		const mailboxId = String(mailbox.id)
-		if (!relIds(cls?.properties?.[PROP_CLASS_LETTER_MAILBOX]).some((id: string) => key(id) === key(mailboxId))) {
-			await deps.update(p.classId, { [PROP_CLASS_LETTER_MAILBOX]: { relation: [{ id: mailboxId }] } }).catch((err: unknown) => console.warn("[letter-create] 가정통신문 생성 대상 연결 건너뜀:", (err as Error).message))
-		}
 		for (let i = 0; i < regs.length; i++) {
 			const item: CreateRegPayload = { classId: p.classId, month: p.month, regId: String(regs[i].id), amount: null, mailboxId, ...(i === regs.length - 1 ? { last: true } : {}) }
 			await deps.enqueue(TARGET_LETTER_CREATE_REG, item)
@@ -440,7 +430,7 @@ export async function letterNote(letter: any, regs: any[]): Promise<string> {
 		if (!name || !boxId || seen.has(key(boxId))) continue
 		seen.add(key(boxId))
 		const box: any = await monthlyDeps.getPage(boxId).catch(() => null)
-		const memo = textOf(box?.properties?.[PROP_BOX_LETTER_NOTE]?.rich_text).trim()
+		const memo = textOf(propRich(box, LETTER_NOTICE_MEMO)).trim()
 		if (memo) perClass.push([name, noteText(memo)])
 	}
 	perClass.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))

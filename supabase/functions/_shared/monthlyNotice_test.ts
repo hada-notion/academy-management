@@ -68,16 +68,17 @@ Deno.test("v2.8.0 [월 수강료 생성]: 월간 수업 총량이 없으면 ⚠�
 		reg("r2", { student: "s2", name: "박서준", cls: "cls", clsName: "중1 A 수학", until: "2026-11-20" }), // 11월에 끝남
 		reg("r3", { student: "s3", name: "김하윤", cls: "cls", clsName: "중1 A 수학", since: "2026-12-15" }),
 	]
-	const cls = { id: "cls", properties: { "클래스명": title("중1 A 수학"), "월간 수업 총량": { type: "number", number: 8 }, "수강료 생성 대상": rel() } }
+	const cls = { id: "cls", properties: { "클래스명": title("중1 A 수학"), "월간 수업 총량": { type: "number", number: 8 } } }
 	let boxes: any[] = []
 	const c = mock({ cls }, (ds, filter) => ds === "registrations" ? regs : ds === "batches" ? (JSON.stringify(filter).includes("수강료") ? boxes : []) : [])
 	await m.processMonthlyCreateClassItem({ classId: "cls", month: "2026-12" })
 	eq(c.created.map((x) => [x.ds, x.props["이름"].title[0].text.content, x.props["구분"].select.name, x.props["기간"].date, x.props["클래스"].relation]), [["batches", "중1 A 수학 수강료 26.12", "수강료", { start: "2026-12-01", end: "2026-12-31" }, [{ id: "cls" }]]])
-	eq(c.updates[0], { id: "cls", props: { "수강료 생성 대상": { relation: [{ id: "new1" }] } } })
+	// (항목 69) 클래스 '수강료 생성 대상'에는 적지 않는다.
+	eq(c.updates, [])
 	eq(c.enq.map((e) => [e.target, e.payload.regId, e.payload.amount, e.payload.mailboxId, e.payload.last ?? false]), [["monthly-create-reg", "r1", 8, "new1", false], ["monthly-create-reg", "r3", 8, "new1", true]])
-	// 다시 누르면 같은 달 수강료 발송함을 쓴다(다른 달 발송함은 무시, 이미 이어져 있으면 클래스를 다시 쓰지 않음).
+	// 다시 누르면 같은 달 수강료 발송함을 쓴다(다른 달 발송함은 무시).
 	boxes = [{ id: "box-nov", properties: { "기간": date("2026-11-01", "2026-11-30") } }, { id: "box-dec", properties: { "기간": date("2026-12-01", "2026-12-31") } }]
-	const cls2 = { id: "cls", properties: { ...cls.properties, "수강료 생성 대상": rel("box-dec") } }
+	const cls2 = { id: "cls", properties: { ...cls.properties } }
 	const c2 = mock({ cls: cls2 }, (ds, filter) => ds === "registrations" ? regs : ds === "batches" ? (JSON.stringify(filter).includes("수강료") ? boxes : []) : [])
 	await m.processMonthlyCreateClassItem({ classId: "cls", month: "2026-12" })
 	eq([c2.created.length, c2.updates.length, c2.enq[0].payload.mailboxId], [0, 0, "box-dec"])
@@ -159,12 +160,12 @@ const relFilter = (filter: any) => {
 Deno.test("v2.8.0 [가정통신문 생성]: 반 가정통신문 발송함을 찾거나 만들어 클래스에 잇고, 등록마다 가정통신문 한 장·같은 달 잇기·학원 일정(연결 안 된 일정)", async () => {
 	const rA = reg("rA", { student: "s1", name: "테스트학생", cls: "cA", clsName: "수학반" })
 	const rB = reg("rB", { student: "s1", name: "테스트학생", cls: "cB", clsName: "영어반" })
-	const cls = { id: "cA", properties: { "클래스명": title("수학반"), "가정통신문 생성 대상": rel(), "마지막 오류": rt("") } }
+	const cls = { id: "cA", properties: { "클래스명": title("수학반"), "마지막 오류": rt("") } }
 	// 1) 클래스: 발송함(구분 가정통신문) 만들고 클래스에 잇고 등록마다 큐(월간 수업 총량은 필요 없음)
 	const c1 = mock({ cA: cls }, (ds) => ds === "registrations" ? [rA] : [])
 	await m.processLetterCreateClassItem({ classId: "cA", month: "2026-11" })
 	eq(c1.created.map((x) => [x.props["이름"].title[0].text.content, x.props["구분"].select.name]), [["수학반 가정통신문 26.11", "가정통신문"]])
-	eq(c1.updates[0], { id: "cA", props: { "가정통신문 생성 대상": { relation: [{ id: "new1" }] } } })
+	eq(c1.updates, [])
 	eq(c1.enq.map((e) => [e.target, e.payload.regId, e.payload.mailboxId, e.payload.last]), [["letter-create-reg", "rA", "new1", true]])
 	// 2) 등록: 가정통신문 생성(이름 = 등록 이름 없으면 학생 이름), 영어반 가정통신문과 서로 잇기, 학원 전체·같은 학교 일정만 학원 일정에
 	const academy = ev("e-all", { name: "학원 설명회", start: "2026-11-14" })

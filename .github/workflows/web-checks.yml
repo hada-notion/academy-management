@@ -40,3 +40,11 @@ jobs:
 
       - name: Run regression guard checks
         run: bash scripts/check-known-regressions.sh
+
+      # (v2.8.0 항목 74) 관리 앱 읽기 복사본: 병합 = 원본 자동 배포라 PR에서 먼저 확인한다.
+      - name: Admin app read copy (types, unit, migration)
+        run: |
+          deno check supabase/functions/app-api/index.ts supabase/functions/sync-class-room-copy/index.ts
+          deno test --allow-env supabase/functions/_shared/appCopy_test.ts supabase/functions/_shared/appSave_test.ts
+          npm install --prefix "$RUNNER_TEMP/hada-security-tests" @electric-sql/pglite@0.5.8 --no-audit --no-fund
+          PGLITE_MODULE="$RUNNER_TEMP/hada-security-tests/node_modules/@electric-sql/pglite" node tests/app-copy-sql.cjs
