@@ -689,7 +689,8 @@ function rollupSelect(page: Page, prop: string): string {
 }
 function formulaDate(page: Page, prop: string): string | null {
 	const f = page?.properties?.[prop]?.formula
-	return f?.date?.start ?? (typeof f?.string === "string" && /^d{4}-d{2}-d{2}/.test(f.string) ? f.string : null)
+	// (v2.8.0 항목 81) 역슬래시가 빠져 글자로 온 날짜를 늘 버리던 정규식을 고침
+	return f?.date?.start ?? (typeof f?.string === "string" && /^\d{4}-\d{2}-\d{2}/.test(f.string) ? f.string : null)
 }
 export async function loadStudent(registrationId: string) {
 	if (!isId(registrationId)) throw new ClassRoomError(400, "학생 형식이 올바르지 않습니다.")
@@ -836,6 +837,9 @@ export async function createRecords(body: any) {
 			"수업": relation([ctx.session.id]),
 			...touched(),
 		}
+		// (v2.8.0 항목 81) [학습기록 생성]처럼 수업의 클래스를 채운다 — 클래스 "평가" 탭이 이 칸으로 거른다
+		const classId = rel(ctx.session, "클래스")[0]
+		if (classId) props["클래스"] = relation([classId])
 		if (book) props["진도교재"] = relation([book.id])
 		if (regularBookId) props["교재"] = relation([regularBookId])
 		if (subjectIds.length) props["과목"] = relation(subjectIds)
