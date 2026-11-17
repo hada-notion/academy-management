@@ -2,7 +2,7 @@
 // 찾아 시험정보 `시험일정`에 잇는다. 하나면 잇고(✅), 없거나 여럿이면 잇지 않고 `마지막 오류`에 이유(⚠️).
 // 시험일이 그 기간 밖이면 잇되 `마지막 오류`에 경고를 남긴다.
 // 순수 판단(pickExamPeriod)과 노션 읽기·쓰기(linkExamPeriod, deps로 주입)를 나눴다 — 시험은 판단과 흐름을 따로 본다.
-import { categoryName, SCHOOL_EXAM, PAPER_EXAM_WORDS, MOCK_EXAM_WORDS, hasAnyWord } from "./scheduleCategory.ts"
+import { eventKind, KIND, PAPER_EXAM_WORDS, MOCK_EXAM_WORDS, hasAnyWord } from "./scheduleCategory.ts"
 
 const squash = (s: unknown) => String(s ?? "").replace(/\s+/g, "")
 const selectName = (page: any, prop: string) => String(page?.properties?.[prop]?.select?.name ?? "").trim()
@@ -64,7 +64,7 @@ export function pickExamPeriod(info: any, exam: any, events: any[]): PickResult 
   const year = Number(selectName(exam, "연도")) || academicYearOf(examDay)
   if (!year) return { ok: false, error: "시험 연도가 비어 있습니다. 시험의 연도나 시험정보의 시험일을 넣으세요." }
   const pool = events.filter(e => !e?.archived && !e?.in_trash &&
-    categoryName(e?.properties?.["구분"]?.select?.name) === SCHOOL_EXAM &&
+    eventKind(e) === KIND.EXAM && // 세부 구분 시험(옛 구분 📝 시험도)
     academicYearOf(dateStart(e, "날짜")) === year)
   // 1) 이름에 시험 이름(예: "1학기 중간고사")이 든 것. 2) 없으면 시험 종류 낱말(scheduleCategory 표 —
   // 지필고사 ↔ 지필·고사·정기, 모의고사 ↔ 모의·학력평가·수능·수학능력)이 든 것.

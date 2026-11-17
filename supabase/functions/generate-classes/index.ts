@@ -31,6 +31,7 @@ import {
 	describeBody,
 } from "../_shared/notionClient.ts"
 import { runInBackground, respondAccepted } from "../_shared/backgroundTask.ts"
+import { eventKind, KIND } from "../_shared/scheduleCategory.ts"
 import { sessionPlanFromTimetable, createSessionFromPlan } from "../_shared/timetableSessionPlan.ts"
 import {
 	PROP_TIMETABLE_LAST_ERROR,
@@ -195,17 +196,11 @@ function isWithinRange(dateStr: string, startStr: string, endStr: string): boole
 
 type ClosurePeriod = { start: string; end: string }
 
+// (2.8 2단계) 휴원은 일정 `세부 구분` 학원 휴원(옛 구분 💤 휴원·안내 구분 휴원도)으로 본다. `구분`이 수식이 되면
+// 노션 조회의 select 거르기가 실패하므로 이 반의 일정을 모두 받아 코드에서 고른다(scheduleCategory.eventKind).
 async function getClosurePeriods(classId: string): Promise<ClosurePeriod[]> {
-  const data = await queryDataSource(DS.scheduleEvent, {
-    filter: {
-      and: [
-        { property: "클래스", relation: { contains: classId } },
-        { property: "구분", select: { equals: "💤 휴원" } },
-      ],
-    },
-    page_size: 100,
-  })
-  return data.results.map((page: any) => {
+  const pages = await queryAllPages(DS.scheduleEvent, { property: "클래스", relation: { contains: classId } })
+  return pages.filter((page: any) => eventKind(page) === KIND.CLOSED && page.properties?.["날짜"]?.date?.start).map((page: any) => {
     const date = page.properties["날짜"].date
     return { start: date.start, end: date.end ?? date.start }
   })

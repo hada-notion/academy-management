@@ -18,6 +18,7 @@ import { requireAdminKey, getBotUserId, CORS_HEADERS as ADMIN_CORS } from "../_s
 import { noticeReportSyncNotNeeded } from "../_shared/scheduleVisibility.ts"
 import { selectReportCacheByToken, selectRegistrationIdsByNoticeId, text, dateStartOf } from "../_shared/reportCacheShared.ts"
 import { isNoticePage, resolveRegistrationIdsForNotice } from "../_shared/syncReportCacheTarget.ts"
+import { eventKind, kindDisplay } from "../_shared/scheduleCategory.ts"
 import { queryAllPages, mapWithConcurrency, extractPageId } from "../_shared/notionClient.ts"
 import { makePageCache } from "../_shared/reportCacheShared.ts"
 import { upsertReportCacheRows, type ReportCacheRow } from "../_shared/reportCacheShared.ts"
@@ -101,7 +102,7 @@ Deno.serve(async (req: Request) => {
       ? [...new Set([...currentIds, ...await selectRegistrationIdsByNoticeId(
         sourcePage.id,
         // 옛 캐시(일정 id 목록 없음)는 리포트에 실린 제목·날짜로 찾는다 — reportCacheBuilder와 같은 계산.
-        text(sourcePage.properties?.["이름"]) || text(sourcePage.properties?.["구분"]),
+        text(sourcePage.properties?.["이름"]) || kindDisplay(eventKind(sourcePage)),
         dateStartOf(sourcePage.properties?.["날짜"]) ?? undefined,
       )])]
       : currentIds
