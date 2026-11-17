@@ -73,3 +73,12 @@ Deno.test("학부모 응답에는 notice_ids(일정 페이지 id)를 싣지 않�
  const f=publicNoticeFields({notice_visibility_policy:NOTICE_VISIBILITY_POLICY,notices:[{title:"a"}],notice_ids:["id-1"],student_name:"가상학생"})
  assert(!("notice_ids" in f) && (f.notices as any[]).length===1)
 })
+
+Deno.test("대상을 A → B로 바꾼 직후 조회가 옛 결과(A)를 돌려줘도 A 리포트엔 싣지 않음(지금 관계로 다시 봄)",async()=>{
+ const moved=event();moved.id="moved";moved.properties["학생"]=rel(["B"])
+ clearNoticeCache()
+ // 조회는 바뀌기 전처럼 "학생 contains A"에 이 일정을 돌려준다(Notion 색인 늦음 흉내)
+ noticeDeps.query=(async(_ds:string,filter:any)=>{const r=filter.and.find((f:any)=>f.relation);return r&&r.property==="학생"&&r.relation.contains==="A"?[moved]:[]}) as any
+ const n=await buildStudentNotices("A",{},async id=>({id,properties:{}}))
+ assert(n.length===0,JSON.stringify(n))
+})
