@@ -56,10 +56,14 @@ export async function webhookViewUrl(dbId:string):Promise<string>{
   }
   return '';
 }
+// (v2.8.0 항목 80) The checklist uses the new DB names; an academy that has not renamed its DBs yet
+// (v2.8.0 항목 55·71) still has the old titles, so each new name also finds its old titles (normalized, no spaces).
+export const OLD_DB_TITLES:Record<string,string[]>={'진도관리(학원)':['진도교재(학원)'],'청구서(학원)':['청구(학원)','교재비(학원)'],'청구항목(학원)':['교재배부(학원)'],'청구결제(학원)':['교재결제(학원)']};
+export function pickDbLink(dbs:Record<string,string>,name:string):string{return dbs[name]??(OLD_DB_TITLES[name]??[]).map(o=>dbs[o]).find(Boolean)??'';}
 // Database and "웹훅등록" view links for the requested checklist DB names, three DBs at a time.
 export async function buildNotionLinks(names:string[]):Promise<{name:string,db:string,view:string}[]>{
-  const dbs=await notionDatabaseLinks();const wanted=names.filter(n=>dbs[n]);const out:{name:string,db:string,view:string}[]=[];let next=0;
-  const worker=async()=>{while(next<wanted.length){const name=wanted[next++];const db=dbs[name];out.push({name,db,view:await webhookViewUrl(db.slice(-32))});}};
+  const dbs=await notionDatabaseLinks();const wanted=names.filter(n=>pickDbLink(dbs,n));const out:{name:string,db:string,view:string}[]=[];let next=0;
+  const worker=async()=>{while(next<wanted.length){const name=wanted[next++];const db=pickDbLink(dbs,name);out.push({name,db,view:await webhookViewUrl(db.slice(-32))});}};
   await Promise.all([worker(),worker(),worker()]);
   return out;
 }

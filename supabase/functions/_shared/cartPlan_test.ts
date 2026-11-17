@@ -122,3 +122,15 @@ Deno.test("항목 71 담기: 교재비 청구서에서 눌렀는데 프로그램
 		eq(t.calls.created[0].props["교재비"].relation[0].id, "cart-1")
 	} finally { t.restore() }
 })
+
+Deno.test("항목 80 담기: 새로 만드는 재료비 청구서에 표시용 알림톡 설정(재료비 안내 행)", async () => {
+	const { calls, restore } = fake2({ cart: kindCart("cart-1", "교재비", 0), others: [] })
+	const seen: string[] = []
+	cartPlanDeps.configRow = async (k: string) => { seen.push(k); return k === "재료비" ? "cfg-mat" : null }
+	try {
+		await processCartPlanQueueItem({ cartId: "cart-1", plan: plan([{ l: L1, t: "예시 영문법 2", k: "교재" }, { l: L2, t: "영어 발표", k: "프로그램" }]) })
+		const carts = calls.created.filter((c) => c.db === "carts")
+		eq(carts.map((c) => c.props["알림톡 설정"]?.relation?.[0]?.id), ["cfg-mat"])
+		eq(seen, ["재료비"])
+	} finally { restore() }
+})

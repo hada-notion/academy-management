@@ -279,7 +279,7 @@ async function buildReceiptLedger(body: any) {
   rows.push({paymentId:p.id,serialNo:await reserveLegalNumber("receipt",p.id),paymentDate:seoulDate(p.properties?.[PROP_PAYMENT_DATE]?.date?.start ?? ""),payerName:titleOf(student,"학생이름"),registrationNo:no,birthDate:birth,classId:course.classId,subject:course.subject,className:course.className,
    billingStart:seoulDate(billing?.start ?? ""),billingEnd:seoulDate(billing?.end || billing?.start || ""),billingMonth:billing?.start?.slice(0,7) ?? "",amount,etcExpense:etc,paidAmount:paid,note:plainText(p.properties?.[PROP_PAYMENT_NOTE])})
  }
- warnings.add("교습비는 연결된 수강료의 청구금액, 기타경비는 수강료의 기타경비 금액(클래스 기타경비(매달) 신고 금액, 없으면 0원)입니다. 한 번 받는 기타경비(청구)는 아직 넣지 않았습니다. 엑셀 다운로드 후 실제 수납액과 대조하세요.")
+ warnings.add("교습비는 연결된 수강료의 청구금액, 기타경비는 수강료의 기타경비 금액(클래스에 붙인 매달 기타경비의 신고 금액, 없으면 0원)입니다. 한 번 받는 기타경비(청구서)는 넣지 않았습니다. 엑셀 다운로드 후 실제 수납액과 대조하세요.")
  warnings.add("환불·취소 전용 상태/원거래 연결 및 발행자/서명 정보는 아직 없습니다. 원부·영수증 출력은 대조·보완용 초안이며 확정 발급 전 확인이 필요합니다.")
  missingWarnings(rows.map(r=>({...r,studentName:r.payerName}))).forEach(v=>warnings.add(v))
  return {rows,warnings:[...warnings]}

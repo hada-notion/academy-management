@@ -103,3 +103,13 @@ Deno.test('class room logs in with the admin password; class-set is gone',async(
   const legacy=await handleAdminSecurity(request({action:'login',password:'owner-pass-1',scope:'class'}));assert(legacy.status===200,'an old class-room page still gets a normal admin session');
   assert(logins.map(l=>l.kind).join()==='admin,admin');
   assert((await handleAdminSecurity(request({action:'class-set',current_password:'owner-pass-1',class_password:'class-pass-1'},undefined,'s'))).status===400);});});
+
+Deno.test('webhook DB links: new checklist names also find the old DB titles (v2.8.0 item 80)',async()=>{const {pickDbLink}=await import('../admin-security/index.ts');
+  const u=(c:string)=>'https://www.notion.so/'+c.repeat(32);
+  assert(pickDbLink({'청구서(학원)':u('a'),'교재비(학원)':u('b')},'청구서(학원)')===u('a'),'new title wins');
+  assert(pickDbLink({'교재비(학원)':u('b')},'청구서(학원)')===u('b'));
+  assert(pickDbLink({'청구(학원)':u('c')},'청구서(학원)')===u('c'));
+  assert(pickDbLink({'교재배부(학원)':u('d')},'청구항목(학원)')===u('d'));
+  assert(pickDbLink({'교재결제(학원)':u('e')},'청구결제(학원)')===u('e'));
+  assert(pickDbLink({'진도교재(학원)':u('f')},'진도관리(학원)')===u('f'));
+  assert(pickDbLink({},'청구서(학원)')==='');});
