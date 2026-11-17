@@ -27,10 +27,12 @@ Deno.test("숨김/메모를 바꿔도 원본 동기화 내용은 동일",()=>{
  assert(!sameOwnedEvent(page,row,"school","key",["g3"]))
 })
 
-Deno.test("사람이 고친 학사 구분은 다시 가져와도 그대로(같은 일정으로 보고 쓰지 않음)",()=>{
+Deno.test("사람이 고친 구분은 다시 가져와도 그대로(같은 일정으로 보고 쓰지 않음)",()=>{
  const row:NeisRow={AA_YMD:"20261002",EVENT_NM:"중간고사",EVENT_CNTNT:"",SBTR_DD_SC_NM:"해당없음",TW_GRADE_EVENT_YN:"Y"}
  const properties:any=ownedProperties(row,"school","key",["g2"])
- assert(!("학사 구분" in properties))
- const page={properties:{...properties,"학사 구분":{select:{name:"행사"}}}}
- assert(sameOwnedEvent(page,row,"school","key",["g2"]))
+ assert(!("구분" in properties))
+ for(const cat of ["🎒 학교 행사","🏫 학사 일정","📆 학원 일정"]){
+  const page={properties:{...properties,"구분":{select:{name:cat}}}}
+  assert(sameOwnedEvent(page,row,"school","key",["g2"]),cat)
+ }
 })

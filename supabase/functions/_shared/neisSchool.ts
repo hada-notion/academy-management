@@ -1,3 +1,4 @@
+import { SCHOOL_EVENT, SCHOOL_EXAM, SCHOOL_BREAK, LEGACY_SCHOOL, LEGACY_SCHOOL_OPTION, categoryName } from "./scheduleCategory.ts"
 // 학교별 행사 종류를 필터링하지 않는다. 모든 원본 행을 보존한다.
 export type NeisRow = Record<string, string | null>
 const gradeFields = ["ONE_GRADE_EVENT_YN", "TW_GRADE_EVENT_YN", "THREE_GRADE_EVENT_YN", "FR_GRADE_EVENT_YN", "FIV_GRADE_EVENT_YN", "SIX_GRADE_EVENT_YN"]
@@ -61,39 +62,43 @@ export function ownedProperties(row: NeisRow, pageId: string, key: string, grade
   return {
     "이름": { title: [{ text: { content: row.EVENT_NM.slice(0, 1900) } }] },
     "날짜": { date: { start: `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`, end: null } },
-    "구분": { select: { name: "🏫 학사 일정" } },
     "학교": { relation: [{ id: pageId }] }, "학년": { relation: gradeIds.map(id => ({ id })) },
     "대상 학년": richText(eventGrades(row).map(n => `${n}학년`).join(", ") || "미지정"),
     "수업공제일명": richText(row.SBTR_DD_SC_NM), "원본 행사내용": richText(row.EVENT_CNTNT),
     "NEIS 동기화키": richText(key),
-    // 숨김/학부모 공개/메모/태그/담당자/진행상태/본문은 동기화 소유가 아니므로 절대 덮어쓰지 않는다.
+    // 구분/숨김/학부모 공개/메모/태그/담당자/진행상태/본문은 동기화 소유가 아니므로 절대 덮어쓰지 않는다(구분은 새로 만들 때만).
   }
 }
 
-// 일정 `학사 구분` 규칙: ① 수업공제일명 공휴일 또는 이름에 "토요휴업일" → 비움 ② 수업공제일명 휴업일 → 방학/휴교
-// ③ 이름에 "고사"·"시험" → 시험 ④ 그 밖 → 행사.
-export function academicCategory(row: NeisRow): "행사" | "시험" | "방학/휴교" | null {
+// 일정 `구분` 규칙(새로 만들 때만): ① 수업공제일명 공휴일 또는 이름에 "토요휴업일" → 방학/휴교(숨김 그대로)
+// ② 수업공제일명 휴업일 → 방학/휴교 ③ 이름에 "고사"·"시험" → 시험 ④ 그 밖 → 학교 행사.
+export function schoolCategory(row: NeisRow): typeof SCHOOL_EVENT | typeof SCHOOL_EXAM | typeof SCHOOL_BREAK {
   const deduct = (row.SBTR_DD_SC_NM ?? "").trim(), name = row.EVENT_NM ?? ""
-  if (deduct === "공휴일" || name.includes("토요휴업일")) return null
-  if (deduct === "휴업일") return "방학/휴교"
-  if (/고사|시험/.test(name)) return "시험"
-  return "행사"
+  if (deduct === "공휴일" || name.includes("토요휴업일") || deduct === "휴업일") return SCHOOL_BREAK
+  if (/고사|시험/.test(name)) return SCHOOL_EXAM
+  return SCHOOL_EVENT
 }
 
-// 일정 DB 스키마에서 `학사 구분` 선택 칸의 옵션 이름. 칸이 없거나 선택 칸이 아니면 빈 목록(→ 채우지 않음).
+// 일정 DB 스키마에서 `구분` 선택 칸의 옵션 이름(이모지 포함 원래 이름).
 export function categoryOptionsOf(schema: any): string[] {
-  const p = schema?.properties?.["학사 구분"]
+  const p = schema?.properties?.["구분"]
   return p?.type === "select" ? (p.select?.options ?? []).map((o: any) => o?.name).filter((n: unknown) => typeof n === "string" && n) : []
 }
 
-// 최초 생성 전용. 기존 일정 업데이트에는 ownedProperties만 사용한다(숨김·학부모 공개·학사 구분은 사람이 고친 값 유지).
-// categoryOptions = 일정 DB `학사 구분` 옵션 이름. 칸이 없는 학원(빈 목록)이나 옵션이 없는 값은 채우지 않는다.
+// 새로 만들 일정의 `구분` 옵션 이름: 학원 DB에 있는 옵션 중 이름 글자가 같은 것. 새 값이 아직 없는 학원(이관 전)은 옛 `🏫 학사 일정`.
+export function newCategoryOption(row: NeisRow, categoryOptions: string[]): string {
+  const want = schoolCategory(row)
+  return categoryOptions.find(o => categoryName(o) === want)
+    ?? categoryOptions.find(o => categoryName(o) === LEGACY_SCHOOL)
+    ?? LEGACY_SCHOOL_OPTION
+}
+
+// 최초 생성 전용. 기존 일정 업데이트에는 ownedProperties만 사용한다(구분·숨김·학부모 공개는 사람이 고친 값 유지).
 export function newEventProperties(row: NeisRow, pageId: string, key: string, gradeIds: string[], categoryOptions: string[] = []) {
-  const category = academicCategory(row)
   return {
     ...ownedProperties(row, pageId, key, gradeIds),
+    "구분": { select: { name: newCategoryOption(row, categoryOptions) } },
     "숨김": { checkbox: true },
     "학부모 공개": { checkbox: false },
-    ...(category && categoryOptions.includes(category) ? { "학사 구분": { select: { name: category } } } : {}),
   }
 }
