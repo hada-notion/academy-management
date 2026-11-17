@@ -1,0 +1,151 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>조절판 — 하다 관리 앱</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="hada-tokens.css">
+<style>
+/* 조절판: ① 가리키기 — 오른쪽 실제 화면에서 Ctrl을 누른 채 가리키고 누르면 그것이 어느 화면·모듈·요소인지, 크기와 정한 곳(파일·선택자·값)을 보여 준다
+           ② 값 — 값(토큰)을 바꾸면 실제 화면에 바로 반영된다. 파일은 바꾸지 않는다(바꾼 값·가리킨 것을 복사해 채팅에 붙임) */
+html,body{height:100%;margin:0;font-family:Pretendard,"Noto Sans KR",system-ui,sans-serif;color:var(--text-ink);background:var(--canvas)}
+.wrap{display:grid;grid-template-columns:360px 1fr;height:100%}
+.side{display:flex;flex-direction:column;min-height:0;background:var(--surface);border-right:1px solid var(--divider)}
+.top{padding:14px 16px 10px;border-bottom:1px solid var(--divider)}
+.top h1{margin:0 0 8px;font-size:17px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:3px;border:1px solid var(--field-line);border-radius:10px;background:var(--canvas)}
+.seg button{height:30px;border:0;border-radius:8px;background:none;font:inherit;font-size:13px;font-weight:600;color:var(--text-muted);cursor:pointer}
+.seg button.on{background:var(--surface);color:var(--text-ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.pane{flex:1;min-height:0;overflow:auto;padding:4px 16px 16px;display:none}.pane.on{display:block}
+.hint{margin:12px 0;font-size:12px;line-height:1.6;color:var(--text-muted)}
+.hint kbd{padding:1px 5px;border:1px solid var(--divider);border-radius:4px;background:var(--canvas);font:11px ui-monospace,Consolas,monospace}
+.q{width:100%;box-sizing:border-box;height:36px;margin-top:10px;padding:0 10px;border:1px solid var(--field-line);border-radius:10px;background:var(--canvas);font:inherit;font-size:13px}
+.grp{margin:14px 0 6px;font-size:12px;font-weight:700;color:var(--text-muted)}
+.row{display:grid;grid-template-columns:1fr 132px;gap:8px;align-items:center;min-height:36px}
+.row .nm{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row.chg .nm{font-weight:700}.row.chg .nm::before{content:"";display:inline-block;width:6px;height:6px;margin-right:6px;border-radius:50%;background:var(--warning)}
+.ctl{display:flex;gap:6px;align-items:center}
+.ctl input[type=color]{flex:none;width:32px;height:28px;padding:0;border:1px solid var(--field-line);border-radius:6px;background:none}
+.ctl input[type=text]{min-width:0;flex:1;height:28px;padding:0 6px;border:1px solid var(--field-line);border-radius:6px;background:var(--canvas);font:12px ui-monospace,Consolas,monospace}
+.kv{display:grid;grid-template-columns:76px 1fr;gap:4px 10px;margin:6px 0 2px;font-size:13px;line-height:1.5}
+.kv dt{color:var(--text-muted);font-size:12px;padding-top:1px}.kv dd{margin:0;word-break:break-all}
+.kv dd b{font-weight:700}
+.path{display:flex;flex-wrap:wrap;gap:4px;margin:10px 0 2px}
+.path span{padding:2px 8px;border-radius:6px;background:var(--canvas);border:1px solid var(--field-line);font-size:12px;font-weight:600}
+.path span.el{background:var(--brand-soft)}
+.rule{margin:6px 0;padding:8px 10px;border:1px solid var(--field-line);border-radius:8px;background:var(--canvas);font:11.5px/1.5 ui-monospace,Consolas,monospace;word-break:break-all}
+.rule .f{display:block;margin-bottom:2px;font-family:inherit;color:var(--text-muted)}
+.rule .tk{color:var(--info-ink);font-weight:700;cursor:pointer;text-decoration:underline dotted}
+.foot{padding:12px 16px;border-top:1px solid var(--divider);display:flex;gap:8px;align-items:center}
+.foot .n{flex:1;font-size:12px;color:var(--text-muted)}
+button.b{height:36px;padding:0 12px;border:1px solid var(--field-line);border-radius:10px;background:var(--canvas);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+button.b.pri{background:var(--brand-deep);border-color:var(--brand-deep);color:#fff}
+.main{display:flex;flex-direction:column;min-width:0}
+.tabs{display:flex;gap:6px;padding:10px 12px;background:var(--surface);border-bottom:1px solid var(--divider);align-items:center}
+.tabs button.on{background:var(--surface);border-color:var(--brand-mid)}
+.tabs .tip{margin-left:auto;font-size:12px;color:var(--text-muted)}
+.tabs .seg.mode{width:132px;margin-left:12px}.tabs .seg.mode button{height:28px}
+.wrap.editing .tabs{background:var(--warning-soft)}.wrap.editing .seg.mode button.on{color:var(--warning-ink)}
+iframe{flex:1;border:0;width:100%;background:#fff}
+@media (max-width:760px){.wrap{grid-template-columns:1fr;grid-template-rows:55% 45%}}
+</style></head><body>
+<div class="wrap">
+ <div class="side">
+  <div class="top"><h1>조절판</h1><div class="seg" role="group" aria-label="보기"><button data-pane="pick" class="on">가리키기</button><button data-pane="val">값</button></div></div>
+  <div class="pane on" id="pick"><div class="hint">오른쪽 위 <b>[편집]</b>을 켜고 화면의 아무 곳이나 누르면, 그것이 무엇인지 여기에 나와요(화면은 움직이지 않아요). <b>[선택]</b>에서는 평소처럼 쓰다가 <kbd>Ctrl</kbd> + 누르기로 잠깐 가리킬 수 있어요. 위 화살표 <kbd>↑</kbd> = 그것을 감싼 바깥 것, <kbd>Esc</kbd> = 선택 모드로.</div><div id="info"></div></div>
+  <div class="pane" id="val"><input class="q" id="q" placeholder="값 이름 검색 (예: pill, brand, radius)" autocomplete="off"><div id="list"></div></div>
+  <div class="foot"><span class="n" id="n">바꾼 값 0개</span><button class="b" id="reset">처음으로</button><button class="b pri" id="copy">복사</button></div>
+ </div>
+ <div class="main">
+  <div class="tabs"><button class="b on" data-src="hada-admin.html">시제품</button><button class="b" data-src="module-panel.html">모듈 페이지</button><span class="seg mode" role="group" aria-label="누르기 모드"><button data-mode="use" class="on" title="화면이 평소처럼 움직여요(Ctrl + 누르기로 잠깐 가리킬 수 있어요)">선택</button><button data-mode="edit" title="누르면 화면이 움직이지 않고, 그 부분이 무엇인지 왼쪽에 나와요">편집</button></span><span class="tip" id="tip">선택 모드: 화면이 평소처럼 움직여요 · Ctrl + 누르기 = 잠깐 가리키기</span></div>
+  <iframe id="view" src="hada-admin.html" title="미리보기"></iframe>
+ </div>
+</div>
+<script>
+/* ───────── 부품 사전: 화면에 보이는 것이 틀의 어느 층·어느 부품인지(선택자 → 이름 · 그리는 파일). 위에서부터 먼저 맞는 것 ───────── */
+const MODULES=[
+ [".phead","창 머리","panel.js PANEL.head"],[".ptabs","창 탭 바","panel.js PANEL.tabs"],[".pfoot,.sfoot","창 아래 단추 줄","panel.js PANEL.foot"],
+ [".qupair","숫자 + 단위 한 줄","panel.js PANEL.pairUp · field.css"],[".pgsec","상태별 묶음","panel.js PANEL.groups"],[".ttrows","줄 목록","panel.js PANEL.bookRows / rows"],
+ [".box,.cbox","상자","panel.js PANEL.box"],[".hf-pop","고르기 목록(뜨는 창)","field.js"],[".hp-pop,.hp-fld","고르기 모듈(클래스·학생)","pick.js"],
+ ["table.stt,table.t","표","hada-admin.html(표 — 아직 모듈로 안 옮김)"],[".tb,.toolbar","위 줄","hada-admin.html(위 줄 — 아직 모듈로 안 옮김)"],[".cal,.ttgrid,.wk","캘린더","hada-admin.html(캘린더 — 아직 모듈로 안 옮김)"],
+ ["aside,.side","왼쪽 메뉴","hada-admin.html · hada-rules.js MENU"],[".modal,.dlg","대화상자","hada-admin.html(대화상자 — 아직 모듈로 안 옮김)"],
+ ["#lp,#sp,.panel","오른쪽 창","panel.js"]];
+const ELEMENTS=[
+ [".spill,.kpl,.sstag,.pill,.stp,.gchip,.tchip,.mchip,.tag,.rpill","색 알약","app.css(색 알약 한 벌) · 값 --pill-*"],
+ ["svg.i,svg","아이콘","hada-rules.js FEATHER · IC()"],[".hf-box","입력칸 상자","field.js · field.css"],[".hf-lbl","칸 이름","field.js"],[".hf-msg","칸 아래 안내 글","field.js"],[".hf-unit,.hf-pre","칸의 단위 글자","field.js"],
+ [".hf-seg button,.seg button,.seg-toggle button","나눔 단추 칸","field.js(seg) · app.css"],["input,textarea","적는 칸","field.js"],
+ ["button.btn,.btn,button","단추","app.css"],[".dotc,.cdot","색 점","app.css"],[".pbar,.pgbar","진도 막대","app.css"],[".hstate","창 머리 오른쪽 상태","panel.js PANEL.head(state)"],
+ [".hinfo small","창 머리 2줄 값","panel.js PANEL.head(infoLine)"],[".phn","창 머리 이름","panel.js PANEL.head"],["h3","상자 제목","panel.js PANEL.box"],["th","표 열 머리","hada-admin.html(표)"],["td","표 칸","hada-admin.html(표)"],
+ [".ttrow","줄","panel.js"],["a,.link,.lnk","링크","app.css"]];
+const view=document.getElementById("view");
+let picked=null,pinfoTxt="",MODE="use";
+function setMode(m){MODE=m;document.querySelector(".wrap").classList.toggle("editing",m==="edit");document.querySelectorAll(".seg.mode button").forEach(b=>b.classList.toggle("on",b.dataset.mode===m));
+  document.getElementById("tip").textContent=m==="edit"?"편집 모드: 누르면 화면이 움직이지 않고, 그 부분이 무엇인지 왼쪽에 나와요":"선택 모드: 화면이 평소처럼 움직여요 · Ctrl + 누르기 = 잠깐 가리키기";
+  if(m==="edit")setPane("pick");else{const d=view.contentDocument,h=d&&d.getElementById("__pickHov");if(h)h.style.display="none"}}
+const first=(el,table,up)=>{for(const [sel,name,src] of table){let m=null;try{m=up?el.closest(sel):(el.matches(sel)?el:null)}catch(e){}if(m)return {el:m,name,src}}return null};
+const px=v=>Math.round(parseFloat(v)*10)/10;
+function rulesOf(el,doc){const out=[];for(const sh of doc.styleSheets){let rs;try{rs=sh.cssRules}catch(e){continue}const file=(sh.href||"").split("/").pop().split("?")[0]||"(화면 파일 안)";
+  const walk=list=>{for(const r of list){if(r.cssRules&&!r.selectorText){walk(r.cssRules);continue}if(!r.selectorText)continue;let ok=false;try{ok=el.matches(r.selectorText)}catch(e){}if(ok)out.push({file,sel:r.selectorText,css:r.style.cssText})}};walk(rs)}
+  return out}
+function describe(el){const doc=view.contentDocument,win=view.contentWindow,cs=win.getComputedStyle(el),r=el.getBoundingClientRect();
+  let scr="";try{scr=win.eval('typeof activeTab!=="undefined"&&activeTab?(MENU.flatMap(g=>g[1]).find(x=>x[0]===activeTab.screen)||[])[1]||activeTab.screen:""')}catch(e){}
+  if(!scr)scr=/module-panel/.test(view.src)?"모듈 페이지":"";
+  const pn=el.closest("#lp,#sp,.panel"),tab=pn&&pn.querySelector(".ptb.on,[data-ltab].on,[data-stab].on");
+  const boxEl=el.closest(".box,.cbox"),boxT=boxEl&&boxEl.querySelector("h3")?boxEl.querySelector("h3").textContent.trim().replace(/\s+/g," ").slice(0,14):"";
+  const mod=first(el,MODULES,true),elm=first(el,ELEMENTS,false)||first(el,ELEMENTS,true);
+  const hf=el.closest("[data-hf],[data-sk],[data-pf]"),hk=hf?(hf.dataset.hf||hf.dataset.sk||""):"",lab=hf&&hf.querySelector(".hf-lbl,.lbl")?hf.querySelector(".hf-lbl,.lbl").textContent.trim():"";
+  const data=Object.entries(el.dataset||{}).map(([k,v])=>`data-${k.replace(/[A-Z]/g,c=>"-"+c.toLowerCase())}="${String(v).slice(0,24)}"`).join(" ");
+  const path=[scr,pn?"오른쪽 창"+(tab?" · "+tab.textContent.trim().replace(/\s+/g," ")+" 탭":""):"",boxT?"상자: "+boxT:"",mod&&mod.name!=="오른쪽 창"&&mod.name!=="상자"?mod.name:"",lab?"칸: "+lab:""].filter(Boolean);
+  const size=`${px(r.width)} × ${px(r.height)}`;
+  const font=`${px(cs.fontSize)} / ${cs.fontWeight}`,rad=px(cs.borderTopLeftRadius),pad=[cs.paddingTop,cs.paddingRight,cs.paddingBottom,cs.paddingLeft].map(px).join(" ");
+  const rules=rulesOf(el,doc),tokens=[...new Set(rules.flatMap(x=>(x.css.match(/var\(--[a-z0-9-]+/gi)||[]).map(t=>t.slice(6))))];
+  const text=(el.textContent||"").trim().replace(/\s+/g," ").slice(0,30);
+  const cls=el.className&&el.className.baseVal!==undefined?el.className.baseVal:String(el.className||"");
+  const tag=`<${el.tagName.toLowerCase()}${cls?' class="'+cls+'"':""}>`;
+  let h=`<div class="path">${path.map(x=>`<span>${x}</span>`).join("")}${elm?`<span class="el">${elm.name}</span>`:""}</div>
+  <dl class="kv"><dt>화면</dt><dd>${scr||"—"}</dd><dt>모듈</dt><dd>${mod?`<b>${mod.name}</b><br><small>${mod.src}</small>`:"—"}</dd><dt>요소</dt><dd>${elm?`<b>${elm.name}</b><br><small>${elm.src}</small>`:"—"}</dd>
+  ${hk||lab?`<dt>칸</dt><dd>${lab||""}${hk?` <small>(정의 이름 ${hk})</small>`:""}</dd>`:""}${text?`<dt>글자</dt><dd>${text.replace(/</g,"&lt;")}</dd>`:""}
+  <dt>크기</dt><dd><b>${size}</b></dd><dt>글자 크기</dt><dd>${font} · 색 ${cs.color}</dd><dt>바탕</dt><dd>${cs.backgroundColor}</dd><dt>모서리</dt><dd>${rad}</dd><dt>안쪽 여백</dt><dd>${pad}</dd>
+  <dt>쓰는 값</dt><dd>${tokens.length?tokens.map(t=>`<span class="tk" data-tk="${t}">--${t}</span>`).join(" "):"직접 적힌 값(값 파일을 안 거침)"}</dd><dt>코드</dt><dd><small>${tag.replace(/</g,"&lt;")}${data?"<br>"+data:""}</small></dd></dl>
+  <div class="grp">정한 곳 ${rules.length} <span style="font-weight:400">(아래일수록 나중에 덮어쓴 것)</span></div>${rules.slice(-8).map(x=>`<div class="rule"><span class="f">${x.file}</span>${x.sel.slice(0,140)}<br>{ ${x.css.slice(0,260).replace(/var\(--([a-z0-9-]+)/gi,'var(<span class="tk" data-tk="$1">--$1</span>')} }</div>`).join("")}`;
+  pinfoTxt=`[가리킨 것]\n위치: ${path.join(" › ")}\n모듈: ${mod?mod.name+" ("+mod.src+")":"—"}\n요소: ${elm?elm.name+" ("+elm.src+")":"—"}${lab?"\n칸: "+lab+(hk?" ("+hk+")":""):""}${text?"\n글자: "+text:""}\n크기: ${size} · 글자 ${font} · 모서리 ${rad} · 안쪽 여백 ${pad}\n쓰는 값: ${tokens.length?tokens.map(t=>"--"+t).join(", "):"직접 적힌 값"}\n코드: ${tag}${data?" "+data:""}\n정한 곳: ${rules.slice(-3).map(x=>x.file+" › "+x.sel.slice(0,80)).join(" | ")}`;
+  return h}
+function showPick(el){picked=el;document.getElementById("info").innerHTML=describe(el);setPane("pick");mark(el,true);document.getElementById("n").textContent="[복사]로 이 설명을 채팅에 붙일 수 있어요";
+  document.querySelectorAll("#info .tk").forEach(t=>t.onclick=()=>{setPane("val");const q=document.getElementById("q");q.value=t.dataset.tk;draw()})}
+function mark(el,fix){const d=view.contentDocument;let o=d.getElementById(fix?"__pickFix":"__pickHov");if(!o){o=d.createElement("div");o.id=fix?"__pickFix":"__pickHov";o.style.cssText="position:fixed;z-index:2147483646;pointer-events:none;border-radius:3px;"+(fix?"outline:2px solid #E5484D;background:rgba(229,72,77,.08)":"outline:2px dashed #3478F6;background:rgba(52,120,246,.08)");d.body.appendChild(o)}
+  if(!el){o.style.display="none";return}const r=el.getBoundingClientRect();o.style.display="block";o.style.left=r.left+"px";o.style.top=r.top+"px";o.style.width=r.width+"px";o.style.height=r.height+"px"}
+function hook(){const d=view.contentDocument;if(!d||d.__hooked)return;d.__hooked=true;
+  /* 편집 모드 = 누르기가 모두 "가리키기"(화면은 움직이지 않음) · 선택 모드 = 평소처럼, Ctrl을 누르고 있을 때만 가리키기 */
+  const on=e=>MODE==="edit"||e.ctrlKey||e.metaKey;
+  d.addEventListener("mousemove",e=>{if(on(e))mark(e.target,false);else mark(null,false)},true);
+  d.addEventListener("mouseleave",()=>mark(null,false),true);
+  d.addEventListener("keyup",e=>{if((e.key==="Control"||e.key==="Meta")&&MODE!=="edit")mark(null,false)},true);
+  const stop=e=>{if(on(e)){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation()}};
+  ["mousedown","mouseup","pointerdown","pointerup","dblclick","contextmenu"].forEach(t=>d.addEventListener(t,stop,true));
+  d.addEventListener("click",e=>{if(!on(e))return;stop(e);showPick(e.target)},true);
+  d.addEventListener("scroll",()=>{if(picked&&picked.isConnected)mark(picked,true)},true)}
+document.addEventListener("keydown",e=>{if(e.key==="ArrowUp"&&picked&&picked.parentElement&&picked.parentElement!==view.contentDocument.body&&!/INPUT|TEXTAREA/.test(document.activeElement.tagName)){e.preventDefault();showPick(picked.parentElement)}});
+
+/* ───────── 값: 값 목록은 값 파일(hada-tokens.css)에서 그대로 읽는다 ───────── */
+const GROUPS=[["색 알약",/^pill-/],["기본 옷(칸·선·바탕)",/^(ui-bg|field-|pick-line|section-line|canvas|surface|divider|control-border)/],["포인트 색",/^brand-/],["글자 색",/^text-/],["상태 색",/^(success|danger|warning|info|orange)/],["알림톡",/^kakao/],["글자 크기",/^(text|font)-/],["간격·모서리·높이",/^(space|radius|h-|size|gap|shadow)/],["학년·요일·클래스 색",/^(grade|day|class)-/],["그 밖",/./]];
+const base={},cur={},list=document.getElementById("list");
+const isColor=v=>/^#[0-9a-f]{3,8}$/i.test(v.trim());
+const hex6=v=>{v=v.trim();return v.length===4?"#"+[...v.slice(1)].map(c=>c+c).join(""):v.slice(0,7)};
+const changed=()=>Object.keys(base).filter(k=>cur[k]!==base[k]);
+function apply(){const d=view.contentDocument;if(!d)return;Object.keys(base).forEach(k=>{if(cur[k]!==base[k])d.documentElement.style.setProperty("--"+k,cur[k]);else d.documentElement.style.removeProperty("--"+k)});document.getElementById("n").textContent=`바꾼 값 ${changed().length}개`;if(picked&&picked.isConnected)mark(picked,true)}
+function draw(){const q=document.getElementById("q").value.trim().toLowerCase();const used=new Set();let h="";
+  GROUPS.forEach(([name,re])=>{const ks=Object.keys(base).filter(k=>!used.has(k)&&re.test(k)&&(!q||k.includes(q)));ks.forEach(k=>used.add(k));if(!ks.length)return;
+    h+=`<div class="grp">${name} <span style="font-weight:400">${ks.length}</span></div>`+ks.map(k=>`<div class="row ${cur[k]!==base[k]?"chg":""}" data-k="${k}"><span class="nm" title="--${k}">${k}</span><span class="ctl">${isColor(cur[k])?`<input type="color" value="${hex6(cur[k])}" aria-label="${k} 색">`:""}<input type="text" value="${cur[k].replace(/"/g,"&quot;")}" aria-label="${k} 값" spellcheck="false"></span></div>`).join("")});
+  list.innerHTML=h||'<div class="grp">맞는 값이 없어요</div>';
+  list.querySelectorAll(".row").forEach(r=>{const k=r.dataset.k,t=r.querySelector('input[type=text]'),c=r.querySelector('input[type=color]');
+    const set=v=>{cur[k]=v;r.classList.toggle("chg",cur[k]!==base[k]);apply()};
+    t.oninput=()=>{set(t.value.trim()||base[k]);if(c&&isColor(t.value))c.value=hex6(t.value)};
+    if(c)c.oninput=()=>{t.value=c.value;set(c.value)}})}
+fetch("hada-tokens.css?"+Date.now()).then(r=>r.text()).then(css=>{css=css.replace(/\/\*[\s\S]*?\*\//g,"");const re=/--([a-z0-9-]+)\s*:\s*([^;}]+)[;}]/gi;let m;while((m=re.exec(css))){if(!(m[1] in base)){base[m[1]]=m[2].trim();cur[m[1]]=m[2].trim()}}draw()});
+function setPane(id){document.querySelectorAll(".seg button[data-pane]").forEach(b=>b.classList.toggle("on",b.dataset.pane===id));document.querySelectorAll(".pane").forEach(p=>p.classList.toggle("on",p.id===id))}
+document.querySelectorAll(".seg button[data-pane]").forEach(b=>b.onclick=()=>setPane(b.dataset.pane));
+document.getElementById("q").oninput=draw;
+document.getElementById("reset").onclick=()=>{Object.keys(base).forEach(k=>cur[k]=base[k]);draw();apply()};
+document.getElementById("copy").onclick=()=>{const ch=changed();const parts=[];if(pinfoTxt&&document.getElementById("pick").classList.contains("on"))parts.push(pinfoTxt);if(ch.length)parts.push("[값 바꾸기 — hada-tokens.css]\n"+ch.map(k=>`--${k}: ${base[k]} → ${cur[k]}`).join("\n"));
+  const txt=parts.join("\n\n")||"가리킨 것도 바꾼 값도 없어요";(navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>{document.getElementById("n").textContent="복사했어요 — 채팅에 붙여 넣어 주세요"}).catch(()=>{window.prompt("아래 글을 복사해 주세요",txt)})};
+document.querySelectorAll(".tabs button[data-src]").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tabs button[data-src]").forEach(x=>x.classList.toggle("on",x===b));picked=null;view.src=b.dataset.src});
+document.querySelectorAll(".seg.mode button").forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&MODE==="edit")setMode("use")});
+view.addEventListener("load",()=>{hook();apply()});
+</script></body></html>

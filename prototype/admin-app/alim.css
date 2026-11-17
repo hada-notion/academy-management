@@ -1,0 +1,27 @@
+/* 알림톡 미리보기(303판) — '하다 알림톡 미리보기' 도구와 같은 모양(카톡 바탕 #b2c7d9 · 노란 '알림톡 도착' · 흰 말풍선) */
+.alv-btnq{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;margin-left:auto;border:1px solid #F2D648;border-radius:999px;background:#FEF6C7;color:#5C4A00;font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+.alv-btnq:hover{background:#FCE97A}.alv-btnq svg{width:13px;height:13px}.alv-btnq[aria-expanded="true"]{background:#FEE500;border-color:#E6CF00}
+.hf-lbl.alv-row{display:flex;align-items:center;gap:4px}
+.alv-wrap{margin-top:8px}
+.alv-phone{background:#b2c7d9;border-radius:12px;padding:16px 14px 18px;display:flex;flex-direction:column;gap:8px;font-family:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif}
+.alv-ch{display:flex;gap:8px;align-items:flex-start}.alv-col{min-width:0;flex:1}
+.alv-avatar{width:34px;height:34px;border-radius:12px;background:#fff;flex:none}
+.alv-chname{font-size:12px;color:#33414d;margin-bottom:4px}
+.alv-msg{display:flex;align-items:flex-end;gap:6px;min-width:0}
+.alv-bubble{background:#fff;color:#191919;border-radius:4px 12px 12px 12px;overflow:hidden;width:min(280px,100%);font-size:13.5px;line-height:1.55}
+.alv-top{background:#fee500;padding:8px 12px;font-size:13px;color:#191919}
+.alv-in{padding:12px 14px 14px;display:flex;flex-direction:column;gap:10px}
+.alv-sub{font-size:12px;color:#6b6b6b}.alv-ttl{font-size:17px;font-weight:700;line-height:1.35;word-break:keep-all}
+.alv-hr{height:1px;background:#e6e6e6}
+.alv-body{white-space:pre-wrap;word-break:break-word}
+.alv-extra{white-space:pre-wrap;font-size:12px;color:#6b6b6b}
+.alv-kb{display:block;text-align:center;border:1px solid #e1e1e1;background:#f6f6f6;border-radius:6px;padding:8px;font-size:13px}
+.alv-time{font-size:11px;color:#45525e;flex:none}
+.alv-me{background:#fff3b0;color:#191919;border-radius:3px;padding:0 1px}
+.alv-cap{margin-top:6px;font-size:11px;color:var(--muted,#5d6763)}
+
+/* 307판 미리보기 팝업 */
+.alv-pop{position:fixed;z-index:90;width:330px;max-height:calc(100vh - 16px);overflow:auto;background:var(--surface,#fff);border:1px solid var(--line2,#E5DED4);border-radius:14px;box-shadow:0 12px 32px rgba(25,31,40,.18),0 2px 6px rgba(25,31,40,.08);padding:10px 10px 12px}
+.alv-poph{display:flex;align-items:center;gap:8px;padding:2px 4px 8px}.alv-poph b{font-size:13px}.alv-pops{font-size:11.5px;color:var(--muted,#6b6b6b)}
+.alv-popx{margin-left:auto;width:28px;height:28px;border:0;border-radius:8px;background:none;color:var(--muted,#6b6b6b);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}.alv-popx:hover{background:var(--brand-tint,#F5EFE7)}.alv-popx svg{width:14px;height:14px}
+.alv-dlg{max-width:330px;margin:0 auto 8px}

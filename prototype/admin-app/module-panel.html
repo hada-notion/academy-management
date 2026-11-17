@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>오른쪽 창 모듈</title>
+<!-- 오른쪽 창 모듈 페이지. 앱과 같은 CSS(hada-tokens·app·pick·field)와 입력칸(field.js), 창 그리기(panel.js)를 그대로 쓴다 — 여기서 고친 부품이 앱에 그대로 들어간다. 모음표: _catalog/index.html -->
+<link rel="stylesheet" href="hada-tokens.css?v=496"><link rel="stylesheet" href="app.css?v=496"><link rel="stylesheet" href="pick.css?v=496"><link rel="stylesheet" href="field.css?v=496">
+<link rel="stylesheet" href="alim.css?v=496"><script src="hada-rules.js?v=496"></script><script src="alim-preview.js?v=496"></script><script src="pick.js?v=496"></script><script src="pick-demo-data.js?v=496"></script><script src="field.js?v=496"></script><script src="panel.js?v=496"></script>
+<style>
+body{margin:0;background:var(--canvas,#F7F8FA);overflow:auto;height:auto}
+.mp-top{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--divider,#EEE7DD);padding:14px 24px}
+.mp-top h1{margin:0;font-size:22px}.mp-top p{margin:4px 0 0;color:var(--text-muted)}
+.mp-nav{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.mp-nav a{font-size:12px;padding:4px 10px;border-radius:999px;background:var(--brand-soft);color:var(--brand-deep);text-decoration:none;font-weight:600}
+main{padding:8px 24px 80px;max-width:1500px}
+.mp-sec{margin:34px 0 0}.mp-sec>h2{font-size:18px;margin:0 0 4px}.mp-sec>p.d{margin:0 0 14px;color:var(--text-muted);font-size:13px;max-width:900px}
+.mp-row{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+.mp-cell{display:flex;flex-direction:column;gap:6px}.mp-cell>.lab{font-size:12px;font-weight:700;color:var(--text-subtle)}
+/* 모듈 페이지 안의 창 = 앱 오른쪽 창과 같은 폭, 화면에 붙지 않고 놓임 */
+.mp-pn{position:static!important;width:360px;max-height:none;height:auto;border:1px solid var(--line2,#E5DED4);border-radius:var(--radius-lg,14px);background:var(--surface,#fff);box-shadow:0 1px 4px rgba(25,31,40,.06);overflow:visible;display:flex;flex-direction:column;padding:0 var(--space-4,16px)!important;overflow:visible!important}
+/* 아래 단추줄 = 앱 그대로(붙는 위치만 창 안 흐름으로) */.mp-pn>.actions{position:static;border-radius:0 0 var(--radius-lg) var(--radius-lg)}
+/* 칸 간격은 app.css 공통 규칙(299판) */
+.mp-skel{width:360px;border:2px dashed #CFC2B2;border-radius:14px;background:#fff;font-size:13px}
+.mp-skel>div{padding:10px 14px;border-bottom:1px dashed #E2D8CC}.mp-skel>div:last-child{border-bottom:0}.mp-skel b{color:var(--brand-deep)}.mp-skel small{display:block;color:var(--text-subtle)}
+.mp-code{font:12px/1.5 ui-monospace,Consolas,monospace;background:#FBF8F3;border:1px solid #EEE7DD;border-radius:10px;padding:10px 12px;white-space:pre;overflow:auto;max-width:560px;color:#4E5968}
+.mp-rule{font-size:12.5px;color:var(--text-muted);margin:6px 0 0;max-width:360px}
+</style></head><body>
+<div class="mp-top"><h1>오른쪽 창 모듈</h1><p>창 하나 = 머리 · 탭 바 · 상자[칸 · 줄 목록 · 카드 · 미니] · 아래 단추. 앱과 같은 CSS·입력칸을 써요. 화면별 지금 모습은 <a href="_catalog/index.html">오른쪽 창 모음표</a>.</p>
+<nav class="mp-nav"><a href="#s0">0 뼈대</a><a href="#sic">아이콘 규칙</a><a href="#s1">1 머리</a><a href="#s2">2 탭 바</a><a href="#s3">3 상자</a><a href="#s4">4 칸</a><a href="#s5">5 날짜·시각 한 줄</a><a href="#s6">6 줄 목록</a><a href="#s7">7 카드</a><a href="#s8">8 미니 부품</a><a href="#s9">9 선택 전(할 일)</a><a href="#s10">10 아래 단추</a><a href="#s11">전체 예시</a></nav></div>
+<main>
+
+<section class="mp-sec" id="s0"><h2>0. 창 뼈대</h2><p class="d">모든 오른쪽 창은 이 네 칸으로만 생성한다. 높이가 정해진 칸(머리·탭 바·아래 단추)은 창마다 같은 자리 — 탭을 바꿔도, 다른 화면으로 가도 위치가 움직이지 않는다.</p>
+<div class="mp-row"><div class="mp-skel"><div><b>머리</b> — 3줄 고정<small>이름 + 상태 배지 / 정보 + 기타 배지 / 바로 가기</small></div><div><b>탭 바</b> — 1줄 고정<small>탭이 없는 창도 '정보' 하나</small></div><div style="height:180px"><b>내용</b> — 상자를 위에서 아래로<small>상자 = 제목 + (?) + 오른쪽 링크 + [칸 묶음 · 줄 목록 · 카드 · 미니 부품]</small></div><div><b>아래 단추</b> — 1줄 고정<small>삭제 ……… 되돌리기 · ○○ 저장</small></div></div>
+<pre class="mp-code">창 = {
+  head:  { name, dot, status:[{t,tone}], info:[…], badges:[…], links:[{t}] },
+  tabs:  [{ id, label, n }],  tab: "info",
+  boxes: [{ title, help, right, fields | rows | cards | mini | body }],
+  foot:  { del, undo, save: "○○ 저장", saveOn }
+}
+선택 전 = { todo: { groups:[{name, why, rows}], summary:[[이름, 값]], list } }</pre></div></section>
+
+<section class="mp-sec" id="sic"><h2>아이콘 규칙 — 규칙 파일(hada-rules.js) 한 곳</h2><p class="d">아래 표는 규칙 파일을 그대로 읽어 그려요. 메뉴 · 창 제목 · 표 열 머리 · 오른쪽 창 칸이 모두 이 규칙을 써요. 아이콘을 바꾸려면 규칙 파일 한 줄만 고쳐요. 순서: ① 칸 이름 예외 → ② 메뉴와 연결된 칸 = 그 메뉴 아이콘 → ③ 칸 종류 → ④ 고르기 기본 ⌄.</p><div class="mp-row" id="hic"></div></section>
+<section class="mp-sec" id="s1"><h2>1. 머리</h2><p class="d">1줄 = 무엇인지(이름 + 상태 배지 + (?)), 2줄 = 정보 글(종류 · 날짜 · 학생·학교) + 기타 배지(정규·보강·학년), 3줄 = 바로 가기. 줄마다 한 줄, 넘치면 …. 배지는 모두 둥근 알약 20px.</p><div class="mp-row" id="h1"></div></section>
+
+<section class="mp-sec" id="s2"><h2>2. 탭 바</h2><p class="d">숫자는 이름 뒤 작게. 못 여는 탭은 흐리게. 탭이 없는 창도 '정보' 하나를 둬서 높이를 맞춘다.</p><div class="mp-row" id="h2"></div></section>
+
+<section class="mp-sec" id="s3"><h2>3. 상자</h2><p class="d">제목 · (?) 도움말 · 오른쪽 끝 링크나 작은 단추. 같은 일을 하는 상자는 화면이 달라도 같은 이름(예: 시간표).</p><div class="mp-row" id="h3"></div></section>
+
+<section class="mp-sec" id="s4"><h2>4. 칸</h2><p class="d">입력칸 모듈(field.js) 그대로 — 글 · 날짜 · 고르기 · 숫자 · 전화 · 긴 글 · 나눔 단추 · 켜기/끄기 · 색. 알림톡으로 나가는 칸은 이름 옆 (?)에 어디로 나가는지.</p><div class="mp-row" id="h4"></div></section>
+
+<section class="mp-sec" id="s5"><h2>5. 날짜·시각 한 줄</h2><p class="d">시작–끝 세트는 이름 하나, 두 칸 사이 '-', 요일 없음(입력칸 모듈 dateRange · timeRange).</p><div class="mp-row" id="h5"></div></section>
+
+<section class="mp-sec" id="s6"><h2>6. 줄 목록</h2><p class="d">이름 ……… 정보 · 꼬리표 ›. 누르면 그 항목 화면. 색 점은 클래스·시즌처럼 색이 있는 것만.</p><div class="mp-row" id="h6"></div></section>
+
+<section class="mp-sec" id="s7"><h2>7. 카드</h2><p class="d">줄보다 정보가 많을 때(등록 카드, 학생 카드, 교재 카드). 지금은 화면마다 따로 — 공통 카드 하나로 모을 대상.</p><div class="mp-row" id="h7"></div></section>
+
+<section class="mp-sec" id="s8"><h2>8. 미니 부품</h2><p class="d">상자 안에 들어가는 작은 그림: 주간 시간표 · 달 캘린더(학생 리포트 모양) · 그래프.</p><div class="mp-row" id="h8"></div></section>
+
+<section class="mp-sec" id="s9"><h2>9. 선택 전 = 할 일 창</h2><p class="d">줄을 안 골랐을 때. 할 일 갈래 탭 · 이유 한 줄 · 줄(누르면 그 줄 열림) · 요약 숫자 · (있으면) 목록.</p><div class="mp-row" id="h9"></div></section>
+
+<section class="mp-sec" id="s10"><h2>10. 아래 단추</h2><p class="d">삭제(왼쪽) ……… 되돌리기 · ○○ 저장(오른쪽). 저장은 그 줄만, 고친 게 없으면 흐림. 시간표·수업도 '수업 저장'·'시간표 저장'처럼 이름을 붙인다.</p><div class="mp-row" id="h10"></div></section>
+
+<section class="mp-sec" id="s11"><h2>전체 예시 — 정의 하나로 그린 창</h2><p class="d">같은 함수(PANEL.render)로 그린 클래스 · 학생 · 수업 창. 지금 앱은 이 셋이 서로 다른 코드라 모양이 조금씩 달라요(모음표 참고).</p><div class="mp-row" id="h11"></div></section>
+</main>
+<div id="modalRoot"></div>
+<script>
+/* 앱과 같은 반응(시제품 앱 optAdd·optEdit·modal·toast를 모듈 페이지용으로 그대로 옮김) — 새로 생성 · ⋯ 이름·색·삭제 */
+const NC_COLORS = [["default", "기본"], ["gray", "회색"], ["brown", "갈색"], ["orange", "주황"], ["yellow", "노랑"], ["green", "초록"], ["blue", "파랑"], ["purple", "보라"], ["pink", "분홍"], ["red", "빨강"]];
+function toast(msg) { document.querySelectorAll(".toast").forEach(x => x.remove()); const t = document.createElement("div"); t.className = "toast"; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2600) }
+function modal(html, bind) { const r = document.getElementById("modalRoot"); r.innerHTML = `<div class="modal"><div class="dlg">${html}</div></div>`; const m = r.firstChild; m.onclick = e => { if (e.target === m) close() }; const close = () => r.innerHTML = ""; bind(m, close); return close }
+const IC2 = n => ({ trash: PANEL.IC.trash, check: PANEL.IC.check }[n] || "");
+/* 옵션 칸 하나: nm = 옵션 이름(출판사·과목), opts = [{t, c}], multi = 여러 개 */
+function demoOpt(h, o) {
+  const st = { v: o.value };
+  const draw = () => {
+    const items = o.opts.map(x => ({ v: x.t, t: x.t, cls: "nc-" + x.c }));
+    const add = t => { t = String(t || "").trim().slice(0, 30); if (!t) return; if (!o.opts.some(x => x.t === t)) o.opts.push({ t, c: "default" }); st.v = o.multi ? [...new Set([...(st.v || []), t])] : t; draw(); toast(o.multi ? `${o.nm} '${t}'을(를) 생성했어요` : `${o.nm} '${t}'을(를) 생성했어요 — 다른 줄에서도 고를 수 있어요`) };
+    const edit = v => { const x = o.opts.find(z => z.t === v); if (!x) return; let col = x.c; const used = (o.multi ? (st.v || []).includes(v) : st.v === v) ? 1 : 0;
+      modal(`<h2>${o.nm} 옵션${PANEL.help("이름을 바꾸면 이 옵션을 쓰는 줄이 모두 같이 바뀌어요. 삭제하면 쓰는 줄에서 이 값이 비워져요. 노션 선택 속성의 옵션 편집과 같아요.")}</h2>
+  <div class="field"><span class="lbl">이름</span><input class="inp" id="oeN" value="${PANEL.esc(v)}" maxlength="30" style="width:100%"></div>
+  <div class="field"><span class="lbl">색</span><div class="oecols">${NC_COLORS.map(([c, t]) => `<button type="button" class="oec ${c === col ? "on" : ""}" data-oec="${c}" title="${t}"><span class="spill nc-${c}">${t}</span></button>`).join("")}</div></div>
+  <div class="hint">쓰는 줄 ${used}개</div>
+  <div class="actions"><button class="btn danger" id="oeDel">${IC2("trash")}삭제</button><span class="sp"></span><button class="btn" id="oeC">취소</button><button class="btn pri" id="oeOk">${IC2("check")}적용</button></div>`, (m, close) => {
+        m.querySelectorAll("[data-oec]").forEach(b => b.onclick = () => { col = b.dataset.oec; m.querySelectorAll(".oec").forEach(z => z.classList.toggle("on", z === b)) });
+        m.querySelector("#oeC").onclick = close;
+        m.querySelector("#oeOk").onclick = () => { const n = m.querySelector("#oeN").value.trim().slice(0, 30); if (!n) { toast("이름을 적어 주세요"); return } if (n !== v && o.opts.some(z => z.t === n)) { toast(`'${n}'은(는) 이미 있어요`); return }
+          x.t = n; x.c = col; if (n !== v) st.v = o.multi ? (st.v || []).map(z => z === v ? n : z) : (st.v === v ? n : st.v); close(); draw(); toast(n !== v ? `${o.nm} '${v}' → '${n}' — 쓰는 줄 ${used}개가 같이 바뀌었어요(작성 중)` : `${o.nm} '${v}' 색을 바꿨어요`) };
+        m.querySelector("#oeDel").onclick = () => { close(); o.opts.splice(o.opts.indexOf(x), 1); st.v = o.multi ? (st.v || []).filter(z => z !== v) : (st.v === v ? "" : st.v); draw(); toast(`${o.nm} '${v}'을(를) 삭제했어요${used ? ` — ${used}줄에서 비웠어요(작성 중, 되돌리기로 되살려요)` : ""}`) };
+        setTimeout(() => m.querySelector("#oeN").select(), 0) }) };
+    const base = { label: o.label, help: o.help, items, onAdd: add, onEdit: x => edit(typeof x === "string" ? x : x.v), onChange: v => st.v = v };
+    o.multi ? HF.multi(h, Object.assign(base, { value: st.v || [] })) : HF.select(h, Object.assign(base, { value: st.v || null }));
+  };
+  draw();
+}
+
+const { head, tabs, box, rows, foot, todo, render, mountFields, pill } = PANEL;
+const NOTION_LINK = 'data-notion="demo"'; /* 머리 오른쪽 끝 [N] = 노션에서 열기 하나(다른 이동 링크 없음) */
+const cell = (lab, html, w) => `<div class="mp-cell"><span class="lab">${lab}</span><div class="panel mp-pn" style="${w ? "width:" + w + "px" : ""}">${html}</div></div>`;
+const put = (id, html) => document.getElementById(id).innerHTML = html;
+const gchip = g => `<span class="gchip ${/^초/.test(g) ? "elem" : /^중/.test(g) ? "mid" : "high"}">${g}</span>`;
+// 1 머리
+put("h1", [
+  cell("학생 — 이름을 바로 고침 · 소속 = 학교 학년", head({ icon: IC(menuIcon("students")), nameHtml: '<input class="hname" value="장예린" placeholder="새 학생 이름">', state: { t: "등록 중", tone: "green" }, help: "등록상태는 자동이에요", belong: "하다고 고3", info: ["2026.09.01 - 현재"], notion: NOTION_LINK }), 360),
+  cell("등록 — 소속 = 클래스(색 점 없이 글자만)", head({ icon: IC("usercheck"), name: "강도윤", state: { t: "수강 중", tone: "green" }, belong: "중등 과학", info: ["박하다", "2026.09.01 - 현재"], notion: NOTION_LINK }), 360),
+  cell("클래스 — 앞 = 색 점", head({ dot: "#B794F6", name: "중1 수학", belong: "보습 · 중등 수학", info: ["이하다", "학생 7명"], notion: NOTION_LINK }), 360),
+  cell("시간표 — 자물쇠", head({ dot: "#B794F6", name: "중1 수학", lock: `<button class="lockbtn" title="잠금 해제">${IC("lock")}</button>`, belong: "월 16:00-17:00", info: ["이하다", "7명", "그룹"], notion: NOTION_LINK }), 360),
+  cell("수업 — 상태 칩 + 자물쇠", head({ dot: "#E88FB5", name: "초등 영어", state: { t: "정규", tone: "blue" }, lock: `<button class="lockbtn" title="잠금 해제">${IC("lock")}</button>`, belong: "11.11(수) 14:30-15:30", info: ["김하다", "출석 8/12"], notion: NOTION_LINK }), 360),
+  cell("라이브러리 — 고치는 중 · 빈 값은 건너뜀", head({ icon: IC("package"), name: "점토 공예", draft: true, state: { t: "미사용", tone: "gray" }, belong: "공예", info: ["", "8차시"], notion: NOTION_LINK }), 360),
+  cell("긴 이름 — 폭 3/5에서 두 줄", head({ icon: IC("bookc"), name: "백발백중 최종점검 중2 영어 2학기 중간 (동아)", state: { t: "사용 중", tone: "green" }, belong: "중등영어2", info: ["6회"], notion: NOTION_LINK }), 360),
+  cell("아주 긴 이름 — 두 줄도 넘으면 …", head({ icon: IC("bookc"), name: "백발백중 최종점검 중2 영어 2학기 중간 (동아) 개정판 실전 모의고사 5회분 포함", state: { t: "사용 중", tone: "green" }, belong: "중등영어2", info: ["6회"], notion: NOTION_LINK }), 360),
+  cell("시즌 — 소속이 없는 창", head({ icon: IC("gitcommit"), name: "2026 2학기", state: { t: "운영 중", tone: "green" }, info: ["2026.09.01 - 2026.12.19"], notion: NOTION_LINK }), 360),
+].join(""));
+// 2 탭 바
+put("h2", [
+  cell("숫자가 붙은 탭", tabs([{ id: "i", label: "정보" }, { id: "t", label: "시간표", n: 2 }, { id: "s", label: "학생", n: 7 }, { id: "b", label: "교재", n: 3 }], "i")),
+  cell("못 여는 탭", tabs([{ id: "i", label: "정보" }, { id: "e", label: "등록", n: 2 }, { id: "c", label: "일정", n: "준비 중", disabled: true }, { id: "g", label: "성적" }], "e")),
+  cell("탭이 없는 창도 '정보' 하나", tabs([], "info")),
+].join(""));
+// 3 상자
+put("h3", [
+  cell("제목만", box({ title: "기본", body: '<div class="hint">내용</div>' })),
+  cell("제목 + (?)", box({ title: "수강료 조정", help: "할인은 −, 할증은 +", body: '<div class="hint">내용</div>' })),
+  cell("제목 + 오른쪽 링크", box({ title: "시간표 · 2026 2학기", right: '<a class="lnk" href="#">시간표 화면 →</a>', body: '<div class="hint">내용</div>' })),
+  cell("상자 나누기 + 숫자·단위 한 줄(정의: 칸 이름 · 묶음 · 짝)", PANEL.infoBoxes(["name", "pub", "total", "unit", "price"], [{ title: "분류", keys: ["pub"] }, { title: "분량", keys: ["total", "unit"] }, { title: r => r.kind === "프로그램" ? "재료비" : "교재비", keys: ["price"] }], { kind: "교재" }, "칸이 8개를 넘으면 뜻으로 묶어 상자를 나눠요")),
+].join(""));
+/* 위 상자 나누기 견본에 실제 입력칸을 꽂음(입력칸 모듈) + 짝 묶기(창 모듈) */
+(() => { const root = [...document.querySelectorAll("#h3 .mp-pn")].pop(), h = k => root.querySelector(`[data-hf="${k}"]`);
+  HF.text(h("name"), { label: "교재명", value: "개념원리 중등 수학 1-2" });
+  HF.select(h("pub"), { label: "출판사", value: "개념원리", items: [{ v: "개념원리", t: "개념원리", cls: "nc-purple" }, { v: "좋은책신사고", t: "좋은책신사고", cls: "nc-pink" }] });
+  HF.num(h("total"), { label: "전체 분량", value: "160", unit: "쪽" });
+  HF.select(h("unit"), { label: "진도 단위", value: "-쪽", clear: false, items: [{ v: "-쪽", t: "n쪽", cls: "nc-yellow" }, { v: "UNIT -", t: "UNIT n", cls: "nc-purple" }] });
+  HF.num(h("price"), { label: "가격", value: "16,000", unit: "원" });
+  PANEL.pairUp(root, [["total", "unit", ""]]) })();
+// 4 칸
+const F4 = [{ title: "칸 종류", fields: [
+  { label: "글", type: "text", value: "중1 수학" }, { label: "날짜", type: "date", value: "2026-09-01" }, { label: "고르기", type: "select", value: "좋은책신사고", items: [{ v: "좋은책신사고", t: "좋은책신사고", cls: "nc-pink" }, { v: "개념원리", t: "개념원리", cls: "nc-purple" }] },
+  { label: "숫자", type: "num", value: "250000", help: "원" }, { label: "전화", type: "tel", value: "010-0000-1101" }, { label: "등록 안내 메모", type: "text", alim: "enrolls|note", tip: "알림톡으로 나가요 — 등록 안내 · 클래스 변경 안내 · 시간표 변경 안내의 [전달 사항]", help: "50자까지 — 보낸 뒤 비워져요" },
+  { label: "메모(내부용)", type: "memo", help: "학부모에게 나가지 않아요" }, { label: "나눔 단추", type: "seg", items: ["교재", "프로그램"], value: "교재" }, { label: "켜기/끄기", type: "sw", value: true },
+] }];
+document.getElementById("h4").innerHTML = cell("한 상자 안 칸들", F4.map(box).join(""));
+mountFields(document.querySelector("#h4 .mp-pn"), F4);
+/* 4번 칸 — 더 있는 종류(앱에서 쓰는 것 전부) */
+{
+  const sch = ["하다초", "하다중", "하다고", "가나중", "다라중", "마바고", "사아초", "자차중", "카타고", "파하중", "한빛고"].map(x => ({ v: x, t: x }));
+  const K = [
+    ["요일 하나", h => HF.day(h, { label: "요일 하나", value: "수" })],
+    ["요일 여러 개", h => HF.days(h, { label: "요일 여러 개", value: ["월", "수"] })],
+    ["시각", h => HF.time(h, { label: "시각", value: "14:30" })],
+    ["날짜+시각", h => HF.datetime(h, { label: "날짜+시각", value: "2026-11-11T14:30" })],
+    ["색", h => HF.color(h, { label: "색", value: "#E88FB5" })],
+    ["고르기 — 항목이 많을 때", h => HF.select(h, { label: "학교(고르기, 항목 8개 넘으면 목록 위에 검색)", value: "하다중", items: sch })],
+    ["고르기 — 새로 적기", h => demoOpt(h, { nm: "출판사", label: "출판사(검색 또는 추가)", value: "", opts: [["비상교육","red"],["천재교과서","green"],["천재교육","green"],["동아출판","blue"],["미래엔","purple"],["NE능률","pink"],["YBM","yellow"],["좋은책신사고","pink"],["개념원리","purple"]].map(([t, c]) => ({ t, c })) })],
+    ["여러 개 고르기", h => demoOpt(h, { nm: "과목", multi: true, label: "과목(여러 개 고르기)", value: ["수학", "영어"], help: "눌러 보세요 — 체크 목록이 펼쳐져요", opts: [["국어","red"],["수학","blue"],["영어","purple"],["과학","green"],["사회","orange"]].map(([t, c]) => ({ t, c })) })],
+    ["검색 칸(돋보기)", h => HF.search(h, { label: "검색 칸(돋보기)", placeholder: "학교 이름 두 글자 이상", help: "'하다'를 적어 보세요 — 아래에 결과 줄", find: k => ["초등학교 · 경기도 김포시 운양동", "중학교 · 경기도 김포시 장기동 · 이미 있음", "고등학교 · 경기도 김포시 구래동"].map((sub, i) => ({ t: k + "초중고"[i], sub })) })],
+    ["켜기/끄기", h => HF.sw(h, { label: "알림톡 보내기", value: true })],
+    ["고르기 단추 칸", h => HF.pick(h, { label: "시간표(고르기 단추 칸)", icon: menuIcon("timetable"), valueHtml: "월 16:00 · 수 16:00", help: "모양은 고르기 칸 · 누르면 펼치는 목록은 화면이 정해요(HF.pick)", onOpen: b => toast("화면이 정한 목록이 열려요(예: 등록 카드 시간표 고르기)") })],
+  ];
+  const el = document.createElement("div"); el.className = "mp-cell";
+  el.innerHTML = `<span class="lab">더 있는 칸</span><div class="panel mp-pn"><div class="box"><h3>칸 종류 2<span class="sp"></span></h3><div class="hfgrid">${K.map((_, i) => `<div class="hfh" data-k2="${i}"></div>`).join("")}</div></div></div>`;
+  document.getElementById("h4").appendChild(el);
+  K.forEach(([, f], i) => { try { f(el.querySelector(`[data-k2="${i}"]`)) } catch (e) { el.querySelector(`[data-k2="${i}"]`).textContent = K[i][0] + " — " + e.message } });
+}
+
+// 5 날짜·시각 한 줄
+const F5 = [{ title: "기간", fields: [{ label: "등록일 – 종료일", type: "range", value: ["2026-09-01", ""], help: "종료일을 비워 두면 계속 다녀요" }, { label: "기본 시작일 – 기본 종료일", type: "range", value: ["2026-09-01", "2026-12-19"] }, { label: "수업 시간", type: "trange", value: ["14:30", "15:30"] }] }];
+document.getElementById("h5").innerHTML = cell("시작–끝 세트", F5.map(box).join(""));
+mountFields(document.querySelector("#h5 .mp-pn"), F5);
+// 6 줄 목록
+put("h6", [
+  cell("클래스별 시간표", box({ title: "클래스별 시간표", rows: [{ t: "중1 수학", dot: "#B794F6", sub: "월 16:00 · 수 16:00" }, { t: "중2 수학A", dot: "#7FA6D9", sub: "월 · 수 · 금 16:00" }, { t: "고1 수학 1:1", dot: "#E8C547", sub: "화 17:00 · 토 13:00" }] })),
+  cell("교재 줄 — 상태별 묶음(등록·클래스 [교재], 라이브러리 [진도관리])", box({ title: "진도관리", body: PANEL.groups([
+    { key: "진행 중", pill: "pgn nc-blue", count: 2, unit: "곳", body: PANEL.bookRows([{ drill: "", titleHtml: '<span class="dotc" style="background:#7FA7E0"></span>중2 수학A', modeHtml: modePill(false), pct: 53, range: "77-84" }, { drill: "", titleHtml: '<span class="dotc" style="background:#E05A5A"></span>장예린 · 고1 수학', modeHtml: modePill(true), pct: 62, range: "80-87" }]) },
+    { key: "다음 교재", pill: "pgn nc-gray", count: 1, unit: "곳", body: PANEL.bookRows([{ drill: "", title: "개념원리 중등 수학 1-2 — 제목이 길면 말줄임으로 한 줄에", modeHtml: modePill(false), pct: "", notes: ["아직 시작 전"] }]) },
+    { key: "완료", pill: "pgn nc-green", count: 1, unit: "곳", canFold: true, fold: true }]) })),
+].join(""));
+// 7 카드 — 손 견본 없음(실제 부품을 모듈로 옮긴 뒤 여기서 불러 그린다)
+put("h7", [cell("고르기 모듈 — 클래스 칸(pick.js HP.cls)", box({ title: "클래스", body: '<div id="mpPickC"></div>' })), cell("고르기 모듈 — 학생 칸(pick.js HP.stu)", box({ title: "학생", body: '<div id="mpPickS"></div>' })), cell("아직 모듈로 옮기지 않은 부품", box({ title: "옮길 차례", help: "손으로 그린 견본은 두지 않아요 — 실제 부품과 어긋나기 때문이에요. 지금 모양은 창 모음표에서 실제 창으로 봐요.", rows: [{ t: "등록 카드", sub: "학생 창 [등록] · 틀 6단계" }, { t: "학생 카드", sub: "고르기 모듈 · 틀 6단계" }, { t: "교재 카드", sub: "라이브러리 카드 보기 · 틀 4단계" }] }))].join(""));
+/* 고르기 모듈을 실제로 꽂음(예시 자료 pick-demo-data.js) */
+if (window.HP && typeof DEMO !== "undefined") { HP.cls(document.getElementById("mpPickC"), { value: "c1", classes: DEMO.classes, onChange: () => { } }); HP.stu(document.getElementById("mpPickS"), { value: ["s1", "s2"], students: DEMO.students, onChange: () => { } }); }
+// 8 미니 부품 — 손 견본 없음
+put("h8", cell("아직 모듈로 옮기지 않은 부품", box({ title: "옮길 차례", help: "손으로 그린 견본은 두지 않아요 — 실제 부품과 어긋나기 때문이에요. 지금 모양은 창 모음표에서 실제 창으로 봐요.", rows: [{ t: "주간 시간표", sub: "등록·클래스 창 [시간표] · 틀 7단계" }, { t: "달 캘린더", sub: "등록 창 [현황] · 틀 7단계" }, { t: "평가 그래프", sub: "evLine · 틀 4단계" }] })));
+// 9 할 일
+put("h9", [
+  cell("할 일이 있을 때", todo({ groups: [{ k: "s", name: "전송 전", why: "안내문을 아직 보내지 않은 수강료예요. 위 [안내 전송]으로 보내요.", rows: [{ t: "장예린", sub: "중1 수학 · 250,000원" }, { t: "조채원", sub: "중2 영어B · 230,000원" }] }, { k: "z", name: "0원 청구", rows: [] }], summary: [["2026.11 청구", "4,250,000원"], ["받은 금액", "3,100,000원"]] })),
+  cell("할 일이 없을 때 + 목록", todo({ groups: [], summary: [["지금 시즌", "2026 2학기"], ["남은 날", "38일"]], list: { name: "시즌", rows: [{ t: "2026 2학기", dot: "#9BD3AE", badge: "운영 중", tone: "green", sub: "2026.09.01 - 12.19" }, { t: "2026 겨울방학", dot: "#C9C0E8", badge: "다음 시즌", tone: "blue", sub: "2026.12.20 - 2027.02.28" }], more: "지난 시즌 보기 1" } })),
+].join(""));
+// 10 아래 단추
+put("h10", [cell("고친 게 없을 때", foot({ del: true, save: "클래스 저장" })), cell("고쳤을 때", foot({ del: true, undo: true, save: "클래스 저장", saveOn: true })), cell("새로 만드는 중", foot({ save: "학생 저장", saveOn: true }))].join(""));
+// 전체 예시
+const ex = id => { const d = document.createElement("div"); d.className = "mp-cell"; d.innerHTML = `<span class="lab">${id}</span><div class="panel mp-pn"></div>`; document.getElementById("h11").appendChild(d); return d.querySelector(".mp-pn") };
+render(ex("클래스 창"), { head: { name: "중1 수학", dot: "#B794F6", belong: "보습 · 중등 수학", info: ["이하다", "학생 7명"], notion: NOTION_LINK }, tabs: [{ id: "i", label: "정보" }, { id: "t", label: "시간표", n: 2 }, { id: "s", label: "학생", n: 7 }, { id: "b", label: "교재", n: 3 }], tab: "i", boxes: [{ title: "기본", fields: [{ label: "클래스 이름", value: "중1 수학" }, { label: "개강일 – 종강일", type: "range", value: ["", ""], help: "모르면 비워 두세요" }, { label: "수강료", type: "num", value: "250000" }] }], foot: { del: true, save: "클래스 저장" } });
+render(ex("학생 창"), { head: { icon: IC(menuIcon("students")), nameHtml: '<input class="hname" value="장예린" placeholder="새 학생 이름">', state: { t: "등록 중", tone: "green" }, belong: "하다고 고3", info: ["2026.09.01 - 현재"], notion: NOTION_LINK }, tabs: [{ id: "i", label: "정보" }, { id: "e", label: "등록", n: 2 }, { id: "c", label: "일정", disabled: true }, { id: "g", label: "성적" }], tab: "i", boxes: [{ title: "문의", fields: [{ label: "문의일시", type: "date", value: "2026-08-29" }, { label: "메모(내부용)", type: "memo" }] }, { title: "기본정보", fields: [{ label: "학교", value: "하다고" }, { label: "학년", value: "고3" }] }], foot: { del: true, save: "학생 저장" } });
+render(ex("수업 창"), { head: { name: "초등 영어", dot: "#E88FB5", state: { t: "정규", tone: "blue" }, belong: "11.11(수) 14:30-15:30", info: ["김하다", "출석 8/12"], notion: NOTION_LINK }, tabs: [{ id: "a", label: "출결", n: "8/12" }, { id: "l", label: "학습기록", n: 1 }, { id: "r", label: "보고서" }, { id: "i", label: "정보" }], tab: "a", boxes: [{ title: "출결", help: "출석·결석을 눌러 넣어요", right: '<button class="btn sm">모두 출석</button>', rows: [{ t: "신지안", sub: "바다초 초1", tag: "출석" }, { t: "김다은", sub: "푸른중", tag: "결석" }] }], foot: { save: "수업 저장" } });
+document.querySelectorAll(".mp-pn .hname").forEach(i=>i.closest(".mp-pn").classList.add("stpanel"));
+</script><script src="module-icons.js?v=496"></script>
+</body></html>
