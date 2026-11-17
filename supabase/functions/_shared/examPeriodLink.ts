@@ -26,13 +26,18 @@ export function nameMatches(eventName: string, target: string): boolean {
   return !!m && e.includes(`${m[1]}학기`) && e.includes(m[2])
 }
 // 낱말로 찾을 때 다른 시험이 분명한 일정은 뺀다: 학기가 다름(1학기 ↔ 2학기), 중간 ↔ 기말, "N월" 다름.
-export function conflictsWith(eventName: string, target: string): boolean {
+// 일정 이름에 학기가 없으면("지필평가", "2차 정기시험") 날짜로 학기를 본다: 3~8월 = 1학기, 9~2월 = 2학기(261118 원본 검수).
+export function semesterOfDate(iso: string): string | undefined {
+  const m = Number(String(iso).slice(5, 7))
+  return m >= 1 && m <= 12 ? (m >= 3 && m <= 8 ? "1" : "2") : undefined
+}
+export function conflictsWith(eventName: string, target: string, eventStart = ""): boolean {
   const e = squash(eventName), t = squash(target)
   const sem = (s: string) => /(\d)학기/.exec(s)?.[1]
   const half = (s: string) => s.includes("중간") ? "중간" : s.includes("기말") ? "기말" : ""
   const mon = (s: string) => /(\d{1,2})월/.exec(s)?.[1]
   const differs = (a?: string, b?: string) => !!a && !!b && a !== b
-  return differs(sem(e), sem(t)) || differs(half(e), half(t)) || differs(mon(e), mon(t))
+  return differs(sem(e) ?? semesterOfDate(eventStart), sem(t)) || differs(half(e), half(t)) || differs(mon(e), mon(t))
 }
 // 시험 종류 낱말: 시험 `시험 구분`이 모의고사이거나 `모의고사(수능)`만 고른 시험 → 모의 낱말, 그 밖 → 지필 낱말.
 export function examKindWords(exam: any): string[] {
@@ -64,7 +69,7 @@ export function pickExamPeriod(info: any, exam: any, events: any[]): PickResult 
   // 1) 이름에 시험 이름(예: "1학기 중간고사")이 든 것. 2) 없으면 시험 종류 낱말(scheduleCategory 표 —
   // 지필고사 ↔ 지필·고사·정기, 모의고사 ↔ 모의·학력평가·수능·수학능력)이 든 것.
   let found = pool.filter(e => nameMatches(titleOf(e), target))
-  if (!found.length) found = pool.filter(e => hasAnyWord(titleOf(e), examKindWords(exam)) && !conflictsWith(titleOf(e), target))
+  if (!found.length) found = pool.filter(e => hasAnyWord(titleOf(e), examKindWords(exam)) && !conflictsWith(titleOf(e), target, dateStart(e, "날짜")))
   // 여럿이면 차례로 좁힌다(좁힌 결과가 비면 앞 단계 그대로): 시험정보 학년 → 시험일이 기간 안 → "N월" 시험이면 그 달 시작.
   const narrow = (keep: (e: any) => boolean) => { if (found.length > 1) { const n = found.filter(keep); if (n.length) found = n } }
   const grade = relIds(info, "학년")[0]

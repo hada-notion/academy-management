@@ -12,7 +12,8 @@ export function isParentPublicEvent(page: any): boolean {
 }
 // 기존 캐시에는 공개 결정의 근거가 없다. 재동기화 전까지 일정만 비공개로 반환한다.
 export function publicNoticeFields(fields: Record<string, unknown>): Record<string, unknown> {
-  const { notice_visibility_policy, notices, ...rest } = fields
+  // notice_ids(일정 페이지 id 목록)는 서버만 쓴다 — 학부모 응답에 싣지 않는다.
+  const { notice_visibility_policy, notices, notice_ids: _ids, ...rest } = fields
   return { ...rest, notices: notice_visibility_policy === NOTICE_VISIBILITY_POLICY && Array.isArray(notices) ? notices : [] }
 }
 
