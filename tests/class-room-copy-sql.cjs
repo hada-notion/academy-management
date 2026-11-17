@@ -10,6 +10,11 @@ await db.exec(sql);await db.exec(sql); // 다시 적용해도 오류 없음(if n
 const readSql=fs.readFileSync('supabase/migrations/20261014070000_class_room_copy_read.sql','utf8');
 await db.exec(readSql);await db.exec(readSql);
 assert.deepEqual((await db.query("select column_name from information_schema.columns where table_name='cr_attendance' and column_name in ('class_label','class_start_text') order by 1")).rows.map(r=>r.column_name),['class_label','class_start_text']);
+// (2.8 하루 수업 페이지) 수업 구분·학습 내용·처리 상태·오류·시간표·수업 안내(수업), 보고서 전송 상태(출석) — 더하기만, 다시 적용해도 같음
+const daySql=fs.readFileSync('supabase/migrations/20261118030000_class_room_copy_day_page.sql','utf8');
+await db.exec(daySql);await db.exec(daySql);
+assert.deepEqual((await db.query("select column_name from information_schema.columns where table_name='cr_sessions' and column_name in ('kind','summary','busy','error_text','block_id','notice','notice_status','notice_preview') order by 1")).rows.map(r=>r.column_name),['block_id','busy','error_text','kind','notice','notice_preview','notice_status','summary']);
+assert.deepEqual((await db.query("select column_name from information_schema.columns where table_name='cr_attendance' and column_name='report_status'")).rows.map(r=>r.column_name),['report_status']);
 const tables=(await db.query("select table_name from information_schema.tables where table_schema='public' and table_name like 'cr\\_%' order by 1")).rows.map(r=>r.table_name);
 assert.deepEqual(tables,['cr_activities','cr_attendance','cr_records','cr_sessions']);
 const rls=(await db.query("select relname from pg_class where relname like 'cr\\_%' and relkind='r' and relrowsecurity order by 1")).rows.map(r=>r.relname);
