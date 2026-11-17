@@ -44,7 +44,8 @@
     q(".panel input:not([type=checkbox]):not([type=radio]),.panel textarea").forEach((i) => { i.readOnly = true; });
     q(".panel select,.panel input[type=checkbox],.panel input[type=radio]").forEach((i) => { i.disabled = true; });
     q(".panel .tdnone").forEach((n) => { const t = n.lastChild; if (t && /여기서 고쳐요/.test(t.textContent)) t.textContent = "줄을 누르면 여기서 봐요 — 고칠 것은 노션에서 고쳐요"; });
-    q(".panel button").forEach((b) => { if (/저장\s*$/.test(b.textContent) && !b.dataset.act2) { b.disabled = true; b.title = why; } }); /* 창 아래 [ㅇㅇ 저장] */
+    /* 창 안의 누르는 것은 이동(RO_PASS)만 남기고 모두 끈다: 전송 · 삭제 · 생성 · 저장 · 켜고 끄기 · 고르기 */
+    q(".panel button,.panel .hf-box").forEach((b) => { if (b.closest(RO_PASS)) return; if ("disabled" in b) b.disabled = true; b.setAttribute("aria-disabled", "true"); b.title = why; });
     const p = document.querySelector(".panel"), id = String((activeTab.state || {}).sel || "");
     if (p && /^[0-9a-f-]{32,36}$/i.test(id) && !p.querySelector(".ro-note")) {
       const n = document.createElement("div"); n.className = "ro-note";
@@ -81,6 +82,23 @@
   /* 되돌리기 · 다시 하기 · 모두 되돌리기는 입력 칸(P1)의 값을 움직이는 일이라 보기 화면에서도 막지 않는다 */
   ["undo", "redo", "revertAll"].forEach((k) => { try { const f0 = eval(k); eval(k + " = function () { roBase = null; return f0.apply(this, arguments); }"); } catch (_) {} });
   document.addEventListener("beforeinput", (e) => { if (document.body.classList.contains("live-ro") && e.target.closest && e.target.closest(".panel,#view table")) e.preventDefault(); }, true);
+  /* 보기 칸의 쓰기는 여기 한 곳에서 막는다(화면마다 막지 않는다):
+     ① 창 본문 · 창 아래 단추 줄의 누르는 것(단추 · 고르기 · 켜고 끄기 · 전송 · 삭제 · 생성)은 눌리기 전에 막는다. 이동(탭 · 줄 열기 · 도움말 · 노션 링크)만 지나간다.
+     ② 그래도 값이 바뀌면(다시 그리지 않는 길 포함) 누른 바로 뒤에 견줘 되돌린다. */
+  const RO_PASS = "a,[data-help],[data-notion],[data-drill],[data-go],[data-gobook],[data-gochs],[data-pgfold],[data-entab],.phead,.ptabs,.ro-note,.tdr,.tdmore,.qhelp,summary";
+  const RO_HIT = "button,input,select,textarea,label,[role],[tabindex],[contenteditable],.btn,.lnk,.hf-box";
+  const roBlock = (e) => {
+    if (!document.body.classList.contains("live-ro") || !e.target.closest) return;
+    if (!e.target.closest(".panel")) return;
+    if (e.target.closest(RO_PASS) || !e.target.closest(RO_HIT)) return;
+    if (e.type === "keydown" && !["Enter", " ", "Delete", "Backspace"].includes(e.key)) return;
+    e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+    if (e.type === "click") say("이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요");
+  };
+  ["click", "mousedown", "pointerdown", "keydown", "change"].forEach((ev) => document.addEventListener(ev, roBlock, true));
+  let roTick = null;
+  const roSoon = () => { if (!document.body.classList.contains("live-ro") || roTick) return; roTick = setTimeout(() => { roTick = null; try { roLock(); } catch (_) {} }, 0); };
+  ["click", "change", "input", "keyup", "drop", "paste"].forEach((ev) => document.addEventListener(ev, roSoon, true));
   const wipe = () => { try { if (typeof liveLessonReset === "function") liveLessonReset(); appApply({}, DB); if (typeof lastSnap !== "undefined" && typeof snapshot === "function") lastSnap = snapshot(); if (typeof undoStack !== "undefined") undoStack.length = 0; if (typeof render === "function") render(); } catch (_) {} };
   wipe();
   banner("노션 자료를 받는 중이에요 — 받기 전에는 저장할 수 없어요");
@@ -111,6 +129,8 @@
         /* 보기 칸(P2)이 켜져 있으면 보기 묶음(일정 · 보고서 · 수강료 · 청구 · 시험 · 알림톡 설정 · 자료)도 함께 받는다 */
         await (P2ON && typeof appViewLoad === "function" ? appViewLoad : appLoad)({ url: cfg.url, anonKey: cfg.anonKey, session });
         appSaveMark(DB); /* 불러온 값을 기준으로 적어 둠 — 저장 때 달라진 칸만 보냄 */
+        /* [모두 되돌리기]가 돌아갈 값도 불러온 값으로 적어 둔다(안 적으면 고친 줄이 되돌리기 때 화면에서 빠진다) */
+        try { savedSync(); DB.blocks.forEach((b) => { try { tSnap(b); } catch (_) {} }); } catch (_) {}
         try { liveOptions(await liveApi({ url: cfg.url, anonKey: cfg.anonKey, session }, { action: "options" })); } catch (_) { /* 선택지를 못 받아도 화면은 열린다(저장 때 서버가 거름) */ }
         /* loaded = 이번에 노션 자료를 끝까지 받았다는 표시. 이 표시가 있을 때만 저장한다 */
         window.LIVE = { url: cfg.url, anonKey: cfg.anonKey, session, at: new Date().toISOString(), loaded: true };
