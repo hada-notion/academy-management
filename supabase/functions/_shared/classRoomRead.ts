@@ -62,6 +62,12 @@ function sessionSummary(s: Row) {
 		students: arr(s.attendance_ids).length,
 		records: arr(s.record_ids).length,
 		attendanceSummary: s.attendance_summary ?? "",
+		// (2.8 하루 수업 페이지) classRoom.ts sessionSummary와 같은 칸
+		kind: s.kind ?? "",
+		summary: s.summary ?? "",
+		busy: s.busy ?? "",
+		error: s.error_text ?? "",
+		blockId: s.block_id ?? null,
 	}
 }
 
@@ -305,6 +311,7 @@ export async function loadSession(sessionId: string) {
 		leftAt: a.left_at ?? null,
 		memo: a.memo as string,
 		comment: a.comment as string,
+		reportStatus: a.report_status ?? "",
 		dueActivityIds: arr(a.due_activity_ids),
 	})).sort((x, y) => x.name.localeCompare(y.name, "ko"))
 	const dueActivities = await selectCopyByIds("cr_activities", dedupe(students.flatMap((s) => s.dueActivityIds)))
@@ -324,7 +331,10 @@ export async function loadSession(sessionId: string) {
 	}))
 	const extra = cardExtras(await gradedActivities(recordRows))
 	return {
-		session: { ...sessionSummary(session), className: session.class_name ?? "", classEmoji: session.class_emoji ?? "" },
+		session: {
+			...sessionSummary(session), className: session.class_name ?? "", classEmoji: session.class_emoji ?? "",
+			notice: session.notice ?? "", noticeStatus: session.notice_status ?? "", noticePreview: session.notice_preview ?? "",
+		},
 		students: students.map(({ dueActivityIds: _drop, ...s }) => s),
 		homeworkDue,
 		records: recordRows.map((r) => ({ ...recordSummary(r), ...extra(r) })),

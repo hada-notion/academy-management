@@ -26,6 +26,7 @@ import {
 	fetchWithRetry,
 	notionHeaders,
 	queryDataSource,
+	fullRelationIds,
 } from "./notionClient.ts"
 import {
 	DS_CLASS_SESSION,
@@ -40,7 +41,9 @@ import {
 	setAssignmentGenDone,
 	setAssignmentGenError,
 } from "./createAssignmentTarget.ts"
-import { isRunning } from "./statusTracking.ts"
+import { isRunning, markQueued } from "./statusTracking.ts"
+import { ROUTINE_STATUS_SPEC, TARGET_ROUTINE_CHECKS } from "./routineCheck.ts"
+import { enqueueSync, wakeSyncQueueWorker } from "./syncQueue.ts"
 import { text as propText, numberOf as propNumber, fileUrlOf, dateStartOf } from "./reportCacheShared.ts"
 import { readPageBodyBlocks } from "./feedBody.ts"
 import { libraryCopyReady, readBooks, readUnits, sortUnits } from "./libraryCopy.ts"
@@ -174,6 +177,12 @@ function sessionSummary(p: Page) {
 		students: rel(p, "출석").length,
 		records: rel(p, "학습기록").length,
 		attendanceSummary: formulaString(p, "출석현황") ?? "",
+		// (2.8 하루 수업 페이지, 앱서버 261118) 수업 구분(정규·보강·휴강 이름 그대로)·학습 내용 한 줄·처리 상태·오류·시간표.
+		kind: selectName(p, SESSION_KIND_PROP) ?? "",
+		summary: propText(p.properties?.["학습 내용"]).trim(),
+		busy: propText(p.properties?.["실시간 처리 상태"]).trim(),
+		error: propText(p.properties?.["마지막 오류"]).trim(),
+		blockId: rel(p, "시간표")[0] ?? null,
 	}
 }
 
@@ -510,6 +519,8 @@ export async function loadSession(sessionId: string) {
 			leftAt: dateStart(a, "하원스템프"),
 			memo: plain(a, attMemoKey(a)), // 출석 메모: `메모(내부용)`, 아직 안 바꾼 학원은 `메모`(v2.8.0 항목 62)
 			comment: plain(a, "선생님 한마디"),
+			reportStatus: propText(a.properties?.["보고서 전송 상태"]).trim(), // (2.8) 일일 보고서 전송 상태
+
 			dueActivityIds: rel(a, "과제"),
 		}))
 		.sort((x, y) => x.name.localeCompare(y.name, "ko"))
@@ -535,7 +546,16 @@ export async function loadSession(sessionId: string) {
 	const extra = await cardExtras(recordPages, []) // (v2.5.111 속도) 본문은 펼칠 때 record-body로
 	const records = (await withSubjects(recordPages)).map((r, i) => ({ ...r, ...extra(recordPages[i]) }))
 	return {
-		session: await (async () => { const c = (await classInfo(rel(session, "클래스").slice(0, 1))).get(rel(session, "클래스")[0]); return { ...sessionSummary(session), className: c?.name ?? "", classEmoji: c?.emoji ?? "" } })(),
+		session: await (async () => {
+			const c = (await classInfo(rel(session, "클래스").slice(0, 1))).get(rel(session, "클래스")[0])
+			return {
+				...sessionSummary(session), className: c?.name ?? "", classEmoji: c?.emoji ?? "",
+				// (2.8) 수업 안내: 메모(쓸 수 있음)·보낸 현황·미리보기(수식)
+				notice: propText(session.properties?.[SESSION_NOTICE_MEMO]).trim(),
+				noticeStatus: propText(session.properties?.["수업 안내 현황"]).trim(),
+				noticePreview: propText(session.properties?.["수업 안내 미리보기"]).trim(),
+			}
+		})(),
 		students: students.map(({ dueActivityIds: _drop, ...s }) => s),
 		homeworkDue,
 		records,
@@ -725,6 +745,13 @@ export async function saveAttendance(items: unknown) {
 			props["출석 상태"] = { select: it.status ? { name: it.status } : null }
 		}
 		if (it.comment !== undefined) props["선생님 한마디"] = richText(String(it.comment))
+		// (2.8 하루 수업 페이지) 등·하원 시각 고치기: ISO 시각, ""는 비우기.
+		for (const [key, prop] of [["arrivedAt", "등원스템프"], ["leftAt", "하원스템프"]] as const) {
+			if (it[key] === undefined) continue
+			const v = String(it[key] ?? "")
+			if (v && (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v) || Number.isNaN(Date.parse(v)))) throw new ClassRoomError(400, "등·하원 시각 형식이 올바르지 않습니다(ISO 시각).")
+			props[prop] = { date: v ? { start: v } : null }
+		}
 		return { id: it.attendanceId as string, props, memo: it.memo === undefined ? undefined : richText(String(it.memo)) }
 	})
 	// 출석 메모는 `메모(내부용)`으로 쓰고, 아직 안 바꾼 학원이면 `메모`로 다시 쓴다(v2.8.0 항목 62).
@@ -1000,8 +1027,60 @@ export async function loadRecordBody(recordId: string) {
 	return { recordId, body: await readPageBodyBlocks(recordId) }
 }
 
+// ---------- (2.8 하루 수업 페이지, 앱서버 261118) 수업 안내 메모·루틴 체크 ----------
+export const SESSION_NOTICE_MEMO = "수업 안내 메모"
+// 수업 안내 메모 쓰기(보내기는 하지 않음 — 수업 [수업 안내 전송]이 따로).
+export async function updateSession(body: any) {
+	if (!isId(body?.sessionId)) throw new ClassRoomError(400, "수업 형식이 올바르지 않습니다.")
+	if (body.notice === undefined) throw new ClassRoomError(400, "바꿀 내용이 없습니다.")
+	const saved = await updatePageProperties(body.sessionId, { [SESSION_NOTICE_MEMO]: richText(String(body.notice ?? "")) }) as Page
+	await mirrorSaved("cr_sessions", [saved])
+	return { saved: 1, notice: plain(saved, SESSION_NOTICE_MEMO).trim() }
+}
+export const routineDeps = { getPage, getPages: (ids: string[]) => getPages(ids), fullRelationIds }
+// 이 수업의 루틴 체크(수업 '루틴 체크' 관계): 루틴 이름·출석·등록·완료. 루틴을 안 쓰는 학원(칸 없음)은 빈 목록.
+export async function loadRoutines(sessionId: string) {
+	if (!isId(sessionId)) throw new ClassRoomError(400, "수업 형식이 올바르지 않습니다.")
+	const session = await routineDeps.getPage(sessionId) as Page
+	if (!session?.properties?.["루틴 체크"]) return { sessionId, available: false, status: "", checks: [] }
+	const checkIds = await routineDeps.fullRelationIds(session, "루틴 체크")
+	const checks = await routineDeps.getPages(checkIds)
+	const routines = new Map((await routineDeps.getPages(dedupe(checks.map((c) => rel(c, "루틴")[0]).filter(Boolean) as string[])))
+		.map((r: Page) => [r.id as string, { name: anyTitleText(r), order: numberOf(r, "순서") }]))
+	return {
+		sessionId,
+		available: true,
+		status: propText(session.properties?.["루틴 체크 상태"]).trim(),
+		checks: checks.filter((c) => !c.archived && !c.in_trash).map((c) => {
+			const r = routines.get(rel(c, "루틴")[0])
+			return {
+				checkId: c.id as string,
+				routineId: rel(c, "루틴")[0] ?? null,
+				routineName: r?.name ?? "",
+				order: r?.order ?? null,
+				attendanceId: rel(c, "출석")[0] ?? null,
+				registrationId: rel(c, "등록")[0] ?? null,
+				done: checkboxValue(c, "완료") === true,
+			}
+		}).sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || a.routineName.localeCompare(b.routineName, "ko")),
+	}
+}
+// [루틴 체크 생성]과 같은 길(create-class-reports/routine-checks와 같은 잠금 → ⏳ 대기열 → 큐 routine-checks).
+export async function createRoutineChecks(sessionId: string) {
+	if (!isId(sessionId)) throw new ClassRoomError(400, "수업 형식이 올바르지 않습니다.")
+	const page = await getPage(sessionId)
+	if (isRunning(page, ROUTINE_STATUS_SPEC)) return { sessionId, queued: false, message: "already_processing" }
+	await markQueued(sessionId, ROUTINE_STATUS_SPEC)
+	await enqueueSync(TARGET_ROUTINE_CHECKS, { sessionId })
+	wakeSyncQueueWorker()
+	return { sessionId, queued: true }
+}
+
 export async function handleClassRoom(body: any): Promise<unknown> {
 	switch (body?.action) {
+		case "update-session": return await updateSession(body)
+		case "routines": return await loadRoutines(body.sessionId)
+		case "create-routine-checks": return await createRoutineChecks(body.sessionId)
 		case "teachers": return { teachers: await listTeachers() }
 		case "day": return await loadDay(String(body.date ?? ""), body.teacherId)
 		case "days": return await loadDays(String(body.from ?? ""), String(body.to ?? ""), body.teacherId)
