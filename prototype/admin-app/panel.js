@@ -106,15 +106,20 @@
     const ra = t.rowAttr || "todosel", ta = t.tabAttr || "todok";
     const rowH = r => `<button type="button" class="tdr" ${r.id != null ? `data-${ra}="${esc(r.id)}"` : ""}>${r.html != null ? r.html : `${esc(r.t)} <small class="hint">${esc(r.sub || "")}</small>`}${ic("rightc")}</button>`;
     const groups = (t.groups || []).map(g => Object.assign({}, g, { rows: g.rows || [] })), has = groups.filter(g => g.rows.length);
-    const sum = t.summary && t.summary.length ? `<div class="tdsum">${t.summary.map(([n, v, c]) => `<div class="tds ${c || ""}"><span>${esc(n)}</span><b>${v}</b></div>`).join("")}</div>` : "";
     const L = t.list, more = L ? (L.moreHtml != null ? L.moreHtml : (L.more ? `<button type="button" class="tdmore">${IC_.search}${esc(L.more)}</button>` : "")) : "";
     const list = L && (L.rows.length || more) ? `<div class="tdlist"><div class="tdh2">${esc(L.name)} <span class="hint">${L.rows.length}</span></div><div class="tdl">${L.rows.map(rowH).join("")}</div>${more}</div>` : "";
-    if (!groups.length && t.empty) return `<div class="empty">${esc(t.empty)}</div>`;
-    const foot = t.footHtml || "";
-    if (!has.length && !t.keepTabs) return `<div class="tdp"><div class="tdh">${ic("check")}지금 할 일이 없어요</div>${sum}${list}</div>${foot}`;
-    const on = (t.keepTabs ? groups.find(g => g.k === t.on) : has.find(g => g.k === t.on)) || has[0] || groups[0], max = t.max || 60;
-    return `<div class="tdp"><div class="tdh">할 일${t.help ? help(t.help) : ""} <span class="hint">${has.reduce((a, g) => a + g.rows.length, 0)}건</span></div><div class="tdtabs">${groups.map(g => `<button type="button" class="tdt ${g === on ? "on" : ""}" data-${ta}="${esc(g.k)}" ${g.rows.length || t.keepTabs ? "" : "disabled"}>${esc(g.name)} <span class="n">${g.rows.length}</span></button>`).join("")}</div>
-    ${on.why ? `<div class="tdwhy">${esc(on.why)}</div>` : ""}<div class="tdl">${on.rows.slice(0, max).map(rowH).join("") || `<div class="tdnone">${ic("check")}할 일이 없어요</div>`}${on.rows.length > max ? `<div class="hint">외 ${on.rows.length - max}건 — 표의 필터 알약으로 모두 봐요</div>` : ""}</div>${sum}${list}</div>${foot}`;
+    // 윗부분 = 기본 창과 같은 머리 · 탭 바(기준 4장 "할 일"). 머리 재료: icon(화면 아이콘) · belong(화면 이름) — 화면이 넘긴다.
+    const foot = t.footHtml || "", total = has.reduce((a, g) => a + g.rows.length, 0);
+    // 고른 탭의 설명(왜 할 일인지)은 길어서 머리 3줄(한 줄 · 넘치면 …)에 두지 않고 본문 첫 줄에 둔다
+    // 머리 3줄 = 요약 숫자(이름 값 · 이름 값). 요약이 없어도 줄은 비워 두어 탭 바가 기본 창과 같은 높이에서 시작한다
+    const plain = v => String(v == null ? "" : v).replace(/<[^>]*>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").trim();
+    const sumInfo = (t.summary || []).map(([n, v]) => `${n} ${plain(v)}`.trim()).filter(Boolean);
+    const top = (tabList, onId) => head({ icon: t.icon, name: "할 일", status: total ? [{ t: total + "건", tone: "yellow" }] : [], help: t.help, belong: t.belong || "", info: sumInfo.length ? sumInfo : [" "] }) + tabs(tabList, onId, ta);
+    const none = `<div class="tdnone">${ic("check")}${esc(t.empty || "지금 할 일이 없어요")}</div>`;
+    if ((!groups.length && t.empty) || (!has.length && !t.keepTabs)) return `${top([{ id: "_", label: "할 일" }], "_")}<div class="pbody"><div class="tdp">${none}${list}</div></div>${foot}`;
+    const shown = t.keepTabs ? groups : has; // 할 일이 있는 묶음만 탭으로(고정 탭 화면은 모두)
+    const on = shown.find(g => g.k === t.on) || has[0] || shown[0], max = t.max || 60;
+    return `${top(shown.map(g => ({ id: g.k, label: g.name, n: g.rows.length, todo: true })), on.k)}<div class="pbody"><div class="tdp">${on.why ? `<div class="tdwhy">${esc(on.why)}</div>` : ""}<div class="tdl">${on.rows.slice(0, max).map(rowH).join("") || `<div class="tdnone">${ic("check")}할 일이 없어요</div>`}${on.rows.length > max ? `<div class="hint">외 ${on.rows.length - max}건 — 표의 필터 알약으로 모두 봐요</div>` : ""}</div>${list}</div></div>${foot}`;
   }
   // 칸 붙이기(입력칸 모듈 field.js)
   function mountFields(root, boxes) {
