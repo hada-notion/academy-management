@@ -89,10 +89,12 @@ function flatValue(p: any): unknown {
 	}
 }
 // 버튼은 값이 없어 뺀다. 관계가 25개를 넘으면(has_more) "<칸>#more": true를 남겨 앱이 반대편으로 잇게 한다.
+// 앱 화면에 필요 없고 새면 안 되는 칸은 복사하지 않는다: 학부모 리포트 토큰, 웹훅 주소·동작 칸, 노션 계정.
+export const SKIP_PROPS = new Set(["토큰", "웹훅 링크", "웹훅 정보", "웹훅ID", "웹훅 버튼", "노션 계정", "노션 아이디"])
 export function flattenProps(props: Record<string, any> | undefined): Record<string, unknown> {
 	const out: Record<string, unknown> = {}
 	for (const [name, p] of Object.entries(props ?? {})) {
-		if (p?.type === "button") continue
+		if (p?.type === "button" || SKIP_PROPS.has(name)) continue
 		out[name] = flatValue(p)
 		if (p?.type === "relation" && p.has_more) out[`${name}#more`] = true
 	}

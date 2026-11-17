@@ -28,5 +28,11 @@ assert.deepEqual(counts,{'학생(학원) DB':2,'클래스(학원) DB':1});
 assert.equal((await db.query("select relrowsecurity from pg_class where relname='app_rows'")).rows[0].relrowsecurity,true,'RLS on, no policies');
 const grants=(await db.query("select count(*)::int n from information_schema.routine_privileges where routine_name='app_rows_counts' and grantee in ('anon','authenticated','PUBLIC')")).rows[0].n;
 assert.equal(grants,0,'counts function not callable by anon/authenticated');
+// 민감 칸 지우기(20261117020000): 이미 들어간 줄에서 토큰·웹훅 칸만 빠지고 다른 칸은 그대로, 다시 적용해도 같다
+await db.query(`insert into public.app_rows(id,db,props,notion_edited_at) values('t','등록(학원) DB','{"이름":"예시","토큰":"x","웹훅 링크":"y","등록일":{"start":"2026-11-01"}}',now())`);
+const skip=fs.readFileSync('supabase/migrations/20261117020000_app_copy_skip_props.sql','utf8');
+await db.exec(skip);await db.exec(skip);
+assert.deepEqual((await db.query("select props from public.app_rows where id='t'")).rows[0].props,{'이름':'예시','등록일':{start:'2026-11-01'}});
+assert.deepEqual((await db.query("select props from public.app_rows where id='a'")).rows[0].props,{'이름':'하다'});
 console.log('App copy migration passed: app_rows with RLS, counts function service-only, 3 jobs re-apply safe, bodies mode=app fill/incremental/reconcile-next with Vault key');
 })().catch(e=>{console.error(e);process.exit(1)});

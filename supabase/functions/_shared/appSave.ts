@@ -15,7 +15,7 @@
 import { NOTION_API } from "./constants.ts"
 import { createPage, fetchWithRetry, notionHeaders, updatePageProperties, getPage } from "./notionClient.ts"
 import { fetchSupabaseWithRetry } from "./reportCacheShared.ts"
-import { appSources, pageRow, type AppDb } from "./appCopy.ts"
+import { appSources, pageRow, SKIP_PROPS, type AppDb } from "./appCopy.ts"
 import { enqueueSync, wakeSyncQueueWorker } from "./syncQueue.ts"
 
 export const WRITE_DBS = [
@@ -63,6 +63,7 @@ export function toNotionProps(props: Record<string, unknown>, schema: Schema, re
 	for (const [name, value] of Object.entries(props ?? {})) {
 		const def = schema[name]
 		if (!def) throw new SaveError(400, `없는 칸: ${name}`)
+		if (SKIP_PROPS.has(name)) throw new SaveError(400, `앱에서 쓰지 않는 칸: ${name}`)
 		if (!WRITABLE.has(def.type)) throw new SaveError(400, `쓸 수 없는 칸(${def.type}): ${name}`)
 		switch (def.type) {
 			case "title": out[name] = { title: rt(value) }; break
