@@ -62,3 +62,26 @@ Deno.test("항목 72 오늘 다니는 등록", () => {
 	eq(activeToday({ properties: { 등록일: date("2026-12-04") } }, "2026-12-03"), false)
 	eq(activeToday({ properties: { 등록일: date("2026-12-01"), 종료일: date("2026-12-03") } }, "2026-12-03"), true)
 })
+
+Deno.test("항목 80 기타경비 청구: 새 청구서에 표시용 알림톡 설정(기타경비 안내 행), 행이 없으면 비움", async () => {
+	const { calls, restore } = fake(pages)
+	const seen: string[] = []
+	classEtcDeps.configRow = async (k: string) => { seen.push(k); return "cfg-etc" }
+	try {
+		await processClassEtcChargeQueueItem({ classId: "cls" })
+		const carts = calls.created.filter((c) => c.db === "carts")
+		eq(carts.map((c) => c.props["알림톡 설정"]?.relation?.[0]?.id), ["cfg-etc"])
+		eq(seen, ["기타경비"])
+	} finally { restore() }
+	const second = fake(pages)
+	classEtcDeps.configRow = async () => null
+	try {
+		await processClassEtcChargeQueueItem({ classId: "cls" })
+		eq(second.calls.created.filter((c) => c.db === "carts").map((c) => "알림톡 설정" in c.props), [false])
+	} finally { second.restore() }
+})
+
+Deno.test("항목 80 청구서 종류 → 알림톡 설정 행(안내문 전송과 같은 고르기)", async () => {
+	const { cartConfigCategory } = await import("./adminShared.ts")
+	eq(["교재비", "재료비", "기타경비", ""].map(cartConfigCategory), ["교재비 안내", "재료비 안내", "기타경비 안내", "교재비 안내"])
+})

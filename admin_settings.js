@@ -160,8 +160,8 @@ const CHECKLIST=[
   ['class-report-sync','학생 페이지 동기화',BUTTON,route('sync-class-report-cache')],
   ['class-report-create','보고서 생성',BUTTON,route('create-class-reports'),{note:'본문 속성은 보고서 구분·보고서 기간·클래스명을 고릅니다(v2.8.0).'}],
   ['class-tuition-create','월 수강료 생성',BUTTON,route('send-monthly-notice'),{path:'/create',note:'주소 끝의 /create까지 넣습니다. 클래스 수강료 기간의 달 반 수강료 발송함·수강료를 만들고 같은 학생의 다른 반 수강료와 잇습니다(v2.8.0).'}],
-  ['class-letter-create','가정통신문 생성',BUTTON,route('send-monthly-notice'),{path:'/create-letter',note:'주소 끝의 /create-letter까지 넣습니다. 클래스 안내 기간의 달 반 가정통신문 발송함·가정통신문을 만들고 같은 학생의 다른 반 가정통신문과 잇습니다(v2.8.0).'}]]],
-  ['class-etc-charge','기타경비 청구',BUTTON,route('sync-textbook-distribution'),{path:'/class-etc/queue',note:'주소 끝의 /class-etc/queue까지 넣습니다. 클래스 기타경비 중 받는 방식이 한 번인 것을 이 반 학생마다 청구서로 만듭니다(v2.8.0 항목 72).'}],
+  ['class-letter-create','가정통신문 생성',BUTTON,route('send-monthly-notice'),{path:'/create-letter',note:'주소 끝의 /create-letter까지 넣습니다. 클래스 안내 기간의 달 반 가정통신문 발송함·가정통신문을 만들고 같은 학생의 다른 반 가정통신문과 잇습니다(v2.8.0).'}],
+  ['class-etc-charge','기타경비 청구',BUTTON,route('sync-textbook-distribution'),{path:'/class-etc/queue',note:'주소 끝의 /class-etc/queue까지 넣습니다. 클래스 기타경비 중 받는 방식이 한 번인 것을 이 반 학생마다 청구서로 만듭니다(v2.8.0 항목 72).'}]]],
  ['메뉴(학원)',[['menu-bulk-classes','다음주 수업 일괄 생성',BUTTON,route('generate-classes'),{path:'?mode=bulk',note:'주소 끝의 ?mode=bulk까지 넣습니다.'}]],{
   text:'메뉴 DB의 어떤 페이지(예: 수업 HOME)를 열어도 제목 아래 속성 줄에 "다음주 수업 일괄 생성" 버튼이 있습니다. 속성 이름을 클릭하고 "자동화 편집"을 눌러 웹훅 보내기의 값 칸을 바꿉니다. 메뉴 DB에는 "웹훅 등록" 보기가 없어도 됩니다.',
   image:'assets/admin-settings/menu-bulk-button.png',alt:'메뉴 페이지 상단 속성 줄의 다음주 수업 일괄 생성 버튼'}],
@@ -180,16 +180,16 @@ const CHECKLIST=[
   ['record-units','단원 입력',BUTTON,route('fill-record-units')],
   ['record-delete','[웹훅] 삭제',AUTO,route('cascade-delete'),DELETE]]],
  ['학습활동(학원)',[['assignment-delete','[웹훅] 삭제',AUTO,route('cascade-delete'),DELETE]]],
- ['진도교재(학원)',[['progress-completion','수료',BUTTON,route('create-class-reports'),{path:'/completion',note:'주소 끝의 /completion까지 넣습니다(v2.8.0).'}]]],
+ ['진도관리(학원)',[['progress-completion','수료',BUTTON,route('create-class-reports'),{path:'/completion',note:'주소 끝의 /completion까지 넣습니다(v2.8.0).'}]]],
  ['보고서(학원)',[['report-send','[웹훅] 보고서 전송',AUTO,route('send-report'),{path:'/queue',trigger:{when:'속성 편집',select:['보고서 전송 상태','⚪ 대기']},note:'주소 끝의 /queue까지 넣습니다. [보고서 전송] 버튼과 발송함 [일괄 전송]은 전송 상태만 바꿉니다(v2.7).'}]]],
  ['가정통신문(학원)',[['letter-notice','[웹훅] 안내문 전송',AUTO,route('send-monthly-notice'),{path:'/queue',trigger:{when:'속성 편집',select:['안내문 전송 상태','⚪ 대기']},note:'주소 끝의 /queue까지 넣습니다. 가정통신문 [안내문 전송] 버튼과 발송함 [일괄 전송]은 전송 상태만 바꿉니다(v2.8.0).'}]]],
  ['수강료(학원)',[['tuition-notice','[웹훅] 안내문 전송',AUTO,route('send-tuition-notice'),{path:'/queue',trigger:{when:'속성 편집',select:['안내문 전송 상태','⚪ 대기']},note:'주소 끝의 /queue까지 넣습니다. [안내문 전송] 버튼과 발송함 [일괄 전송]은 전송 상태만 바꿉니다(v2.7).'}]]],
- ['교재비(학원)',[
+ ['청구서(학원)',[
   ['cart-notice','[웹훅] 안내문 전송',AUTO,route('send-textbook-notice'),{path:'/queue',trigger:{when:'속성 편집',select:['안내문 전송 상태','⚪ 대기']},note:'주소 끝의 /queue까지 넣습니다. [안내문 전송] 버튼은 안내문 전송 상태만 바꿉니다(v2.7).'}],
-  ['cart-progress-book','진도교재 담기',BUTTON,route('sync-textbook-distribution'),{path:'/from-cart/queue',note:'주소 끝의 /from-cart/queue까지 넣습니다. 본문 속성은 담기 계획만 고릅니다(v2.7).'}],
+  ['cart-progress-book','담기',BUTTON,route('sync-textbook-distribution'),{path:'/from-cart/queue',note:'주소 끝의 /from-cart/queue까지 넣습니다. 본문 속성은 담기 계획만 고릅니다(v2.7).'}],
   ['cart-delete','[웹훅] 삭제',AUTO,route('cascade-delete'),DELETE]]],
- ['교재배부(학원)',[['distribution-delete','[웹훅] 삭제',AUTO,route('cascade-delete'),DELETE]]],
- ['교재결제(학원)',[['payment-delete','[웹훅] 삭제',AUTO,route('cascade-delete'),DELETE]]],
+ ['청구 항목(학원)',[['distribution-delete','[웹훅] 삭제',AUTO,route('cascade-delete'),DELETE]]],
+ ['청구 결제(학원)',[['payment-delete','[웹훅] 삭제',AUTO,route('cascade-delete'),DELETE]]],
  ['학생(학원)',[
   ['student-inquiry-auto','[웹훅] 접수안내 전송',AUTO,route('send-inquiry-receipt'),{trigger:{when:'페이지 추가',check:['개인정보 동의',true]}}],
   ['student-inquiry','접수안내 전송',BUTTON,route('send-inquiry-receipt'),{path:'/resend',note:'주소 끝의 /resend까지 넣습니다. 관리자가 직접 입력한 학생에게 보낼 때 누르고, 이미 보낸 학생도 다시 보냅니다.'}]]],

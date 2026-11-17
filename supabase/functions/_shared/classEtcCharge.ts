@@ -7,6 +7,7 @@
 // 금액은 청구 항목 `교재비 금액` 수식이 기타경비 `신고 금액`을 쓴다(수기입력이 비면). 안내는 청구서 [안내문 전송] — 템플릿 "기타경비 안내".
 import { anyTitleText, createPage, getPage, mapWithConcurrency, queryAllPages, relIds, todaySeoulDate, updatePageProperties } from "./notionClient.ts"
 import { PROP_LAST_ERROR } from "./constants.ts"
+import { cartConfigRowId } from "./adminShared.ts"
 
 const DS_REGISTRATION = () => Deno.env.get("DATA_SOURCE_REGISTRATION_ID")!
 const DS_CART = () => Deno.env.get("DATA_SOURCE_TEXTBOOK_CART_ID")!
@@ -21,6 +22,8 @@ export const classEtcDeps = {
 	createPage,
 	update: updatePageProperties,
 	today: todaySeoulDate,
+	// 표시용 "알림톡 설정" 관계에 넣을 행 id(항목 80) — 없으면 비워 둔다
+	configRow: cartConfigRowId,
 }
 
 const key = (id: string) => String(id ?? "").replace(/-/g, "").toLowerCase()
@@ -60,7 +63,8 @@ export async function processClassEtcChargeQueueItem(payload: { classId: string 
 				const title = `${yymm} ${regTitle} ${item} 청구서`
 				let cart = carts.find((c: any) => alive(c) && anyTitleText(c).trim() === title)
 				if (!cart) {
-					cart = await d.createPage(DS_CART(), { 이름: { title: [{ text: { content: title } }] }, 등록: { relation: [{ id: reg.id }] } })
+					const configRow = await d.configRow("기타경비").catch(() => null)
+					cart = await d.createPage(DS_CART(), { 이름: { title: [{ text: { content: title } }] }, 등록: { relation: [{ id: reg.id }] }, ...(configRow ? { "알림톡 설정": { relation: [{ id: configRow }] } } : {}) })
 					carts.push(cart)
 				}
 				await d.createPage(DS_LINE(), {
