@@ -220,7 +220,7 @@ function appSaveMark(DB) {
 	const X = appSaveX(DB, null)
 	for (const coll of APPS_ORDER) for (const row of DB[coll] || []) {
 		if (row._virtual || !appsIsId(row.id) || appsDirty(coll, row) || row.del) continue
-		APPS_BASE.set(row.id, JSON.stringify(APPSAVE[coll].props(row, X)))
+		APPS_BASE.set(coll + ":" + row.id, JSON.stringify(APPSAVE[coll].props(row, X)))
 	}
 }
 
@@ -236,7 +236,8 @@ function appSaveCollect(DB) {
 			if (!row || row._virtual) continue
 			const isNew = !appsIsId(row.id)
 			if (row.del) { if (!isNew) dels.push({ coll, id: row.id, name: row.name || "" }); continue } // 지우기는 보내지 않음(노션에서 직접)
-			if (!isNew && !appsDirty(coll, row)) continue
+			// 창 아래 [ㅇㅇ 저장]은 앱 안에서만 "저장됨"으로 바꾸므로, 작성 중 표시가 없어도 불러온 값(기준)과 달라진 줄은 보낸다
+			if (!isNew && !appsDirty(coll, row) && !APPS_BASE.has(coll + ":" + row.id)) continue
 			const props = APPSAVE[coll].props(row, X)
 			// 아직 만들어지지 않은 줄(뒤에 오는 새 줄 · 삭제 예정 새 줄)을 가리키는 관계는 이번엔 빼고, 그 줄은 작성 중으로 남긴다
 			let partial = false
@@ -255,10 +256,16 @@ function appSaveCollect(DB) {
 			}
 			// 고친 줄: 기준 값이 있으면 달라진 칸만
 			let send = props
-			const base = APPS_BASE.has(row.id) ? JSON.parse(APPS_BASE.get(row.id)) : null
+			const base = APPS_BASE.has(coll + ":" + row.id) ? JSON.parse(APPS_BASE.get(coll + ":" + row.id)) : null
 			if (base) {
 				send = {}
 				for (const [k, v] of Object.entries(props)) if (JSON.stringify(v) !== JSON.stringify(base[k])) send[k] = v
+				// 작성 중 표시가 없는 줄은 사람이 고친 칸만: 다른 줄 이름에서 만들어지는 제목(등록 · 시간표 `이름`, 진도 `진도교재`)은 따라 보내지 않는다
+				if (!appsDirty(coll, row)) {
+					if (coll === "enrolls" || coll === "blocks") delete send["이름"]
+					if (coll === "progress") delete send["진도교재"]
+					if (!Object.keys(send).length) continue
+				}
 				if (!Object.keys(send).length) { noop.push({ coll, row }); continue }
 			}
 			const ch = { op: "update", db: APPSAVE[coll].db, id: row.id, props: send }
@@ -337,7 +344,7 @@ async function appSaveSend(conn, DB) {
 	col.noop.forEach(({ coll, row }) => { if (coll === "seasons") delete row.dirty; else row.state = "saved" })
 	// 기준 값 새로 적기(연결이 덜 들어간 줄은 기준을 비워 다음 저장 때 전부 보낸다)
 	const X = appSaveX(DB, null)
-	done.forEach(({ coll, row, partial }) => { if (partial) APPS_BASE.delete(row.id); else APPS_BASE.set(row.id, JSON.stringify(APPSAVE[coll].props(row, X))) })
+	done.forEach(({ coll, row, partial }) => { if (partial) APPS_BASE.delete(coll + ":" + row.id); else APPS_BASE.set(coll + ":" + row.id, JSON.stringify(APPSAVE[coll].props(row, X))) })
 	return out
 }
 
