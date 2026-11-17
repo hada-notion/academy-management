@@ -21,6 +21,7 @@ import {
   type ReportCacheRow,
 } from "./reportCacheShared.ts"
 import { isParentPublicEvent, NOTICE_VISIBILITY_POLICY } from "./scheduleVisibility.ts"
+import { eventKind, kindDisplay } from "./scheduleCategory.ts"
 import { selectAttendanceByRegistrationId } from "./attendanceSyncShared.ts"
 import { DS_ATTENDANCE, DS_STUDY_ACTIVITY, DS_REPORT, DS_SCHEDULE_EVENT } from "./constants.ts"
 import { libraryIds } from "./libraryProp.ts"
@@ -148,7 +149,9 @@ export async function buildStudentNotices(
     })
     .map((n: any) => {
       const np = n.properties
-      const category = text(np["구분"])
+      // (2.8 2단계) 리포트 화면의 색·아이콘·나이스 출처 표시는 묶음 이름(💤 휴원·🏫 학사 일정·📆 학원 일정)으로 정해지므로
+      // 세부 구분(옛 구분 포함)을 그 묶음으로 바꿔 싣는다(scheduleCategory.kindDisplay).
+      const category = kindDisplay(eventKind(n))
       const icon = category.split(" ")[0] || "📌"
       const start = dateStartOf(np["날짜"])
       const end = dateEndOf(np["날짜"])

@@ -1,4 +1,4 @@
-import { SCHOOL_EVENT, SCHOOL_EXAM, SCHOOL_BREAK, LEGACY_SCHOOL, LEGACY_SCHOOL_OPTION, categoryName, isExamName } from "./scheduleCategory.ts"
+import { SCHOOL_EVENT, SCHOOL_EXAM, SCHOOL_BREAK, LEGACY_SCHOOL, LEGACY_SCHOOL_OPTION, categoryName, isExamName, KIND, DETAIL_PROP } from "./scheduleCategory.ts"
 // 학교별 행사 종류를 필터링하지 않는다. 모든 원본 행을 보존한다.
 export type NeisRow = Record<string, string | null>
 const gradeFields = ["ONE_GRADE_EVENT_YN", "TW_GRADE_EVENT_YN", "THREE_GRADE_EVENT_YN", "FR_GRADE_EVENT_YN", "FIV_GRADE_EVENT_YN", "SIX_GRADE_EVENT_YN"]
@@ -103,11 +103,36 @@ export function hasLockColumn(schema: any): boolean {
   return schema?.properties?.["잠금"]?.type === "checkbox"
 }
 
+// (2.8 2단계, 대표 261118) 나이스 일정의 `세부 구분`(새로 만들 때만): ① 이름에 "방학"(방학식 빼고) → 방학
+// ② 수업공제일명 휴업일·공휴일 또는 이름에 "토요휴업일" → 학교 휴업 ③ 이름에 시험 낱말 → 시험 ④ 그 밖 → 학교 행사.
+// 공휴일도 새 일정이라 숨김 그대로(모든 새 나이스 일정은 숨김·비공개로 만든다).
+export function detailKind(row: NeisRow): string {
+  const deduct = (row.SBTR_DD_SC_NM ?? "").trim(), name = row.EVENT_NM ?? ""
+  if (name.includes("방학") && !name.includes("방학식")) return KIND.VACATION
+  if (deduct === "휴업일" || deduct === "공휴일" || name.includes("토요휴업일")) return KIND.SCHOOL_OFF
+  if (isExamName(name)) return KIND.EXAM
+  return KIND.SCHOOL_EVENT
+}
+// 일정 DB 스키마의 `세부 구분` 선택지(이모지 포함 원래 이름). 칸이 없거나 선택 칸이 아니면 빈 목록 → 채우지 않음.
+export function detailOptionsOf(schema: any): string[] {
+  const p = schema?.properties?.[DETAIL_PROP]
+  return p?.type === "select" ? (p.select?.options ?? []).map((o: any) => o?.name).filter((n: unknown) => typeof n === "string" && n) : []
+}
+// `구분`이 아직 선택 칸인가(2단계에서 수식이 되면 쓰지 않는다 — 수식 칸에 쓰면 Notion이 거절).
+export function categoryIsSelect(schema: any): boolean {
+  return schema?.properties?.["구분"]?.type === "select"
+}
+
 // hasLock = 일정 DB에 `잠금` 체크 칸이 있음 → 나이스에서 온 새 일정은 잠금 켬(대표 261118, 숨김·학부모 공개처럼 처음 만들 때만).
-export function newEventProperties(row: NeisRow, pageId: string, key: string, gradeIds: string[], categoryOptions: string[] = [], hasLock = false) {
+// extra.categorySelect = false면 `구분`을 쓰지 않음(수식), extra.detailOptions에 맞는 선택지가 있으면 `세부 구분`을 채움.
+export function newEventProperties(row: NeisRow, pageId: string, key: string, gradeIds: string[], categoryOptions: string[] = [], hasLock = false,
+  extra: { categorySelect?: boolean; detailOptions?: string[] } = {}) {
+  const want = detailKind(row)
+  const detail = (extra.detailOptions ?? []).find(o => categoryName(o) === want)
   return {
     ...ownedProperties(row, pageId, key, gradeIds),
-    "구분": { select: { name: newCategoryOption(row, categoryOptions) } },
+    ...(extra.categorySelect === false ? {} : { "구분": { select: { name: newCategoryOption(row, categoryOptions) } } }),
+    ...(detail ? { [DETAIL_PROP]: { select: { name: detail } } } : {}),
     "숨김": { checkbox: true },
     "학부모 공개": { checkbox: false },
     ...(hasLock ? { "잠금": { checkbox: true } } : {}),
