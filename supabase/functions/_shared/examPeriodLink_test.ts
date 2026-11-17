@@ -87,3 +87,14 @@ Deno.test("모의고사: 전국연합학력평가·수능모의평가를 낱말�
   const r3 = pickExamPeriod(info(""), mock("3월 모의고사"), evs)
   assert(r3.ok && r3.eventId === "m3", JSON.stringify(r3))
 })
+
+Deno.test("학기 표시 없는 일정은 날짜로 학기를 봄(원본 검수: 2학기 기말이 4월 지필평가에 이어지던 것)", () => {
+  const evs = [ev("p1", "지필평가(2,3학년)", "2026-04-22", "2026-04-23")]
+  const r = pickExamPeriod(info("2026-12-10"), exam("2학기 기말고사"), evs)
+  assert(!r.ok && r.error.includes("없습니다"), JSON.stringify(r))
+  const both = [ev("a", "1차 정기시험", "2026-04-27", "2026-04-30"), ev("b", "2차 정기시험", "2026-12-07", "2026-12-10")]
+  const r1 = pickExamPeriod(info(""), exam("1학기 중간고사"), both)
+  assert(r1.ok && r1.eventId === "a", JSON.stringify(r1))
+  const r2 = pickExamPeriod(info(""), exam("2학기 기말고사"), both)
+  assert(r2.ok && r2.eventId === "b", JSON.stringify(r2))
+})
