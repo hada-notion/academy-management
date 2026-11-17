@@ -65,7 +65,7 @@ CLEAR_DBS = [
     "자료(학원) DB",
     "단원목록(학원) DB",
     "라이브러리(학원) DB",
-    "교시(학원) DB",
+    "기타경비(학원) DB",  # (v2.8.0 항목 70) 신고한 기타경비 목록. 청구 항목·클래스가 가리키므로 그 뒤에
     "업데이트(학원) DB",
     "패치·이슈 관리 DB",  # 업데이트(학원) DB의 옛 이름
 ]
@@ -90,8 +90,13 @@ RENAMED_DBS = {
     "교재결제(학원) DB": "청구 결제(학원) DB",
 }
 
-# 없어도 "찾지 못한 DB"로 내지 않는 DB: 옛 이름 기록 DB, Notion을 올리기 전 학원에는 없는 시즌 DB.
-OPTIONAL_DBS = [CLEAR_DBS[-1], "시즌(학원) DB"]
+# 없어도 "찾지 못한 DB"로 내지 않는 DB: 옛 이름 기록 DB, Notion을 올리기 전 학원에는 없는 시즌·기타경비 DB.
+OPTIONAL_DBS = [CLEAR_DBS[-1], "시즌(학원) DB", "기타경비(학원) DB"]
+
+# (v2.8.0 교시 제거) 원본에서 없앤 DB. 아직 지우지 않은 학원에 남아 있어도 비우지 않고 "목록에 없는 DB"로도 내지 않는다.
+RETIRED_DBS = [
+    "교시(학원) DB",
+]
 
 
 def request(method, path, token, body=None):
@@ -192,7 +197,7 @@ def main():
         if ds_id not in ids:
             ids.append(ds_id)
 
-    unknown = sorted(n for n in by_name if n not in CLEAR_DBS and n not in KEEP_DBS)
+    unknown = sorted(n for n in by_name if n not in CLEAR_DBS and n not in KEEP_DBS and n not in RETIRED_DBS)
     missing = [n for n in clear_dbs if n not in OPTIONAL_DBS and n not in by_name]
 
     plan, total = [], 0
