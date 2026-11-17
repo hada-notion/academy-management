@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=503">
-<link rel="stylesheet" href="app.css?v=503">
-<link rel="stylesheet" href="pick.css?v=503">
-<link rel="stylesheet" href="field.css?v=503">
+<link rel="stylesheet" href="hada-tokens.css?v=504">
+<link rel="stylesheet" href="app.css?v=504">
+<link rel="stylesheet" href="pick.css?v=504">
+<link rel="stylesheet" href="field.css?v=504">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=503"><script src="hada-rules.js?v=503"></script><script src="alim-preview.js?v=503"></script><script src="pick.js?v=503"></script><script src="field.js?v=503"></script><script src="panel.js?v=503"></script>
+<link rel="stylesheet" href="alim.css?v=504"><script src="hada-rules.js?v=504"></script><script src="alim-preview.js?v=504"></script><script src="pick.js?v=504"></script><script src="field.js?v=504"></script><script src="panel.js?v=504"></script>
 <script>
 "use strict";
 
@@ -1251,7 +1251,7 @@ const HEAD_DEF={/* 창 머리 재료(기준 4장 "창 머리 화면별 재료"):
   seasons:r=>({info:[r.start?D10(r.start)+" - "+D10(r.end):"","시간표 "+DB.blocks.filter(b=>!b.del&&b.seasonId===r.id).length+"개"],state:hst({run:"운영 중",prep:"예정",end:"종료"}[seaState(r)])}),
   classes:r=>({dot:clsHex(r),belong:r.course||r.subject,info:[tch(r.teacherId).name,"학생 "+DB.enrolls.filter(e=>!e.del&&!e.ended&&e.classId===r.id).length+"명",r.fee?WON(r.fee):""],state:r.kind==="특강"?hst("특강"):null}),
   subjects:r=>({belong:r.area,info:[(r.grades||[]).join(" · "),"교재 "+DB.books.filter(b=>!b.del&&b.subjectId===r.id).length+"권"]}),
-  progress:r=>({name:(byId(DB.books,r.bookId)||{}).name||"",belong:(r.mode==="개별"&&r.studentId?nmStu(r.studentId)+" · ":"")+nmCls(r.classId),info:[r.mode==="개별"?"개별":"그룹",r.range,r.pct!=null&&r.pct!==""?r.pct+"%":""],state:hst(r.stat||"다음 교재")}),
+  progress:r=>({name:(byId(DB.books,r.bookId)||{}).name||"",belong:(r.mode==="개별"&&r.studentId?nmStu(r.studentId)+" · ":"")+nmCls(r.classId),info:[r.mode==="개별"?"개별":"그룹",pgRange(r),pgPct(r)!==""?pgPct(r)+"%":""]/* 창 위 줄 = 진도 상자와 같은 계산 값 */,state:hst(r.stat||"다음 교재")}),
   bookfees:r=>({name:nmStu(r.studentId),belong:nmCls(r.classId),info:[r.month,r.items,WON(r.total)],state:hst((+r.total||0)-(+r.paid||0)>0?"미납":"완료")}),
   tuition:r=>({name:nmStu(r.studentId),belong:nmCls(r.classId),info:[r.month,r.qty!=null&&r.qty!==""?r.qty+"/"+(r.full||8)+clsQU(cls(r.classId)):"",WON(tuAmt(r))],state:hst(r.pay)}),
   profit:r=>({info:["매출 "+WON((r.tu||0)+(r.ec||0)+(r.bf||0)+(r.ot||0)),"지출 "+WON(r.out)]}),
@@ -2525,7 +2525,7 @@ Object.assign(LISTS,{
   fields:[["name","일정 이름"],["kind","구분",["학원 일정","학사 일정","휴원","할일"]],["classIds","클래스",()=>DB.classes.filter(x=>!x.del).map(x=>x.id),"multi","구분이 휴원이면 쉬는 클래스를 골라요 — 고른 클래스의 그 기간 수업은 생기지 않아요. 클래스를 안 고르면 수업은 그대로 생겨요",x=>(cls(x)||{}).name||x],["guide","안내 구분",()=>EV_GUIDE.map(v=>({v,t:v})),"opt","학부모 안내에 쓰는 갈래(상담 · 테스트 · 휴강 · 휴원). 비워 둬도 돼요"],["start","시작일",null,"date"],["end","끝나는 날",null,"date","하루면 비워 두세요"],["who","담당자",oTch],["stat","진행상태",["예정","진행 중","완료"]],["pub","학부모 공개",["공개","공개 안 함"],"bool"],["memo","일정 안내 메모",null,"memo"]],
   blank:()=>({id:uid("ev"),name:"새 일정",kind:"학원 일정",start:TODAY,end:"",who:"",stat:"예정",pub:false,memo:""})},
  reports:{title:"학습 보고서",coll:"reports",unit:"건",ph:"클래스 검색",help:"한 줄 = 클래스별 보고서 묶음(노션 알림톡 발송함)이에요. 줄을 열면 [학생] 탭에 학생마다 보고서 한 장(노션 보고서 DB)이 있어 한마디를 쓰고 보내요. 일일은 수업 창에서, 주간·월간은 여기서 [보고서 생성] 뒤 보내요. 보고서 본문은 노션 페이지에 써요.",noAdd:1,noDel:true,
-  cols:[["클래스",x=>nmCls(x.classId),"classId"],["보고서 구분",x=>x.kind,"kind"],["기간",x=>D10(x.from)+" - "+D10(x.to)],["대상",x=>x.n+"명"],["전송 전",x=>x.sent&&!x.left?"—":(x.left||x.n)+"명"],["상태",x=>x.left?"보내는 중":x.sent?"모두 전송":"생성","stat"]],
+  cols:[["클래스",x=>nmCls(x.classId),"classId"],["보고서 구분",x=>x.kind,"kind"],["기간",x=>D10(x.from)+" - "+D10(x.to)],["대상",x=>x.n+"명"],["전송 전",x=>rpLeft(x)?rpLeft(x)+"명":"—"],["상태",x=>x.left?"보내는 중":x.sent?"모두 전송":"생성","stat"]],
   filters:[["전송 전",x=>!!x.left||!x.sent],["주간",x=>x.kind==="주간",false,null,"kind"],["월간",x=>x.kind==="월간",false,null,"kind"],["수료",x=>x.kind==="수료",false,null,"kind"]],
   fields:[["classId","클래스",oCls,"req"],["kind","보고서 구분",["주간","월간","수료"],"seg"],["from","기간 시작",null,"date"],["to","기간 끝",null,"date"]]},
  tuition:{title:"수강료",coll:"tuition",unit:"건",cntUnit:x=>clsQU(cls(x.classId)),ph:"학생·클래스 검색",help:"달마다 등록 하나에 수강료 하나예요. 청구 금액 = 클래스 수강료 × 실제 수업량 ÷ 한 달 수업량 + 조정 + 기타경비. 안내문은 학생마다 한 통(여러 클래스 합산)으로 나가요.",noAdd:1,noDel:true,
@@ -2612,7 +2612,9 @@ LISTS.reports.acts=[
   run:n=>askRun("이번 주 보고서를 생성할까요?",`${D10(wkR(0)[0])}-${D10(wkR(0)[1])} 주간 보고서가 없는 클래스 <b>${n}개</b>에 생성해요. 학생별 본문은 출결·과제·평가에서 채워져요.${toList(rpNeed().map(c=>esc(c.name)))}`,"생성",()=>{rpNeed().forEach(c=>{const k=liveEnr().filter(e=>e.classId===c.id).length;DB.reports.unshift({id:uid("rp"),classId:c.id,kind:"주간",from:wkR(0)[0],to:wkR(0)[1],n:k,left:0,sent:false,note:"",state:"saved"})});commit();toast(`보고서 ${n}건을 생성했어요 — Ctrl+Z로 되돌려요`)})},
  rpSendAct()];
 /* 보고서 일괄 전송 단추 하나: 정기 보고서 = 주간 · 월간, 수료 보고서 = 수료만 */
-function rpSendAct(ok){const to=()=>rpTo(ok);return {id:"aSend",icon:"send",name:"일괄 전송",n:()=>to().reduce((a,r)=>a+(r.left||r.n),0),tip:n=>n?`일괄 전송 — 아직 안 보낸 학생 ${n}명`:"일괄 전송 — 보낼 것이 없어요",
+/* 보고서 묶음의 아직 안 보낸 학생 수 — 표 · 일괄 전송 · 할 일이 모두 이것 하나로 셈 */
+const rpLeft=x=>x.sent&&!x.left?0:(+x.left||+x.n||0);
+function rpSendAct(ok){const to=()=>rpTo(ok);return {id:"aSend",icon:"send",name:"일괄 전송",n:()=>to().reduce((a,r)=>a+rpLeft(r),0),tip:n=>n?`일괄 전송 — 아직 안 보낸 학생 ${n}명`:"일괄 전송 — 보낼 것이 없어요",
   run:n=>askRun("보고서를 보낼까요?",`아직 안 보낸 <b>${n}명</b>에게 보고서 알림톡을 보내요.${toList(to().map(r=>`${esc(nmCls(r.classId))} <span class="hint">${r.kind} · ${D10(r.from)} - ${D10(r.to)} · ${r.left||r.n}명</span>`))}${sendNote}`,"보내기",()=>{to().forEach(rpSendAll);commit();toast(`${n}명에게 전송 완료로 표시했어요 — Ctrl+Z로 되돌려요`)})}}
 LISTS.letters.acts=[
  {id:"aGen",icon:"plussq",name:"가정통신문 생성",n:()=>DB.classes.filter(c=>liveCls(c)&&liveEnr().some(e=>e.classId===c.id)&&!DB.letters.some(l=>l.classId===c.id&&l.month===curM())).length,tip:n=>n?`가정통신문 생성 — ${curM()} 가정통신문이 없는 클래스 ${n}개`:`가정통신문 생성 — ${curM()} 것이 모두 있어요`,
@@ -3135,7 +3137,7 @@ function chargesSync(){if(!DB.charges||!DB.tuition||!DB.bookfees)return;const ou
 function chargesSeed(){DB.books.forEach(b=>{if(b.etcItem===undefined)b.etcItem=bkEtc(b)});DB.tuition.forEach(t=>{t.etcs=clsEtc(t.classId)});DB.bookfees.forEach(b=>{if(!b.month)b.month=thisM();if(+b.paid>0&&!b.paidOn)b.paidOn=dPlus(TODAY,-2)});bfSeed();
   {const e=DB.enrolls.find(e=>!e.ended&&/고/.test((cls(e.classId)||{}).name||""))||DB.enrolls.find(e=>!e.ended);if(e)DB.charges.push({id:uid("ch"),studentId:e.studentId,classId:e.classId,kind:"기타경비",item:"모의고사비",name:"11월 모의고사",take:true,amount:15000,month:thisM(),bill:"",billId:"",paidOn:"",state:"saved"})}chargesSync()}
 const chLines=(bill,id)=>{chargesSync();return DB.charges.filter(l=>l.bill===bill&&l.billId===id)};
-function chBillBox(bill,x){const ls=chLines(bill,x.id);return `<div class="box"><h3>청구 항목 <span class="hint">${ls.length}줄</span>${HELP("이 묶음에 든 줄이에요. 줄마다 종류가 하나예요 — 영수증에는 교습비와 기타경비만 들어가요."+(bill==="tuition"?" 기타경비는 수강료를 생성할 때의 클래스·등록 값이에요.":" 교재비 탭의 줄은 교재비, 재료비·기타경비 탭의 줄은 기타경비예요."))}<span class="sp"></span><button class="lnk" data-gochs="1">전체 줄에서 보기${IC("right","s")}</button></h3><div class="unrows">${ls.map(l=>`<div class="unrow"><span class="unt">${esc(l.name||l.item)}</span><span class="spill ${CH_PILL[l.kind]}">${esc(l.kind==="교습비"?l.kind:l.kind+" · "+l.item)}</span><span class="unv">${WON(l.amount)}</span></div>`).join("")}</div><div class="adjsum tot"><span>합계</span><b>${WON(ls.reduce((a,l)=>a+l.amount,0))}</b></div></div>`}
+function chBillBox(bill,x){const ls=chLines(bill,x.id);return `<div class="box" data-chbill="${bill}"><h3>청구 항목 <span class="hint">${ls.length}줄</span>${HELP("이 묶음에 든 줄이에요. 줄마다 종류가 하나예요 — 영수증에는 교습비와 기타경비만 들어가요."+(bill==="tuition"?" 기타경비는 수강료를 생성할 때의 클래스·등록 값이에요.":" 교재비 탭의 줄은 교재비, 재료비·기타경비 탭의 줄은 기타경비예요."))}<span class="sp"></span><button class="lnk" data-gochs="1">전체 줄에서 보기${IC("right","s")}</button></h3><div class="unrows">${ls.map(l=>`<div class="unrow"><span class="unt">${esc(l.name||l.item)}</span><span class="spill ${CH_PILL[l.kind]}">${esc(l.kind==="교습비"?l.kind:l.kind+" · "+l.item)}</span><span class="unv">${WON(l.amount)}</span></div>`).join("")}</div><div class="adjsum tot"><span>합계</span><b>${WON(ls.reduce((a,l)=>a+l.amount,0))}</b></div></div>`}
 function chInfoBox(l){if(!l.bill)return "";const nm=l.bill==="tuition"?"수강료":bfCatOf(l.billId),wh=l.bill==="tuition"?"수강료 화면":`[${nm}] 탭`;
   return `<div class="box"><h3>${nm}에서 생성한 줄${HELP(`${nm} 묶음에서 나온 줄이라 여기서는 보기만 해요. ${wh}에서 고치면 이 줄도 바로 바뀌어요.`)}</h3>${[["학생",esc(nmStu(l.studentId))],["클래스",esc(nmCls(l.classId))],["청구 월",esc(l.month||"—")],["종류",`<span class="spill ${CH_PILL[l.kind]}">${esc(l.kind)}</span>`],["항목",esc(l.item)],["내용",esc(l.name||"—")],["금액",WON(l.amount)],["결제일",l.paidOn?D10(l.paidOn):"미납"]].map(([a,b])=>`<div class="adjsum"><span>${a}</span><b>${b}</b></div>`).join("")}<div class="row"><button class="btn sm" data-gobill="1">${IC("right","s")}${nm}에서 열기</button></div></div>`}
 function chBind(p,L,r,t){p.querySelectorAll("[data-gochs]").forEach(x=>x.onclick=ev=>openScreen("bookfees",ev.ctrlKey||ev.metaKey,{sub:"l",month:r.month||thisM(),q:nmStu(r.studentId),lf:{}}));
@@ -3514,7 +3516,7 @@ function hfField(h,L,r,spec,set,extra){const [k,label,opts,type,help]=spec;if(!h
   if(Array.isArray(opts))return HF.select(h,Object.assign(o,{value:r[k],clear:false,items:ncItems(L.coll,k,opts)}));
   if(type==="datetime")return HF.datetime(h,Object.assign(o,{value:r[k]||""}));
   if(type==="date")return HF.date(h,Object.assign(o,{value:r[k]||""},/생년월일|생일/.test(o.label||"")?{dow:false}:{}))/* 318판: 생년월일은 요일 없이 */;
-  if(type==="won"||type==="cnt"||type==="num")return HF.num(h,Object.assign(o,{value:r[k]==null||r[k]===""?"":String(r[k]),unit:type==="won"?"원":type==="cnt"?(L.cntUnit?L.cntUnit(r):"회"):(spec[5]||(L.numUnit?L.numUnit(r,k):"")),pre:L.numPre?L.numPre(r,k):"",onChange:v=>set(k,v===""?(type==="won"?0:""):+v.replace(/,/g,""))}));
+  if(type==="won"||type==="cnt"||type==="num")return HF.num(h,Object.assign(o,{value:r[k]==null||r[k]===""?"":String(r[k]),unit:type==="won"?"원":type==="cnt"?(L.cntUnit?L.cntUnit(r):"회"):(spec[5]||(L.numUnit?L.numUnit(r,k):"")),pre:L.numPre?L.numPre(r,k):"",signed:type==="won"&&/조정$/.test(label),onChange:v=>set(k,v===""||v==="-"?(type==="won"?0:""):+v.replace(/,/g,""))}));
   if(type==="tel")return HF.tel(h,Object.assign(o,{value:r[k]||""}));
   if(type==="memo")return HF.memo(h,Object.assign(o,{value:r[k]||""}));
   if(type==="days")return HF.days(h,Object.assign(o,{value:daysArr(r[k]),onChange:v=>{const nv=DAYS7.split("").filter(d=>(v||[]).includes(d));set(k,nv.join(","));
@@ -3536,7 +3538,8 @@ let quietTimer=null;function commitQuiet(){clearTimeout(quietTimer);/* 264판: �
 function refreshListQuiet(p,L,r){const v=document.getElementById("view");const t=activeTab;const tr=v.querySelector(`tr[data-id="${r.id}"]`);
   if(tr){tr.classList.add("draft");tr.innerHTML=gtRowCells(L,r,L.merge?(tr.querySelector("td[data-mg]")?{span:tr.querySelector("td[data-mg]").rowSpan}:{skip:true}):null)}
   rvSync();const sv=v.querySelector("#saveAll");if(sv){sv.disabled=!dirtyCount();const n=sv.querySelector(".num");if(n)n.textContent=dirtyCount();sv.title=dirtyTitle()}
-  const h2=p.querySelector(".phead h2");if(h2){const t=document.createElement("div");t.innerHTML=listHead(L,r,true);h2.innerHTML=t.querySelector("h2").innerHTML}const rs=p.querySelector("#rowSave");if(rs)rs.disabled=!rowDirty(L,r);renderTabs()}
+  const h2=p.querySelector(".phead h2");if(h2){const t=document.createElement("div");t.innerHTML=listHead(L,r,true);h2.innerHTML=t.querySelector("h2").innerHTML;const s0=p.querySelector(".phead .sub"),s1=t.querySelector(".sub");if(s0&&s1)s0.innerHTML=s1.innerHTML}
+  const cb=p.querySelector("[data-chbill]");if(cb){const t=document.createElement("div");t.innerHTML=chBillBox(cb.dataset.chbill,r);const n=t.firstElementChild;[".unrows",".adjsum.tot"].forEach(q=>{const a=cb.querySelector(q),z=n.querySelector(q);if(a&&z)a.innerHTML=z.innerHTML})}/* 값을 바꾸면 창 위 줄 · 청구 항목 금액도 같이(커서 유지, 단추는 그대로) */const rs=p.querySelector("#rowSave");if(rs)rs.disabled=!rowDirty(L,r);renderTabs()}
 function bindDetail(p,L,r,t){mountDetail(p,L,r);if(L.coll==="enrolls")enTypeMount(p);
   // 칸을 옮겨도 창을 다시 그리지 않는다: 값만 바꾸고 표·숫자만 새로 고침(커서 유지)
   p.querySelectorAll("[data-k]").forEach(i=>{const upd=()=>{let val=i.value;if(["fee","discount"].includes(i.dataset.k))val=+val||0;if(r[i.dataset.k]===val)return;r[i.dataset.k]=val;r.state="draft";commitQuiet();refreshListQuiet(p,L,r)};i.oninput=upd;i.onchange=upd});
@@ -3911,7 +3914,7 @@ LISTS.tuition.todo=st=>{const m=tuMon(st);return [
 LISTS.tuition.todoSum=st=>{const m=tuMon(st);const all=m.reduce((a,x)=>a+tuAmt(x),0),got=m.filter(x=>x.pay==="완료").reduce((a,x)=>a+tuAmt(x),0);return [[tMon(st)+" 청구",WON(all)],["받은 금액",WON(got)],["미납률",all?Math.round((all-got)/all*100)+"%":"—",all-got>0?"w":""]]};
 const bfTodo=cat=>st=>{const r=DB.bookfees.filter(b=>!b.del&&bfCat(b)===cat);return [
   {k:"send",name:"전송 전",why:`안내문을 아직 보내지 않은 ${cat}예요. 위 [안내 전송]으로 보내요.`,rows:r.filter(b=>!b.sent),lab:b=>`${esc(nmStu(b.studentId))} <small class="hint">${esc(b.items||"")} · ${WON(b.total)}</small>`},
-  {k:"due",name:"미납",why:"아직 다 받지 못한 금액이 있어요.",rows:r.filter(b=>b.sent&&b.total-b.paid>0),lab:b=>`${esc(nmStu(b.studentId))} <small class="hint">${esc(b.items||"")} · ${WON(b.total-b.paid)} 남음</small>`}]};
+  {k:"due",name:"미납",why:"안내를 보낸 뒤 아직 다 받지 못한 금액이에요(보내기 전 줄은 위 전송 전에 있어요).",rows:r.filter(b=>b.sent&&b.total-b.paid>0),lab:b=>`${esc(nmStu(b.studentId))} <small class="hint">${esc(b.items||"")} · ${WON(b.total-b.paid)} 남음</small>`}]};
 const bfSum=cat=>()=>{const r=DB.bookfees.filter(b=>!b.del&&bfCat(b)===cat);return [[cat+" 청구",WON(r.reduce((a,b)=>a+b.total,0))],["받은 금액",WON(r.reduce((a,b)=>a+(+b.paid||0),0))],["남은 금액",WON(r.reduce((a,b)=>a+b.total-b.paid,0))]]};
 LISTS.bookfees_b.todo=bfTodo("교재비");LISTS.bookfees_b.todoSum=bfSum("교재비");LISTS.bookfees_m.todo=bfTodo("재료비");LISTS.bookfees_m.todoSum=bfSum("재료비");
 LISTS.bookfees_e.todo=bfTodo("기타경비");LISTS.bookfees_e.todoSum=bfSum("기타경비");
@@ -3953,9 +3956,9 @@ LISTS.teachers.todo=()=>{const L=DB.teachers.filter(x=>!x.del);return [
   {k:"tel",name:"연락처 빈칸",rows:L.filter(t=>!t.phone),lab:nm1},
   {k:"days",name:"출근 요일 확인",why:"맡은 수업이 출근 요일이 아닌 날에 있어요.",rows:L.filter(t=>{const d=daysArr(t.days);return DB.blocks.some(b=>b.seasonId===curSeason()&&(b.teacherId||cls(b.classId).teacherId)===t.id&&!d.includes(DAYS[b.day]))}),lab:nm1}]};
 LISTS.teachers.todoSum=()=>[["선생님",DB.teachers.filter(x=>!x.del).length+"명"]];
-LISTS.reports.todo=()=>{const L=DB.reports.filter(x=>!x.del);return [
-  {k:"send",name:"전송 전",why:"아직 보내지 않은 학생이 있는 보고서 묶음이에요.",rows:L.filter(x=>x.left||!x.sent),lab:x=>`<i class="cdot" style="background:${clsHex(cls(x.classId)||{})}"></i>${esc(nmCls(x.classId))} <small class="hint">${esc(x.kind||"")} · ${x.left?x.left+"명 남음":"전송 전"}</small>`}]};
-LISTS.reports.todoSum=()=>{const L=DB.reports.filter(x=>!x.del);const n=L.reduce((a,x)=>a+(+x.n||0),0),left=L.reduce((a,x)=>a+(+x.left||0),0);return [["보고서 묶음",L.length+"건"],["보낸 비율",n?Math.round((n-left)/n*100)+"%":"—"]]};
+[LISTS.reports,LISTS.completion].forEach(RL=>{RL.todo=()=>{const L=RL.rows();return [
+  {k:"send",name:"전송 전",why:"아직 보내지 않은 학생이 있는 보고서 묶음이에요.",rows:L.filter(x=>rpLeft(x)),lab:x=>`<i class="cdot" style="background:${clsHex(cls(x.classId)||{})}"></i>${esc(nmCls(x.classId))} <small class="hint">${esc(x.kind||"")} · ${x.left?x.left+"명 남음":"전송 전"}</small>`}]};
+RL.todoSum=()=>{const L=RL.rows();const n=L.reduce((a,x)=>a+(+x.n||0),0),left=L.reduce((a,x)=>a+rpLeft(x),0);return [["보고서 묶음",L.length+"건"],["보낸 비율",n?Math.round((n-left)/n*100)+"%":"—"]]}});
 LISTS.schools.todo=()=>{const L=DB.schools.filter(x=>!x.del);return [
   {k:"code",name:"학교 코드 없음",why:"[학교 검색]로 나이스에서 찾아 넣으면 학교 코드가 붙어 학사일정을 가져올 수 있어요.",rows:L.filter(x=>!x.code),lab:nm1},
   {k:"sync",name:"학사일정 오래됨",why:"한 달 넘게 학사일정을 가져오지 않았어요. 위 [학사일정 가져오기]로 새로 받아요.",rows:L.filter(x=>x.code&&(!x.sync||x.sync<dPlus(TODAY,-30))),lab:nm1}]};
