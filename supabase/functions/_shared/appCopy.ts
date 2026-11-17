@@ -112,9 +112,11 @@ export function pageRow(db: AppDb, p: Page): Row {
 // ---------- DB 찾기(제목) ----------
 export function pickSources(found: Map<string, string[]>): Map<AppDb, string[]> {
 	const out = new Map<AppDb, string[]>()
+	// 지금 이름이 먼저. 옛 이름은 지금 이름의 DB가 없을 때만 쓴다(이름을 바꾸는 중에 둘 다 보여도 섞지 않음).
+	for (const [name, ids] of found) if (isAppDb(name)) out.set(name, [...ids])
 	for (const [name, ids] of found) {
-		const db = isAppDb(name) ? name : OLD_NAMES[name]
-		if (db) out.set(db, [...(out.get(db) ?? []), ...ids])
+		const db = OLD_NAMES[name]
+		if (db && !found.has(db)) out.set(db, [...(out.get(db) ?? []), ...ids])
 	}
 	return out
 }
@@ -136,12 +138,64 @@ async function searchSources(): Promise<Map<string, string[]>> {
 	} while (cursor)
 	return out
 }
-let sourceCache: { at: number; map: Map<AppDb, string[]> } | null = null
-export async function appSources(): Promise<Map<AppDb, string[]>> {
-	if (sourceCache && Date.now() - sourceCache.at < 10 * 60 * 1000) return sourceCache.map
-	sourceCache = { at: Date.now(), map: pickSources(await searchSources()) }
-	return sourceCache.map
+// ---------- 같은 이름 DB가 여럿 보일 때(한 워크스페이스에 학원 · 관이 여럿, 옛 버전 사본) ----------
+// 조용히 고르지 않는다. 이 학원 것 하나로 좁혀지지 않으면 그 DB는 읽지도 쓰지도 않고 오류를 낸다(다른 관을 읽고 쓰는 일을 막음).
+// 좁히는 순서: ① 이 학원 Secrets(DATA_SOURCE_*_ID)에 적힌 id와 같은 것 ② 기준 DB(등록, DATA_SOURCE_REGISTRATION_ID)와
+// 같은 최상위 페이지 아래에 있는 것(부모를 위로 따라가 겹치는 페이지가 있는지) ③ 그래도 하나가 아니면 "모호함".
+export type SourcePick = { map: Map<AppDb, string[]>; problems: Map<AppDb, string> }
+export type AncestorsOf = (dataSourceId: string) => Promise<Set<string>>
+const norm = (id: string) => id.replace(/-/g, "").toLowerCase()
+export async function resolveSources(found: Map<AppDb, string[]>, envIds: string[], anchorId: string | null, ancestorsOf: AncestorsOf): Promise<SourcePick> {
+	const map = new Map<AppDb, string[]>(), problems = new Map<AppDb, string>()
+	const env = new Set(envIds.map(norm))
+	let anchor: Set<string> | null = null
+	for (const [db, ids] of found) {
+		const uniq = [...new Set(ids)]
+		if (uniq.length <= 1) { map.set(db, uniq); continue }
+		const byEnv = uniq.filter((id) => env.has(norm(id)))
+		if (byEnv.length === 1) { map.set(db, byEnv); continue }
+		let left = uniq
+		if (anchorId) {
+			anchor ??= await ancestorsOf(anchorId)
+			const keep: string[] = []
+			for (const id of uniq) { const a = await ancestorsOf(id); if ([...a].some((x) => anchor!.has(x))) keep.push(id) }
+			left = keep
+		}
+		if (left.length === 1) map.set(db, left)
+		else problems.set(db, `같은 이름 DB가 ${uniq.length}개 보이고 이 학원 것 하나로 좁혀지지 않습니다(${left.length}개 남음). 통합(Integration)이 이 학원 페이지만 보게 하거나 중복 DB를 정리하세요.`)
+	}
+	return { map, problems }
 }
+// 부모를 위로 따라가며 만난 페이지 · DB id(자기 자신 제외). 워크스페이스에 닿거나 12단계에서 멈춘다.
+async function notionAncestors(dataSourceId: string): Promise<Set<string>> {
+	const out = new Set<string>()
+	let kind = "data_sources", id = dataSourceId
+	for (let i = 0; i < 12; i++) {
+		const res = await fetchWithRetry(`${NOTION_API}/${kind}/${id}`, { headers: notionHeaders() })
+		if (!res.ok) break
+		const parent = (await res.json())?.parent
+		if (!parent) break
+		if (parent.type === "database_id") { kind = "databases"; id = parent.database_id }
+		else if (parent.type === "page_id") { kind = "pages"; id = parent.page_id }
+		else if (parent.type === "block_id") { kind = "blocks"; id = parent.block_id }
+		else if (parent.type === "data_source_id") { kind = "data_sources"; id = parent.data_source_id }
+		else break
+		out.add(norm(id))
+	}
+	return out
+}
+const envDataSourceIds = () => Object.entries(Deno.env.toObject()).filter(([k, v]) => k.startsWith("DATA_SOURCE_") && v).map(([, v]) => v)
+
+let sourceCache: { at: number; pick: SourcePick } | null = null
+async function sourcePick(): Promise<SourcePick> {
+	if (sourceCache && Date.now() - sourceCache.at < 10 * 60 * 1000) return sourceCache.pick
+	const pick = await resolveSources(pickSources(await searchSources()), envDataSourceIds(), Deno.env.get("DATA_SOURCE_REGISTRATION_ID") || null, notionAncestors)
+	sourceCache = { at: Date.now(), pick }
+	return pick
+}
+// DB마다 데이터 소스 하나(없으면 빈 목록). 모호한 DB는 여기에 없다 — sourceProblem으로 이유를 본다.
+export async function appSources(): Promise<Map<AppDb, string[]>> { return (await sourcePick()).map }
+export async function sourceProblem(db: AppDb): Promise<string | null> { return (await sourcePick()).problems.get(db) ?? null }
 
 // ---------- Supabase ----------
 const SB_URL = () => Deno.env.get("SB_URL") ?? ""
@@ -190,9 +244,18 @@ async function setCursor(db: AppDb, at: string): Promise<void> {
 }
 
 // ---------- 맞추기 ----------
-export type AppSyncResult = { db: AppDb; found: boolean; read: number; upserted: number; deleted: number }
+export type AppSyncResult = { db: AppDb; found: boolean; read: number; upserted: number; deleted: number; problem?: string }
 
 export async function reconcileApp(db: AppDb): Promise<AppSyncResult> {
+	const problem = await sourceProblem(db)
+	if (problem) {
+		// 어느 학원 DB인지 모르면 복사본을 비우고(섞인 줄을 보여 주지 않음) 다음 DB로 넘어가게 커서만 남긴다.
+		const stale = await selectIds(db)
+		await deleteIds(stale)
+		if (!(await getCursor(db))) await setCursor(db, new Date().toISOString())
+		console.error(`[appCopy] ${db}: ${problem}`)
+		return { db, found: false, read: 0, upserted: 0, deleted: stale.length, problem }
+	}
 	const sources = (await appSources()).get(db) ?? []
 	if (!sources.length) return { db, found: false, read: 0, upserted: 0, deleted: 0 }
 	const startedAt = new Date().toISOString()
@@ -211,6 +274,8 @@ export async function reconcileApp(db: AppDb): Promise<AppSyncResult> {
 export async function incrementalApp(db: AppDb): Promise<AppSyncResult | null> {
 	const cursor = await getCursor(db)
 	if (!cursor) return null
+	const problem = await sourceProblem(db)
+	if (problem) return { db, found: false, read: 0, upserted: 0, deleted: 0, problem }
 	const sources = (await appSources()).get(db) ?? []
 	const since = new Date(Date.parse(cursor) - CURSOR_MARGIN_MS).toISOString()
 	const startedAt = new Date().toISOString()
@@ -261,11 +326,12 @@ export async function listApp(db: AppDb, since?: string | null): Promise<Record<
 	}
 }
 // DB마다 줄 수 · 마지막 동기화(앱 첫 화면의 "자료 상태"와 건수 대조용).
-export async function statusApp(): Promise<{ db: AppDb; rows: number; cursor: string | null }[]> {
+export async function statusApp(): Promise<{ db: AppDb; rows: number; cursor: string | null; problem?: string }[]> {
+	const pick = await sourcePick()
 	const res = await fetchSupabaseWithRetry(`${SB_URL()}/rest/v1/rpc/app_rows_counts`, { method: "POST", headers: sbHeaders(), body: "{}" })
 	if (!res.ok) throw new Error(`app_rows 건수 조회 실패: ${res.status} ${await res.text()}`)
 	const counts = new Map(((await res.json()) as { db: string; n: number }[]).map((r) => [r.db, Number(r.n)]))
 	const cur = await fetchSupabaseWithRetry(`${SB_URL()}/rest/v1/sync_cursors?source=like.app:*&select=source,last_synced_at`, { headers: sbHeaders() })
 	const cursors = new Map(cur.ok ? ((await cur.json()) as { source: string; last_synced_at: string }[]).map((r) => [r.source, r.last_synced_at]) : [])
-	return APP_DBS.map((db) => ({ db, rows: counts.get(db) ?? 0, cursor: cursors.get(cursorKey(db)) ?? null }))
+	return APP_DBS.map((db) => ({ db, rows: counts.get(db) ?? 0, cursor: cursors.get(cursorKey(db)) ?? null, ...(pick.problems.has(db) ? { problem: pick.problems.get(db) } : {}) }))
 }

@@ -1,6 +1,6 @@
 // appCopy 단위 시험(v2.8.0 항목 74): 속성 평평하게 · DB 고르기(옛 이름) · 앱 DB 목록.
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts"
-import { APP_DBS, flattenProps, isAppDb, pageRow, pickSources } from "./appCopy.ts"
+import { APP_DBS, flattenProps, isAppDb, pageRow, pickSources, resolveSources } from "./appCopy.ts"
 import { CLEAR_DBS, KEEP_DBS } from "./exampleClear.ts"
 
 const rt = (s: string) => [{ plain_text: s }]
@@ -45,11 +45,34 @@ Deno.test("줄: DB 이름 · id · 이모지 아이콘 · Notion 시각", () => 
   assertEquals([r.db, r.id, r.icon, r.url, r.notion_edited_at], ["학생(학원) DB", "p1", "🔵", "https://n/p1", "2026-11-02T00:00:00.000Z"])
 })
 
-Deno.test("DB 고르기: 앱 DB만, 옛 이름은 새 이름으로 모음, 그 밖은 버림", () => {
-  const m = pickSources(new Map([["학생(학원) DB", ["s"]], ["교재비(학원) DB", ["old"]], ["청구서(학원) DB", ["new"]], ["업데이트(학원) DB", ["x"]]]))
+Deno.test("DB 고르기: 앱 DB만, 지금 이름이 있으면 옛 이름은 안 씀(없을 때만 옛 이름), 그 밖은 버림", () => {
+  const m = pickSources(new Map([["학생(학원) DB", ["s"]], ["교재비(학원) DB", ["old"]], ["청구서(학원) DB", ["new"]], ["교재배부(학원) DB", ["oldline"]], ["업데이트(학원) DB", ["x"]]]))
   assertEquals(m.get("학생(학원) DB"), ["s"])
-  assertEquals(m.get("청구서(학원) DB"), ["old", "new"])
+  assertEquals(m.get("청구서(학원) DB"), ["new"])
+  assertEquals(m.get("청구 항목(학원) DB"), ["oldline"])
   assertEquals(m.has("업데이트(학원) DB" as never), false)
+})
+
+Deno.test("같은 이름 DB가 여럿: Secrets id → 기준 DB와 같은 최상위 페이지 → 안 좁혀지면 모호함(고르지 않음)", async () => {
+  const found = new Map<any, string[]>([
+    ["학생(학원) DB", ["stu-a", "stu-b"]],        // Secrets에 stu-a
+    ["강사(학원) DB", ["t-a", "t-b", "t-old"]],   // 기준(등록 reg-a)과 같은 최상위 = t-a
+    ["시즌(학원) DB", ["se-b", "se-old"]],        // 이 학원 것 없음 → 모호
+    ["과목(학원) DB", ["sub-a", "sub-a2"]],       // 같은 최상위에 둘 → 모호
+    ["클래스(학원) DB", ["c-a"]],                 // 하나면 그대로(부모 조회 없음)
+  ])
+  const top: Record<string, string> = { "reg-a": "A", "t-a": "A", "t-b": "B", "t-old": "OLD", "se-b": "B", "se-old": "OLD", "sub-a": "A", "sub-a2": "A" }
+  const asked: string[] = []
+  const r = await resolveSources(found, ["stu-a", "reg-a"], "reg-a", (id) => { asked.push(id); return Promise.resolve(new Set([top[id]])) })
+  assertEquals(r.map.get("학생(학원) DB"), ["stu-a"])
+  assertEquals(r.map.get("강사(학원) DB"), ["t-a"])
+  assertEquals(r.map.get("클래스(학원) DB"), ["c-a"])
+  assertEquals([r.map.has("시즌(학원) DB"), r.map.has("과목(학원) DB")], [false, false])
+  assertEquals([...r.problems.keys()].sort(), ["과목(학원) DB", "시즌(학원) DB"])
+  assertEquals(asked.includes("c-a") || asked.includes("stu-a"), false)
+  // 기준 DB가 없으면(Secrets 없음) 여럿인 것은 모두 모호함
+  const r2 = await resolveSources(new Map<any, string[]>([["강사(학원) DB", ["t-a", "t-b"]]]), [], null, () => Promise.resolve(new Set<string>()))
+  assertEquals([r2.map.size, r2.problems.size], [0, 1])
 })
 
 Deno.test("앱 DB는 모두 예시 비우기 목록(비울 것·남길 것)에 있는 실제 DB 이름", () => {

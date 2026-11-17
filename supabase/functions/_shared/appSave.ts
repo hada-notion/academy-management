@@ -15,7 +15,7 @@
 import { NOTION_API } from "./constants.ts"
 import { createPage, fetchWithRetry, notionHeaders, updatePageProperties, getPage } from "./notionClient.ts"
 import { fetchSupabaseWithRetry } from "./reportCacheShared.ts"
-import { appSources, pageRow, SKIP_PROPS, type AppDb } from "./appCopy.ts"
+import { appSources, pageRow, sourceProblem, SKIP_PROPS, type AppDb } from "./appCopy.ts"
 import { enqueueSync, wakeSyncQueueWorker } from "./syncQueue.ts"
 
 export const WRITE_DBS = [
@@ -153,6 +153,8 @@ export async function saveChanges(changes: Change[]): Promise<ChangeResult[]> {
 	const out: ChangeResult[] = []
 	for (const [i, c] of changes.entries()) {
 		try {
+			const problem = await sourceProblem(c.db as AppDb)
+			if (problem) throw new SaveError(409, `${c.db}: ${problem}`)
 			const ds = (sources.get(c.db as AppDb) ?? [])[0]
 			if (!ds) throw new SaveError(404, `Notion에서 ${c.db}를 찾지 못했습니다.`)
 			const props = toNotionProps(c.props, await dataSourceSchema(ds), resolve)
