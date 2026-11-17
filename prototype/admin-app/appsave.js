@@ -75,6 +75,19 @@ function appSaveX(DB, warn) {
 			const e = L.find((x) => x.id === pref) || L.find((x) => !x.end && !x.ended) || L[0]
 			return e ? e.id : ""
 		},
+		_db: DB,
+		today: (() => { const n = new Date(), p = (v) => String(v).padStart(2, "0"); return `${n.getFullYear()}-${p(n.getMonth() + 1)}-${p(n.getDate())}` })(),
+		// 시간표 적용 기간: 시작이 있으면 그대로. 끝만 있으면(노션 날짜는 시작이 꼭 있어야 함) 시작을 시즌 시작일 → 클래스 개강일로 채운다.
+		// 둘 다 없으면 보내지 않고 알린다(끝나는 날이 노션에 안 들어가면 그 시간표로 수업이 계속 만들어지므로).
+		period: (r) => {
+			if (r.from) return X.range(r.from, r.to)
+			if (!r.to) return null
+			const sea = X.row("seasons", r.seasonId), cls = X.row("classes", r.classId)
+			const from = (sea && !sea._virtual && sea.start) || (cls && cls.open) || ""
+			if (from && String(from).slice(0, 10) <= String(r.to).slice(0, 10)) return X.range(from, r.to)
+			say(`시간표 ${X.nameOf("classes", r.classId)}: 끝나는 날(${r.to})만 있고 시작일을 알 수 없어 적용 기간을 보내지 않았어요 — 시작일을 넣어요`)
+			return undefined
+		},
 		// 개별 진도 줄의 반 교재(같은 클래스·같은 교재의 그룹 줄)
 		tplOf: (row) => {
 			if (row._tplId) return row._tplId
@@ -83,6 +96,18 @@ function appSaveX(DB, warn) {
 		},
 	}
 	return X
+}
+const DB_OF = (X) => X._db || {}
+// 학생 · 엑셀에서 적은 학교 이름이 학교 묶음에 없으면 학교 줄을 먼저 만든다(새 줄 → 노션 학교 DB에 생기고 학생이 그 줄에 이어짐)
+function appsEnsureSchools(DB) {
+	const have = new Set((DB.schools || []).filter((x) => !x.del).map((x) => x.name))
+	for (const s of DB.students || []) {
+		const name = s && !s.del ? String(s.school || "").trim() : ""
+		if (!name || have.has(name)) continue
+		if (!(!appsIsId(s.id) || appsDirty("students", s))) continue // 고치지 않은 줄은 건드리지 않는다
+		;(DB.schools = DB.schools || []).push({ id: "sch" + Math.random().toString(36).slice(2, 8), name, kind: "", addr: "", state: "draft" })
+		have.add(name)
+	}
 }
 // 값이 정해진 칸만 넣는다(undefined = 보내지 않음)
 const appsPut = (o) => { for (const k of Object.keys(o)) if (o[k] === undefined) delete o[k]; return o }
@@ -192,7 +217,7 @@ const APPSAVE = {
 			"시즌": X.rel(r.seasonId), "클래스": X.rel(r.classId), "요일": APPS_DAYS[r.day] || "",
 			"등원시간(HH:mm)": X.hhmm(r.start), "하원시간(HH:mm)": X.hhmm(r.end),
 			"등록": X.rels(r.regs), "수업 방식": r.mode === "individual" ? "개별 수업" : "그룹 수업",
-			"적용 기간": r.from ? X.range(r.from, r.to) : r.to ? undefined : null, // 끝만 있는 기간은 노션 날짜로 못 적어 보내지 않음
+			"적용 기간": X.period(r),
 		}),
 	},
 	progress: {
@@ -206,7 +231,8 @@ const APPSAVE = {
 			return appsPut({
 				"진도교재": title,
 				"라이브러리": X.rel(r.bookId), "클래스": solo ? undefined : X.rel(r.classId), "진도방식": solo ? "개별 진도" : "그룹 진도",
-				"등록": solo ? X.rel(enId) : [],
+				// 반 교재(그룹 줄)의 등록 = 그 반을 지금 다니는 등록 전부(서버 [교재 생성]과 같은 규칙 — 반 전체가 한 줄을 같이 씀)
+				"등록": solo ? X.rel(enId) : X.rels((DB_OF(X).enrolls || []).filter((e) => !e.del && e.classId === r.classId && !e.ended && !(e.end && e.end < X.today)).map((e) => e.id)),
 				"반별교재": solo ? X.rel(X.tplOf(r)) : [],
 				"진행상태": X.str(r.stat) || "다음 교재", "주제": solo ? undefined : X.str(r.topic),
 			})
@@ -227,6 +253,7 @@ function appSaveMark(DB) {
 // ---------- 모으기 ----------
 function appSaveCollect(DB) {
 	const warn = [], changes = [], refs = [], noop = [], dels = []
+	appsEnsureSchools(DB)
 	const X = appSaveX(DB, warn)
 	const made = new Set() // 이 요청에서 먼저 만들어지는 tmp
 	for (const coll of APPS_ORDER) {
