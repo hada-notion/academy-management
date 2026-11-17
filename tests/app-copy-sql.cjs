@@ -15,8 +15,10 @@ create table public.sync_cursors(source text primary key, last_synced_at timesta
 await db.exec(fs.readFileSync('supabase/migrations/20261014060000_class_room_copy_cron.sql','utf8'));
 const sql=fs.readFileSync('supabase/migrations/20261117010000_app_copy.sql','utf8');
 await db.exec(sql);await db.exec(sql); // 다시 적용해도 겹치지 않는다
+const every5=fs.readFileSync('supabase/migrations/20261118010000_app_copy_incremental_5min.sql','utf8');
+await db.exec(every5);await db.exec(every5); // 사본 간격 5분(2.8), 다시 적용해도 하나
 const jobs=(await db.query("select jobname,schedule from cron.job where jobname like 'app-copy%' order by jobname")).rows.map(r=>r.jobname+' '+r.schedule);
-assert.deepEqual(jobs,['app-copy-first-fill */3 * * * *','app-copy-incremental */10 * * * *','app-copy-reconcile */3 18-19 * * *']);
+assert.deepEqual(jobs,['app-copy-first-fill */3 * * * *','app-copy-incremental */5 * * * *','app-copy-reconcile */3 18-19 * * *']);
 const run=async n=>{const c=(await db.query('select command from cron.job where jobname=$1',[n])).rows[0].command;await db.query(c);return (await db.query('select url,headers,body from net.calls order by id desc limit 1')).rows[0];};
 for(const [n,step] of [['app-copy-first-fill','fill'],['app-copy-incremental','incremental'],['app-copy-reconcile','reconcile-next']]){
  const c=await run(n);assert.equal(c.url,'https://twczhsxybkcvjkdfdxvs.supabase.co/functions/v1/sync-class-room-copy');
