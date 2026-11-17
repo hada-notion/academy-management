@@ -1271,6 +1271,16 @@ function normalizeCategoryName(category) {
     .replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, "")
     .trim()
 }
+// 학교 일정 = 새 세 값(학교 행사 · 시험 · 방학/휴교) + 옛 값(학사 일정). 색 · 아이콘 · 나이스 출처 표시는 넷 모두 같다
+// (서버 _shared/scheduleCategory.ts와 같은 기준). 화면에 보이는 이름은 노션에 적힌 그대로.
+const SCHOOL_CATEGORY_NAMES = new Set(["학교 행사", "시험", "방학/휴교", "학사 일정"])
+function isSchoolCategory(category) {
+  return SCHOOL_CATEGORY_NAMES.has(normalizeCategoryName(category))
+}
+function noticeCategoryKey(category) {
+  const name = normalizeCategoryName(category)
+  return SCHOOL_CATEGORY_NAMES.has(name) ? "학사 일정" : name
+}
 const NOTICE_CATEGORY_COLORS = { "휴원": "#9b9a97", "학원 일정": "#337ea9", "학사 일정": "#e03e3e", "할일": "#448361" }
 const NOTICE_CATEGORY_ICON = {
   "휴원": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>',
@@ -1303,8 +1313,8 @@ function buildScheduleCalendarHtml() {
     byDay[d] = byDay[d] || []
     byDay[d].push(n)
   })
-  // 나이스 학사일정이 이 달에 있으면 이용약관 제11조에 따라 출처를 함께 보여준다.
-  const hasSchoolSchedule = Object.values(byDay).some((list) => list.some((n) => normalizeCategoryName(n.category) === "학사 일정"))
+  // 나이스 학사일정(학교 일정)이 이 달에 있으면 이용약관 제11조에 따라 출처를 함께 보여준다.
+  const hasSchoolSchedule = Object.values(byDay).some((list) => list.some((n) => isSchoolCategory(n.category)))
   let cells = ""
   for (let i = 0; i < leading + daysInMonth + trailing; i++) {
     const dateStr = addDaysStr(firstCellDate, i)
@@ -1314,7 +1324,7 @@ function buildScheduleCalendarHtml() {
     const weekendClass = dow === 6 ? "sat" : dow === 0 ? "sun" : ""
     const evts = outside ? null : byDay[d]
     const today = !outside && dateStr === MOCK_TODAY ? "today" : ""
-    const dots = evts ? evts.slice(0, 3).map((n) => `<span class="cal-dot" style="background:${NOTICE_CATEGORY_COLORS[normalizeCategoryName(n.category)] || "#999"}"></span>`).join("") : ""
+    const dots = evts ? evts.slice(0, 3).map((n) => `<span class="cal-dot" style="background:${NOTICE_CATEGORY_COLORS[noticeCategoryKey(n.category)] || "#999"}"></span>`).join("") : ""
     cells += `<div class="cal-cell ${evts ? "has-event" : ""} ${today} ${outside ? "outside" : ""} ${weekendClass}" ${evts ? `onclick="openScheduleDay('${dateStr}')"` : ""}><span>${d}</span>${evts ? `<span class="cal-dots">${dots}</span>` : ""}</div>`
   }
   return `
@@ -1341,8 +1351,8 @@ function openScheduleDay(dateStr) {
   document.getElementById("schedule-day-modal-title").textContent = dateStr
   document.getElementById("schedule-day-modal-body").innerHTML = dayNotices.length ? dayNotices.map((n) => `
     <div class="list-item">
-      <div class="title"><span class="cal-dot" style="background:${NOTICE_CATEGORY_COLORS[normalizeCategoryName(n.category)] || "#999"}"></span>${esc(n.title)}</div>
-      <div class="meta"><span class="inline-icon">${NOTICE_CATEGORY_ICON[normalizeCategoryName(n.category)] || ""}</span>${esc(normalizeCategoryName(n.category) || "안내")}</div>
+      <div class="title"><span class="cal-dot" style="background:${NOTICE_CATEGORY_COLORS[noticeCategoryKey(n.category)] || "#999"}"></span>${esc(n.title)}</div>
+      <div class="meta"><span class="inline-icon">${NOTICE_CATEGORY_ICON[noticeCategoryKey(n.category)] || ""}</span>${esc(normalizeCategoryName(n.category) || "안내")}</div>
     </div>
   `).join("") : '<div class="empty">이 날짜에는 일정이 없습니다.</div>'
   document.getElementById("schedule-day-modal").classList.add("active")
