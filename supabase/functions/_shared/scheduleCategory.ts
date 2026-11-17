@@ -41,11 +41,16 @@ export function eventKind(page: any): EventKind | "" {
   if (cat.includes("할일")) return KIND.TODO
   if (cat.includes("휴원")) return KIND.CLOSED
   if (cat === SCHOOL_EXAM) return KIND.EXAM
-  if (cat === SCHOOL_BREAK) return KIND.VACATION
+  // 옛 🏖️ 방학/휴교는 이름에 "방학"(방학식 빼고)이면 방학, 나머지(토요휴업일·대체공휴일·재량휴업·공휴일·수능일·선거일 등) 학교 휴업
+  // — 노션 기존 행 옮기기와 나이스 새 일정(neisSchool.detailKind)과 같은 규칙(261118).
+  if (cat === SCHOOL_BREAK) return isVacationName(titleText(p["이름"])) ? KIND.VACATION : KIND.SCHOOL_OFF
   if (cat === SCHOOL_EVENT || cat === LEGACY_SCHOOL || cat === "학사 일정") return KIND.SCHOOL_EVENT
   if (cat === "학원 일정") return KIND.ACADEMY
   return ""
 }
+// 이름이 방학인가: "방학"이 들어 있고 "방학식"은 아님(방학식은 행사).
+export const isVacationName = (name: unknown) => { const n = String(name ?? ""); return n.includes("방학") && !n.includes("방학식") }
+const titleText = (prop: any) => (prop?.title ?? []).map((t: any) => t?.plain_text ?? t?.text?.content ?? "").join("")
 export const isSchoolKind = (k: string) => SCHOOL_KINDS.has(k)
 // 학부모에게 공개할 수 있는 종류: 직원 회의·할일·모름 빼고 전부.
 export const isPublicKind = (k: string) => !!k && k !== KIND.STAFF && k !== KIND.TODO
