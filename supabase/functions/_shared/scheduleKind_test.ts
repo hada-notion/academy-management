@@ -15,7 +15,8 @@ Deno.test("세부 구분이 있으면 그것으로, 없으면 옛 구분·안내
   assert(eventKind(page({ 구분: sel("📆 학원 일정"), "안내 구분": sel("테스트") })) === KIND.TEST)
   assert(eventKind(page({ 구분: sel("📆 학원 일정") })) === KIND.ACADEMY)
   assert(eventKind(page({ 구분: sel("🏫 학사 일정") })) === KIND.SCHOOL_EVENT)
-  assert(eventKind(page({ 구분: sel("🏖️ 방학/휴교") })) === KIND.VACATION)
+  assert(eventKind(page({ 구분: sel("🏖️ 방학/휴교"), 이름: { type: "title", title: [{ plain_text: "여름방학" }] } })) === KIND.VACATION)
+  assert(eventKind(page({ 구분: sel("🏖️ 방학/휴교") })) === KIND.SCHOOL_OFF) // 이름에 방학이 없으면 학교 휴업
   assert(eventKind(page({ 구분: sel("✅ 할일") })) === KIND.TODO)
   // 구분이 수식(할일/학원 일정/학사 일정)이어도 세부 구분이 비면 수식 값으로
   assert(eventKind(page({ 구분: { type: "formula", formula: { type: "string", string: "학원 일정" } } })) === KIND.ACADEMY)
@@ -66,4 +67,10 @@ Deno.test("나이스 새 일정: 세부 칸·선택지가 있을 때만 채움, 
   // 세부 칸이 없는 학원(이관 전): 세부는 안 쓰고 구분만(예전과 같음)
   const old: any = newEventProperties(row, "s", "k", [], ["🏫 학교 행사"])
   assert(!("세부 구분" in old) && old["구분"].select.name === "🏫 학교 행사")
+})
+
+Deno.test("옛 방학/휴교: 이름에 방학(방학식 빼고) → 방학, 나머지 → 학교 휴업(노션 옮기기와 같은 규칙)", () => {
+  const old = (name: string) => eventKind(page({ 구분: sel("🏖️ 방학/휴교"), 이름: { type: "title", title: [{ plain_text: name }] } }))
+  for (const n of ["여름방학", "동계방학", "하계 방학"]) assert(old(n) === KIND.VACATION, n)
+  for (const n of ["토요휴업일", "대체공휴일", "학교장재량휴업일", "삼일절", "대학수학능력시험", "지방선거일"]) assert(old(n) === KIND.SCHOOL_OFF, n)
 })
