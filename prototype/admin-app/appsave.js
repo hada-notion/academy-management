@@ -75,14 +75,39 @@ function appSaveX(DB, warn) {
 			const e = L.find((x) => x.id === pref) || L.find((x) => !x.end && !x.ended) || L[0]
 			return e ? e.id : ""
 		},
+		_db: DB,
+		today: (() => { const n = new Date(), p = (v) => String(v).padStart(2, "0"); return `${n.getFullYear()}-${p(n.getMonth() + 1)}-${p(n.getDate())}` })(),
+		// 시간표 적용 기간: 시작이 있으면 그대로. 끝만 있으면(노션 날짜는 시작이 꼭 있어야 함) 시작을 시즌 시작일 → 클래스 개강일로 채운다.
+		// 둘 다 없으면 보내지 않고 알린다(끝나는 날이 노션에 안 들어가면 그 시간표로 수업이 계속 만들어지므로).
+		period: (r) => {
+			if (r.from) return X.range(r.from, r.to)
+			if (!r.to) return null
+			const sea = X.row("seasons", r.seasonId), cls = X.row("classes", r.classId)
+			const from = (sea && !sea._virtual && sea.start) || (cls && cls.open) || ""
+			if (from && String(from).slice(0, 10) <= String(r.to).slice(0, 10)) return X.range(from, r.to)
+			say(`시간표 ${X.nameOf("classes", r.classId)}: 끝나는 날(${r.to})만 있고 시작일을 알 수 없어 적용 기간을 보내지 않았어요 — 시작일을 넣어요`)
+			return undefined
+		},
 		// 개별 진도 줄의 반 교재(같은 클래스·같은 교재의 그룹 줄)
 		tplOf: (row) => {
 			if (row._tplId) return row._tplId
-			const g = (DB.progress || []).find((x) => !x.del && x !== row && x.mode !== "개별" && x.classId === row.classId && x.bookId === row.bookId)
+			const g = (DB.progress || []).find((x) => !x.del && x !== row && !x.studentId && x.classId === row.classId && x.bookId === row.bookId)
 			return g ? g.id : ""
 		},
 	}
 	return X
+}
+const DB_OF = (X) => X._db || {}
+// 학생 · 엑셀에서 적은 학교 이름이 학교 묶음에 없으면 학교 줄을 먼저 만든다(새 줄 → 노션 학교 DB에 생기고 학생이 그 줄에 이어짐)
+function appsEnsureSchools(DB) {
+	const have = new Set((DB.schools || []).filter((x) => !x.del).map((x) => x.name))
+	for (const s of DB.students || []) {
+		const name = s && !s.del ? String(s.school || "").trim() : ""
+		if (!name || have.has(name)) continue
+		if (!(!appsIsId(s.id) || appsDirty("students", s))) continue // 고치지 않은 줄은 건드리지 않는다
+		;(DB.schools = DB.schools || []).push({ id: "sch" + Math.random().toString(36).slice(2, 8), name, kind: "", addr: "", state: "draft" })
+		have.add(name)
+	}
 }
 // 값이 정해진 칸만 넣는다(undefined = 보내지 않음)
 const appsPut = (o) => { for (const k of Object.keys(o)) if (o[k] === undefined) delete o[k]; return o }
@@ -192,21 +217,24 @@ const APPSAVE = {
 			"시즌": X.rel(r.seasonId), "클래스": X.rel(r.classId), "요일": APPS_DAYS[r.day] || "",
 			"등원시간(HH:mm)": X.hhmm(r.start), "하원시간(HH:mm)": X.hhmm(r.end),
 			"등록": X.rels(r.regs), "수업 방식": r.mode === "individual" ? "개별 수업" : "그룹 수업",
-			"적용 기간": r.from ? X.range(r.from, r.to) : r.to ? undefined : null, // 끝만 있는 기간은 노션 날짜로 못 적어 보내지 않음
+			"적용 기간": X.period(r),
 		}),
 	},
 	progress: {
 		db: "진도관리(학원) DB",
 		props: (r, X) => {
-			const solo = r.mode === "개별", book = X.nameOf("books", r.bookId)
+			// solo = 학생 한 명의 줄(개별 진도 + 학생 있음). 개별 진도라도 학생이 없으면 그 반의 기준 교재(반 교재)다 — 클래스를 쓰고 제목은 "교재 · 반"
+			const solo = r.mode === "개별" && !!r.studentId, indiv = r.mode === "개별", book = X.nameOf("books", r.bookId)
 			const enId = solo ? X.enrollOf(r.studentId, r.classId, r._enrollId) : ""
 			// title: 개별 줄 "교재명 · 등록 이름", 반 교재(그룹 줄) "교재명 · 반 이름"
 			const title = X.join(" · ", book, solo ? X.enrollName(X.row("enrolls", enId)) : X.nameOf("classes", r.classId))
 			// 개별 줄에는 클래스 · 주제를 쓰지 않는다(서버 [교재 생성]과 같은 모양 — 반 교재 조회가 클래스로 하므로)
 			return appsPut({
 				"진도교재": title,
-				"라이브러리": X.rel(r.bookId), "클래스": solo ? undefined : X.rel(r.classId), "진도방식": solo ? "개별 진도" : "그룹 진도",
-				"등록": solo ? X.rel(enId) : [],
+				"라이브러리": X.rel(r.bookId), "클래스": solo ? undefined : X.rel(r.classId), "진도방식": indiv ? "개별 진도" : "그룹 진도",
+				// 반 교재(그룹 줄)의 등록 = 그 반을 지금 다니는 등록 전부(서버 [교재 생성]과 같은 규칙 — 반 전체가 한 줄을 같이 씀).
+				// 개별 진도의 기준 교재는 학생마다 따로 줄이 생기므로 등록을 잇지 않는다
+				"등록": solo ? X.rel(enId) : indiv ? [] : X.rels((DB_OF(X).enrolls || []).filter((e) => !e.del && e.classId === r.classId && !e.ended && !(e.end && e.end < X.today)).map((e) => e.id)),
 				"반별교재": solo ? X.rel(X.tplOf(r)) : [],
 				"진행상태": X.str(r.stat) || "다음 교재", "주제": solo ? undefined : X.str(r.topic),
 			})
@@ -220,13 +248,15 @@ function appSaveMark(DB) {
 	const X = appSaveX(DB, null)
 	for (const coll of APPS_ORDER) for (const row of DB[coll] || []) {
 		if (row._virtual || !appsIsId(row.id) || appsDirty(coll, row) || row.del) continue
-		APPS_BASE.set(row.id, JSON.stringify(APPSAVE[coll].props(row, X)))
+		APPS_BASE.set(coll + ":" + row.id, JSON.stringify(APPSAVE[coll].props(row, X)))
 	}
 }
 
 // ---------- 모으기 ----------
 function appSaveCollect(DB) {
 	const warn = [], changes = [], refs = [], noop = [], dels = []
+	let warnKeep = 0
+	appsEnsureSchools(DB)
 	const X = appSaveX(DB, warn)
 	const made = new Set() // 이 요청에서 먼저 만들어지는 tmp
 	for (const coll of APPS_ORDER) {
@@ -234,9 +264,11 @@ function appSaveCollect(DB) {
 		if (coll === "progress") rows.sort((a, b) => (a.mode === "개별") - (b.mode === "개별")) // 반 교재(그룹) 먼저
 		for (const row of rows) {
 			if (!row || row._virtual) continue
+			warn.length = warnKeep // 앞 줄이 보낼 것 없이 넘어갔으면 그 줄의 알림은 버린다(이미 저장된 줄 알림이 저장마다 되풀이되지 않게)
 			const isNew = !appsIsId(row.id)
 			if (row.del) { if (!isNew) dels.push({ coll, id: row.id, name: row.name || "" }); continue } // 지우기는 보내지 않음(노션에서 직접)
-			if (!isNew && !appsDirty(coll, row)) continue
+			// 창 아래 [ㅇㅇ 저장]은 앱 안에서만 "저장됨"으로 바꾸므로, 작성 중 표시가 없어도 불러온 값(기준)과 달라진 줄은 보낸다
+			if (!isNew && !appsDirty(coll, row) && !APPS_BASE.has(coll + ":" + row.id)) continue
 			const props = APPSAVE[coll].props(row, X)
 			// 아직 만들어지지 않은 줄(뒤에 오는 새 줄 · 삭제 예정 새 줄)을 가리키는 관계는 이번엔 빼고, 그 줄은 작성 중으로 남긴다
 			let partial = false
@@ -250,23 +282,30 @@ function appSaveCollect(DB) {
 				const tmp = "tmp:" + row.id
 				changes.push({ op: "create", db: APPSAVE[coll].db, tmp, props })
 				made.add(tmp)
-				refs.push({ coll, row, partial })
+				refs.push({ coll, row, partial }); warnKeep = warn.length
 				continue
 			}
 			// 고친 줄: 기준 값이 있으면 달라진 칸만
 			let send = props
-			const base = APPS_BASE.has(row.id) ? JSON.parse(APPS_BASE.get(row.id)) : null
+			const base = APPS_BASE.has(coll + ":" + row.id) ? JSON.parse(APPS_BASE.get(coll + ":" + row.id)) : null
 			if (base) {
 				send = {}
 				for (const [k, v] of Object.entries(props)) if (JSON.stringify(v) !== JSON.stringify(base[k])) send[k] = v
+				// 작성 중 표시가 없는 줄은 사람이 고친 칸만: 다른 줄 이름에서 만들어지는 제목(등록 · 시간표 `이름`, 진도 `진도교재`)은 따라 보내지 않는다
+				if (!appsDirty(coll, row)) {
+					if (coll === "enrolls" || coll === "blocks") delete send["이름"]
+					if (coll === "progress") delete send["진도교재"]
+					if (!Object.keys(send).length) continue
+				}
 				if (!Object.keys(send).length) { noop.push({ coll, row }); continue }
 			}
 			const ch = { op: "update", db: APPSAVE[coll].db, id: row.id, props: send }
 			if (row._edited) ch.edited = row._edited
 			changes.push(ch)
-			refs.push({ coll, row, partial })
+			refs.push({ coll, row, partial }); warnKeep = warn.length
 		}
 	}
+	warn.length = warnKeep
 	return { changes, refs, noop, dels, warn }
 }
 
@@ -297,6 +336,8 @@ function appSaveRemap(DB, oldId, newId) {
 	}
 }
 async function appSaveSend(conn, DB) {
+	// 노션 자료를 이번에 끝까지 받은 뒤에만 보낸다(예시 자료 · 반쯤 받은 자료가 노션에 들어가는 것을 막음)
+	if (!conn || conn.loaded !== true) throw new Error("노션 자료를 다 받기 전에는 저장할 수 없어요")
 	const col = appSaveCollect(DB)
 	const out = { sent: 0, ok: 0, failed: [], skipped: col.noop.length, dels: col.dels, warn: col.warn, idMap: {} }
 	const real = new Map() // "tmp:<옛 id>" → 노션 id(앞 묶음에서 만든 것)
@@ -337,7 +378,7 @@ async function appSaveSend(conn, DB) {
 	col.noop.forEach(({ coll, row }) => { if (coll === "seasons") delete row.dirty; else row.state = "saved" })
 	// 기준 값 새로 적기(연결이 덜 들어간 줄은 기준을 비워 다음 저장 때 전부 보낸다)
 	const X = appSaveX(DB, null)
-	done.forEach(({ coll, row, partial }) => { if (partial) APPS_BASE.delete(row.id); else APPS_BASE.set(row.id, JSON.stringify(APPSAVE[coll].props(row, X))) })
+	done.forEach(({ coll, row, partial }) => { if (partial) APPS_BASE.delete(coll + ":" + row.id); else APPS_BASE.set(coll + ":" + row.id, JSON.stringify(APPSAVE[coll].props(row, X))) })
 	return out
 }
 

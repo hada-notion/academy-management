@@ -48,6 +48,20 @@ export async function dataSourceSchema(ds: string): Promise<Schema> {
 	schemaCache.set(ds, { at: Date.now(), schema })
 	return schema
 }
+// 앱이 고르기 칸을 Notion 선택지에서만 고르게 하는 목록: 쓸 수 있는 DB마다 { 칸 이름: [선택지 이름…] }(고르기 · 상태 · 여러 개 고르기).
+// 저장은 선택지에 없는 값을 거절하므로(새 선택지를 만들지 않음) 앱이 미리 이 목록으로 맞춘다. 못 찾은 · 모호한 DB는 빠진다.
+export async function writeOptions(): Promise<Record<string, Record<string, string[]>>> {
+	const sources = await appSources()
+	const out: Record<string, Record<string, string[]>> = {}
+	for (const db of WRITE_DBS) {
+		const ds = (sources.get(db as AppDb) ?? [])[0]
+		if (!ds) continue
+		const props: Record<string, string[]> = {}
+		for (const [name, def] of Object.entries(await dataSourceSchema(ds))) if (def.options && !SKIP_PROPS.has(name)) props[name] = def.options
+		out[db] = props
+	}
+	return out
+}
 
 // ---------- 평평한 값 → Notion 속성 ----------
 const rt = (v: unknown) => {

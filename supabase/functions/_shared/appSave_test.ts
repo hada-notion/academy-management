@@ -2,7 +2,26 @@
 // Notion · Supabase는 모두 가짜 응답. 실제 키 · 데이터 없음.
 import { assertEquals, assertThrows } from "https://deno.land/std@0.224.0/assert/mod.ts"
 for (const [k, v] of Object.entries({ NOTION_TOKEN: "test-only", SB_URL: "https://mock.supabase", SB_SERVICE_ROLE_KEY: "test-only" })) Deno.env.set(k, v)
-const { toNotionProps, checkChanges, saveChanges, runGenerateClasses, SaveError, isWriteDb } = await import("./appSave.ts")
+const { toNotionProps, checkChanges, saveChanges, runGenerateClasses, writeOptions, SaveError, isWriteDb } = await import("./appSave.ts")
+
+// DB 찾기 결과는 10분 동안 기억되므로(아래 시험들도 같은 목록을 씀) 이 시험이 가장 먼저 Notion 검색을 흉내 낸다.
+Deno.test("선택지 목록: 쓸 수 있는 DB의 고르기 칸만, 웹훅 칸 · 읽기 전용 DB는 없음", async () => {
+  globalThis.fetch = (async (input: Request | URL | string) => {
+    const url = String(input)
+    const ok = (data: unknown) => new Response(JSON.stringify(data), { status: 200, headers: { "Content-Type": "application/json" } })
+    if (url.includes("/v1/search")) return ok({ results: [
+      { id: "ds-stu", title: [{ plain_text: "학생(학원) DB" }] }, { id: "ds-en", title: [{ plain_text: "등록(학원) DB" }] },
+      { id: "ds-lib", title: [{ plain_text: "라이브러리(학원) DB" }] }, { id: "ds-tu", title: [{ plain_text: "수강료(학원) DB" }] }], has_more: false })
+    if (url.includes("/v1/data_sources/ds-lib")) return ok({ properties: {
+      교재명: { type: "title" }, 시리즈: { type: "select", select: { options: [{ name: "쎈" }, { name: "개념원리" }] } },
+      "교재 유형": { type: "multi_select", multi_select: { options: [{ name: "개념" }] } }, "웹훅 버튼": { type: "select", select: { options: [{ name: "x" }] } } } })
+    if (url.includes("/v1/data_sources/ds-")) return ok({ properties: { 이름: { type: "title" }, 학생: { type: "relation" } } })
+    return new Response("unexpected " + url, { status: 500 })
+  }) as typeof fetch
+  const o = await writeOptions()
+  assertEquals(o["라이브러리(학원) DB"], { 시리즈: ["쎈", "개념원리"], "교재 유형": ["개념"] })
+  assertEquals([o["학생(학원) DB"], "수강료(학원) DB" in o, "강사(학원) DB" in o], [{}, false, false])
+})
 
 Deno.test("수업 생성 실행: 복사본에 있는 시간표만 기존 큐(generate-classes)에, 없는 id는 건너뜀", async () => {
   const A = "a".repeat(32), B = "b".repeat(32), Z = "c".repeat(32)
