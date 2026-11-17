@@ -42,7 +42,7 @@ Deno.test("여럿이면 학년으로 좁히고, 그래도 여럿이면 오류에
   const two = [ev("g1", "1학기 중간고사", "2026-04-27", "2026-04-29", "📝 시험", ["g1"]), ev("g2", "1학기 중간고사", "2026-04-28", "2026-04-30", "📝 시험", ["g2"])]
   const r1 = pickExamPeriod(info("2026-04-28", "g2"), exam(), two)
   assert(r1.ok && r1.eventId === "g2", JSON.stringify(r1))
-  const r2 = pickExamPeriod(info("2026-04-28", "g3"), exam(), [ev("x", "1학기 중간고사", "2026-04-27"), ev("y", "1학기 중간고사 ", "2026-04-28")])
+  const r2 = pickExamPeriod(info("2026-05-10", "g3"), exam(), [ev("x", "1학기 중간고사", "2026-04-27"), ev("y", "1학기 중간고사 ", "2026-04-28")])
   assert(!r2.ok && r2.error.includes("2개"), JSON.stringify(r2))
 })
 
@@ -65,4 +65,25 @@ Deno.test("흐름: 작업중 → 잇기 ✅ / 학교·시험 없으면 ⚠️, �
   const bad = await linkExamPeriod("info", deps)
   const lastBad = writes[writes.length - 1][1] as any
   assert(!bad.ok && lastBad["상태"].select.name === "⚠️ 오류" && !("시험일정" in lastBad))
+})
+
+Deno.test("시험 이름이 없으면 종류 낱말로: 지필평가(2,3학년) ↔ 지필고사, 다른 학기·중간/기말은 뺌", () => {
+  const evs = [ev("p", "지필평가(2,3학년)", "2026-04-27", "2026-04-30"), ev("q", "2학기 지필평가", "2026-10-05", "2026-10-08"), ev("w", "1학기 기말고사", "2026-07-01")]
+  const r = pickExamPeriod(info("2026-04-28"), exam(), evs)
+  assert(r.ok && r.eventId === "p", JSON.stringify(r))
+})
+
+Deno.test("낱말로 여럿이면 시험일이 든 기간으로 좁힘", () => {
+  const evs = [ev("a", "정기고사", "2026-04-27", "2026-04-30"), ev("b", "정기고사", "2026-07-01", "2026-07-03")]
+  const r = pickExamPeriod(info("2026-07-02"), exam("1학기 기말고사"), evs)
+  assert(r.ok && r.eventId === "b", JSON.stringify(r))
+})
+
+Deno.test("모의고사: 전국연합학력평가·수능모의평가를 낱말로, 'N월'로 좁힘", () => {
+  const mock = (name: string) => ({ id: "exam", properties: { "이름": title(name), "시험 구분": sel("모의고사"), "모의고사(수능)": sel(name), "연도": sel("2026") } })
+  const evs = [ev("m3", "전국연합학력평가", "2026-03-26"), ev("m6", "수능모의평가", "2026-06-04"), ev("m9", "수능모의평가", "2026-09-03"), ev("x", "1학기 중간고사", "2026-04-27")]
+  const r6 = pickExamPeriod(info(""), mock("6월 모의고사"), evs)
+  assert(r6.ok && r6.eventId === "m6", JSON.stringify(r6))
+  const r3 = pickExamPeriod(info(""), mock("3월 모의고사"), evs)
+  assert(r3.ok && r3.eventId === "m3", JSON.stringify(r3))
 })

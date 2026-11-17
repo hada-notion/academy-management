@@ -82,3 +82,9 @@ Deno.test("나이스 새 일정은 잠금 켬(칸 있는 학원만), 다시 가�
  assert(!hasLockColumn({ properties: {} }))
  assert(!hasLockColumn({ properties: { "잠금": { type: "rich_text", rich_text: {} } } }))
 })
+
+Deno.test("시험 낱말 넓힘: 지필·평가도 시험, 휴업일이면 방학/휴교가 먼저", () => {
+  for (const name of ["지필평가(2,3학년)", "수능모의평가", "전국연합학력평가", "1학기 중간고사", "기말 시험"]) assert(schoolCategory({ ...row, EVENT_NM: name, SBTR_DD_SC_NM: "해당없음" }) === "시험", name)
+  assert(schoolCategory({ ...row, EVENT_NM: "지필평가 후 재량휴업", SBTR_DD_SC_NM: "휴업일" }) === "방학/휴교")
+  assert(schoolCategory({ ...row, EVENT_NM: "체육대회", SBTR_DD_SC_NM: "해당없음" }) === "학교 행사")
+})
