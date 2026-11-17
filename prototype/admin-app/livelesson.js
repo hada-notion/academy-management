@@ -26,7 +26,8 @@ function liveSum(text, n) {
 /* 예시 모드의 계산을 서버 값으로 바꿔 끼운다(한 번). 실제 자료 모드에 들어오자마자 부른다 — 받기 전에도 지어낸 수업 · 출결이 보이지 않게 */
 function liveLessonInstall() {
   if (window._liveLessonOn) return; window._liveLessonOn = true;
-  const roster0 = lessonRoster, sum0 = attSum;
+  const roster0 = lessonRoster, sum0 = attSum, eff0 = lessonEff;
+  lessonEff = (b, d) => { const L = LIVE_L[lkey(b, d)]; return L ? { d, start: L.start, end: L.end, off: false, moved: false } : eff0(b, d); };
   seedAtt = () => null;
   lessonMade = (b, d) => !!LIVE_L[lkey(b, d)];
   lessonRoster = (b, d) => { const s = LIVE_LS[lkey(b, d)]; return s && s.state === "ok" ? s.roster.map((id) => stu(id)).filter(Boolean) : roster0(b, d); };
@@ -48,7 +49,7 @@ async function liveLessonApi(body) {
   if (!res.ok || !out || out.error) throw new Error((out && out.error) || "요청 실패 (" + res.status + ")");
   return out;
 }
-/* 하루 수업을 받아 시간표와 잇는다: 클래스 + 요일 + 시작 시각이 같은 시간표. 시각만 다르면 그 반 그 요일 시간표에 "이 주만 옮김"으로 */
+/* 하루 수업을 받아 시간표와 잇는다: 클래스 + 요일 + 시작 시각이 같은 시간표. 시각만 다르면 그 반 그 요일에 하나뿐인 시간표에 잇는다 */
 function liveLessonDayApply(date, res) {
   let miss = 0; const used = new Set(Object.keys(LIVE_L));
   (res.sessions || []).forEach((s) => {
@@ -58,9 +59,8 @@ function liveLessonDayApply(date, res) {
     const b = cand.find((x) => x.start === at.m) || (cand.length === 1 ? cand[0] : null);
     if (!b) { miss++; return; }
     const k = lkey(b, at.d); used.add(k);
-    LIVE_L[k] = { id: s.id, sum: s.attendanceSummary || "", n: s.students || 0 };
-    const e = end && end.m != null ? end.m : at.m + (b.end - b.start);
-    if (b.start !== at.m || b.end !== e) DB.lov[k] = { d: at.d, start: at.m, end: e, off: false };
+    /* 시각은 시간표가 아니라 노션 수업의 시각 그대로(시간표를 고친 뒤에도 이미 만든 수업은 제 시각) */
+    LIVE_L[k] = { id: s.id, sum: s.attendanceSummary || "", n: s.students || 0, start: at.m, end: end && end.m != null ? end.m : at.m + (b.end - b.start) };
   });
   LIVE_LX[date] = miss;
 }
