@@ -16,7 +16,8 @@
 
 import { requireAdminKey, getBotUserId, CORS_HEADERS as ADMIN_CORS } from "../_shared/adminShared.ts"
 import { noticeReportSyncNotNeeded } from "../_shared/scheduleVisibility.ts"
-import { selectReportCacheByToken } from "../_shared/reportCacheShared.ts"
+import { selectReportCacheByToken, selectRegistrationIdsByNoticeId } from "../_shared/reportCacheShared.ts"
+import { isNoticePage } from "../_shared/syncReportCacheTarget.ts"
 import { queryAllPages, mapWithConcurrency, extractPageId } from "../_shared/notionClient.ts"
 import { makePageCache } from "../_shared/reportCacheShared.ts"
 import { upsertReportCacheRows, type ReportCacheRow } from "../_shared/reportCacheShared.ts"
@@ -87,7 +88,11 @@ Deno.serve(async (req: Request) => {
         headers: { ...ADMIN_CORS, "Content-Type": "application/json" },
       })
     }
-    const registrationIds = await resolveRegistrationIds(rawId, cachedGetPage)
+    // 일정이면 지금 대상 + 지금 이 일정을 싣고 있는 리포트(옛 대상 — 대상이 바뀌었거나 비공개가 된 경우 빠지게).
+    const currentIds = await resolveRegistrationIds(rawId, cachedGetPage)
+    const registrationIds = isNoticePage(sourcePage)
+      ? [...new Set([...currentIds, ...await selectRegistrationIdsByNoticeId(sourcePage.id)])]
+      : currentIds
 
     if (!keyed && typeof body?.registrationId !== "string" && isRegistrationPage(sourcePage)) {
       return new Response(JSON.stringify({ error: "인증 실패" }), { status: 401, headers: { ...ADMIN_CORS, "Content-Type": "application/json" } })

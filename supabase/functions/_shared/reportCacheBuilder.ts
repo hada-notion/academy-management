@@ -131,6 +131,7 @@ export async function buildStudentNotices(
       const range = start ? (end && end !== start ? `${fmtDateKr(start)} ~ ${fmtDateKr(end)}` : fmtDateKr(start)) : ""
       const memo = text(np[propKey(np, EVENT_NOTICE_MEMO)]) // `일정 안내 메모`(예전 `메모`, v2.8.0 항목 64)
       return {
+        id: n.id as string,
         icon,
         category,
         date: start,
@@ -174,10 +175,14 @@ async function buildStudentFields(studentId: string, cachedGetPage: (id: string)
     }),
   )
 
-  const [notices, letters] = await Promise.all([
+  const [noticesWithId, letters] = await Promise.all([
     buildStudentNotices(studentId, sp, cachedGetPage),
     buildLetterList(relationIds(sp["등록"])),
   ])
+  // 일정 id는 학부모 응답에 싣지 않고 따로(notice_ids) 둔다 — 일정이 대상에서 빠지거나 비공개가 되면 그 일정을 가진
+  // 리포트를 이 목록으로 찾아 다시 만든다(sync-report-cache). 학부모 응답에서는 publicNoticeFields가 뺀다.
+  const notice_ids = noticesWithId.map((n) => n.id)
+  const notices = noticesWithId.map(({ id: _id, ...rest }) => rest)
 
   return {
     student_name: studentName,
@@ -188,6 +193,7 @@ async function buildStudentFields(studentId: string, cachedGetPage: (id: string)
     primary_contact: primaryContact,
     siblings,
     notices,
+    notice_ids,
     letters,
     notice_visibility_policy: NOTICE_VISIBILITY_POLICY,
     issued_at: new Date().toISOString(),

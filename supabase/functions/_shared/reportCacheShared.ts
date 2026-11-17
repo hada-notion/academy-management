@@ -283,6 +283,19 @@ export async function selectReportCacheByToken(token: string): Promise<ReportCac
   return rows[0] ?? null
 }
 
+// (2.8, 261118 원본 검수) 지금 이 일정을 싣고 있는 리포트의 등록 id. 일정의 대상이 바뀌거나 비공개가 되면
+// 지금 관계로는 옛 대상 학생을 찾을 수 없으므로, 캐시에 남긴 notice_ids로 찾아 다시 만든다(그래야 빠진다).
+// notice_ids가 없는 옛 캐시는 못 찾는다 — 다음 재계산(시간당·밤·수동)부터 들어간다.
+export async function selectRegistrationIdsByNoticeId(noticeId: string): Promise<string[]> {
+  requireSupabaseEnv()
+  const res = await fetchSupabaseWithRetry(
+    `${SB_URL}/rest/v1/report_cache?select=registration_id&student_fields->notice_ids=cs.${encodeURIComponent(JSON.stringify([noticeId]))}`,
+    { headers: { apikey: SB_SERVICE_ROLE_KEY, Authorization: `Bearer ${SB_SERVICE_ROLE_KEY}` } },
+  )
+  if (!res.ok) throw new Error(`report_cache 일정 조회 실패: ${res.status} ${await res.text()}`)
+  return [...new Set(((await res.json()) as any[]).map((r) => r?.registration_id).filter(Boolean))]
+}
+
 // [FIX, 2026-09-19] 형제 등록 목록을 조회할 때 registration_overview만 가져와서, 프론트엔드가
 // 화면에 열려 있는 등록(예: 다른 형제의 반)에 대해 "지금 바로 동기화" 요청을 보낼 registrationId를
 // 알 방법이 없었다. registration_id도 함께 select해서 각 overview 객체에 얹어준다.

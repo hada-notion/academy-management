@@ -68,3 +68,8 @@ Deno.test("리포트 반영 건너뜀: 비공개 나이스 일정 + 마지막 �
  // 일정이 아닌 페이지는 건드리지 않음
  assert(!noticeReportSyncNotNeeded({properties:{"토큰":{type:"rich_text",rich_text:[]}},last_edited_by:{id:"bot"}},"bot"))
 })
+
+Deno.test("학부모 응답에는 notice_ids(일정 페이지 id)를 싣지 않음",()=>{
+ const f=publicNoticeFields({notice_visibility_policy:NOTICE_VISIBILITY_POLICY,notices:[{title:"a"}],notice_ids:["id-1"],student_name:"가상학생"})
+ assert(!("notice_ids" in f) && (f.notices as any[]).length===1)
+})
