@@ -1,4 +1,4 @@
-import { isParentPublicEvent, publicNoticeFields, NOTICE_VISIBILITY_POLICY } from "./scheduleVisibility.ts"
+import { isParentPublicEvent, publicNoticeFields, noticeReportSyncNotNeeded, NOTICE_VISIBILITY_POLICY } from "./scheduleVisibility.ts"
 import { buildStudentNotices, clearNoticeCache, noticeDeps } from "./reportCacheBuilder.ts"
 function assert(v: unknown, msg = "assertion failed") { if (!v) throw new Error(msg) }
 function event(hidden: unknown = false, published: unknown = true, category = "📆 학원 일정"): any {
@@ -50,4 +50,21 @@ Deno.test("학교 일정이 많아도 학교 페이지 관계(25개 제한)를 �
 Deno.test("학원 전체 일정(연결 없음)은 모든 학생에게, 다른 반 일정은 제외",async()=>{
  const all=event();all.id="all";const other=event();other.id="other";other.properties["클래스"]=rel(["other-class"])
  const n=await noticesFor({all,other},{});assert(n.length===1&&n[0].title==="공개 행사")
+})
+
+Deno.test("리포트 반영 건너뜀: 비공개 나이스 일정 + 마지막 편집 봇일 때만",()=>{
+ const neis=(hidden:boolean,published:boolean,editor:string,key="NEIS-1")=>{const e=event(hidden,published,"🎒 학교 행사");e.properties["NEIS 동기화키"]={type:"rich_text",rich_text:key?[{plain_text:key}]:[]};e.last_edited_by={object:"user",id:editor};return e}
+ // 나이스가 새로 만든 줄(숨김·비공개, 봇) → 건너뜀
+ assert(noticeReportSyncNotNeeded(neis(true,false,"bot"),"bot"))
+ assert(noticeReportSyncNotNeeded(neis(false,false,"bot"),"bot"))
+ // 공개 중이면 반영(내용이 바뀌었을 수 있음)
+ assert(!noticeReportSyncNotNeeded(neis(false,true,"bot"),"bot"))
+ // 사람이 공개를 끈 편집은 반영(리포트에서 빼야 함)
+ assert(!noticeReportSyncNotNeeded(neis(true,false,"person"),"bot"))
+ // 나이스 일정이 아니면(학원 일정 등) 반영
+ assert(!noticeReportSyncNotNeeded(neis(true,false,"bot",""),"bot"))
+ // 봇 ID를 모르면 반영(안전한 쪽)
+ assert(!noticeReportSyncNotNeeded(neis(true,false,"bot"),null))
+ // 일정이 아닌 페이지는 건드리지 않음
+ assert(!noticeReportSyncNotNeeded({properties:{"토큰":{type:"rich_text",rich_text:[]}},last_edited_by:{id:"bot"}},"bot"))
 })
