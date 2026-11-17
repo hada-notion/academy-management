@@ -7,6 +7,8 @@ export const SECURITY_WEBHOOK_ROUTES = new Set([
   'sync-attendance','sync-class-report-cache','sync-class-room-copy','sync-dashboard-link',
   'sync-registration-textbook','sync-report-cache',
   'sync-school-calendar','sync-textbook-distribution','toggle-report-link',
+  // (2.8, 261118) 시험정보 [시험 기간 연결].
+  'link-exam-period',
   // (v2.8.0, 261111) 웹훅 길잡이: 모든 Notion 버튼·자동화가 같은 주소로 보내면 기존 함수로 넘긴다(관리자 설정 체크리스트 항목은 아님).
   'notion-router',
 ]);
