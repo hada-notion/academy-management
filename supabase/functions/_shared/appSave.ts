@@ -17,13 +17,51 @@ import { createPage, fetchWithRetry, notionHeaders, updatePageProperties, getPag
 import { fetchSupabaseWithRetry } from "./reportCacheShared.ts"
 import { appSources, pageRow, sourceProblem, SKIP_PROPS, type AppDb } from "./appCopy.ts"
 import { enqueueSync, wakeSyncQueueWorker } from "./syncQueue.ts"
+import { runInBackground } from "./backgroundTask.ts"
+import { getCurrentAdminKey } from "./adminShared.ts"
 
 export const WRITE_DBS = [
 	"강사(학원) DB", "학생(학원) DB", "클래스(학원) DB", "시즌(학원) DB", "시간표(학원) DB", "등록(학원) DB", "진도관리(학원) DB",
 	"라이브러리(학원) DB", "과목(학원) DB", "영역(학원) DB", "학교(학원) DB", "학년(학원) DB",
+	// (2.8, 담당 261118) 일정 공개 화면: 앱이 쓰는 칸만(EVENT_PROPS). 잠긴 줄의 날짜는 서버도 거절.
+	"일정(학원) DB",
 ] as const
 export type WriteDb = typeof WRITE_DBS[number]
 export const isWriteDb = (v: unknown): v is WriteDb => typeof v === "string" && (WRITE_DBS as readonly string[]).includes(v)
+
+// DB별로 앱이 쓸 수 있는 칸을 좁힌 곳(없으면 그 DB의 쓸 수 있는 칸 전부). 그 밖 칸은 그 줄을 쓰지 않고 이유를 돌려준다.
+export const EVENT_DB = "일정(학원) DB"
+export const EVENT_PROPS = ["이름", "날짜", "구분", "잠금", "숨김", "학부모 공개", "클래스", "학생", "학교", "학년"] as const
+const ONLY_PROPS: Partial<Record<WriteDb, ReadonlySet<string>>> = { [EVENT_DB]: new Set(EVENT_PROPS) }
+export function checkAllowedProps(db: WriteDb, props: Record<string, unknown>): void {
+	const only = ONLY_PROPS[db]
+	if (!only) return
+	const bad = Object.keys(props ?? {}).filter((k) => !only.has(k))
+	if (bad.length) throw new SaveError(400, `앱에서 ${db}에 쓰지 않는 칸: ${bad.join(", ")}`)
+}
+// 잠긴 일정(잠금 ✅)은 날짜를 바꾸지 않는다(앱 달력 끌기·늘리기). 잠금을 먼저 끈 뒤 고친다.
+export function lockedDateProblem(db: WriteDb, current: any, props: Record<string, unknown>): string | null {
+	if (db !== EVENT_DB || !("날짜" in (props ?? {}))) return null
+	return current?.properties?.["잠금"]?.checkbox === true ? "잠긴 일정은 날짜를 바꿀 수 없습니다. 잠금을 먼저 끄세요." : null
+}
+// 앱이 고친 일정의 학부모 리포트 맞추기: sync-report-cache를 force로 부른다(건너뛰기 없이, 응답을 기다리지 않음).
+export const saveDeps = {
+	refreshReport: (pageId: string): void => {
+		runInBackground(async () => {
+			try {
+				const res = await fetch(`${Deno.env.get("SB_URL") ?? ""}/functions/v1/sync-report-cache`, {
+					method: "POST", headers: { "Content-Type": "application/json", "x-admin-key": await getCurrentAdminKey() },
+					body: JSON.stringify({ pageId, force: true }), signal: AbortSignal.timeout(60000),
+				})
+				if (!res.ok) console.warn("[appSave] 일정 리포트 맞추기 실패:", pageId, res.status)
+			} catch (err) { console.warn("[appSave] 일정 리포트 맞추기 실패:", pageId, (err as Error).message) }
+		})
+	},
+}
+// 리포트에 보이는 데 영향을 주는 일정 칸(잠금만 바꾼 것은 아님).
+export function eventAffectsReport(db: WriteDb, props: Record<string, unknown>): boolean {
+	return db === EVENT_DB && Object.keys(props ?? {}).some((k) => k !== "잠금")
+}
 export const MAX_CHANGES = 60
 
 export class SaveError extends Error { constructor(public status: number, message: string) { super(message) } }
@@ -171,6 +209,7 @@ export async function saveChanges(changes: Change[]): Promise<ChangeResult[]> {
 			if (problem) throw new SaveError(409, `${c.db}: ${problem}`)
 			const ds = (sources.get(c.db as AppDb) ?? [])[0]
 			if (!ds) throw new SaveError(404, `Notion에서 ${c.db}를 찾지 못했습니다.`)
+			checkAllowedProps(c.db as WriteDb, c.props)
 			const props = toNotionProps(c.props, await dataSourceSchema(ds), resolve)
 			let page: Record<string, any>
 			if (c.op === "create") {
@@ -178,15 +217,20 @@ export async function saveChanges(changes: Change[]): Promise<ChangeResult[]> {
 				if (c.tmp) made.set(c.tmp, page.id)
 			} else {
 				if ((await copyDbOf(c.id!)) !== c.db) throw new SaveError(400, "이 DB의 줄이 아닙니다.")
-				if (c.edited) {
-					const now = await getPage(c.id!)
+				const now = c.edited || (c.db === EVENT_DB && "날짜" in c.props) ? await getPage(c.id!) : null
+				const locked = lockedDateProblem(c.db as WriteDb, now, c.props)
+				if (c.edited && now) {
 					if (Date.parse(now.last_edited_time) > Date.parse(c.edited) + 1000) {
 						out.push({ i, ok: false, id: c.id, conflict: true, error: "그사이 Notion에서 바뀌었습니다. 다시 불러온 뒤 저장하세요.", row: await upsertCopy(c.db as WriteDb, now) })
 						continue
 					}
 				}
+				if (locked) throw new SaveError(409, locked)
 				page = await updatePageProperties(c.id!, props)
 			}
+			// 앱(서버 봇)이 고친 일정은 리포트 반영 웹훅이 "서버가 고친 비공개 나이스 일정"으로 건너뛸 수 있으므로
+			// (scheduleVisibility.noticeReportSyncNotNeeded) 여기서 직접 리포트를 맞춘다(학부모 공개를 끈 것도 빠지게).
+			if (eventAffectsReport(c.db as WriteDb, c.props)) saveDeps.refreshReport(page.id)
 			out.push({ i, ok: true, id: page.id, tmp: c.tmp, row: await upsertCopy(c.db as WriteDb, page) })
 		} catch (err) {
 			out.push({ i, ok: false, id: c.id, tmp: c.tmp, error: err instanceof SaveError ? err.message : "Notion에 쓰지 못했습니다: " + String((err as Error).message).slice(0, 200) })
