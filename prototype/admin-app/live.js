@@ -40,6 +40,8 @@
     q("#addRow,#tbEd,[data-act2]").forEach((b) => { b.disabled = true; b.title = why; });
     q(".panel input:not([type=checkbox]):not([type=radio]),.panel textarea").forEach((i) => { i.readOnly = true; });
     q(".panel select,.panel input[type=checkbox],.panel input[type=radio]").forEach((i) => { i.disabled = true; });
+    q(".panel .tdnone").forEach((n) => { const t = n.lastChild; if (t && /여기서 고쳐요/.test(t.textContent)) t.textContent = "줄을 누르면 여기서 봐요 — 고칠 것은 노션에서 고쳐요"; });
+    q(".panel button").forEach((b) => { if (/저장\s*$/.test(b.textContent) && !b.dataset.act2) { b.disabled = true; b.title = why; } }); /* 창 아래 [ㅇㅇ 저장] */
     const p = document.querySelector(".panel"), id = String((activeTab.state || {}).sel || "");
     if (p && /^[0-9a-f-]{32,36}$/i.test(id) && !p.querySelector(".ro-note")) {
       const n = document.createElement("div"); n.className = "ro-note";

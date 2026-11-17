@@ -138,7 +138,7 @@ const APPVIEW = {
 				id: r.id, studentId: E.studentId, classId: E.classId, month: APPV_month(p["청구기간"]),
 				qty, adj, why: X.str(p["청구금액 조정 사유"]), etcs, base, full,
 				sent: APPV_done(p["안내문 전송 상태"]) || APPV_true(p["같은 달 보냄"]),
-				pay: got <= 0 || got < total ? "미납" : got === total ? "완료" : "과오납", paidOn: last ? X.d(last.props["결제일"]) : "", how: last ? X.str(last.props["결제 수단"]) : "", got,
+				pay: /과오납/.test(X.str(p["결제 관리"])) ? "과오납" : /완료/.test(X.str(p["결제 관리"])) ? "완료" : /미납/.test(X.str(p["결제 관리"])) ? "미납" : got <= 0 || got < total ? "미납" : got === total ? "완료" : "과오납", paidOn: last ? X.d(last.props["결제일"]) : "", how: last ? X.str(last.props["결제 수단"]) : "", got,
 				state: "saved", _enrollId: E.enrollId, _amt: F, _etc: En, _calc: F == null ? "app" : "notion", _diff: F != null && fee !== F, _etcDiff: etcDiff, _memo: X.str(p["메모(내부용)"]),
 			}
 		},
