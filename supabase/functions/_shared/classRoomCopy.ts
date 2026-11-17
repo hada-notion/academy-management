@@ -17,7 +17,7 @@ import { text, dateStartOf, relationIds, numberOf, fetchSupabaseWithRetry } from
 import { DS_CLASS_SESSION, DS_ATTENDANCE, DS_LEARNING_RECORD, DS_STUDY_ACTIVITY } from "./constants.ts"
 import { runInBackground } from "./backgroundTask.ts"
 import { attMemoKey } from "./attendanceMemo.ts"
-import { isMakeupSession } from "./sessionKind.ts"
+import { isMakeupSession, SESSION_KIND_PROP } from "./sessionKind.ts"
 import { unitNamesOf, unitTextOf, unitIdsOf } from "./selectedUnits.ts"
 
 type Page = Record<string, any>
@@ -61,6 +61,15 @@ export function sessionRow(p: Page, classes: Map<string, { name: string; emoji: 
 		attendance_ids: rel(p, "출석"),
 		record_ids: rel(p, "학습기록"),
 		attendance_summary: formulaString(p, "출석현황") ?? "",
+		// (2.8 하루 수업 페이지) 마이그레이션 20261118030000 — classRoom.ts sessionSummary·loadSession과 같은 값
+		kind: selectName(p, SESSION_KIND_PROP) ?? "",
+		summary: raw(p, "학습 내용").trim(),
+		busy: raw(p, "실시간 처리 상태").trim(),
+		error_text: raw(p, "마지막 오류").trim(),
+		block_id: rel(p, "시간표")[0] ?? null,
+		notice: raw(p, "수업 안내 메모").trim(),
+		notice_status: raw(p, "수업 안내 현황").trim(),
+		notice_preview: raw(p, "수업 안내 미리보기").trim(),
 		notion_edited_at: p.last_edited_time,
 	}
 }
@@ -79,6 +88,7 @@ export function attendanceRow(p: Page): Row {
 		left_at: iso(dateStartOf(prop(p, "하원스템프"))),
 		memo: raw(p, attMemoKey(p)), // `메모(내부용)`, 아직 안 바꾼 학원은 `메모`(v2.8.0 항목 62)
 		comment: raw(p, "선생님 한마디"),
+		report_status: raw(p, "보고서 전송 상태").trim(), // (2.8) 일일 보고서 전송 상태
 		due_activity_ids: rel(p, "과제"),
 		notion_edited_at: p.last_edited_time,
 	}
