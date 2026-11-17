@@ -2,7 +2,9 @@
 // Notion · Supabase는 모두 가짜 응답. 실제 키 · 데이터 없음.
 import { assertEquals, assertThrows } from "https://deno.land/std@0.224.0/assert/mod.ts"
 for (const [k, v] of Object.entries({ NOTION_TOKEN: "test-only", SB_URL: "https://mock.supabase", SB_SERVICE_ROLE_KEY: "test-only" })) Deno.env.set(k, v)
-const { toNotionProps, checkChanges, saveChanges, runGenerateClasses, writeOptions, SaveError, isWriteDb } = await import("./appSave.ts")
+const { toNotionProps, checkChanges, saveChanges, runGenerateClasses, writeOptions, SaveError, isWriteDb, checkAllowedProps, lockedDateProblem, eventAffectsReport, saveDeps } = await import("./appSave.ts")
+const refreshed: string[] = []
+saveDeps.refreshReport = (id: string) => { refreshed.push(id) }
 
 // DB 찾기 결과는 10분 동안 기억되므로(아래 시험들도 같은 목록을 씀) 이 시험이 가장 먼저 Notion 검색을 흉내 낸다.
 Deno.test("선택지 목록: 쓸 수 있는 DB의 고르기 칸만, 웹훅 칸 · 읽기 전용 DB는 없음", async () => {
@@ -11,10 +13,13 @@ Deno.test("선택지 목록: 쓸 수 있는 DB의 고르기 칸만, 웹훅 칸 �
     const ok = (data: unknown) => new Response(JSON.stringify(data), { status: 200, headers: { "Content-Type": "application/json" } })
     if (url.includes("/v1/search")) return ok({ results: [
       { id: "ds-stu", title: [{ plain_text: "학생(학원) DB" }] }, { id: "ds-en", title: [{ plain_text: "등록(학원) DB" }] },
-      { id: "ds-lib", title: [{ plain_text: "라이브러리(학원) DB" }] }, { id: "ds-tu", title: [{ plain_text: "수강료(학원) DB" }] }], has_more: false })
+      { id: "ds-lib", title: [{ plain_text: "라이브러리(학원) DB" }] }, { id: "ds-tu", title: [{ plain_text: "수강료(학원) DB" }] },
+      { id: "ds-ev", title: [{ plain_text: "일정(학원) DB" }] }], has_more: false })
     if (url.includes("/v1/data_sources/ds-lib")) return ok({ properties: {
       교재명: { type: "title" }, 시리즈: { type: "select", select: { options: [{ name: "쎈" }, { name: "개념원리" }] } },
       "교재 유형": { type: "multi_select", multi_select: { options: [{ name: "개념" }] } }, "웹훅 버튼": { type: "select", select: { options: [{ name: "x" }] } } } })
+    // 칸 형식은 10분 기억되므로 일정 DB 형식도 여기서 아래 시험과 같게 준다.
+    if (url.includes("/v1/data_sources/ds-ev")) return ok({ properties: { 이름: { type: "title" }, 날짜: { type: "date" }, 잠금: { type: "checkbox" }, 숨김: { type: "checkbox" }, "학부모 공개": { type: "checkbox" }, 메모: { type: "rich_text" } } })
     if (url.includes("/v1/data_sources/ds-")) return ok({ properties: { 이름: { type: "title" }, 학생: { type: "relation" } } })
     return new Response("unexpected " + url, { status: 500 })
   }) as typeof fetch
@@ -77,17 +82,18 @@ Deno.test("저장 요청 검사: 빈 목록 · 많은 줄 · 쓸 수 없는 DB �
 
 // ---------- saveChanges(가짜 Notion · Supabase) ----------
 type Call = { url: string; method: string; body?: any }
-function mockFetch(opts: { copyDb?: string; edited?: string }) {
+function mockFetch(opts: { copyDb?: string; edited?: string; locked?: boolean }) {
   const calls: Call[] = []
   let n = 0
   globalThis.fetch = (async (input: Request | URL | string, init?: RequestInit) => {
     const url = String(input), method = init?.method ?? "GET", body = init?.body ? JSON.parse(String(init.body)) : undefined
     calls.push({ url, method, body })
     const ok = (data: unknown) => new Response(JSON.stringify(data), { status: 200, headers: { "Content-Type": "application/json" } })
-    if (url.includes("/v1/search")) return ok({ results: [{ id: "ds-stu", title: [{ plain_text: "학생(학원) DB" }] }, { id: "ds-en", title: [{ plain_text: "등록(학원) DB" }] }], has_more: false })
+    if (url.includes("/v1/search")) return ok({ results: [{ id: "ds-stu", title: [{ plain_text: "학생(학원) DB" }] }, { id: "ds-en", title: [{ plain_text: "등록(학원) DB" }] }, { id: "ds-ev", title: [{ plain_text: "일정(학원) DB" }] }], has_more: false })
+    if (url.includes("/v1/data_sources/ds-ev")) return ok({ properties: { 이름: { type: "title" }, 날짜: { type: "date" }, 잠금: { type: "checkbox" }, 숨김: { type: "checkbox" }, "학부모 공개": { type: "checkbox" }, 메모: { type: "rich_text" } } })
     if (url.includes("/v1/data_sources/ds-")) return ok({ properties: { 이름: { type: "title" }, 학생: { type: "relation" } } })
     if (url.endsWith("/v1/pages") && method === "POST") { n++; return ok({ id: `${"0".repeat(31)}${n}`, url: "u", properties: body.properties, last_edited_time: "2026-11-17T00:00:00.000Z" }) }
-    if (url.includes("/v1/pages/") && method === "GET") return ok({ id: ID, properties: {}, last_edited_time: opts.edited ?? "2026-11-17T00:00:00.000Z" })
+    if (url.includes("/v1/pages/") && method === "GET") return ok({ id: ID, properties: opts.locked ? { 잠금: { type: "checkbox", checkbox: true } } : {}, last_edited_time: opts.edited ?? "2026-11-17T00:00:00.000Z" })
     if (url.includes("/v1/pages/") && method === "PATCH") return ok({ id: ID, properties: body.properties, last_edited_time: "2026-11-17T01:00:00.000Z" })
     if (url.includes("/rest/v1/app_rows?select=db")) return ok(opts.copyDb ? [{ db: opts.copyDb }] : [])
     if (url.includes("/rest/v1/app_rows")) return new Response(null, { status: 201 })
@@ -127,4 +133,34 @@ Deno.test("앞 줄이 실패하면 그 tmp를 가리키는 뒤 줄도 실패, �
     { op: "create", db: "학생(학원) DB", props: { 이름: "다른 학생" } },
   ]))
   assertEquals(r.map((x) => x.ok), [false, false, true])
+})
+
+// ---------- 일정(학원) DB(2.8): 앱이 쓰는 칸만, 잠긴 줄 날짜 거절, 리포트 맞추기 ----------
+const EV = "일정(학원) DB"
+Deno.test("일정: 받는 칸 10개만, 그 밖 칸은 거절", () => {
+  checkAllowedProps(EV, { 이름: "x", 날짜: { start: "2026-04-27", end: "2026-04-30" }, 구분: "📝 시험", 잠금: true, 숨김: false, "학부모 공개": true, 클래스: [], 학생: [], 학교: [], 학년: [] })
+  for (const p of [{ 메모: "x" }, { "NEIS 동기화키": "k" }, { 수업공제일명: "x" }, { "원본 행사내용": "x" }]) assertThrows(() => checkAllowedProps(EV, p), SaveError)
+  checkAllowedProps("학생(학원) DB", { 메모: "x" }) // 다른 DB는 그대로
+})
+Deno.test("일정: 잠긴 줄의 날짜만 거절, 잠금·숨김은 고칠 수 있음, 리포트 맞추기는 잠금만 바꾼 때 빼고", () => {
+  const locked = { properties: { 잠금: { checkbox: true } } }
+  assertEquals(typeof lockedDateProblem(EV, locked, { 날짜: "2026-05-01" }), "string")
+  assertEquals(lockedDateProblem(EV, locked, { 잠금: false, 숨김: true }), null)
+  assertEquals(lockedDateProblem(EV, { properties: { 잠금: { checkbox: false } } }, { 날짜: "2026-05-01" }), null)
+  assertEquals(lockedDateProblem("학생(학원) DB", locked, { 날짜: "2026-05-01" }), null)
+  assertEquals([eventAffectsReport(EV, { 잠금: true }), eventAffectsReport(EV, { "학부모 공개": false }), eventAffectsReport("학생(학원) DB", { 이름: "x" })], [false, true, false])
+})
+Deno.test("일정 저장: 잠긴 줄 날짜 끌기는 쓰지 않음(409), 숨김 고치기는 쓰고 리포트 맞춤", async () => {
+  refreshed.length = 0
+  let calls = mockFetch({ copyDb: EV, locked: true })
+  let r = await saveChanges(checkChanges([{ op: "update", db: EV, id: ID, props: { 날짜: { start: "2026-05-01", end: "2026-05-03" } } }]))
+  assertEquals([r[0].ok, r[0].error?.includes("잠긴 일정")], [false, true])
+  assertEquals(calls.some((c) => c.method === "PATCH"), false)
+  calls = mockFetch({ copyDb: EV, locked: true })
+  r = await saveChanges(checkChanges([{ op: "update", db: EV, id: ID, props: { "학부모 공개": false } }]))
+  assertEquals(r[0].ok, true)
+  assertEquals(calls.some((c) => c.method === "PATCH"), true)
+  assertEquals(refreshed, [ID])
+  r = await saveChanges(checkChanges([{ op: "update", db: EV, id: ID, props: { 메모: "x" } }]))
+  assertEquals(r[0].ok, false)
 })
