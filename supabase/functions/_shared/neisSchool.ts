@@ -1,4 +1,4 @@
-import { SCHOOL_EVENT, SCHOOL_EXAM, SCHOOL_BREAK, LEGACY_SCHOOL, LEGACY_SCHOOL_OPTION, categoryName, isExamName, KIND, DETAIL_PROP } from "./scheduleCategory.ts"
+import { SCHOOL_EVENT, SCHOOL_EXAM, SCHOOL_BREAK, LEGACY_SCHOOL, LEGACY_SCHOOL_OPTION, categoryName, isExamName, isVacationName, KIND, DETAIL_PROP } from "./scheduleCategory.ts"
 // 학교별 행사 종류를 필터링하지 않는다. 모든 원본 행을 보존한다.
 export type NeisRow = Record<string, string | null>
 const gradeFields = ["ONE_GRADE_EVENT_YN", "TW_GRADE_EVENT_YN", "THREE_GRADE_EVENT_YN", "FR_GRADE_EVENT_YN", "FIV_GRADE_EVENT_YN", "SIX_GRADE_EVENT_YN"]
@@ -108,7 +108,7 @@ export function hasLockColumn(schema: any): boolean {
 // 공휴일도 새 일정이라 숨김 그대로(모든 새 나이스 일정은 숨김·비공개로 만든다).
 export function detailKind(row: NeisRow): string {
   const deduct = (row.SBTR_DD_SC_NM ?? "").trim(), name = row.EVENT_NM ?? ""
-  if (name.includes("방학") && !name.includes("방학식")) return KIND.VACATION
+  if (isVacationName(name)) return KIND.VACATION
   if (deduct === "휴업일" || deduct === "공휴일" || name.includes("토요휴업일")) return KIND.SCHOOL_OFF
   if (isExamName(name)) return KIND.EXAM
   return KIND.SCHOOL_EVENT

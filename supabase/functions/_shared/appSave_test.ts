@@ -137,8 +137,8 @@ Deno.test("앞 줄이 실패하면 그 tmp를 가리키는 뒤 줄도 실패, �
 
 // ---------- 일정(학원) DB(2.8): 앱이 쓰는 칸만, 잠긴 줄 날짜 거절, 리포트 맞추기 ----------
 const EV = "일정(학원) DB"
-Deno.test("일정: 받는 칸 10개만, 그 밖 칸은 거절", () => {
-  checkAllowedProps(EV, { 이름: "x", 날짜: { start: "2026-04-27", end: "2026-04-30" }, 구분: "📝 시험", 잠금: true, 숨김: false, "학부모 공개": true, 클래스: [], 학생: [], 학교: [], 학년: [] })
+Deno.test("일정: 받는 칸 11개만, 그 밖 칸은 거절", () => {
+  checkAllowedProps(EV, { 이름: "x", 날짜: { start: "2026-04-27", end: "2026-04-30" }, "세부 구분": "시험", "기록(내부용)": "", 잠금: true, 숨김: false, "학부모 공개": true, 클래스: [], 학생: [], 학교: [], 학년: [] })
   for (const p of [{ 메모: "x" }, { "NEIS 동기화키": "k" }, { 수업공제일명: "x" }, { "원본 행사내용": "x" }]) assertThrows(() => checkAllowedProps(EV, p), SaveError)
   checkAllowedProps("학생(학원) DB", { 메모: "x" }) // 다른 DB는 그대로
 })
@@ -163,4 +163,10 @@ Deno.test("일정 저장: 잠긴 줄 날짜 끌기는 쓰지 않음(409), 숨김
   assertEquals(refreshed, [ID])
   r = await saveChanges(checkChanges([{ op: "update", db: EV, id: ID, props: { 메모: "x" } }]))
   assertEquals(r[0].ok, false)
+})
+
+Deno.test("일정(2.8 2단계): 세부 구분·기록(내부용) 받고 구분은 거절, 기록만 바꾸면 리포트 맞추기 안 함", () => {
+  checkAllowedProps(EV, { "세부 구분": "상담", "기록(내부용)": "메모" })
+  assertThrows(() => checkAllowedProps(EV, { 구분: "📆 학원 일정" }), SaveError)
+  assertEquals([eventAffectsReport(EV, { "기록(내부용)": "x" }), eventAffectsReport(EV, { "세부 구분": "상담" })], [false, true])
 })

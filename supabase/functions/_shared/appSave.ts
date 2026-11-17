@@ -31,7 +31,8 @@ export const isWriteDb = (v: unknown): v is WriteDb => typeof v === "string" && 
 
 // DB별로 앱이 쓸 수 있는 칸을 좁힌 곳(없으면 그 DB의 쓸 수 있는 칸 전부). 그 밖 칸은 그 줄을 쓰지 않고 이유를 돌려준다.
 export const EVENT_DB = "일정(학원) DB"
-export const EVENT_PROPS = ["이름", "날짜", "구분", "잠금", "숨김", "학부모 공개", "클래스", "학생", "학교", "학년"] as const
+// (2.8 2단계) 세부 구분·기록(내부용)을 받고, 구분은 받지 않는다(수식이 될 칸 — 앱은 읽기만, 앱서버 261118).
+export const EVENT_PROPS = ["이름", "날짜", "세부 구분", "기록(내부용)", "잠금", "숨김", "학부모 공개", "클래스", "학생", "학교", "학년"] as const
 const ONLY_PROPS: Partial<Record<WriteDb, ReadonlySet<string>>> = { [EVENT_DB]: new Set(EVENT_PROPS) }
 export function checkAllowedProps(db: WriteDb, props: Record<string, unknown>): void {
 	const only = ONLY_PROPS[db]
@@ -60,7 +61,8 @@ export const saveDeps = {
 }
 // 리포트에 보이는 데 영향을 주는 일정 칸(잠금만 바꾼 것은 아님).
 export function eventAffectsReport(db: WriteDb, props: Record<string, unknown>): boolean {
-	return db === EVENT_DB && Object.keys(props ?? {}).some((k) => k !== "잠금")
+	// 잠금·기록(내부용)만 바꾼 것은 학부모 리포트와 상관없다.
+	return db === EVENT_DB && Object.keys(props ?? {}).some((k) => k !== "잠금" && k !== "기록(내부용)")
 }
 export const MAX_CHANGES = 60
 
