@@ -105,17 +105,26 @@ export async function buildStudentNotices(
     schoolId ? publicEvents({ prop: "학교", id: schoolId }, sinceIso) : Promise.resolve([]),
     gradeId ? publicEvents({ prop: "학년", id: gradeId }, sinceIso) : Promise.resolve([]),
   ])
-  const directIds = new Set<string>([...studentEvents, ...classEvents, ...academyEvents].map((n: any) => n.id))
+  // 어느 조회에서 왔는지는 믿지 않고 일정의 지금 관계로 다시 본다(261118 원본 검수): 대상을 A → B로 바꾼 직후에는
+  // Notion 관계 조회(학생 contains A)가 한동안 바뀌기 전 결과를 돌려줘, A 리포트를 다시 만들어도 일정이 남았다.
+  // 학교·학년 조회에서 온 일정만 아래 학교·학년 맞추기로 본다.
+  const schoolGradeIds = new Set<string>([...schoolEvents, ...gradeEvents].map((n: any) => n.id))
   const byId = new Map<string, any>()
   for (const n of [...studentEvents, ...classEvents, ...academyEvents, ...schoolEvents, ...gradeEvents]) byId.set(n.id, n)
   const noticePages = await shareQueriedPages(Array.from(byId.values()), cachedGetPage)
+  const plainId = (id: string) => String(id ?? "").replaceAll("-", "").toLowerCase()
+  const activeClassKeys = new Set(activeClassIds.map(plainId))
 
   return noticePages
     .filter((n: any) => {
       if (!isParentPublicEvent(n)) return false
       const startIso = dateStartOf(n.properties["날짜"])
       if (!startIso || startIso < sinceIso) return false
-      if (directIds.has(n.id)) return true
+      const linkedStudents = relationIds(n.properties["학생"]).map(plainId)
+      const linkedClasses = relationIds(n.properties["클래스"]).map(plainId)
+      if (linkedStudents.includes(plainId(studentId)) || linkedClasses.some((id) => activeClassKeys.has(id))) return true
+      if (["학생", "클래스", "학교", "학년"].every((k) => relationIds(n.properties[k]).length === 0)) return true // 학원 전체
+      if (!schoolGradeIds.has(n.id)) return false
       const noticeSchoolIds = relationIds(n.properties["학교"])
       const noticeGradeIds = relationIds(n.properties["학년"])
       const schoolMatch = noticeSchoolIds.length === 0 || (!!schoolId && noticeSchoolIds.includes(schoolId))
