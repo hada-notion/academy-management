@@ -18,6 +18,7 @@
         await appLoad({ url: cfg.url, anonKey: cfg.anonKey, session });
         appSaveMark(DB); /* 불러온 값을 기준으로 적어 둠 — 저장 때 달라진 칸만 보냄 */
         window.LIVE = { url: cfg.url, anonKey: cfg.anonKey, session, at: new Date().toISOString() };
+        liveHooks();
         if (typeof snapshot === "function") lastSnap = snapshot();
         if (typeof render === "function") render();
         say("노션 자료로 바꿨어요");
@@ -45,7 +46,29 @@
 
 /* 실제 자료 모드의 [저장]: 작성 중인 줄(입력 범위 12개 묶음)을 app-api save로 노션에 쓴다. 저장 창의 [저장]이 부른다(LIVE일 때만).
    성공한 줄은 저장됨으로, 실패 · 충돌 줄은 작성 중으로 남기고 이유를 보여 준다. 지우기는 보내지 않는다(노션에서 직접). */
+/* 실제 자료 모드에서 앱의 두 곳을 바꿔 끼운다(한 번만):
+   - 저장 숫자(dirtyCount): 작성 중 표시가 아니라 "노션에 아직 안 간 줄 수"(새 줄 + 불러온 값과 달라진 줄)도 센다.
+   - 알림(toast): 창 아래 [ㅇㅇ 저장]처럼 앱 안에서만 저장하던 곳("(시제품: 노션에 쓰지 않음)")은 그 말을 떼고 바로 노션 저장을 잇는다. */
+function liveHooks() {
+  if (window._liveHooked) return; window._liveHooked = true;
+  const dc0 = dirtyCount, toast0 = toast;
+  const pending = () => { try { return appSaveCollect(DB).changes.length; } catch (_) { return 0; } };
+  dirtyCount = () => Math.max(dc0(), window.LIVE ? pending() : 0);
+  toast = (msg) => {
+    const m = String(msg), tag = /\s*\(시제품: 노션에 쓰지 않음\)/;
+    if (window.LIVE && tag.test(m)) {
+      if (!window._liveSaving && pending()) { setTimeout(() => liveSave(), 0); return; }
+      return toast0(m.replace(tag, ""));
+    }
+    toast0(m);
+  };
+}
 async function liveSave() {
+  if (window._liveSaving) return null;
+  window._liveSaving = true;
+  try { return await liveSaveRun(); } finally { window._liveSaving = false; }
+}
+async function liveSaveRun() {
   const say = (m) => toast(m);
   const esc2 = (s) => (typeof esc === "function" ? esc(s) : String(s));
   say("노션에 저장하는 중이에요");
