@@ -51,7 +51,7 @@ export const CLEAR_DBS = [
   "자료(학원) DB",
   "단원목록(학원) DB",
   "라이브러리(학원) DB",
-  "교시(학원) DB",
+  "기타경비(학원) DB", // (v2.8.0 항목 70) 신고한 기타경비 목록. 청구 항목·클래스가 가리키므로 그 뒤에
   "업데이트(학원) DB",
   "패치·이슈 관리 DB", // 업데이트(학원) DB의 옛 이름
 ]
@@ -77,7 +77,7 @@ export const GROUPS: { name: string; required: boolean; dbs: string[] }[] = [
   { name: "수납", required: true, dbs: ["수강료(학원) DB", "결제(학원) DB", "청구서(학원) DB", "청구 항목(학원) DB", "청구 결제(학원) DB"] },
   { name: "시험·일정", required: true, dbs: ["시험(학원) DB", "시험정보(학원) DB", "성적(학원) DB", "일정(학원) DB"] },
   { name: "직원", required: true, dbs: ["강사(학원) DB", "근무(학원) DB"] },
-  { name: "기준 자료", required: false, dbs: ["학교(학원) DB", "교시(학원) DB", "루틴(학원) DB", "라이브러리(학원) DB", "단원목록(학원) DB", "자료(학원) DB"] },
+  { name: "기준 자료", required: false, dbs: ["학교(학원) DB", "기타경비(학원) DB", "루틴(학원) DB", "라이브러리(학원) DB", "단원목록(학원) DB", "자료(학원) DB"] },
   { name: "원본 기록", required: false, dbs: ["업데이트(학원) DB", "패치·이슈 관리 DB"] },
 ]
 export const groupOf = (name: string) => GROUPS.find((g) => g.dbs.includes(name))
@@ -94,8 +94,11 @@ export const RENAMED_DBS: Record<string, string> = {
   "교재결제(학원) DB": "청구 결제(학원) DB",
 }
 export const currentName = (name: string) => RENAMED_DBS[name] ?? name
-// 없어도 "찾지 못한 DB"로 내지 않는 DB: 옛 이름 기록 DB, 그리고 Notion을 올리기 전 학원에는 없는 시즌 DB.
-const OPTIONAL_DBS = [OLD_NAME, "시즌(학원) DB"]
+// 없어도 "찾지 못한 DB"로 내지 않는 DB: 옛 이름 기록 DB, 그리고 Notion을 올리기 전 학원에는 없는 시즌·기타경비 DB.
+const OPTIONAL_DBS = [OLD_NAME, "시즌(학원) DB", "기타경비(학원) DB"]
+// (v2.8.0 교시 제거) 원본에서 없앤 DB. 아직 지우지 않은 학원에 남아 있어도 비우지 않고 "목록에 없는 DB"로도 내지 않는다.
+// scripts/clear-example-data.py의 RETIRED_DBS와 같다.
+export const RETIRED_DBS = ["교시(학원) DB"]
 // 옛 이름으로 찾은 데이터 소스를 새 이름 아래로 모은다(새 이름 것이 앞, 같은 id는 한 번만).
 export function mergeRenamed(sources: Map<string, string[]>): Map<string, string[]> {
   const out = new Map<string, string[]>()
@@ -269,7 +272,7 @@ export function buildPlan(sources: Map<string, string[]>, keep: string[] = []): 
   const clear = CLEAR_DBS.filter((n) => !keep.includes(n))
   for (const name of clear) for (const ds of sources.get(name) ?? []) plan.push({ name, ds })
   const missing = clear.filter((n) => !OPTIONAL_DBS.includes(n) && !sources.has(n))
-  const unknown = [...sources.keys()].filter((n) => !CLEAR_DBS.includes(n) && !KEEP_DBS.includes(n)).sort()
+  const unknown = [...sources.keys()].filter((n) => !CLEAR_DBS.includes(n) && !KEEP_DBS.includes(n) && !RETIRED_DBS.includes(n)).sort()
   return { plan, missing, unknown }
 }
 

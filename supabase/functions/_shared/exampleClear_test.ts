@@ -1,6 +1,6 @@
 import { assert, assertEquals } from "jsr:@std/assert@1"
 import { assertThrows } from "jsr:@std/assert@1"
-import { buildPlan, canStart, CLEAR_DBS, ClearError, countPlan, groupOf, GROUPS, iconOf, KEEP_DBS, mergeRenamed, RENAMED_DBS, selectionKeep, STALE_MS } from "./exampleClear.ts"
+import { buildPlan, canStart, CLEAR_DBS, ClearError, countPlan, groupOf, GROUPS, iconOf, KEEP_DBS, mergeRenamed, RENAMED_DBS, RETIRED_DBS, selectionKeep, STALE_MS } from "./exampleClear.ts"
 
 // scripts/clear-example-data.py의 목록과 같아야 한다(PC 스크립트와 화면이 같은 DB를 지운다).
 function pyList(src: string, name: string): string[] {
@@ -12,6 +12,7 @@ Deno.test("지울·남길 DB 목록이 PC 스크립트와 같다", async () => {
   const src = await Deno.readTextFile(new URL("../../../scripts/clear-example-data.py", import.meta.url))
   assertEquals(CLEAR_DBS, pyList(src, "CLEAR_DBS"))
   assertEquals(KEEP_DBS, pyList(src, "KEEP_DBS"))
+  assertEquals(RETIRED_DBS, pyList(src, "RETIRED_DBS"))
   const renamed = src.split("RENAMED_DBS = {")[1].split("\n}")[0]
   assertEquals(RENAMED_DBS, Object.fromEntries([...renamed.matchAll(/^\s*"([^"]+)": "([^"]+)",/gm)].map((m) => [m[1], m[2]])))
 })
@@ -83,6 +84,24 @@ Deno.test("시즌 DB는 학생·수강 묶음에서 시간표 바로 다음에 �
   assertEquals(plan.map((p) => p.name), ["시간표(학원) DB", "시즌(학원) DB", "등록(학원) DB"])
   assertEquals(unknown, [])
   assert(!buildPlan(new Map([["시간표(학원) DB", ["t"]]])).missing.includes("시즌(학원) DB")) // Notion을 올리기 전 학원에는 없다
+})
+
+Deno.test("교시 DB(v2.8.0에서 없앰)는 비우지 않고, 남아 있는 학원에서도 모르는 DB·못 찾은 DB로 내지 않는다", () => {
+  assert(!CLEAR_DBS.includes("교시(학원) DB") && !KEEP_DBS.includes("교시(학원) DB"))
+  assertEquals(groupOf("교시(학원) DB"), undefined)
+  const left = buildPlan(new Map([["교시(학원) DB", ["g"]], ["시간표(학원) DB", ["t"]]]))
+  assertEquals(left.unknown, [])
+  assert(!left.plan.some((p) => p.name === "교시(학원) DB"))
+  assert(!buildPlan(new Map([["시간표(학원) DB", ["t"]]])).missing.includes("교시(학원) DB"))
+})
+
+Deno.test("기타경비 DB는 기준 자료 묶음에서 라이브러리 다음에 비우고, 없는 학원에서도 못 찾은 DB로 내지 않는다", () => {
+  assertEquals(CLEAR_DBS.indexOf("기타경비(학원) DB"), CLEAR_DBS.indexOf("라이브러리(학원) DB") + 1)
+  assert(CLEAR_DBS.indexOf("기타경비(학원) DB") > CLEAR_DBS.indexOf("청구 항목(학원) DB")) // 청구 항목이 가리키므로 뒤에
+  assertEquals(groupOf("기타경비(학원) DB")?.name, "기준 자료")
+  assert(!buildPlan(new Map([["시간표(학원) DB", ["t"]]])).missing.includes("기타경비(학원) DB"))
+  const { plan, unknown } = buildPlan(new Map([["기타경비(학원) DB", ["e"]]]))
+  assertEquals([plan.map((p) => p.name), unknown], [["기타경비(학원) DB"], []])
 })
 
 Deno.test("남기는 DB는 알림톡 설정·과목·영역과 시스템용 메뉴·웹페이지·학년, 비어 있는 문의·요청뿐", () => {
