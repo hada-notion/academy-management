@@ -107,12 +107,14 @@
     let hit = "";
     DB.blocks.forEach((b) => { if (!b.lessons || b.del || !TSAVED.has(b.id)) return; const o = JSON.parse(TSAVED.get(b.id)); if (!o.lessons) return; if (b.day === o.day && b.start === o.start && b.end === o.end && JSON.stringify(b.regs) === JSON.stringify(o.regs)) return; Object.keys(b).forEach((k) => delete b[k]); Object.assign(b, o); hit = "수업이 만들어진 시간표의 요일 · 시간 · 명단은 노션에서 바꿔요 — 출석이 함께 맞춰져야 해요"; });
     const S = typeof SAVEDC !== "undefined" ? SAVEDC.enrolls : null;
-    if (S) DB.enrolls.forEach((e, i) => { const sv = S.get(e.id); if (!sv) return; /* 불러온(저장된) 등록만 — 새 등록의 종료일은 그대로 */ const o = JSON.parse(sv); if ((e.end || "") === (o.end || "") && !!e.ended === !!o.ended) return; e.end = o.end; e.ended = o.ended; if (JSON.stringify(Object.assign({}, e, { state: 0 })) === JSON.stringify(Object.assign({}, o, { state: 0 }))) e.state = o.state; hit = hit || "등록 종료는 노션 [종료 처리]로 해요 — 남은 수업 · 출석 정리까지 함께 해요"; });
+    if (S) DB.enrolls.forEach((e, i) => { const sv = S.get(e.id); if (!sv) return; /* 불러온(저장된) 등록만 — 새 등록의 종료일은 그대로 */ const o = JSON.parse(sv); const stray = "d" in e && !("d" in o); /* 날짜 칸에 치던 글자(d)가 줄에 남아 '작성 중'으로 잡히던 것(원본 검수 H2) */ if ((e.end || "") === (o.end || "") && !!e.ended === !!o.ended && !stray) return; e.end = o.end; e.ended = o.ended; if (stray) delete e.d; if (JSON.stringify(Object.assign({}, e, { state: 0 })) === JSON.stringify(Object.assign({}, o, { state: 0 }))) e.state = o.state; hit = hit || "등록 종료는 노션 [종료 처리]로 해요 — 남은 수업 · 출석 정리까지 함께 해요"; });
     /* 학교는 앱이 만들지 않는다(원본 검수 H1): 고르기 목록의 "+ 생성"으로 생긴 학교 줄은 그 자리에서 빼고, 그 학교를 적은 학생의 학교 칸은 비운다 */
     const isId = (v) => /^[0-9a-f-]{32,36}$/i.test(String(v));
     const fresh = (DB.schools || []).filter((s) => !isId(s.id));
-    if (fresh.length) { const gone = new Set(fresh.map((s) => s.name)); DB.schools = DB.schools.filter((s) => isId(s.id)); (DB.students || []).forEach((s) => { if (gone.has(s.school)) s.school = ""; }); hit = hit || "학교는 노션 [학교 검색]으로 먼저 넣어요 — 학교 코드 · 학사일정이 함께 들어가요"; }
-    else { const have = new Set((DB.schools || []).map((s) => s.name)); (DB.students || []).forEach((s) => { if (s.school && !have.has(s.school) && s.state === "draft") { s.school = ""; hit = hit || "없는 학교예요 — 학교는 노션 [학교 검색]으로 먼저 넣어요"; } }); }
+    /* 학교 칸은 비우지 않고 불러온 값으로 되돌린다. 되돌린 뒤 불러온 값과 같아진 학생은 '작성 중'에서 뺀다 */
+    const schBack = (s) => { const b0 = LIVE_STU0.has(s.id) ? JSON.parse(LIVE_STU0.get(s.id)) : null; s.school = s._o && "school" in s._o ? s._o.school || "" : b0 ? b0.school || "" : ""; if (b0) { const canon = (o) => JSON.stringify(Object.keys(o).filter((k) => k !== "_o" && k !== "state" && o[k] !== undefined).sort().map((k) => [k, o[k]])); if (canon(s) === canon(b0)) { if ("state" in b0) s.state = b0.state; else delete s.state; delete s._o; } } };
+    if (fresh.length) { const gone = new Set(fresh.map((s) => s.name)); DB.schools = DB.schools.filter((s) => isId(s.id)); (DB.students || []).forEach((s) => { if (gone.has(s.school)) schBack(s); }); hit = hit || "학교는 노션 [학교 검색]으로 먼저 넣어요 — 학교 코드 · 학사일정이 함께 들어가요"; }
+    else { const have = new Set((DB.schools || []).map((s) => s.name)); (DB.students || []).forEach((s) => { if (s.school && !have.has(s.school) && s.state === "draft") { schBack(s); if (s.school && !have.has(s.school)) s.school = ""; hit = hit || "없는 학교예요 — 학교는 노션 [학교 검색]으로 먼저 넣어요"; } }); }
     if (hit) { try { savedSync(); lastSnap = snapshot(); } catch (_) {} r0(); say(hit); }
   };
   /* 칸을 고친 바로 뒤에도 본다(다시 그리지 않는 길 — 원본 검수 H2: 종료일이 저장 전까지 고친 값으로 보였음) */
@@ -120,7 +122,12 @@
   ["change", "click", "focusout"].forEach((ev) => document.addEventListener(ev, () => { if (!(window.LIVE && window.LIVE.loaded) || p1Tick) return; p1Tick = setTimeout(() => { p1Tick = null; try { p1Guard(); p1Dress(); } catch (_) {} }, 0); }, true));
   render = function () { try { lessonGate(); } catch (_) {} const out = r0.apply(this, arguments); try { p1Guard(); } catch (_) {} try { roLock(); } catch (_) {} try { p1Dress(); } catch (_) {} try { if (typeof liveLessonNeed === "function") liveLessonNeed(); } catch (_) {} return out; };
   /* 되돌리기 · 다시 하기 · 모두 되돌리기는 입력 칸(P1)의 값을 움직이는 일이라 보기 화면에서도 막지 않는다 */
-  ["undo", "redo", "revertAll"].forEach((k) => { try { const f0 = eval(k); eval(k + " = function () { roBase = null; return f0.apply(this, arguments); }"); } catch (_) {} });
+  ["undo", "redo", "revertAll"].forEach((k) => { try { const f0 = eval(k); eval(k + " = function () { roBase = null; if (k === 'revertAll') { try { liveStuRestore(); } catch (_) {} } return f0.apply(this, arguments); }"); } catch (_) {} });
+  /* 불러온 학생의 기준 값(원본 검수 H4): [모두 되돌리기]는 "처음 값(_o)이 없는 작성 중 학생 = 새 학생"으로 보고 지운다. 노션에서 불러온 학생은 처음 값이
+     없어도(고르기 목록 · 표 편집처럼 _o를 안 남기는 길로 고친 경우) 지우지 않고 불러온 값으로 되돌린다. 기준은 받은 직후 · 저장 직후에 적는다 */
+  const LIVE_STU0 = new Map();
+  window.liveStuMark = () => { LIVE_STU0.clear(); (DB.students || []).forEach((s) => { if (s.state !== "draft") { /* 받은 직후 · 저장 직후의 저장된 학생 = 노션에 있는 학생 */ const c = Object.assign({}, s); delete c._o; LIVE_STU0.set(s.id, JSON.stringify(c)); } }); };
+  window.liveStuRestore = () => { if (!(window.LIVE && window.LIVE.loaded)) return; (DB.students || []).forEach((s) => { if (s.state !== "draft" || s._o || !LIVE_STU0.has(s.id)) return; const base = JSON.parse(LIVE_STU0.get(s.id)); Object.keys(s).forEach((k) => delete s[k]); Object.assign(s, base); }); };
   document.addEventListener("beforeinput", (e) => { if (document.body.classList.contains("live-ro") && e.target.closest && e.target.closest(".panel,#view table")) e.preventDefault(); }, true);
   /* 보기 칸의 쓰기는 여기 한 곳에서 막는다(화면마다 막지 않는다):
      ① 창 본문 · 창 아래 단추 줄의 누르는 것(단추 · 고르기 · 켜고 끄기 · 전송 · 삭제 · 생성)은 눌리기 전에 막는다. 이동(탭 · 줄 열기 · 도움말 · 노션 링크)만 지나간다.
@@ -176,6 +183,7 @@
         /* 보기 칸(P2)이 켜져 있으면 보기 묶음(일정 · 보고서 · 수강료 · 청구 · 시험 · 알림톡 설정 · 자료)도 함께 받는다 */
         await (P2ON && typeof appViewLoad === "function" ? appViewLoad : appLoad)({ url: cfg.url, anonKey: cfg.anonKey, session });
         appSaveMark(DB); /* 불러온 값을 기준으로 적어 둠 — 저장 때 달라진 칸만 보냄 */
+        try { liveStuMark(); } catch (_) {} /* 학생 되돌리기 기준 */
         /* [모두 되돌리기]가 돌아갈 값도 불러온 값으로 적어 둔다(안 적으면 고친 줄이 되돌리기 때 화면에서 빠진다) */
         try { savedSync(); DB.blocks.forEach((b) => { try { tSnap(b); } catch (_) {} }); } catch (_) {}
         try { liveOptions(await liveApi({ url: cfg.url, anonKey: cfg.anonKey, session }, { action: "options" })); } catch (_) { /* 선택지를 못 받아도 화면은 열린다(저장 때 서버가 거름) */ }
@@ -271,6 +279,8 @@ async function liveRunClasses(blockIds) {
     });
     const body = await res.json().catch(() => null);
     if (!res.ok || !body || !body.ok) throw new Error((body && body.error) || "요청 실패 (" + res.status + ")");
+    /* 맡긴 시간표는 30분 동안 [수업 생성] 대상에서 뺀다 — 서버가 만들고 사본에 오기 전에 한 번 더 눌러 뒤 주 수업이 또 생기지 않게(원본 검수 H6) */
+    try { if (typeof liveGenMark === "function") liveGenMark(ids); render(); } catch (_) {}
     toast(`수업 생성을 맡겼어요 · 시간표 ${body.queued}개 — 1~2분 뒤 노션 수업에 생겨요${unsaved ? ` (저장 전 시간표 ${unsaved}개는 빠짐)` : ""}`);
     return body;
   } catch (e) { toast("수업 생성을 맡기지 못했어요 — " + e.message); return null; }
@@ -305,7 +315,7 @@ async function liveSaveRun() {
   if (!res.failed.length) { try { LDIRTY.clear(); } catch (_) {} }
   /* 저장 뒤 실행 취소로 옛 id가 되살아나지 않게 되돌리기 기록을 비운다 */
   try { undoStack.length = 0; if (typeof redoStack !== "undefined") redoStack.length = 0; lastSnap = snapshot(); } catch (_) {}
-  render(); try { savedSync(); } catch (_) {}
+  render(); try { savedSync(); } catch (_) {} try { if (window.liveStuMark) window.liveStuMark(); } catch (_) {} /* 저장된 학생의 되돌리기 기준을 새로 적는다 */
   const dels = (res.dels || []).length, warn = (res.warn || []).length;
   if (!res.failed.length && !dels && !warn) { say(`노션에 저장했어요 · ${res.ok}줄`); return res; }
   const li = (a) => a.map((f) => `<li><b>${esc2(f.name || f.coll || "")}</b> — ${esc2(f.conflict ? "그사이 노션에서 바뀌었어요. 새로 고친 뒤 다시 저장해요" : f.error || f.msg || f)}</li>`).join("");

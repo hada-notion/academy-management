@@ -54,17 +54,39 @@ async function liveLessonApi(body) {
 /* 하루 수업을 받아 시간표와 잇는다: 클래스 + 요일 + 시작 시각이 같은 시간표. 시각만 다르면 그 반 그 요일에 하나뿐인 시간표에 잇는다 */
 function liveLessonDayApply(date, res) {
   let miss = 0; const used = new Set(Object.keys(LIVE_L));
-  (res.sessions || []).forEach((s) => {
-    const at = liveSeoul(s.start), end = liveSeoul(s.end), cid = (s.classIds || [])[0];
-    if (s.makeup || !cid || !at || at.m == null) { miss++; return; }
-    const cand = DB.blocks.filter((b) => !b.del && b.classId === cid && b.day === dow(at.d) && !used.has(lkey(b, at.d)));
-    const b = cand.find((x) => x.start === at.m) || (cand.length === 1 ? cand[0] : null);
-    if (!b) { miss++; return; }
-    const k = lkey(b, at.d); used.add(k);
+  /* 두 번 돈다(원본 검수 H6): ① 시작 시각까지 같은 시간표에 먼저 잇고 ② 남은 수업은 그 반 · 그 요일의 남은 시간표에 차례로 잇는다.
+     같은 반에 그 요일 시간표가 여럿이고 시각이 안 맞아도(시간표의 등 · 하원 시간이 비어 있는 경우 등) 수업 수만큼 시간표가 "수업 있음"이 된다 —
+     안 이으면 이미 수업이 있는 시간표가 "수업 없음"으로 세어져 [수업 생성]이 다음 차례 수업을 또 만든다. */
+  const list = (res.sessions || []).map((s) => ({ s, at: liveSeoul(s.start), end: liveSeoul(s.end), cid: (s.classIds || [])[0] }));
+  const put = (x, b) => { const k = lkey(b, x.at.d); used.add(k); const len = b.end > b.start ? b.end - b.start : 60;
     /* 시각은 시간표가 아니라 노션 수업의 시각 그대로(시간표를 고친 뒤에도 이미 만든 수업은 제 시각) */
-    LIVE_L[k] = { id: s.id, sum: s.attendanceSummary || "", n: s.students || 0, start: at.m, end: end && end.m != null ? end.m : at.m + (b.end - b.start) };
-  });
+    LIVE_L[k] = { id: x.s.id, sum: x.s.attendanceSummary || "", n: x.s.students || 0, start: x.at.m, end: x.end && x.end.m != null ? x.end.m : x.at.m + len }; x.done = true; };
+  const cands = (x) => DB.blocks.filter((b) => !b.del && b.classId === x.cid && b.day === dow(x.at.d) && !used.has(lkey(b, x.at.d))).sort((a, b) => (a.start == null) - (b.start == null) || (a.start || 0) - (b.start || 0) || String(a.id).localeCompare(String(b.id)));
+  list.forEach((x) => { if (x.s.makeup || !x.cid || !x.at || x.at.m == null) { x.skip = true; return; } const b = cands(x).find((c) => c.start === x.at.m); if (b) put(x, b); });
+  list.forEach((x) => { if (x.skip || x.done) return; const b = cands(x)[0]; if (b) put(x, b); });
+  list.forEach((x) => { if (x.skip || !x.done) miss++; });
   LIVE_LX[date] = miss;
+}
+/* [수업 생성] 대상에서 뺄 시간표(원본 검수 H5 · H6, 담당 261117): 서버는 시간표마다 "마지막 수업 다음 차례"를 한 번 만든다. 그래서 보는 주의 빈 칸이
+   서버가 만들 그 차례일 때만 대상이다 — 아니면 눌러도 그 칸은 안 채워지고 뒤 주 수업만 늘어난다. 빼는 것:
+   지난 날짜 · 이번 주보다 앞 / 다음 주보다 뒤의 주 · 아직 다 못 받은 날이 있는 동안 · 앞 주(오늘 뒤)에 빈 칸이 남은 시간표 · 뒤 주에 이미 수업이 있는 시간표 ·
+   방금 수업 생성을 맡긴 시간표(30분 — 서버가 만들고 사본에 오기 전에 다시 세지 않게) · 저장 전인 새 시간표. */
+const LIVE_GEN_KEY = "hada_live_gen";
+function liveGenPending() { try { const o = JSON.parse(sessionStorage.getItem(LIVE_GEN_KEY) || "{}"), now = Date.now(); Object.keys(o).forEach((k) => { if (now - o[k] > 30 * 60000) delete o[k]; }); return o; } catch (_) { return {}; } }
+function liveGenMark(ids) { try { const o = liveGenPending(); (ids || []).forEach((id) => { o[id] = Date.now(); }); sessionStorage.setItem(LIVE_GEN_KEY, JSON.stringify(o)); } catch (_) {} }
+function liveGenSkip(b, d) {
+  if (!window.LIVE_MODE) return false;
+  if (!(window.LIVE && window.LIVE.loaded)) return true;
+  if (!/^[0-9a-f-]{32,36}$/i.test(String(b.id))) return true;
+  if (d < TODAY) return true;
+  const w0 = dPlus(TODAY, -dow(TODAY)), w = dPlus(d, -dow(d));
+  if (w < w0 || w > dPlus(w0, 7)) return true;
+  const span = []; for (let x = w0; x <= dPlus(w, 13); x = dPlus(x, 1)) span.push(x);
+  if (span.some((x) => LIVE_LD[x] !== "ok")) { liveLessonDays(span); return true; }
+  for (let x = w0; x < w; x = dPlus(x, 7)) { const dd = dPlus(x, b.day); if (dd >= TODAY && !LIVE_L[lkey(b, dd)]) return true; }
+  if (LIVE_L[lkey(b, dPlus(d, 7))]) return true;
+  if (liveGenPending()[b.id]) return true;
+  return false;
 }
 /* 화면이 보는 날짜들의 수업을 받는다(이미 받은 날은 건너뜀). 다 받으면 다시 그린다 */
 function liveLessonDays(dates) {
