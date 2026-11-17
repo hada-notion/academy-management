@@ -62,7 +62,7 @@ function typed(host,o,icon,attrs,fmt,check,cls){const tag=cls==="hf-memo"?"texta
   b.onpointerdown=e=>{if(e.target===b||e.target.closest("svg:not(.hf-x svg)")){e.preventDefault();i.focus()}};
   i.oninput=()=>{if(fmt){const n=fmt(i.value);if(n!==i.value)i.value=n}has(b,i.value);grow();say(host,o.help||"");o.onChange&&o.onChange(i.value)};
   i.onblur=()=>{if(check){const m=i.value&&check(i.value);say(host,m||o.help||"",!!m)}};
-  const x=b.querySelector(".hf-x");if(x){x.onpointerdown=e=>e.preventDefault();x.onclick=()=>{i.value="";has(b,"");grow();say(host,o.help||"");i.focus();o.onChange&&o.onChange("")}}
+  const x=b.querySelector(".hf-x");if(x){x.onpointerdown=e=>e.preventDefault();x.onclick=()=>{i.value="";has(b,"");grow();say(host,o.help||"");i.focus();/* 526판: 바뀜을 change로 듣는 칸(onChange 없이 쓰는 칸)도 × 비우기를 알게 */if(o.onChange)o.onChange("");else i.dispatchEvent(new Event("change",{bubbles:true}))}}
   return {el:i,get value(){return i.value}}}
 const text=(host,o={})=>typed(host,o,o.icon||"type",`maxlength="${o.max||100}" autocomplete="off"`);
 const memo=(host,o={})=>typed(host,o,"memo",`maxlength="${o.max||1000}"`,null,null,"hf-memo");

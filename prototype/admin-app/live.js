@@ -127,7 +127,9 @@
      없어도(고르기 목록 · 표 편집처럼 _o를 안 남기는 길로 고친 경우) 지우지 않고 불러온 값으로 되돌린다. 기준은 받은 직후 · 저장 직후에 적는다 */
   const LIVE_STU0 = new Map();
   window.liveStuMark = () => { LIVE_STU0.clear(); (DB.students || []).forEach((s) => { if (s.state !== "draft") { /* 받은 직후 · 저장 직후의 저장된 학생 = 노션에 있는 학생 */ const c = Object.assign({}, s); delete c._o; LIVE_STU0.set(s.id, JSON.stringify(c)); } }); };
-  window.liveStuRestore = () => { if (!(window.LIVE && window.LIVE.loaded)) return; (DB.students || []).forEach((s) => { if (s.state !== "draft" || s._o || !LIVE_STU0.has(s.id)) return; const base = JSON.parse(LIVE_STU0.get(s.id)); Object.keys(s).forEach((k) => delete s[k]); Object.assign(s, base); }); };
+  /* 526판: 선택지에 없어 보내지 않은 값(학생과의 관계)은 저장 뒤 줄에 남기지 않는다 — 노션에 있는 값(되돌리기 기준)으로 돌리고, 보낸 값 기준도 맞춘다 */
+  window.liveSelBack = () => { const list = (window.LIVE_SEL || {})["학생과의 관계"]; if (!Array.isArray(list) || !list.length) return; (DB.students || []).forEach((s) => { if (s.state === "draft" || !s.gprel || list.includes(s.gprel) || !LIVE_STU0.has(s.id)) return; s.gprel = JSON.parse(LIVE_STU0.get(s.id)).gprel || ""; try { APPS_BASE.set("students:" + s.id, JSON.stringify(APPSAVE.students.props(s, appSaveX(DB, null)))); } catch (_) {} }); };
+  window.liveStuRestore =() => { if (!(window.LIVE && window.LIVE.loaded)) return; (DB.students || []).forEach((s) => { if (s.state !== "draft" || s._o || !LIVE_STU0.has(s.id)) return; const base = JSON.parse(LIVE_STU0.get(s.id)); Object.keys(s).forEach((k) => delete s[k]); Object.assign(s, base); }); };
   document.addEventListener("beforeinput", (e) => { if (document.body.classList.contains("live-ro") && e.target.closest && e.target.closest(".panel,#view table")) e.preventDefault(); }, true);
   /* 보기 칸의 쓰기는 여기 한 곳에서 막는다(화면마다 막지 않는다):
      ① 창 본문 · 창 아래 단추 줄의 누르는 것(단추 · 고르기 · 켜고 끄기 · 전송 · 삭제 · 생성)은 눌리기 전에 막는다. 이동(탭 · 줄 열기 · 도움말 · 노션 링크)만 지나간다.
@@ -319,6 +321,7 @@ async function liveSaveRun() {
   if (!res.failed.length) { try { LDIRTY.clear(); } catch (_) {} }
   /* 저장 뒤 실행 취소로 옛 id가 되살아나지 않게 되돌리기 기록을 비운다 */
   try { undoStack.length = 0; if (typeof redoStack !== "undefined") redoStack.length = 0; lastSnap = snapshot(); } catch (_) {}
+  try { if (window.liveSelBack) window.liveSelBack(); } catch (_) {}
   render(); try { savedSync(); } catch (_) {} try { if (window.liveStuMark) window.liveStuMark(); } catch (_) {} /* 저장된 학생의 되돌리기 기준을 새로 적는다 */
   const dels = (res.dels || []).length, warn = (res.warn || []).length;
   if (!res.failed.length && !dels && !warn) { say(`노션에 저장했어요 · ${res.ok}줄`); return res; }
