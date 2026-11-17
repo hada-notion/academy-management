@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=520">
-<link rel="stylesheet" href="app.css?v=520">
-<link rel="stylesheet" href="pick.css?v=520">
-<link rel="stylesheet" href="field.css?v=520">
+<link rel="stylesheet" href="hada-tokens.css?v=521">
+<link rel="stylesheet" href="app.css?v=521">
+<link rel="stylesheet" href="pick.css?v=521">
+<link rel="stylesheet" href="field.css?v=521">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=520"><script src="hada-rules.js?v=520"></script><script src="alim-preview.js?v=520"></script><script src="pick.js?v=520"></script><script src="field.js?v=520"></script><script src="panel.js?v=520"></script>
+<link rel="stylesheet" href="alim.css?v=521"><script src="hada-rules.js?v=521"></script><script src="alim-preview.js?v=521"></script><script src="pick.js?v=521"></script><script src="field.js?v=521"></script><script src="panel.js?v=521"></script>
 <script>
 "use strict";
 
@@ -3633,6 +3633,8 @@ document.addEventListener("keydown",e=>{const st=activeTab&&activeTab.state;if(!
   if(e.key==="Escape"){st.csel=null;document.querySelectorAll("#view td[data-csel]").forEach(x=>x.removeAttribute("data-csel"));return}
   const td=document.querySelector("#view td[data-csel]");if(!td)return;
   if(e.key==="Enter"||e.key==="F2"){e.preventDefault();e.stopPropagation();if(td.dataset.ge)gtCellEdit(td,L);return}
+  /* 521판: 한글 자판(조합 입력)은 첫 키가 "Process"(keyCode 229)로 온다 — 그때도 칸을 열어 두어야 첫 글자가 빠지지 않는다(막지 않고 빈 칸에 초점만 옮기면 조합이 그 칸에서 이어진다) */
+  if((e.key==="Process"||e.keyCode===229)&&td.dataset.ge){const sp=(L.fields||[]).find(f=>f[0]===td.dataset.ge);if(sp&&!sp[2]&&["text","tel","num","won","cnt","isbn","memo",undefined].includes(sp[3])){e.stopPropagation();gtCellEdit(td,L);const i=document.querySelector(".gted input,.gted textarea");if(i){i.value="";i.focus()}}return}
   if(e.key.length===1&&td.dataset.ge){const sp=(L.fields||[]).find(f=>f[0]===td.dataset.ge);if(sp&&!sp[2]&&["text","tel","num","won","cnt","isbn","memo",undefined].includes(sp[3])){e.preventDefault();e.stopPropagation();gtCellEdit(td,L);const i=document.querySelector(".gted input,.gted textarea");if(i){i.focus();i.value=e.key;i.dispatchEvent(new Event("input",{bubbles:true}));try{i.setSelectionRange(i.value.length,i.value.length)}catch(_){}}}}},true);
 
 function gtCellBox(box,td,spec){const rc=td.getBoundingClientRect(),t=spec&&spec[3];const need={date:150,datetime:230,days:320,multi:240,memo:240,seg:190,bool:190,sw:190,won:150,num:110,cnt:110}[t]||0;const w=Math.max(Math.round(rc.width),need);box.classList.add("cellmode");if(t==="memo")box.classList.add("tall");box.style.left=Math.max(8,Math.min(innerWidth-w-8,rc.left))+"px";box.style.top=rc.top+"px";box.style.width=w+"px";if(t!=="memo")box.style.height=Math.round(rc.height)+"px"}
@@ -4052,6 +4054,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del).slice().sort(
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="appdata.js?v=520"></script><script src="appsave.js?v=520"></script><script src="appview.js?v=520"></script><script src="livelesson.js?v=520"></script><script src="live.js?v=520"></script>
+<script src="appdata.js?v=521"></script><script src="appsave.js?v=521"></script><script src="appview.js?v=521"></script><script src="livelesson.js?v=521"></script><script src="live.js?v=521"></script>
 </body>
 </html>
