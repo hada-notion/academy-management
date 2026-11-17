@@ -76,7 +76,6 @@ Deno.test("같은 이름 DB가 여럿: Secrets id → 기준 DB와 같은 최상
 })
 
 Deno.test("앱 DB는 모두 예시 비우기 목록(비울 것·남길 것)에 있는 실제 DB 이름", () => {
-  // 기타경비(학원) DB(항목 70)는 아직 예시 비우기 목록에 없다(그쪽에서 정할 일) — 여기서는 빼고 대조한다.
-  for (const db of APP_DBS) if (db !== "기타경비(학원) DB") assertEquals(CLEAR_DBS.includes(db) || KEEP_DBS.includes(db), true, db)
+  for (const db of APP_DBS) assertEquals(CLEAR_DBS.includes(db) || KEEP_DBS.includes(db), true, db)
   assertEquals(isAppDb("수업(학원) DB"), false) // 수업·출석·학습기록·학습활동은 cr_* 복사본
 })
