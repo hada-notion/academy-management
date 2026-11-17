@@ -61,8 +61,14 @@ function liveLessonDayApply(date, res) {
   const put = (x, b) => { const k = lkey(b, x.at.d); used.add(k); const len = b.end > b.start ? b.end - b.start : 60;
     /* 시각은 시간표가 아니라 노션 수업의 시각 그대로(시간표를 고친 뒤에도 이미 만든 수업은 제 시각) */
     LIVE_L[k] = { id: x.s.id, sum: x.s.attendanceSummary || "", n: x.s.students || 0, start: x.at.m, end: x.end && x.end.m != null ? x.end.m : x.at.m + len }; x.done = true; };
-  const cands = (x) => DB.blocks.filter((b) => !b.del && b.classId === x.cid && b.day === dow(x.at.d) && !used.has(lkey(b, x.at.d))).sort((a, b) => (a.start == null) - (b.start == null) || (a.start || 0) - (b.start || 0) || String(a.id).localeCompare(String(b.id)));
-  list.forEach((x) => { if (x.s.makeup || !x.cid || !x.at || x.at.m == null) { x.skip = true; return; } const b = cands(x).find((c) => c.start === x.at.m); if (b) put(x, b); });
+  /* 525판(원본 검수 523 — 같은 반 · 같은 요일에 다른 시즌 시간표가 있으면 수업이 그쪽에 이어져 진짜 시간표가 "수업 없음"이 됐음):
+     ⓪ 시간표의 [수업] 관계에 그 수업 id가 있으면 그 시간표(노션이 말하는 그대로) ① 시작 시각이 같은 시간표 ② 남은 시간표에 차례로.
+     ① ②의 후보는 그 날짜가 적용 기간(시즌 기간 · 적용 기간) 안인 시간표만 — 다른 시즌 · 아직 시작 전인 시간표에는 잇지 않는다. */
+  const norm = (v) => String(v || "").replace(/-/g, "").toLowerCase();
+  const onDate = (b, d) => { try { return inPer(effPeriod(b), d); } catch (_) { return true; } };
+  const cands = (x) => DB.blocks.filter((b) => !b.del && b.classId === x.cid && b.day === dow(x.at.d) && !used.has(lkey(b, x.at.d)) && onDate(b, x.at.d)).sort((a, b) => (a.start == null) - (b.start == null) || (a.start || 0) - (b.start || 0) || String(a.id).localeCompare(String(b.id)));
+  list.forEach((x) => { if (x.s.makeup || !x.cid || !x.at || x.at.m == null) { x.skip = true; return; } const sid = norm(x.s.id); const b = DB.blocks.find((c) => !c.del && (c._lessonIds || []).some((v) => norm(v) === sid) && !used.has(lkey(c, x.at.d))); if (b) put(x, b); });
+  list.forEach((x) => { if (x.skip || x.done) return; const b = cands(x).find((c) => c.start === x.at.m); if (b) put(x, b); });
   list.forEach((x) => { if (x.skip || x.done) return; const b = cands(x)[0]; if (b) put(x, b); });
   list.forEach((x) => { if (x.skip || !x.done) miss++; });
   LIVE_LX[date] = miss;

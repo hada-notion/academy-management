@@ -153,6 +153,7 @@ const APPMAP = {
 				day: APP_DAYS.indexOf(X.str(p["요일"])), start: X.min(p["등원시간(HH:mm)"]), end: X.min(p["하원시간(HH:mm)"]),
 				regs: [...regs], mode: p["수업 방식"] === "개별 수업" ? "individual" : "group", state: "saved",
 				lessons: X.ids(p["수업"]).length > 0 || !!p["수업#more"],
+				_lessonIds: X.ids(p["수업"]), // 이 시간표에 이어진 노션 수업 id(관계는 25개까지 온다) — 수업 ↔ 시간표를 정확히 잇는 데 쓴다(livelesson.js)
 			}
 			if (X.d(per)) o.from = X.d(per)
 			if (X.dEnd(per)) o.to = X.dEnd(per)
