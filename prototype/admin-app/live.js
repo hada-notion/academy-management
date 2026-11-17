@@ -16,6 +16,59 @@
     if (!b) { b = document.createElement("div"); b.id = "liveBanner"; b.setAttribute("role", "status"); b.style.cssText = "position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:9999;padding:8px 14px;border-radius:10px;font-size:13px;box-shadow:0 2px 10px rgba(0,0,0,.12);max-width:90vw"; document.body.appendChild(b); }
     b.style.background = bad ? "#FDECEC" : "#FFF6DA"; b.style.color = "#3A3226"; b.textContent = msg;
   };
+  /* 칸 켜기(hada-rules.js GATES · GATES_ON): 꺼진 칸의 화면은 메뉴에서 빼고 열리지 않게 한다. 주소 &gates=P1,P2 = 검수용 */
+  const gOn = new Set(((/[?&]gates=([\w,]+)/.exec(location.search) || [])[1] || GATES_ON.join(",")).split(",").filter(Boolean));
+  window.gateOn = (s) => String(s).startsWith("ext:") || Object.entries(GATES).some(([g, list]) => gOn.has(g) && list.includes(s));
+  for (let i = MENU.length - 1; i >= 0; i--) { MENU[i][1] = MENU[i][1].filter((x) => gateOn(x[0])); if (!MENU[i][1].length) MENU.splice(i, 1); }
+  const os0 = openScreen;
+  openScreen = (s, ...rest) => { if (!gateOn(s)) { say("이 화면은 아직 열지 않았어요 — 노션에서 봐요"); return; } return os0(s, ...rest); };
+  try { /* 지난번에 열어 둔 탭이 꺼진 화면이면 학생 화면으로 */
+    const fix = (t) => { if (t && !gateOn(t.screen)) { t.screen = "students"; t.back = []; t.fwd = []; t.state = { season: "", mode: "edit", zoom: 2, filter: {}, sel: null, lf: {} }; } };
+    (typeof tabs !== "undefined" ? tabs : []).forEach(fix); if (typeof activeTab !== "undefined") fix(activeTab);
+  } catch (_) {}
+  /* 보기만(P2 보기 칸): 이 칸의 화면은 노션 값을 보여 주기만 한다. 쓰는 단추는 끄고, 창의 칸은 잠그고, 그래도 값이 바뀌면 그 자리에서 되돌린다.
+     고칠 것은 창 위 [노션에서 열기]로. (이 묶음들은 저장 층 대상이 아니라 노션에 갈 길도 없다) */
+  const P2ON = gOn.has("P2"), RO = new Set(GATES.P2);
+  window.liveRO = (s) => RO.has(s);
+  let roBase = null, roScreen = null, roBusy = false;
+  window.liveRoReset = () => { roBase = null; };
+  const roCss = document.createElement("style");
+  roCss.textContent = ".live-ro #view [data-gdel]{display:none!important}.ro-note{margin:0 0 10px;padding:8px 10px;border-radius:8px;background:#FFF6DA;color:#3A3226;font-size:13px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ro-note a{color:inherit;font-weight:600;text-decoration:underline}";
+  document.head.appendChild(roCss);
+  const roDress = () => {
+    const q = (s) => document.querySelectorAll(s), why = "보기만 하는 화면이에요 — 노션에서 해요";
+    q("#addRow,#tbEd,[data-act2]").forEach((b) => { b.disabled = true; b.title = why; });
+    q(".panel input:not([type=checkbox]):not([type=radio]),.panel textarea").forEach((i) => { i.readOnly = true; });
+    q(".panel select,.panel input[type=checkbox],.panel input[type=radio]").forEach((i) => { i.disabled = true; });
+    const p = document.querySelector(".panel"), id = String((activeTab.state || {}).sel || "");
+    if (p && /^[0-9a-f-]{32,36}$/i.test(id) && !p.querySelector(".ro-note")) {
+      const n = document.createElement("div"); n.className = "ro-note";
+      n.innerHTML = `<span>보기만 하는 화면이에요</span><a href="https://www.notion.so/${id.replace(/-/g, "")}" target="_blank" rel="noopener">노션에서 열기</a>`;
+      const body = p.querySelector(".pbody"); body ? body.insertBefore(n, body.firstChild) : p.appendChild(n);
+    }
+  };
+  const roLock = () => {
+    const t = typeof activeTab !== "undefined" ? activeTab : null, on = !!(t && window.LIVE && window.LIVE.loaded && RO.has(t.screen));
+    document.body.classList.toggle("live-ro", on);
+    if (!on) { roBase = null; roScreen = null; return; }
+    const now = snapshot();
+    if (roBase === null || roScreen !== t.screen) { roBase = now; roScreen = t.screen; }
+    else if (now !== roBase && !roBusy) {
+      roBusy = true;
+      try {
+        Object.assign(DB, JSON.parse(roBase)); lastSnap = snapshot();
+        if (undoStack.length && undoStack[undoStack.length - 1] === roBase) undoStack.pop();
+        r0(); say("이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요");
+      } finally { roBusy = false; }
+      const after = snapshot(); if (after !== roBase) roBase = after; /* 그리면서 스스로 바뀌는 값은 받아들인다(되돌리기를 되풀이하지 않게) */
+    }
+    roDress();
+  };
+  const r0 = render;
+  render = function () { const out = r0.apply(this, arguments); try { roLock(); } catch (_) {} return out; };
+  /* 되돌리기 · 다시 하기 · 모두 되돌리기는 입력 칸(P1)의 값을 움직이는 일이라 보기 화면에서도 막지 않는다 */
+  ["undo", "redo", "revertAll"].forEach((k) => { try { const f0 = eval(k); eval(k + " = function () { roBase = null; return f0.apply(this, arguments); }"); } catch (_) {} });
+  document.addEventListener("beforeinput", (e) => { if (document.body.classList.contains("live-ro") && e.target.closest && e.target.closest(".panel,#view table")) e.preventDefault(); }, true);
   const wipe = () => { try { appApply({}, DB); if (typeof lastSnap !== "undefined" && typeof snapshot === "function") lastSnap = snapshot(); if (typeof undoStack !== "undefined") undoStack.length = 0; if (typeof render === "function") render(); } catch (_) {} };
   wipe();
   banner("노션 자료를 받는 중이에요 — 받기 전에는 저장할 수 없어요");
@@ -43,7 +96,8 @@
       window.LIVE = null; wipe();
       banner("노션 자료를 받는 중이에요 — 받기 전에는 저장할 수 없어요");
       try {
-        await appLoad({ url: cfg.url, anonKey: cfg.anonKey, session });
+        /* 보기 칸(P2)이 켜져 있으면 보기 묶음(일정 · 보고서 · 수강료 · 청구 · 시험 · 알림톡 설정 · 자료)도 함께 받는다 */
+        await (P2ON && typeof appViewLoad === "function" ? appViewLoad : appLoad)({ url: cfg.url, anonKey: cfg.anonKey, session });
         appSaveMark(DB); /* 불러온 값을 기준으로 적어 둠 — 저장 때 달라진 칸만 보냄 */
         try { liveOptions(await liveApi({ url: cfg.url, anonKey: cfg.anonKey, session }, { action: "options" })); } catch (_) { /* 선택지를 못 받아도 화면은 열린다(저장 때 서버가 거름) */ }
         /* loaded = 이번에 노션 자료를 끝까지 받았다는 표시. 이 표시가 있을 때만 저장한다 */
@@ -156,6 +210,7 @@ async function liveSaveRun() {
   try { res = await appSaveSend(window.LIVE, DB); }
   catch (e) { say("저장하지 못했어요 — " + e.message); return null; }
   /* 새 줄은 노션 id로 바뀐다: 열려 있는 탭이 가리키던 옛 id도 바꾼다 */
+  if (window.liveRoReset) window.liveRoReset(); /* 보기 화면에서 저장했을 때 저장 결과(새 id · 저장됨)를 되돌리지 않게 */
   const map = res.idMap || {};
   const fix = (st) => { if (!st) return; ["sel", "season"].forEach((k) => { if (map[st[k]]) st[k] = map[st[k]]; }); };
   try { (typeof tabs !== "undefined" ? tabs : []).forEach((t) => fix(t.state)); if (typeof activeTab !== "undefined" && activeTab) fix(activeTab.state); } catch (_) {}

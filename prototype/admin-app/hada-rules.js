@@ -49,6 +49,15 @@ function IC(n,c){return `<svg class="i ${c||""}" viewBox="0 0 24 24" aria-hidden
 /* ================= 메뉴(아이콘의 기준) ================= */
 const MENU=[["운영",[["today","홈","home"],["events","일정","calendar"],["teachers","직원","users"]]],["수업",[["lesson","수업","edit3"],["makeup","보강","repeat"],["records","학습기록","clip"]]],["학생",[["students","학생","user"],["schools","학교","school"],["exams","시험","award"]]],["수강",[["classes","클래스","layers"],["enrolls","등록","usercheck"],["timetable","시간표","grid"]]],["교재",[["subjects","과목","bookmark"],["books","라이브러리","shelf"],["progress","진도","trendup"]]],["보고 · 안내",[["reports","정기 보고서","filetext"],["completion","수료 보고서","checksq"],["letters","가정통신문","mail"]]],["재무",[["tuition","수강료","cash"],["bill","청구서","receipt"],["profit","손익 분석","activity"]]],["설정",[["files","자료실","folder"],["alims","알림톡 설정","msg"],["admin","관리자 설정","settings"]]],["매뉴얼 · 데이터",[["ext:manual","매뉴얼","ext"],["ext:pubdb","공개 DB","ext"],["ext:privdb","비공개 DB","ext"]]]];
 function menuIcon(k){for(const g of MENU)for(const x of g[1])if(x[0]===k)return x[2];return ""}
+/* ================= 칸 켜기(실제 자료 모드에서 여는 화면) =================
+   목표 사다리의 칸마다 화면 묶음. 출시 판은 원본 검수를 통과한 칸만 GATES_ON에 넣는다(여기 한 곳).
+   실제 자료 모드(?live=1)에서만 쓴다 — 꺼진 칸의 화면은 왼쪽 메뉴에서 빠지고 열리지 않는다. 예시 모드는 모두 보인다.
+   검수용: 주소에 &gates=P1,P2 처럼 적으면 그 칸들로 연다(출시 전 시험).
+   P1 입력 장치 · P2 보기 1:1 · P3 수업 쓰기 · P6 옛 HTML 흡수(관리자 설정). 화면 이름 = openScreen에 넘기는 이름. */
+const GATES={P1:["teachers","students","schools","glevels","classes","enrolls","timetable","seasons","subjects","areas","books","progress"],
+ P2:["today","events","exams","reports","completion","letters","tuition","bill","bookfees","charges","etcs","costs","profit","files","alims"],
+ P3:["lesson","makeup","records"],P6:["admin"]};
+const GATES_ON=["P1"];
 /* 1) 메뉴와 연결된 칸 = 그 메뉴 아이콘(대표 261115). 메뉴 아이콘을 바꾸면 같이 바뀜 */
 const MENU_LINK=[[/^(학생|받는 학생|대상 학생|응시 학생|형제자매|형제·자매|학생\(개별일 때\)|학생 이름|학생이름)$/,"students"],[/^(선생님|담당 강사|담당자|강사|담당 선생님|담당)$/,"teachers"],[/^(클래스|등록 클래스|수강 클래스|클래스 이름)$/,"classes"],[/^학교$/,"schools"],[/^학년$/,"@gradcap"],[/^시험$/,"exams"],[/^시즌$/,"seasons"],[/^(과목|영역)$/,"subjects"],[/^(교재|프로그램|교재·프로그램)$/,"books"],[/^일정$/,"events"],[/^(보고서|학습 보고서)$/,"reports"],[/^수강료$/,"tuition"],[/^청구$/,"bill"],[/^교재비$/,"bookfees"],[/^등록$/,"enrolls"],[/^시간표$/,"timetable"],[/^가정통신문$/,"letters"],[/^진도$/,"progress"]];
 /* 2) 뜻을 보여 주는 예외(대표 지정) — 칸 종류 규칙보다 먼저 */
