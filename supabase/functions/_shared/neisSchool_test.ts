@@ -1,4 +1,4 @@
-import { eventKey, eventGrades, ownedProperties, newEventProperties, hasLockColumn, schoolCategory, newCategoryOption, categoryOptionsOf, safeWebsite, type NeisRow } from "./neisSchool.ts"
+import { eventKey, eventGrades, ownedProperties, newEventProperties, schoolCategory, newCategoryOption, categoryOptionsOf, safeWebsite, type NeisRow } from "./neisSchool.ts"
 function assert(v: unknown, message = "assertion failed") { if (!v) throw new Error(message) }
 const row: NeisRow = { ATPT_OFCDC_SC_CODE: "B10", SD_SCHUL_CODE: "7041238", AY: "2026", AA_YMD: "20261002", EVENT_NM: "중간고사", EVENT_CNTNT: "", SCHUL_CRSE_SC_NM: "중학교", ONE_GRADE_EVENT_YN: "N", TW_GRADE_EVENT_YN: "Y", THREE_GRADE_EVENT_YN: "N", SBTR_DD_SC_NM: "해당없음" }
 Deno.test("대상 학년 Y만 연결", () => assert(JSON.stringify(eventGrades(row)) === "[2]"))
@@ -73,14 +73,10 @@ Deno.test("구분 옵션 이름은 학원 DB의 것(이모지가 달라도 글�
  assert(props["숨김"].checkbox === true && props["학부모 공개"].checkbox === false)
 })
 
-Deno.test("나이스 새 일정은 잠금 켬(칸 있는 학원만), 다시 가져오기는 잠금을 건드리지 않음", () => {
- assert(newEventProperties(row, "school", "key", [], OPTIONS, true)["잠금"]?.checkbox === true)
- assert(!("잠금" in newEventProperties(row, "school", "key", [], OPTIONS, false)))
+Deno.test("(2.8 잠금 칸 버림) 나이스 새 일정·다시 가져오기 모두 잠금을 쓰지 않음", () => {
+ assert(!("잠금" in newEventProperties(row, "school", "key", [], OPTIONS)))
  assert(!("잠금" in newEventProperties(row, "school", "key", [])))
  assert(!("잠금" in ownedProperties(row, "school", "key", [])))
- assert(hasLockColumn({ properties: { "잠금": { type: "checkbox", checkbox: {} } } }))
- assert(!hasLockColumn({ properties: {} }))
- assert(!hasLockColumn({ properties: { "잠금": { type: "rich_text", rich_text: {} } } }))
 })
 
 Deno.test("시험 낱말 넓힘: 지필·평가도 시험, 휴업일이면 방학/휴교가 먼저", () => {

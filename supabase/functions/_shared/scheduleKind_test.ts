@@ -62,8 +62,8 @@ Deno.test("나이스 새 일정: 세부 칸·선택지가 있을 때만 채움, 
   const DETAIL = ["✅ 할일", "💤 학원 휴원", "📆 학원 행사", "💬 상담", "📝 테스트", "👔 직원 회의", "🏫 학교 행사", "📝 시험", "🏖️ 방학", "🚫 학교 휴업"]
   const schema = { properties: { 구분: { type: "formula" }, "세부 구분": { type: "select", select: { options: DETAIL.map((name) => ({ name })) } } } }
   assert(!categoryIsSelect(schema) && detailOptionsOf(schema).length === 10)
-  const p: any = newEventProperties({ ...row, EVENT_NM: "추석", SBTR_DD_SC_NM: "공휴일" }, "s", "k", [], ["🏫 학교 행사"], true, { categorySelect: false, detailOptions: detailOptionsOf(schema) })
-  assert(!("구분" in p) && p["세부 구분"].select.name === "🚫 학교 휴업" && p["숨김"].checkbox === true && p["잠금"].checkbox === true)
+  const p: any = newEventProperties({ ...row, EVENT_NM: "추석", SBTR_DD_SC_NM: "공휴일" }, "s", "k", [], ["🏫 학교 행사"], { categorySelect: false, detailOptions: detailOptionsOf(schema) })
+  assert(!("구분" in p) && p["세부 구분"].select.name === "🚫 학교 휴업" && p["숨김"].checkbox === true && !("잠금" in p))
   // 세부 칸이 없는 학원(이관 전): 세부는 안 쓰고 구분만(예전과 같음)
   const old: any = newEventProperties(row, "s", "k", [], ["🏫 학교 행사"])
   assert(!("세부 구분" in old) && old["구분"].select.name === "🏫 학교 행사")
