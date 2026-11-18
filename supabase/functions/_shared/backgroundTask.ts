@@ -10,6 +10,20 @@ export function runInBackground(task: () => Promise<void>): void {
 	}
 }
 
+// (v2.8.0 항목 95) 웹훅 응답 제한(노션 자동화·웹훅 길잡이 25초)에 걸리지 않게: 기다리라고 하지 않았으면 바로 202로 답하고
+// 일은 뒤에서 끝낸다(결과는 로그). wait면 끝까지 기다려 결과를 돌려준다(보고서 발송 직전처럼 결과가 필요한 내부 호출).
+export async function respondNowOrAwait(
+	wait: boolean,
+	work: () => Promise<Record<string, unknown>>,
+	label: string,
+	extra: Record<string, unknown> = {},
+	headers: Record<string, string> = {},
+): Promise<Response> {
+	if (wait) return new Response(JSON.stringify(await work()), { headers: { ...headers, "Content-Type": "application/json" } })
+	runInBackground(async () => { console.log(label, JSON.stringify(await work())) })
+	return respondAccepted(extra)
+}
+
 // [FIX, 2026-09-19] 이 202 응답에는 CORS 헤더(Access-Control-Allow-Origin 등)가 없었다.
 // Notion 자동화(서버-to-서버 웹훅)는 브라우저가 아니라서 지금까지는 문제가 안 됐지만,
 // student_report.html의 "동기화" 버튼처럼 브라우저에서 직접 sync-report-cache를 호출하는
