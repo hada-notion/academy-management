@@ -36,6 +36,7 @@ import {
 } from "./constants.ts"
 // (2026-09-21, 이식성 리팩토링) 위 4개도 constants.ts로 이동함 — 그 파일 상단 주석 참고.
 import { markRunning, markDone, markError, type StatusSpec } from "./statusTracking.ts"
+import { seoulLabel } from "./seoulLabel.ts"
 import { findNextDeadline } from "./assignmentDeadline.ts"
 // (2026-09-22, 처리 상태 관리 리팩토링 Phase 3) "출제 처리중"(checkbox)을 활동 생성 상태(select)+활동 생성
 // 처리 시작 시각(date)으로 전환. 마스터플랜 표에는 이 항목이 "학습활동 DB 출제 처리중"으로 적혀
@@ -72,7 +73,6 @@ export const ASSIGNMENT_GEN_STATUS_SPEC: StatusSpec = {
 	startedAtProp: "학습활동 생성 시작 시각",
 }
 
-const WEEKDAY_KO = ["일", "월", "화", "수", "목", "금", "토"]
 
 type JsonRecord = Record<string, unknown>
 
@@ -124,13 +124,8 @@ export function dedupe(ids: string[]): string[] {
 	return Array.from(new Set(ids))
 }
 
-function formatKoreanDateLabel(isoDate: string): string {
-	const d = new Date(isoDate)
-	const mm = String(d.getMonth() + 1).padStart(2, "0")
-	const dd = String(d.getDate()).padStart(2, "0")
-	const weekday = WEEKDAY_KO[d.getDay()]
-	return `${mm}.${dd}(${weekday})`
-}
+// 제목 날짜는 한국 시각으로(_shared/seoulLabel.ts) — 아침 9시 전 수업이 전날로 붙지 않게(261119).
+const formatKoreanDateLabel = seoulLabel
 
 async function findNextAttendance(registrationId: string, afterIso: string): Promise<string | null> {
   return await findNextDeadline({ getPage, query: queryDataSource, update: async () => {}, attendanceDb: DS_ATTENDANCE, activityDb: DS_STUDY_ACTIVITY }, registrationId, afterIso)
