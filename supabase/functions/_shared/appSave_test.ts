@@ -78,6 +78,11 @@ Deno.test("저장 요청 검사: 빈 목록 · 많은 줄 · 쓸 수 없는 DB �
     assertThrows(() => checkChanges(bad), SaveError)
   assertEquals(checkChanges([{ op: "create", db: "등록(학원) DB", tmp: "tmp:e1", props: {} }]).length, 1)
   assertEquals([isWriteDb("시간표(학원) DB"), isWriteDb("청구서(학원) DB")], [true, false])
+  // (261119) 시험 화면 입력은 쓰기, 재무는 아직 읽기만
+  assertEquals(["시험(학원) DB", "시험정보(학원) DB", "성적(학원) DB"].map(isWriteDb), [true, true, true])
+  assertEquals(["수강료(학원) DB", "결제(학원) DB", "청구 결제(학원) DB", "청구 항목(학원) DB"].map(isWriteDb), [false, false, false, false])
+  assertEquals(checkChanges([{ op: "create", db: "성적(학원) DB", props: {} }]).length, 1)
+  assertThrows(() => checkChanges([{ op: "delete", db: "성적(학원) DB", id: ID, props: {} }]), SaveError)
 })
 
 // ---------- saveChanges(가짜 Notion · Supabase) ----------

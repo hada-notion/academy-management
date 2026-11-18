@@ -2,7 +2,7 @@
 //
 // (v2.8.0 항목 75) 관리 앱 저장 — 데이터 이관 입력 범위만 Notion에 쓴다(원본은 Notion, 앱은 입력 장치).
 //
-// - 쓸 수 있는 DB = WRITE_DBS(선생님 · 학생 · 클래스 · 시즌 · 시간표 · 등록 · 진도관리 · 라이브러리 · 기준 정보). 그 밖 DB는 읽기만.
+// - 쓸 수 있는 DB = WRITE_DBS(선생님 · 학생 · 클래스 · 시즌 · 시간표 · 등록 · 진도관리 · 라이브러리 · 기준 정보 · 일정 · 시험 · 시험정보 · 성적). 그 밖 DB는 읽기만.
 // - 앱은 읽을 때와 같은 평평한 값(appCopy.flattenProps 모양)으로 보낸다. 서버가 그 DB의 Notion 칸 형식을 읽어 속성 값으로 바꾼다
 //   (toNotionProps). 칸 이름이 없거나, 수식 · 롤업 · 버튼처럼 쓸 수 없는 칸이거나, 고르기 값이 Notion 선택지에 없으면 그 줄을 쓰지 않고
 //   이유를 돌려준다(오타로 새 선택지가 생기지 않게).
@@ -25,6 +25,9 @@ export const WRITE_DBS = [
 	"라이브러리(학원) DB", "과목(학원) DB", "영역(학원) DB", "학교(학원) DB", "학년(학원) DB",
 	// (2.8, 담당 261118) 일정 공개 화면: 앱이 쓰는 칸만(EVENT_PROPS). 잠긴 줄의 날짜는 서버도 거절.
 	"일정(학원) DB",
+	// (2.8, 담당 261119 연결 준비) 시험 화면 입력: 시험 · 시험정보 · 성적(노션에서 줄을 직접 고치는 것과 같음 — 보내기 없음).
+	// 재무(수강료 · 결제 · 청구서 · 청구 결제)는 아직 읽기만 — [결제] 버튼 단계를 서버 동작으로 옮긴 뒤(N-18·19).
+	"시험(학원) DB", "시험정보(학원) DB", "성적(학원) DB",
 ] as const
 export type WriteDb = typeof WRITE_DBS[number]
 export const isWriteDb = (v: unknown): v is WriteDb => typeof v === "string" && (WRITE_DBS as readonly string[]).includes(v)
