@@ -2,7 +2,7 @@
 // Notion · Supabase는 모두 가짜 응답. 실제 키 · 데이터 없음.
 import { assertEquals, assertThrows } from "https://deno.land/std@0.224.0/assert/mod.ts"
 for (const [k, v] of Object.entries({ NOTION_TOKEN: "test-only", SB_URL: "https://mock.supabase", SB_SERVICE_ROLE_KEY: "test-only" })) Deno.env.set(k, v)
-const { toNotionProps, checkChanges, saveChanges, runGenerateClasses, writeOptions, SaveError, isWriteDb, checkAllowedProps, lockedDateProblem, eventAffectsReport, saveDeps } = await import("./appSave.ts")
+const { toNotionProps, checkChanges, saveChanges, runGenerateClasses, writeOptions, SaveError, isWriteDb, checkAllowedProps, eventAffectsReport, saveDeps } = await import("./appSave.ts")
 const refreshed: string[] = []
 saveDeps.refreshReport = (id: string) => { refreshed.push(id) }
 
@@ -137,30 +137,25 @@ Deno.test("앞 줄이 실패하면 그 tmp를 가리키는 뒤 줄도 실패, �
 
 // ---------- 일정(학원) DB(2.8): 앱이 쓰는 칸만, 잠긴 줄 날짜 거절, 리포트 맞추기 ----------
 const EV = "일정(학원) DB"
-Deno.test("일정: 받는 칸 11개만, 그 밖 칸은 거절", () => {
-  checkAllowedProps(EV, { 이름: "x", 날짜: { start: "2026-04-27", end: "2026-04-30" }, "세부 구분": "시험", "기록(내부용)": "", 잠금: true, 숨김: false, "학부모 공개": true, 클래스: [], 학생: [], 학교: [], 학년: [] })
-  for (const p of [{ 메모: "x" }, { "NEIS 동기화키": "k" }, { 수업공제일명: "x" }, { "원본 행사내용": "x" }]) assertThrows(() => checkAllowedProps(EV, p), SaveError)
+Deno.test("일정: 받는 칸 10개만(잠금 칸 버림), 그 밖 칸은 거절", () => {
+  checkAllowedProps(EV, { 이름: "x", 날짜: { start: "2026-04-27", end: "2026-04-30" }, "세부 구분": "시험", "기록(내부용)": "", 숨김: false, "학부모 공개": true, 클래스: [], 학생: [], 학교: [], 학년: [] })
+  for (const p of [{ 메모: "x" }, { "NEIS 동기화키": "k" }, { 수업공제일명: "x" }, { "원본 행사내용": "x" }, { 잠금: true }]) assertThrows(() => checkAllowedProps(EV, p), SaveError)
   checkAllowedProps("학생(학원) DB", { 메모: "x" }) // 다른 DB는 그대로
 })
-Deno.test("일정: 잠긴 줄의 날짜만 거절, 잠금·숨김은 고칠 수 있음, 리포트 맞추기는 잠금만 바꾼 때 빼고", () => {
-  const locked = { properties: { 잠금: { checkbox: true } } }
-  assertEquals(typeof lockedDateProblem(EV, locked, { 날짜: "2026-05-01" }), "string")
-  assertEquals(lockedDateProblem(EV, locked, { 잠금: false, 숨김: true }), null)
-  assertEquals(lockedDateProblem(EV, { properties: { 잠금: { checkbox: false } } }, { 날짜: "2026-05-01" }), null)
-  assertEquals(lockedDateProblem("학생(학원) DB", locked, { 날짜: "2026-05-01" }), null)
-  assertEquals([eventAffectsReport(EV, { 잠금: true }), eventAffectsReport(EV, { "학부모 공개": false }), eventAffectsReport("학생(학원) DB", { 이름: "x" })], [false, true, false])
+Deno.test("일정: 리포트 맞추기는 기록(내부용)만 바꾼 때 빼고", () => {
+  assertEquals([eventAffectsReport(EV, { "학부모 공개": false }), eventAffectsReport(EV, { 날짜: "2026-05-01" }), eventAffectsReport("학생(학원) DB", { 이름: "x" })], [true, true, false])
 })
-Deno.test("일정 저장: 잠긴 줄 날짜 끌기는 쓰지 않음(409), 숨김 고치기는 쓰고 리포트 맞춤", async () => {
+Deno.test("일정 저장: (잠금 칸 버림) 예전에 잠긴 줄이어도 날짜를 쓰고, 숨김 고치기도 쓰고 리포트 맞춤", async () => {
   refreshed.length = 0
   let calls = mockFetch({ copyDb: EV, locked: true })
   let r = await saveChanges(checkChanges([{ op: "update", db: EV, id: ID, props: { 날짜: { start: "2026-05-01", end: "2026-05-03" } } }]))
-  assertEquals([r[0].ok, r[0].error?.includes("잠긴 일정")], [false, true])
-  assertEquals(calls.some((c) => c.method === "PATCH"), false)
+  assertEquals(r[0].ok, true)
+  assertEquals(calls.some((c) => c.method === "PATCH"), true)
   calls = mockFetch({ copyDb: EV, locked: true })
   r = await saveChanges(checkChanges([{ op: "update", db: EV, id: ID, props: { "학부모 공개": false } }]))
   assertEquals(r[0].ok, true)
   assertEquals(calls.some((c) => c.method === "PATCH"), true)
-  assertEquals(refreshed, [ID])
+  assertEquals(refreshed, [ID, ID]) // 날짜·학부모 공개 둘 다 리포트에 영향
   r = await saveChanges(checkChanges([{ op: "update", db: EV, id: ID, props: { 메모: "x" } }]))
   assertEquals(r[0].ok, false)
 })
