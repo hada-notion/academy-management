@@ -108,7 +108,7 @@ async function processRun(runId: string) {
         if(previous)byKey.set(key,previous);else{byKey.delete(key);delete created[key]}
       }
       if(previous){if(!sameOwnedEvent(previous,row,page.id,key,gradeIds))await updatePageProperties(previous.id,properties)}
-      else{const p=await schoolNotion("/pages","POST",{parent:{data_source_id:sources.events},properties:newEventProperties(row,page.id,key,gradeIds,sources.categoryOptions,sources.hasLock,{categorySelect:sources.categorySelect,detailOptions:sources.detailOptions})});byKey.set(key,p);created[key]=p.id}
+      else{const p=await schoolNotion("/pages","POST",{parent:{data_source_id:sources.events},properties:newEventProperties(row,page.id,key,gradeIds,sources.categoryOptions,{categorySelect:sources.categorySelect,detailOptions:sources.detailOptions})});byKey.set(key,p);created[key]=p.id}
       }
       await db(path,"PATCH",{row_cursor:cursor+1,created_keys:created,updated_at:new Date().toISOString()})
       await new Promise(resolve=>setTimeout(resolve,400))

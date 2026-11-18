@@ -70,7 +70,7 @@ export function ownedProperties(row: NeisRow, pageId: string, key: string, grade
     "대상 학년": richText(eventGrades(row).map(n => `${n}학년`).join(", ") || "미지정"),
     "수업공제일명": richText(row.SBTR_DD_SC_NM), "원본 행사내용": richText(row.EVENT_CNTNT),
     "NEIS 동기화키": richText(key),
-    // 구분/숨김/학부모 공개/잠금/메모/태그/담당자/진행상태/본문은 동기화 소유가 아니므로 절대 덮어쓰지 않는다(구분은 새로 만들 때만).
+    // 구분/숨김/학부모 공개/메모/태그/담당자/진행상태/본문은 동기화 소유가 아니므로 절대 덮어쓰지 않는다(구분은 새로 만들 때만).
   }
 }
 
@@ -97,12 +97,6 @@ export function newCategoryOption(row: NeisRow, categoryOptions: string[]): stri
     ?? LEGACY_SCHOOL_OPTION
 }
 
-// 최초 생성 전용. 기존 일정 업데이트에는 ownedProperties만 사용한다(구분·숨김·학부모 공개는 사람이 고친 값 유지).
-// 일정 DB에 체크 칸 `잠금`이 있나(없는 학원은 잠금을 쓰지 않음).
-export function hasLockColumn(schema: any): boolean {
-  return schema?.properties?.["잠금"]?.type === "checkbox"
-}
-
 // (2.8 2단계, 대표 261118) 나이스 일정의 `세부 구분`(새로 만들 때만): ① 이름에 "방학"(방학식 빼고) → 방학
 // ② 수업공제일명 휴업일·공휴일 또는 이름에 "토요휴업일" → 학교 휴업 ③ 이름에 시험 낱말 → 시험 ④ 그 밖 → 학교 행사.
 // 공휴일도 새 일정이라 숨김 그대로(모든 새 나이스 일정은 숨김·비공개로 만든다).
@@ -123,9 +117,10 @@ export function categoryIsSelect(schema: any): boolean {
   return schema?.properties?.["구분"]?.type === "select"
 }
 
-// hasLock = 일정 DB에 `잠금` 체크 칸이 있음 → 나이스에서 온 새 일정은 잠금 켬(대표 261118, 숨김·학부모 공개처럼 처음 만들 때만).
+// 최초 생성 전용. 기존 일정 업데이트에는 ownedProperties만 사용한다(구분·숨김·학부모 공개는 사람이 고친 값 유지).
 // extra.categorySelect = false면 `구분`을 쓰지 않음(수식), extra.detailOptions에 맞는 선택지가 있으면 `세부 구분`을 채움.
-export function newEventProperties(row: NeisRow, pageId: string, key: string, gradeIds: string[], categoryOptions: string[] = [], hasLock = false,
+// (2.8, 대표 261118) 일정 `잠금` 칸은 버림 — 잠금을 쓰지 않는다(관리 앱이 학사 일정을 스스로 잠가 보여 줌).
+export function newEventProperties(row: NeisRow, pageId: string, key: string, gradeIds: string[], categoryOptions: string[] = [],
   extra: { categorySelect?: boolean; detailOptions?: string[] } = {}) {
   const want = detailKind(row)
   const detail = (extra.detailOptions ?? []).find(o => categoryName(o) === want)
@@ -135,7 +130,6 @@ export function newEventProperties(row: NeisRow, pageId: string, key: string, gr
     ...(detail ? { [DETAIL_PROP]: { select: { name: detail } } } : {}),
     "숨김": { checkbox: true },
     "학부모 공개": { checkbox: false },
-    ...(hasLock ? { "잠금": { checkbox: true } } : {}),
   }
 }
 

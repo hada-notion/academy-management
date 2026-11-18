@@ -1,6 +1,6 @@
 import { NOTION_API, DS_SCHEDULE_EVENT } from "./constants.ts"
 import { fetchWithRetry, notionHeaders } from "./notionClient.ts"
-import { categoryOptionsOf, hasLockColumn, detailOptionsOf, categoryIsSelect } from "./neisSchool.ts"
+import { categoryOptionsOf, detailOptionsOf, categoryIsSelect } from "./neisSchool.ts"
 export async function schoolNotion(path: string, method = "GET", body?: unknown): Promise<any> {
   if (!DS_SCHEDULE_EVENT) throw new Error("DATA_SOURCE_SCHEDULE_EVENT_ID 설정 필요")
   const init = { method, headers: notionHeaders(), body: body === undefined ? undefined : JSON.stringify(body) }
@@ -16,7 +16,7 @@ export async function schoolSources() {
   const schools = db.properties?.["학교"]?.relation?.data_source_id
   const grades = db.properties?.["학년"]?.relation?.data_source_id
   if (!schools || !grades) throw new Error("일정 DB 학교/학년 관계 연결 확인 필요")
-  return { schools, grades, events: DS_SCHEDULE_EVENT, categoryOptions: categoryOptionsOf(db), hasLock: hasLockColumn(db),
+  return { schools, grades, events: DS_SCHEDULE_EVENT, categoryOptions: categoryOptionsOf(db),
     // (2.8 2단계) 세부 구분 선택지(없으면 채우지 않음), 구분이 선택 칸인지(수식이 되면 쓰지 않음)
     detailOptions: detailOptionsOf(db), categorySelect: categoryIsSelect(db) }
 }
