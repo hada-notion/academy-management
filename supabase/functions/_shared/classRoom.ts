@@ -51,6 +51,8 @@ import { textbookSources } from "./textbookSearch.ts"
 import { cleanUnitIds, selectedUnitsProp, unitNamesOf, unitTextOf, unitIdsOf } from "./selectedUnits.ts"
 import { runInBackground } from "./backgroundTask.ts"
 import { seoulLabel } from "./seoulLabel.ts"
+import { assignMakeup, checkAbsence, MakeupError, waitingFilter, MAKEUP_DECISION, MAKEUP_SESSION, ORIGINAL_ABSENCE } from "./makeupAssign.ts"
+import { isDeletingFlagSet, queueCascadeDelete } from "./cascadeDeleteTarget.ts"
 import { mirrorJobs, mirrorPageIds, mirrorSaved, removePages } from "./classRoomCopy.ts"
 import { libraryIds } from "./libraryProp.ts"
 import { isMakeupSession, SESSION_KIND_MAKEUP, SESSION_KIND_PROP } from "./sessionKind.ts"
@@ -951,67 +953,93 @@ export async function createActivities(recordId: string) {
 	return { status: "started", students: registrationIds.length }
 }
 
-// ---------- 보강 대기실 ----------
-// 고른 보강 출석들로 보강 수업을 만든다(1명=1:1, 여러 명=그룹). 시간표·클래스는 비워 두고 `수업 구분`을 보강으로 둔다.
+// ---------- 보강 (v2.8.0 항목 92, C1 — v2.8 노션 보강 모델 하나로) ----------
+// 노션과 같은 흐름: 결석 `보강 여부` → `보강 수업` → [보강 배정] → 🔵 보강 출석(`기존 결석` = 원래 결석).
+// [보강 배정]은 _shared/makeupAssign.ts 한 곳, 지우기는 노션 [삭제]와 같은 큐(cascade-delete)라 결석이 보강 대기로 돌아오는 정리도 같다.
+// (옛 방식 — 수업 없는 🔵 보강 출석을 대기실로 보고 그 출석을 보강 수업에 붙이기 — 은 v2.8에서 쓰지 않는다.)
+const makeupError = (err: unknown): never => {
+	if (err instanceof MakeupError) throw new ClassRoomError(err.status, err.message)
+	throw err
+}
+async function mirrorMakeup(sessionId: string, attendanceIds: string[]) {
+	await mirrorJobs([["cr_sessions", [sessionId]], ["cr_attendance", attendanceIds]]) // 복사본 함께 쓰기(v2.5.115)
+}
+
+// 노션 "보강 대기" 보기와 같은 목록(판단 안 한 결석 + 보강 필요인데 배정 안 된 결석).
+export async function loadMakeupWaiting() {
+	const rows = await queryAllPages(DS_ATTENDANCE, waitingFilter())
+	return {
+		waiting: rows.map((a: Page) => ({
+			attendanceId: a.id as string,
+			registrationId: rel(a, "등록")[0] ?? null,
+			name: studentName(a),
+			className: formulaString(a, "클래스(알림톡)") ?? "",
+			start: a.properties?.["수업일시"]?.date?.start ?? null,
+			decision: selectName(a, MAKEUP_DECISION) ?? "",
+			sessionId: rel(a, MAKEUP_SESSION)[0] ?? null,
+		})).sort((x, y) => String(x.start ?? "").localeCompare(String(y.start ?? ""))),
+	}
+}
+
+// 결석 하나를 보강 수업에 배정 = 노션 출석 [보강 배정].
+export async function assignMakeupAction(body: any) {
+	if (!isId(body?.absenceId) || !isId(body?.sessionId)) throw new ClassRoomError(400, "결석과 보강 수업을 골라 주세요.")
+	const r = await assignMakeup(body.absenceId, body.sessionId).catch(makeupError)
+	await mirrorMakeup(r.sessionId, [r.attendanceId, r.absenceId])
+	return r
+}
+
+// 보강 수업을 만들고(1명 = 1:1, 여러 명 = 그룹) 고른 결석을 차례로 배정한다. 시간표·클래스는 비워 두고 `수업 구분`을 보강으로 둔다.
+// 결석은 수업을 만들기 전에 모두 확인한다(하나라도 안 되면 아무것도 만들지 않음).
 export async function createMakeupSession(body: any) {
-	const attendanceIds = ids(body?.attendanceIds, 30)
-	if (!attendanceIds.length) throw new ClassRoomError(400, "보강 학생을 골라 주세요.")
+	if (body?.attendanceIds !== undefined) throw new ClassRoomError(400, "보강은 결석에서 배정합니다(v2.8) — absenceIds에 결석을 보내 주세요.")
+	const absenceIds = body?.absenceIds === undefined ? [] : ids(body.absenceIds, 30)
 	if (!isId(body?.teacherId)) throw new ClassRoomError(400, "담당강사를 골라 주세요.")
 	const start = typeof body?.start === "string" && !Number.isNaN(Date.parse(body.start)) ? body.start : null
 	const end = typeof body?.end === "string" && !Number.isNaN(Date.parse(body.end)) ? body.end : null
 	if (!start) throw new ClassRoomError(400, "보강 시각을 정해 주세요.")
-	const attendances = await getPages(attendanceIds)
-	for (const a of attendances) {
-		if (rel(a, "수업").length) throw new ClassRoomError(409, `${studentName(a)} 학생은 이미 수업에 연결돼 있습니다.`)
-		if (selectName(a, "출석 상태") !== "🔵 보강") throw new ClassRoomError(409, `${studentName(a)} 학생은 보강 출석이 아닙니다.`)
-	}
-	const regs = dedupe(attendances.flatMap((a) => rel(a, "등록")))
+	const absences = await getPages(absenceIds)
+	for (const a of absences) await checkAbsence(a).catch(makeupError)
+	if (new Set(absences.map((a) => rel(a, "등록")[0])).size !== absences.length) throw new ClassRoomError(409, "같은 학생의 결석을 한 보강 수업에 두 번 배정할 수 없습니다.")
 	const label = `${seoulLabel(start)} ${seoulTime(start)}`.trim()
 	const session = await createPage(DS_CLASS_SESSION, {
 		"이름": { title: [{ text: { content: `보강 ${label}` } }] },
 		"수업일시": { date: { start, ...(end ? { end } : {}) } },
 		"담당강사": relation([body.teacherId]),
 		[SESSION_KIND_PROP]: { select: { name: SESSION_KIND_MAKEUP } },
-		"등록": relation(regs),
-		"출석": relation(attendanceIds),
 	}) as Page
-	await mapWithConcurrency(attendanceIds, 3, (id) =>
-		updatePageProperties(id, { "수업": relation([session.id]), "담당강사": relation([body.teacherId]), ...touched() }))
-	await mirrorJobs([["cr_sessions", [session.id as string]], ["cr_attendance", attendanceIds]]) // 복사본 함께 쓰기(v2.5.115)
-	return { sessionId: session.id as string }
+	const sessionId = session.id as string
+	const made: string[] = []
+	let current = session
+	for (const a of absences) {
+		const r = await assignMakeup(a.id as string, sessionId, { absence: a, session: current }).catch(makeupError)
+		made.push(r.attendanceId)
+		current = await getPage(sessionId) as Page // 명단(등록)이 늘었으니 다시 읽고 다음 배정
+	}
+	await mirrorMakeup(sessionId, [...made, ...absences.map((a) => a.id as string)])
+	return { sessionId, assigned: made }
 }
 
-// 보강 출석 하나를 보강 수업에서 떼어 대기실로 돌린다(담당강사도 비움).
+// 보강 출석 하나를 지운다 = 그 보강 출석 [삭제]: 원래 결석의 `보강 출석`을 비워 보강 대기에 다시 뜨게 하고 보강 수업 명단에서도 뺀다.
 export async function unlinkMakeup(attendanceId: string) {
 	if (!isId(attendanceId)) throw new ClassRoomError(400, "출석 형식이 올바르지 않습니다.")
 	const attendance = await getPage(attendanceId) as Page
-	const sessionId = rel(attendance, "수업")[0]
-	if (!sessionId) return { ok: true }
-	const session = await getPage(sessionId) as Page
-	if (!isMakeupSession(session)) throw new ClassRoomError(409, "정규 수업의 출석은 여기서 뗄 수 없습니다.")
-	const regs = rel(attendance, "등록")
-	await updatePageProperties(attendanceId, { "수업": relation([]), "담당강사": relation([]), ...touched() })
-	await updatePageProperties(sessionId, {
-		"출석": relation(rel(session, "출석").filter((id) => id !== attendanceId)),
-		"등록": relation(rel(session, "등록").filter((id) => !regs.includes(id))),
-	})
-	await mirrorJobs([["cr_attendance", [attendanceId]], ["cr_sessions", [sessionId]]]) // 복사본 함께 쓰기(v2.5.115)
-	return { ok: true }
+	if (!rel(attendance, ORIGINAL_ABSENCE).length) throw new ClassRoomError(409, "보강 출석(기존 결석이 있는 출석)만 여기서 뺄 수 있습니다.")
+	if (isDeletingFlagSet(attendance)) return { ok: true, status: "already_processing" }
+	await queueCascadeDelete(attendanceId)
+	return { ok: true, status: "queued" }
 }
 
-// 보강 수업을 지운다(휴지통). 학습기록이 있으면 막고, 연결된 출석은 먼저 떼어 대기실로 돌린다.
-// 기존 [삭제] 버튼(cascade-delete)은 출석까지 지우므로 쓰지 않는다.
+// 보강 수업을 지운다 = 그 수업 [삭제]: 보강 출석까지 휴지통, 원래 결석은 보강 대기로 돌아오고 `보강 수업`도 비워진다.
+// 학습기록이 있으면 막는다(노션 [삭제]는 기록까지 지우므로 앱에서는 먼저 확인).
 export async function deleteMakeupSession(sessionId: string) {
 	if (!isId(sessionId)) throw new ClassRoomError(400, "수업 형식이 올바르지 않습니다.")
 	const session = await getPage(sessionId) as Page
 	if (!isMakeupSession(session)) throw new ClassRoomError(409, "보강 수업만 여기서 지울 수 있습니다.")
 	if (rel(session, "학습기록").length) throw new ClassRoomError(409, "이 보강 수업에 학습기록이 있어요. 기록을 먼저 지워 주세요.")
-	const attendanceIds = rel(session, "출석")
-	await mapWithConcurrency(attendanceIds, 3, (id) => updatePageProperties(id, { "수업": relation([]), "담당강사": relation([]), ...touched() }))
-	await archivePage(sessionId)
-	await removePages([sessionId]) // 복사본 함께 쓰기(v2.5.115)
-	await mirrorJobs([["cr_attendance", attendanceIds]])
-	return { ok: true, released: attendanceIds.length }
+	if (isDeletingFlagSet(session)) return { ok: true, status: "already_processing" }
+	await queueCascadeDelete(sessionId)
+	return { ok: true, status: "queued", attendances: rel(session, "출석").length }
 }
 
 // ---------- 요청 처리 ----------
@@ -1116,6 +1144,8 @@ export async function handleClassRoom(body: any): Promise<unknown> {
 		case "create-records": return await createRecords(body)
 		case "update-record": return await updateRecord(body)
 		case "create-activities": return await createActivities(body.recordId)
+		case "makeup-waiting": return await loadMakeupWaiting()
+		case "assign-makeup": return await assignMakeupAction(body)
 		case "create-makeup-session": return await createMakeupSession(body)
 		case "unlink-makeup": return await unlinkMakeup(body.attendanceId)
 		case "delete-makeup-session": return await deleteMakeupSession(body.sessionId)

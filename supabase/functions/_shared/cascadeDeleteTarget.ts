@@ -31,6 +31,7 @@ import { isRunning, markQueued, markRunning, markDone, markError, STATUS_DONE, t
 import { removeLater } from "./classRoomCopy.ts"
 import { decideRecordRemoval } from "./learningRecordShare.ts"
 import { isMakeupSession } from "./sessionKind.ts"
+import { enqueueSync, wakeSyncQueueWorker } from "./syncQueue.ts"
 // (2026-09-21, 이식성 리팩토링) 위 7개 데이터소스 ID는 이 파일에 직접 하드코딩돼 있었는데, 이제
 // constants.ts 한 곳에서 환경변수로 읽어와 공유한다 (constants.ts 상단 주석 참고). export하지 않아도
 // 되도록 이 파일 밖에서 이 이름들을 가져다 쓰는 곳이 없는지 확인했다.
@@ -117,6 +118,15 @@ export async function markDeletingQueued(pageId: string): Promise<void> {
   } catch (err) {
     console.error(`markDeletingQueued(${pageId}) failed:`, (err as Error).message)
   }
+}
+
+// [삭제] 버튼과 같은 길 하나: ⏳ 대기열 표시 → 큐 "cascade-delete" → 워커 깨우기. cascade-delete 함수(노션 버튼)와
+// 관리 앱 보강 지우기(class-room unlink-makeup·delete-makeup-session, v2.8.0 항목 92)가 같이 쓴다.
+export const TARGET_CASCADE_DELETE = "cascade-delete"
+export async function queueCascadeDelete(pageId: string): Promise<void> {
+  await markDeletingQueued(pageId)
+  await enqueueSync(TARGET_CASCADE_DELETE, { pageId })
+  wakeSyncQueueWorker()
 }
 
 export async function markDeletingRunning(pageId: string): Promise<void> {
