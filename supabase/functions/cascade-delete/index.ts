@@ -57,10 +57,9 @@ import { authorizeKey, securityEnabled } from "../_shared/adminSecurity.ts"
 // https://app.notion.com/p/903c90386c1d473494c5df6306c53517
 
 import { getPage, extractPageId } from "../_shared/notionClient.ts"
-import { isDeletingFlagSet, markDeletingQueued, markDeletingError } from "../_shared/cascadeDeleteTarget.ts"
+import { isDeletingFlagSet, queueCascadeDelete, markDeletingError } from "../_shared/cascadeDeleteTarget.ts"
 import { resolveAdminKeyFromRequest, getCurrentAdminKey } from "../_shared/adminShared.ts"
 import { respondAccepted } from "../_shared/backgroundTask.ts"
-import { enqueueSync, wakeSyncQueueWorker } from "../_shared/syncQueue.ts"
 
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") {
@@ -120,9 +119,8 @@ Deno.serve(async (req: Request) => {
   try {
     // (2026-09-22, Phase 6) 실제 markRunning은 process-sync-queue가 이 항목을 집어서 처리를
     // 시작할 때(cascadeDelete 자신이 depth===0에서) 호출한다 — 여기서는 "⏳ 대기열"만 표시한다.
-    await markDeletingQueued(pageId)
-    await enqueueSync("cascade-delete", { pageId })
-    wakeSyncQueueWorker()
+    // (v2.8.0 항목 92) 관리 앱 보강 지우기와 같은 길 하나(_shared/cascadeDeleteTarget.ts queueCascadeDelete).
+    await queueCascadeDelete(pageId)
     return respondAccepted({ pageId })
   } catch (err) {
     console.error("cascade-delete: failed to enqueue:", (err as Error).message)
