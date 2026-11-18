@@ -2,7 +2,7 @@
 //
 // (v2.8.0 항목 75) 관리 앱 저장 — 데이터 이관 입력 범위만 Notion에 쓴다(원본은 Notion, 앱은 입력 장치).
 //
-// - 쓸 수 있는 DB = WRITE_DBS(선생님 · 학생 · 클래스 · 시즌 · 시간표 · 등록 · 진도관리 · 라이브러리 · 기준 정보 · 일정 · 시험 · 시험정보 · 성적). 그 밖 DB는 읽기만.
+// - 쓸 수 있는 DB = WRITE_DBS(선생님 · 학생 · 클래스 · 시즌 · 시간표 · 등록 · 진도관리 · 라이브러리 · 기준 정보 · 일정 · 시험 · 시험정보 · 성적 · 루틴). 그 밖 DB는 읽기만.
 // - 앱은 읽을 때와 같은 평평한 값(appCopy.flattenProps 모양)으로 보낸다. 서버가 그 DB의 Notion 칸 형식을 읽어 속성 값으로 바꾼다
 //   (toNotionProps). 칸 이름이 없거나, 수식 · 롤업 · 버튼처럼 쓸 수 없는 칸이거나, 고르기 값이 Notion 선택지에 없으면 그 줄을 쓰지 않고
 //   이유를 돌려준다(오타로 새 선택지가 생기지 않게).
@@ -28,6 +28,8 @@ export const WRITE_DBS = [
 	// (2.8, 담당 261119 연결 준비) 시험 화면 입력: 시험 · 시험정보 · 성적(노션에서 줄을 직접 고치는 것과 같음 — 보내기 없음).
 	// 재무(수강료 · 결제 · 청구서 · 청구 결제)는 아직 읽기만 — [결제] 버튼 단계를 서버 동작으로 옮긴 뒤(N-18·19).
 	"시험(학원) DB", "시험정보(학원) DB", "성적(학원) DB",
+	// (2.8, 담당 261119) 앱 클래스 창 [루틴] 탭: 앱이 쓰는 칸만(ROUTINE_PROPS). 지우기는 열지 않음 — 쉬기로 끄거나 노션 [삭제].
+	"루틴(학원) DB",
 ] as const
 export type WriteDb = typeof WRITE_DBS[number]
 export const isWriteDb = (v: unknown): v is WriteDb => typeof v === "string" && (WRITE_DBS as readonly string[]).includes(v)
@@ -37,7 +39,10 @@ export const EVENT_DB = "일정(학원) DB"
 // (2.8 2단계) 세부 구분·기록(내부용)을 받고, 구분은 받지 않는다(수식이 될 칸 — 앱은 읽기만, 앱서버 261118).
 // (2.8, 대표 261118) `잠금` 칸은 버림 — 받지 않고, 잠금 줄 날짜 거절도 없앴다(관리 앱이 학사 일정을 스스로 잠가 보여 줌).
 export const EVENT_PROPS = ["이름", "날짜", "세부 구분", "기록(내부용)", "숨김", "학부모 공개", "클래스", "학생", "학교", "학년"] as const
-const ONLY_PROPS: Partial<Record<WriteDb, ReadonlySet<string>>> = { [EVENT_DB]: new Set(EVENT_PROPS) }
+export const ROUTINE_DB = "루틴(학원) DB"
+// 루틴 체크 관계는 받지 않는다(체크는 수업 [루틴 체크 생성]이 만든다).
+export const ROUTINE_PROPS = ["이름", "클래스", "순서", "설명", "쉬기"] as const
+const ONLY_PROPS: Partial<Record<WriteDb, ReadonlySet<string>>> = { [EVENT_DB]: new Set(EVENT_PROPS), [ROUTINE_DB]: new Set(ROUTINE_PROPS) }
 export function checkAllowedProps(db: WriteDb, props: Record<string, unknown>): void {
 	const only = ONLY_PROPS[db]
 	if (!only) return
