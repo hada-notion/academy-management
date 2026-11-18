@@ -20,6 +20,7 @@ export const ABSENT = "🔴 결석"
 export const MAKEUP = "🔵 보강"
 export const MAKEUP_DECISION = "보강 여부" // 보강 필요 / 보강 없음
 export const MAKEUP_NONE = "보강 없음"
+export const MAKEUP_DECISIONS = ["보강 필요", MAKEUP_NONE] as const
 export const MAKEUP_SESSION = "보강 수업" // 결석 → 수업(양방향 `보강 대상`)
 export const MAKEUP_ATTENDANCE = "보강 출석" // 결석 → 그 결석을 메운 보강 출석(양방향 `기존 결석`)
 export const ORIGINAL_ABSENCE = "기존 결석"

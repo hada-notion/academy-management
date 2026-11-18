@@ -51,7 +51,7 @@ import { textbookSources } from "./textbookSearch.ts"
 import { cleanUnitIds, selectedUnitsProp, unitNamesOf, unitTextOf, unitIdsOf } from "./selectedUnits.ts"
 import { runInBackground } from "./backgroundTask.ts"
 import { seoulLabel } from "./seoulLabel.ts"
-import { assignMakeup, checkAbsence, MakeupError, waitingFilter, MAKEUP_DECISION, MAKEUP_SESSION, ORIGINAL_ABSENCE } from "./makeupAssign.ts"
+import { assignMakeup, checkAbsence, MakeupError, waitingFilter, MAKEUP_DECISION, MAKEUP_DECISIONS, MAKEUP_SESSION, ORIGINAL_ABSENCE } from "./makeupAssign.ts"
 import { isDeletingFlagSet, queueCascadeDelete } from "./cascadeDeleteTarget.ts"
 import { mirrorJobs, mirrorPageIds, mirrorSaved, removePages } from "./classRoomCopy.ts"
 import { libraryIds } from "./libraryProp.ts"
@@ -741,6 +741,11 @@ export async function saveAttendance(items: unknown) {
 			props["출석 상태"] = { select: it.status ? { name: it.status } : null }
 		}
 		if (it.comment !== undefined) props["선생님 한마디"] = richText(String(it.comment))
+		// (v2.8.0 항목 94) 결석의 `보강 여부`(보강 필요 / 보강 없음, ""는 비우기 = 판단 전) — 노션에서 고르는 것과 같다.
+		if (it.makeupDecision !== undefined) {
+			if (it.makeupDecision !== "" && !(MAKEUP_DECISIONS as readonly string[]).includes(it.makeupDecision)) throw new ClassRoomError(400, "보강 여부가 올바르지 않습니다(보강 필요·보강 없음).")
+			props[MAKEUP_DECISION] = { select: it.makeupDecision ? { name: it.makeupDecision } : null }
+		}
 		// (2.8 하루 수업 페이지) 등·하원 시각 고치기: ISO 시각, ""는 비우기.
 		for (const [key, prop] of [["arrivedAt", "등원스템프"], ["leftAt", "하원스템프"]] as const) {
 			if (it[key] === undefined) continue
