@@ -30,7 +30,7 @@ import {
 } from "../_shared/reportCacheBuilder.ts"
 import { resolveRegistrationIds, DS_REGISTRATION } from "../_shared/syncReportCacheTarget.ts"
 import { refreshStudentReport } from "../_shared/dailyReportRefresh.ts"
-import { runInBackground, respondAccepted } from "../_shared/backgroundTask.ts"
+import { runInBackground, respondAccepted, respondNowOrAwait } from "../_shared/backgroundTask.ts"
 
 function isRegistrationPage(page: any): boolean {
   const props = page?.properties ?? {}
@@ -90,23 +90,6 @@ Deno.serve(async (req: Request) => {
         headers: { ...ADMIN_CORS, "Content-Type": "application/json" },
       })
     }
-    // 일정이면: 웹훅 본문에 온 새 속성을 가장 믿는다(Notion 조회는 바뀌기 전 값을 한동안 돌려줌). 그 값으로 지금 대상을 찾고,
-    // 다시 만드는 리포트들도 그 값으로 일정을 싣거나 뺀다(withFreshNotices). 그 위에 지금 이 일정을 싣고 있는 리포트(옛 대상).
-    const notice = isNoticePage(sourcePage)
-    const fromBody = body?.data?.properties && typeof body?.data?.id === "string" &&
-      body.data.id.replace(/-/g, "").toLowerCase() === String(sourcePage.id).replace(/-/g, "").toLowerCase()
-    const freshNotice = notice && fromBody ? { ...sourcePage, properties: { ...sourcePage.properties, ...body.data.properties } } : sourcePage
-    if (notice) withFreshNotices(cachedGetPage, [freshNotice])
-    const currentIds = notice ? await resolveRegistrationIdsForNotice(freshNotice, cachedGetPage) : await resolveRegistrationIds(rawId, cachedGetPage)
-    const registrationIds = notice
-      ? [...new Set([...currentIds, ...await selectRegistrationIdsByNoticeId(
-        sourcePage.id,
-        // 옛 캐시(일정 id 목록 없음)는 리포트에 실린 제목·날짜로 찾는다 — reportCacheBuilder와 같은 계산.
-        text(sourcePage.properties?.["이름"]) || kindDisplay(eventKind(sourcePage)),
-        dateStartOf(sourcePage.properties?.["날짜"]) ?? undefined,
-      )])]
-      : currentIds
-
     if (!keyed && typeof body?.registrationId !== "string" && isRegistrationPage(sourcePage)) {
       return new Response(JSON.stringify({ error: "인증 실패" }), { status: 401, headers: { ...ADMIN_CORS, "Content-Type": "application/json" } })
     }
@@ -159,11 +142,30 @@ Deno.serve(async (req: Request) => {
 
     // 라이브러리·일정 자동화는 기존처럼 영향받는 등록의 완성 캐시만 다시 만든다. 여기까지 전체 출석
     // 동기화를 확대하면 편집 한 건이 여러 학생의 누적 출석 조회로 fan-out되므로 의도적으로 분리한다.
-    const rows = await mapWithConcurrency(registrationIds, 4, (id) => syncReportCacheForRegistration(id, cachedGetPage))
-    const synced = rows.filter((r): r is ReportCacheRow => r !== null).length
-    return new Response(JSON.stringify({ synced, registrationIds, fullRefresh: false }), {
-      headers: { ...ADMIN_CORS, "Content-Type": "application/json" },
-    })
+    // (v2.8.0 항목 95) 반을 많이 고른 일정은 학생 수십 명을 다시 만들어 25초를 넘긴다 — 바로 202로 답하고 뒤에서 끝낸다
+    // (전에는 길잡이가 시간 초과로 보고 같은 일을 세 번 더 다시 시켰다). awaitCompletion이면 기다려 결과를 준다.
+    const syncAffected = async () => {
+      // 일정이면: 웹훅 본문에 온 새 속성을 가장 믿는다(Notion 조회는 바뀌기 전 값을 한동안 돌려줌). 그 값으로 지금 대상을 찾고,
+      // 다시 만드는 리포트들도 그 값으로 일정을 싣거나 뺀다(withFreshNotices). 그 위에 지금 이 일정을 싣고 있는 리포트(옛 대상).
+      const notice = isNoticePage(sourcePage)
+      const fromBody = body?.data?.properties && typeof body?.data?.id === "string" &&
+        body.data.id.replace(/-/g, "").toLowerCase() === String(sourcePage.id).replace(/-/g, "").toLowerCase()
+      const freshNotice = notice && fromBody ? { ...sourcePage, properties: { ...sourcePage.properties, ...body.data.properties } } : sourcePage
+      if (notice) withFreshNotices(cachedGetPage, [freshNotice])
+      const currentIds = notice ? await resolveRegistrationIdsForNotice(freshNotice, cachedGetPage) : await resolveRegistrationIds(rawId, cachedGetPage)
+      const registrationIds = notice
+        ? [...new Set([...currentIds, ...await selectRegistrationIdsByNoticeId(
+          sourcePage.id,
+          // 옛 캐시(일정 id 목록 없음)는 리포트에 실린 제목·날짜로 찾는다 — reportCacheBuilder와 같은 계산.
+          text(sourcePage.properties?.["이름"]) || kindDisplay(eventKind(sourcePage)),
+          dateStartOf(sourcePage.properties?.["날짜"]) ?? undefined,
+        )])]
+        : currentIds
+      const rows = await mapWithConcurrency(registrationIds, 4, (id) => syncReportCacheForRegistration(id, cachedGetPage))
+      const synced = rows.filter((r): r is ReportCacheRow => r !== null).length
+      return { synced, registrationIds, fullRefresh: false }
+    }
+    return await respondNowOrAwait(body?.awaitCompletion === true, syncAffected, `sync-report-cache 뒤 처리 끝(${rawId}):`, { pageId: rawId, fullRefresh: false }, ADMIN_CORS)
   } catch (err) {
     console.error("sync-report-cache 실패:", (err as any)?.message ?? err)
     return new Response(JSON.stringify({ error: keyed ? String((err as any)?.message ?? err) : "동기화하지 못했습니다." }), {
