@@ -128,6 +128,19 @@ Deno.test("unlink-makeup·delete-makeup-session = 노션 [삭제]와 같은 큐(
  assert(d.status === "queued" && f.queued.some((q) => q.payload?.pageId === "mk") && !f.pages.mk.archived, "the queue worker deletes, not this call")
 }))
 
+Deno.test("save-attendance makeupDecision: 결석 보강 여부 쓰기(보강 필요·보강 없음·비우기), 그 밖 값 400, 보강 수업 출석도 같은 출결 저장", () => withMock(async (f) => {
+ await room.handleClassRoom({ action: "save-attendance", items: [{ attendanceId: "ab1", makeupDecision: "보강 없음" }] })
+ assert(f.pages.ab1.properties["보강 여부"].select.name === "보강 없음" && f.pages.ab1.properties["학습정보 수정일"])
+ const w = await room.handleClassRoom({ action: "makeup-waiting" }) as any
+ assert(w.waiting.map((x: any) => x.attendanceId).join() === "ab2", "보강 없음 → 보강 대기에서 빠짐")
+ await room.handleClassRoom({ action: "save-attendance", items: [{ attendanceId: "ab1", makeupDecision: "" }] })
+ assert(f.pages.ab1.properties["보강 여부"].select === null)
+ await rejects(() => room.handleClassRoom({ action: "save-attendance", items: [{ attendanceId: "ab1", makeupDecision: "보강 완료" }] }), 400)
+ // 보강 수업의 보강 출석 출결(정규와 같은 동작)
+ await room.handleClassRoom({ action: "save-attendance", items: [{ attendanceId: "mDone", status: "🔴 결석" }] })
+ assert(f.pages.mDone.properties["출석 상태"].select.name === "🔴 결석")
+}))
+
 Deno.test("waitingFilter: 노션 묶음 두 단계 안", () => {
  const w = mk.waitingFilter() as any
  assert(w.or.length === 2 && w.or[0].and.length === 4 && !JSON.stringify(w.or[0].and).includes('"or"'))
