@@ -6,6 +6,7 @@ import { SESSION_KIND_PROP, SESSION_KIND_REGULAR } from "./sessionKind.ts"
 import { createPage, pickProp, relIds, queryAllPages } from "./notionClient.ts"
 import { DS_CLASS_SESSION, DS_SCHEDULE_EVENT } from "./constants.ts"
 import { eventKind, KIND } from "./scheduleCategory.ts"
+import { periodOf } from "./timetablePeriod.ts"
 import { STATUS_DONE } from "./statusTracking.ts"
 
 export const PROP_SESSION_PLAN = "수업 추가 정보"
@@ -18,6 +19,8 @@ export type SessionPlan = {
 	className: string
 	teacherIds: string[]
 	regIds: string[]
+	// (2.8) 시간표 적용 기간(시작일·종료일, 옛 적용 기간). 있으면 만들기 직전 그 날짜가 기간 안인지 본다.
+	period?: { start: string | null; end: string | null }
 }
 
 const ID_RE = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i
@@ -64,7 +67,7 @@ export function sessionPlanFromTimetable(props: any): SessionPlan | null {
 	// 수식의 클래스가 시간표 클래스와 다르면(수식이 잘못 붙은 경우) 쓰지 않는다.
 	const cls = relIds(props?.["클래스"])
 	if (cls.length && cls[0].replace(/-/g, "") !== plan.classId.replace(/-/g, "")) return null
-	return plan
+	return { ...plan, period: periodOf({ properties: props }) }
 }
 
 const WEEKDAY_KR = ["일", "월", "화", "수", "목", "금", "토"]
@@ -91,8 +94,13 @@ export async function isClosedOn(classId: string, date: string): Promise<boolean
 }
 
 // 수업 페이지를 명단과 함께 ✅ 완료로 만든다(출석 조정 큐 적재는 호출부 — 만들기 성공 뒤 실패를 따로 다루려고).
-// 그날 그 반이 학원 휴원이면 만들지 않고 null.
+// 그날 그 반이 학원 휴원이거나, 그 날짜가 시간표 적용 기간(시작일·종료일) 밖이면 만들지 않고 null.
+export function outsidePeriod(plan: SessionPlan): boolean {
+	const p = plan.period
+	return !!p && ((!!p.start && plan.date < p.start) || (!!p.end && plan.date > p.end))
+}
 export async function createSessionFromPlan(timetableId: string, plan: SessionPlan): Promise<string | null> {
+	if (outsidePeriod(plan)) return null
 	if (await isClosedOn(plan.classId, plan.date)) return null
 	const page = await createPage(DS_CLASS_SESSION, {
 		이름: { title: [{ text: { content: sessionTitle(plan.className, plan.date) } }] },

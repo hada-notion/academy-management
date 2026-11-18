@@ -37,7 +37,9 @@ export const TIMETABLE_NOTICE_STATUS_SPEC: StatusSpec = {
 }
 export const TARGET_TIMETABLE_NOTICE = "timetable-notice"
 export const TIMETABLE_SENT_PROP = "안내한 시간표" // 등록(학원) DB, 서버가 적는 글자
-export const TIMETABLE_PERIOD_PROP = "적용 기간" // 시간표(학원) DB
+// 시간표 적용 기간: 시작일·종료일(2.8) 먼저, 비면 옛 `적용 기간` — 한 곳(timetablePeriod.ts)
+export { TIMETABLE_PERIOD_PROP, periodOf, activeOn } from "./timetablePeriod.ts"
+import { activeOn, periodOf } from "./timetablePeriod.ts"
 export const TIMETABLE_CLASS_MEMO_PROP = "시간표 안내 메모" // 클래스(학원) DB
 export const REG_MEMO_PROP = REG_NOTICE_MEMO[0] // 등록(학원) DB `등록 안내 메모`(예전 `안내 메모`, v2.8.0 항목 64 — 읽고 비울 때는 페이지에 있는 이름)
 
@@ -80,20 +82,6 @@ export function shortDay(value: string | null | undefined): string {
 	if (!d) return ""
 	const t = new Date(`${d}T00:00:00Z`)
 	return `${d.slice(5, 7)}.${d.slice(8, 10)}(${WEEKDAY_OF_DATE[t.getUTCDay()]})`
-}
-
-// 시간표 `적용 기간`. 비면 계속, 시작일만 있으면(끝이 시작과 같으면) 그날부터 계속.
-export function periodOf(t: any): { start: string | null; end: string | null } {
-	const d = t?.properties?.[TIMETABLE_PERIOD_PROP]?.date
-	const start = seoulDay(d?.start)
-	const end = seoulDay(d?.end)
-	return { start, end: end && end !== start ? end : null }
-}
-
-// 그 날짜에 적용 중인 시간표인지.
-export function activeOn(t: any, day: string): boolean {
-	const p = periodOf(t)
-	return (!p.start || p.start <= day) && (!p.end || p.end >= day)
 }
 
 export const textOn = (timetables: any[], day: string) => timetableText(timetables.filter((t) => activeOn(t, day)).map(slotOf).filter((s): s is Slot => !!s))
