@@ -27,6 +27,7 @@ import {
 // DS_ATTENDANCE는 create-learning-record/index.ts가 여기서 다시 가져다 쓰고 있었는데, 그쪽도
 // constants.ts에서 바로 가져오도록 함께 고쳤다 (아래 참고).
 import { markQueued, markRunning, markDone, markError, type StatusSpec } from "./statusTracking.ts"
+import { seoulLabel } from "./seoulLabel.ts"
 import { libraryIds } from "./libraryProp.ts"
 import { isMakeupSession } from "./sessionKind.ts"
 
@@ -72,7 +73,6 @@ export const RECORD_GEN_STATUS_SPEC: StatusSpec = {
 
 const GROUP_PROGRESS_TYPE = "그룹 진도"
 
-const WEEKDAY_KO = ["일", "월", "화", "수", "목", "금", "토"]
 
 type JsonRecord = Record<string, unknown>
 
@@ -169,13 +169,8 @@ function getTitle(page: JsonRecord): string {
 	return anyTitleText(page)
 }
 
-function formatKoreanDateLabel(isoDate: string): string {
-	const d = new Date(isoDate)
-	const mm = String(d.getMonth() + 1).padStart(2, "0")
-	const dd = String(d.getDate()).padStart(2, "0")
-	const weekday = WEEKDAY_KO[d.getDay()]
-	return `${mm}.${dd}(${weekday})`
-}
+// 제목 날짜는 한국 시각으로(_shared/seoulLabel.ts) — 아침 9시 전 수업이 전날로 붙지 않게(261119).
+const formatKoreanDateLabel = seoulLabel
 
 export function dedupe(ids: string[]): string[] {
 	return Array.from(new Set(ids))

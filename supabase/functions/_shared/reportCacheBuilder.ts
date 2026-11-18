@@ -41,6 +41,14 @@ function todayIsoSeoul(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" })
 }
 
+// 리포트 "이번 달" 출석 요약: 수업 날짜와 오늘을 둘 다 서울 날짜로 보고 같은 달인지(261119 9시간 점검 —
+// 서버는 UTC라 매달 1일 0~9시엔 지난달로, 1일 아침 9시 전 수업은 지난달로 셌다).
+export function inSeoulMonth(iso: string | null | undefined, todayIso: string): boolean {
+  if (!iso) return false
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : kstDateOf(iso)
+  return !!day && day.slice(0, 7) === todayIso.slice(0, 7)
+}
+
 // 학습기록 페이지 본문(블록) → 리포트 피드 부록 변환은 feedBody.ts로 옮겼다(v2.5.95, 수업 관리 기록 카드와 함께 쓴다).
 
 function stripLeadingEmoji(s: string): string {
@@ -388,11 +396,7 @@ export async function buildRegistrationDetail(reg: any, cachedGetPage: (id: stri
     .filter((e) => e.iso)
     .sort((a, b) => (a.iso! < b.iso! ? 1 : -1))
 
-  const now = new Date()
-  const thisMonthEntries = attendanceEntries.filter((e) => {
-    const d = new Date(e.iso!)
-    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
-  })
+  const thisMonthEntries = attendanceEntries.filter((e) => inSeoulMonth(e.iso, todayIso))
   const attendance_summary = {
     present: thisMonthEntries.filter((e) => e.status === "출석").length,
     makeup: thisMonthEntries.filter((e) => e.status === "보강").length,

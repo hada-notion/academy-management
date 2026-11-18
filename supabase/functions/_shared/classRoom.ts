@@ -50,6 +50,7 @@ import { libraryCopyReady, readBooks, readUnits, sortUnits } from "./libraryCopy
 import { textbookSources } from "./textbookSearch.ts"
 import { cleanUnitIds, selectedUnitsProp, unitNamesOf, unitTextOf, unitIdsOf } from "./selectedUnits.ts"
 import { runInBackground } from "./backgroundTask.ts"
+import { seoulLabel } from "./seoulLabel.ts"
 import { mirrorJobs, mirrorPageIds, mirrorSaved, removePages } from "./classRoomCopy.ts"
 import { libraryIds } from "./libraryProp.ts"
 import { isMakeupSession, SESSION_KIND_MAKEUP, SESSION_KIND_PROP } from "./sessionKind.ts"
@@ -81,7 +82,6 @@ export function homeworkState(name: string | null | undefined): string {
 	return ""
 }
 const GROUP_PROGRESS = "그룹 진도"
-const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"]
 const MAX_ITEMS = 60
 
 // ---------- 작은 도우미 ----------
@@ -116,13 +116,7 @@ export function seoulDayRange(date: string): { start: string; end: string } {
 	const end = new Date(start.getTime() + 86_400_000)
 	return { start: start.toISOString(), end: end.toISOString() }
 }
-export function seoulLabel(iso: string | null): string {
-	if (!iso) return ""
-	const d = new Date(new Date(iso).getTime() + 9 * 3_600_000)
-	const mm = String(d.getUTCMonth() + 1).padStart(2, "0")
-	const dd = String(d.getUTCDate()).padStart(2, "0")
-	return `${mm}.${dd}(${WEEKDAYS[d.getUTCDay()]})`
-}
+export { seoulLabel } // 한 곳: _shared/seoulLabel.ts(학습기록·과제 제목과 같은 함수)
 export function seoulTime(iso: string | null): string {
 	if (!iso || !iso.includes("T")) return ""
 	const d = new Date(new Date(iso).getTime() + 9 * 3_600_000)
