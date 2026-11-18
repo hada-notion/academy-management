@@ -32,6 +32,7 @@ import {
 } from "../_shared/notionClient.ts"
 import { runInBackground, respondAccepted } from "../_shared/backgroundTask.ts"
 import { eventKind, KIND } from "../_shared/scheduleCategory.ts"
+import { periodOf } from "../_shared/timetablePeriod.ts"
 import { sessionPlanFromTimetable, createSessionFromPlan } from "../_shared/timetableSessionPlan.ts"
 import {
 	PROP_TIMETABLE_LAST_ERROR,
@@ -435,7 +436,10 @@ async function processTimetable(timetable: any, log: string[], mode: ProcessMode
   // 구조적으로 생길 이유가 없다. 아직 더 만들 날짜가 남아있으면 done:false를 반환해서 호출부가
   // 이 시간표를 다시 "대기열"에 넣고, 다음 체인 스텝이 최신 latestDate 기준으로 이어서 만들게
   // 한다 (한 주씩 이어달리기). single/cron 호출 경로는 이 반환값을 그냥 무시하므로 동작이 그대로다.
-  const baseDate = latestDate ? addDays(latestDate, 1) : today
+  // (2.8) 시간표 시작일이 앞날이면 그날부터 찾는다(그 전 날짜로 만들고 건너뛰지 않게).
+  const periodStart = periodOf({ properties: props }).start
+  const rawBase = latestDate ? addDays(latestDate, 1) : today
+  const baseDate = periodStart && periodStart > rawBase ? periodStart : rawBase
   const nextDate = baseFormula ? baseFormula.slice(0, 10) : findNextClassDate(baseDate, weekday, closures)
   // (v2.6.13) 큐가 "이 날짜를 만들라"고 넘겼는데 기준일이 이미 그 뒤라면, 앞선 시도가 실제로는 수업을 만든 것이다.
   // 그대로 진행하면 한 주치를 더 만들게 되므로 건너뛴다.
@@ -485,10 +489,13 @@ async function processTimetable(timetable: any, log: string[], mode: ProcessMode
       className,
       teacherIds,
       regIds: registrationIds,
+      period: periodOf({ properties: props }),
     })
-    // (2.8) 그날 그 반이 학원 휴원이면 만들지 않는다(시간표 기준일 수식이 휴원을 놓쳐도).
+    // (2.8) 그날 그 반이 학원 휴원이거나 시간표 적용 기간(시작일·종료일) 밖이면 만들지 않는다(기준일 수식이 놓쳐도).
     if (!createdId) {
-      log.push(`[skip] ${timetableName}: ${nextDate}은 학원 휴원이라 수업을 만들지 않음`)
+      const p = periodOf({ properties: props })
+      const why = (p.start && nextDate < p.start) || (p.end && nextDate > p.end) ? `시간표 적용 기간(${p.start ?? ""}~${p.end ?? ""}) 밖` : "학원 휴원"
+      log.push(`[skip] ${timetableName}: ${nextDate}은 ${why}이라 수업을 만들지 않음`)
       return { done: true }
     }
     const classPage = { id: createdId }
