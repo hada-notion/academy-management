@@ -147,6 +147,14 @@ Deno.test("일정: 받는 칸 10개만(잠금 칸 버림), 그 밖 칸은 거절
   for (const p of [{ 메모: "x" }, { "NEIS 동기화키": "k" }, { 수업공제일명: "x" }, { "원본 행사내용": "x" }, { 잠금: true }]) assertThrows(() => checkAllowedProps(EV, p), SaveError)
   checkAllowedProps("학생(학원) DB", { 메모: "x" }) // 다른 DB는 그대로
 })
+Deno.test("루틴(261119): 이름·클래스·순서·설명·쉬기만 받고 루틴 체크·지우기는 거절", () => {
+  const RT = "루틴(학원) DB"
+  assertEquals(isWriteDb(RT), true)
+  checkAllowedProps(RT, { 이름: "단어 암기", 클래스: [], 순서: 1, 설명: "", 쉬기: false })
+  assertThrows(() => checkAllowedProps(RT, { "루틴 체크": [] }), SaveError)
+  assertEquals(checkChanges([{ op: "create", db: RT, props: {} }]).length, 1)
+  assertThrows(() => checkChanges([{ op: "delete", db: RT, id: ID, props: {} }]), SaveError)
+})
 Deno.test("일정: 리포트 맞추기는 기록(내부용)만 바꾼 때 빼고", () => {
   assertEquals([eventAffectsReport(EV, { "학부모 공개": false }), eventAffectsReport(EV, { 날짜: "2026-05-01" }), eventAffectsReport("학생(학원) DB", { 이름: "x" })], [true, true, false])
 })
