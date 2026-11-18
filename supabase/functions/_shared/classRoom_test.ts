@@ -310,17 +310,12 @@ Deno.test("save attendance and activities: validated, stamped for the report syn
  assert(h1.status === "제출" && h1.submitted && h1.memo === "" && h2.status === "일부 제출" && !h2.submitted && h2.memo === "절반만", JSON.stringify(acts))
  assert(room.homeworkState("🔴 미제출") === "미제출" && room.homeworkState(null) === "" && room.homeworkState("일부 제출") === "일부 제출")
 }))
-Deno.test("makeup: create a session, unlink, and delete without touching attendance pages", () => withMock(async (f) => {
- const m = await room.createMakeupSession({ attendanceIds: ["wait1"], teacherId: "t1", start: "2026-10-13T06:00:00.000Z" })
- const s = f.pages[m.sessionId]; assert(s.properties["수업 구분"].select.name === "보강" && s.properties["보강"] === undefined && ids(s, "등록") === "rc" && ids(s, "출석") === "wait1" && s.properties["시간표"] === undefined && s.properties["클래스"] === undefined)
- assert(s.properties["이름"].title[0].text.content === "보강 10.13(화) 15:00" && ids(f.pages.wait1, "수업") === m.sessionId && ids(f.pages.wait1, "담당강사") === "t1")
- await rejects(() => room.createMakeupSession({ attendanceIds: ["wait1"], teacherId: "t1", start: "2026-10-13T06:00:00.000Z" }), 409)
- await rejects(() => room.unlinkMakeup("aa"), 409) // regular session
- await room.unlinkMakeup("wait1"); assert(ids(f.pages.wait1, "수업") === "" && ids(f.pages.wait1, "담당강사") === "" && ids(f.pages[m.sessionId], "출석") === "")
- f.pages[m.sessionId].properties["학습기록"] = rel("rec0"); await rejects(() => room.deleteMakeupSession(m.sessionId), 409)
- f.pages[m.sessionId].properties["학습기록"] = rel(); f.pages[m.sessionId].properties["출석"] = rel("wait1"); f.pages.wait1.properties["수업"] = rel(m.sessionId)
- const del = await room.deleteMakeupSession(m.sessionId); assert(del.released === 1 && f.pages[m.sessionId].archived && !f.pages.wait1.archived && ids(f.pages.wait1, "수업") === "")
+// (v2.8.0 항목 92) 보강은 v2.8 노션 모델(결석 → [보강 배정] → 기존 결석)로 — 시험은 makeupAssign_test.ts.
+Deno.test("makeup: old-model calls are refused (attendance without 기존 결석, attendanceIds), regular sessions untouched", () => withMock(async (f) => {
+ await rejects(() => room.createMakeupSession({ attendanceIds: ["wait1"], teacherId: "t1", start: "2026-10-13T06:00:00.000Z" }), 400)
+ await rejects(() => room.unlinkMakeup("wait1"), 409)
  await rejects(() => room.deleteMakeupSession("s1"), 409) // regular session
+ assert(f.created.length === 0 && !f.pages.s1.archived)
 }))
 Deno.test("unknown actions and malformed ids are rejected", () => withMock(async () => {
  await rejects(() => room.handleClassRoom({ action: "drop-all" }), 400)
