@@ -7,7 +7,7 @@
 //       복사본에 반영. 줄마다 성공 · 실패 · 충돌을 돌려준다. 지우기는 없다. 로직은 _shared/appSave.ts.
 // 읽기 로직은 _shared/appCopy.ts.
 import { CORS_HEADERS, requireAdminKey } from "../_shared/adminShared.ts"
-import { APP_DBS, isAppDb, listApp, statusApp, warmSources } from "../_shared/appCopy.ts"
+import { APP_DBS, isAppDb, listApp, statusApp, warmSources, NotionBusyError } from "../_shared/appCopy.ts"
 import { checkChanges, saveChanges, runGenerateClasses, writeOptions, SaveError } from "../_shared/appSave.ts"
 
 const json = (data: unknown, status = 200) =>
@@ -47,6 +47,12 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'action은 "list", "status", "save", "run", "options" 중 하나여야 합니다.' }, 400)
   } catch (err) {
     if (err instanceof SaveError) return json({ error: err.message }, err.status)
+    // (v2.8.0 항목 100) Notion 한도(429)로 DB 찾기가 오래 걸릴 때: 503 + busy — 앱은 안내 띠를 띄우고 retryAfterSec 뒤 한 번 다시 부른다.
+    if (err instanceof NotionBusyError) {
+      const res = json({ error: "Notion이 바빠요. 잠시 뒤 다시 시도해 주세요.", busy: true, retryAfterSec: err.retryAfterSec }, 503)
+      res.headers.set("Retry-After", String(err.retryAfterSec))
+      return res
+    }
     console.error("[app-api]", (err as Error).message)
     return json({ error: "처리 중 문제가 생겼어요. 잠시 후 다시 시도해 주세요." }, 500)
   }
