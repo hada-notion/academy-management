@@ -15,7 +15,7 @@ Deno.test("선택지 목록: 쓸 수 있는 DB의 고르기 칸만, 웹훅 칸 �
     if (url.includes("/v1/search")) return ok({ results: [
       { id: "ds-stu", title: [{ plain_text: "학생(학원) DB" }] }, { id: "ds-en", title: [{ plain_text: "등록(학원) DB" }] },
       { id: "ds-lib", title: [{ plain_text: "라이브러리(학원) DB" }] }, { id: "ds-tu", title: [{ plain_text: "수강료(학원) DB" }] },
-      { id: "ds-ev", title: [{ plain_text: "일정(학원) DB" }] }], has_more: false })
+      { id: "ds-ev", title: [{ plain_text: "일정(학원) DB" }] }, { id: "ds-tt", title: [{ plain_text: "시간표(학원) DB" }] }], has_more: false })
     if (url.includes("/v1/data_sources/ds-lib")) return ok({ properties: {
       교재명: { type: "title" }, 시리즈: { type: "select", select: { options: [{ name: "쎈" }, { name: "개념원리" }] } },
       "교재 유형": { type: "multi_select", multi_select: { options: [{ name: "개념" }] } }, "웹훅 버튼": { type: "select", select: { options: [{ name: "x" }] } } } })
@@ -95,7 +95,7 @@ function mockFetch(opts: { copyDb?: string; edited?: string; locked?: boolean })
     const url = String(input), method = init?.method ?? "GET", body = init?.body ? JSON.parse(String(init.body)) : undefined
     calls.push({ url, method, body })
     const ok = (data: unknown) => new Response(JSON.stringify(data), { status: 200, headers: { "Content-Type": "application/json" } })
-    if (url.includes("/v1/search")) return ok({ results: [{ id: "ds-stu", title: [{ plain_text: "학생(학원) DB" }] }, { id: "ds-en", title: [{ plain_text: "등록(학원) DB" }] }, { id: "ds-ev", title: [{ plain_text: "일정(학원) DB" }] }], has_more: false })
+    if (url.includes("/v1/search")) return ok({ results: [{ id: "ds-stu", title: [{ plain_text: "학생(학원) DB" }] }, { id: "ds-en", title: [{ plain_text: "등록(학원) DB" }] }, { id: "ds-ev", title: [{ plain_text: "일정(학원) DB" }] }, { id: "ds-tt", title: [{ plain_text: "시간표(학원) DB" }] }], has_more: false })
     if (url.includes("/v1/data_sources/ds-ev")) return ok({ properties: { 이름: { type: "title" }, 날짜: { type: "date" }, 잠금: { type: "checkbox" }, 숨김: { type: "checkbox" }, "학부모 공개": { type: "checkbox" }, 메모: { type: "rich_text" } } })
     if (url.includes("/v1/data_sources/ds-")) return ok({ properties: { 이름: { type: "title" }, 학생: { type: "relation" } } })
     if (url.endsWith("/v1/pages") && method === "POST") { n++; return ok({ id: `${"0".repeat(31)}${n}`, url: "u", properties: body.properties, last_edited_time: "2026-11-17T00:00:00.000Z" }) }
@@ -196,8 +196,9 @@ Deno.test("라이브러리: 새 교재는 save로 만들지 않고, 고치면 �
   } finally { saveDeps.syncLibraryBook = orig }
 })
 
+const TT = "시간표(학원) DB"
 // ---------- 지우기(op delete): 휴지통 + 복사본 즉시 삭제, 연결된 기록이 있으면 거절, 허용 밖 DB 거절 ----------
-function mockDelete(page: Record<string, unknown>, copyDb: string | null = "학생(학원) DB") {
+function mockDelete(page: Record<string, unknown>, copyDb: string | null = TT) {
   const calls = mockFetch({ copyDb: copyDb ?? undefined })
   const base = globalThis.fetch
   globalThis.fetch = (async (input: Request | URL | string, init?: RequestInit) => {
@@ -209,37 +210,39 @@ function mockDelete(page: Record<string, unknown>, copyDb: string | null = "학�
   return calls
 }
 Deno.test("지우기: 연결된 기록이 없으면 휴지통으로 보내고 복사본 줄을 바로 지움", async () => {
-  const calls = mockDelete({ properties: { 등록: { type: "relation", relation: [] } } })
-  const r = await saveChanges(checkChanges([{ op: "delete", db: "학생(학원) DB", id: ID }]))
+  const calls = mockDelete({ properties: { 수업: { type: "relation", relation: [] } } }, TT)
+  const r = await saveChanges(checkChanges([{ op: "delete", db: TT, id: ID }]))
   assertEquals([r[0].ok, r[0].deleted], [true, true])
   const patch = calls.find((c) => c.method === "PATCH")
   assertEquals(patch?.body, { archived: true })
   assertEquals(calls.some((c) => c.method === "DELETE" && c.url.includes("/rest/v1/app_rows")), true)
 })
-Deno.test("지우기: 학생에 등록이 · 등록에 출석이 연결돼 있으면 지우지 않고 이유를 돌려줌", async () => {
-  let calls = mockDelete({ properties: { 등록: { type: "relation", relation: [{ id: "a" }, { id: "b" }] }, 성적: { type: "relation", relation: [] } } })
-  let r = await saveChanges(checkChanges([{ op: "delete", db: "학생(학원) DB", id: ID }]))
-  assertEquals([r[0].ok, r[0].blocked], [false, { 등록: 2 }])
-  assertEquals(String(r[0].error).includes("등록 2건"), true)
+Deno.test("지우기: 시간표에 수업이 연결돼 있으면 지우지 않고 이유를 돌려줌", async () => {
+  const calls = mockDelete({ properties: { 수업: { type: "relation", relation: [{ id: "a" }, { id: "b" }] } } })
+  const r = await saveChanges(checkChanges([{ op: "delete", db: TT, id: ID }]))
+  assertEquals([r[0].ok, r[0].blocked], [false, { 수업: 2 }])
+  assertEquals(String(r[0].error).includes("수업 2건"), true)
   assertEquals(calls.some((c) => c.method === "PATCH" || c.method === "DELETE"), false)
-  calls = mockDelete({ properties: { 출석: { type: "relation", relation: [{ id: "x" }] } } }, "등록(학원) DB")
-  r = await saveChanges(checkChanges([{ op: "delete", db: "등록(학원) DB", id: ID }]))
-  assertEquals([r[0].ok, r[0].blocked], [false, { 출석: 1 }])
-  assertEquals(calls.some((c) => c.method === "PATCH" || c.method === "DELETE"), false)
+})
+Deno.test("지우기 금지(대표 261119): 학생·등록·클래스·강사·과목·영역·진도관리·시즌은 요청 검사에서 400, 문구는 그대로 앱에 보임", () => {
+  for (const db of ["학생(학원) DB", "등록(학원) DB", "클래스(학원) DB", "강사(학원) DB", "과목(학원) DB", "영역(학원) DB", "진도관리(학원) DB", "시즌(학원) DB"]) {
+    const e = assertThrows(() => checkChanges([{ op: "delete", db, id: ID }]), SaveError) as InstanceType<typeof SaveError>
+    assertEquals([e.status, e.message], [400, "삭제하지 않아요 — 종료·보류로 처리해요"])
+  }
 })
 Deno.test("지우기: 허용 밖 DB(라이브러리 · 일정 · 시험 등)와 id 없는 요청은 요청 검사에서 거절", () => {
   for (const db of ["라이브러리(학원) DB", "일정(학원) DB", "시험(학원) DB", "성적(학원) DB", "루틴(학원) DB", "학교(학원) DB"]) assertThrows(() => checkChanges([{ op: "delete", db, id: ID }]), SaveError)
-  assertThrows(() => checkChanges([{ op: "delete", db: "학생(학원) DB" }]), SaveError)
+  assertThrows(() => checkChanges([{ op: "delete", db: TT }]), SaveError)
 })
 Deno.test("지우기: 다른 DB의 줄 · 그사이 바뀐 줄은 지우지 않음, 이미 휴지통이면 복사본만 맞춤", async () => {
   let calls = mockDelete({ properties: {} }, "등록(학원) DB")
-  let r = await saveChanges(checkChanges([{ op: "delete", db: "학생(학원) DB", id: ID }]))
+  let r = await saveChanges(checkChanges([{ op: "delete", db: TT, id: ID }]))
   assertEquals([r[0].ok, r[0].error], [false, "이 DB의 줄이 아닙니다."])
   calls = mockDelete({ properties: {}, last_edited_time: "2026-11-17T05:00:00.000Z" })
-  r = await saveChanges(checkChanges([{ op: "delete", db: "학생(학원) DB", id: ID, edited: "2026-11-17T00:00:00.000Z" }]))
+  r = await saveChanges(checkChanges([{ op: "delete", db: TT, id: ID, edited: "2026-11-17T00:00:00.000Z" }]))
   assertEquals([r[0].ok, r[0].conflict], [false, true])
   assertEquals(calls.some((c) => c.method === "PATCH"), false)
   calls = mockDelete({ properties: {}, in_trash: true })
-  r = await saveChanges(checkChanges([{ op: "delete", db: "학생(학원) DB", id: ID }]))
+  r = await saveChanges(checkChanges([{ op: "delete", db: TT, id: ID }]))
   assertEquals([r[0].ok, calls.some((c) => c.method === "PATCH"), calls.some((c) => c.method === "DELETE")], [true, false, true])
 })
