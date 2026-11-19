@@ -2312,7 +2312,6 @@ table.stt.gt td[data-mg].mgsel.mghl{background:var(--sel-bg)}
 #view table.t th.n,table.stt.gt th.n,table.stt th{text-align:left}
 /* ═════ 267판 ═════ 오른쪽 창 기본 = [할 일] */
 .tdp{display:flex;flex-direction:column;gap:12px;padding:4px 0}
-.tdwhy{font-size:12.5px;color:var(--subtle);line-height:1.5}
 .tdl{display:flex;flex-direction:column;border:1px solid var(--line2,#E8E2DA);border-radius:12px;overflow:hidden}
 .tdr{display:flex;align-items:center;gap:8px;min-height:44px;padding:8px 12px;border:0;border-bottom:1px solid var(--line2,#EFE9E1);background:var(--surface,#fff);text-align:left;font:inherit;font-size:13.5px;color:var(--ink);cursor:pointer}
 .tdr:last-child{border-bottom:0}.tdr:hover{background:var(--brand-tint,#FBF8F4)}.tdr small{margin-left:4px}.tdr svg{margin-left:auto;color:var(--subtle)}

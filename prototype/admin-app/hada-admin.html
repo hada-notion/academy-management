@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=690">
-<link rel="stylesheet" href="app.css?v=690">
-<link rel="stylesheet" href="pick.css?v=690">
-<link rel="stylesheet" href="field.css?v=690">
+<link rel="stylesheet" href="hada-tokens.css?v=691">
+<link rel="stylesheet" href="app.css?v=691">
+<link rel="stylesheet" href="pick.css?v=691">
+<link rel="stylesheet" href="field.css?v=691">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=690"><script src="hada-rules.js?v=690"></script><script src="alim-preview.js?v=690"></script><script src="pick.js?v=690"></script><script src="field.js?v=690"></script><script src="panel.js?v=690"></script>
+<link rel="stylesheet" href="alim.css?v=691"><script src="hada-rules.js?v=691"></script><script src="help.js?v=691"></script><script src="alim-preview.js?v=691"></script><script src="pick.js?v=691"></script><script src="field.js?v=691"></script><script src="panel.js?v=691"></script>
 <script>
 "use strict";
 
@@ -1809,7 +1809,7 @@ function stuTodoL(){const L=DB.students.filter(x=>!x.del);const st0=x=>stuStat(x
   return {new:L.filter(x=>st0(x)==="new").sort((a,b)=>(a.inq||"").localeCompare(b.inq||"")),info:L.filter(x=>st0(x)!=="end"&&stuMiss(x).length),pre:L.filter(x=>st0(x)==="pre")}}
 const stuTodoN=()=>{const T=stuTodoL();return T.new.length+T.info.length+T.pre.length};
 /* 학생 할 일 줄 한 칸(갈래별) — 옛 학생 할 일 창과 학생1 공용 할 일 창이 같이 씀 */
-const STU_TODO_HELP={new:"등록이 아직 없는 학생이에요. 오래된 문의가 위, 14일 넘은 문의는 노란 글씨. 누르면 그 학생 창.",info:"이름·학년·학교·연락처 중 빈 것이 있는 학생이에요(연락처는 학생·어머니·아버지·기타가 하나도 없을 때, 종료 학생은 빼요). 누르면 빠진 첫 칸으로.",pre:"가장 최근 등록이 아직 시작 전인 학생이에요. 누르면 [등록] 탭."};
+const STU_TODO_HELP=HELPTX.stuTodo;/* 도움말 글은 help.js 한 곳 */
 function stuTodoRow(x,tab){const ago=d=>{const n=dAgo((d||"").slice(0,10));return n?`${n}일 전`:"오늘"};
   const nm=x=>`<span class="nm"><b>${x.name?esc(x.name):'<span class="nn">(이름 없음)</span>'}</b>${x.school?`<span class="sc">${esc(x.school)}</span>`:""}${x.grade?gchip(x.grade):""}</span>`;
   const firstEn=x=>DB.enrolls.filter(e=>e.studentId===x.id).sort((a,b)=>(b.start||"").localeCompare(a.start||""))[0];
@@ -2358,7 +2358,7 @@ function mkDayCell(d,st){const sh=mkShowOf(st);const ms=sh.mk?(DB.mk||[]).filter
   return ms.map(m=>{const c=m.classId?cls(m.classId):null;return CALF.blk({col:c?Object.assign(classColor(c),{bar:classBar(c)}):{bg:"var(--canvas)",bar:"var(--line2)"},cls:"mkblk",attr:`data-mkb="${m.id}" title="${esc(mkName(m))} — 학생을 끌어 놓거나, 고른 학생을 누르면 넣어요 · 두 번 누르면 수업 화면"`,t:`${fmt(m.start)} ${esc(c?c.name:"보강")}`,m:`보강 · ${m.sids.length}명`})}).join("")+
     ab.map(a=>{const op=absOpen(a.k),mk=a.st==="pend"?absMk(a.k):null;const c=cls(a.classId);return `<button type="button" class="mkab s-${a.st} ${op?"open":""} ${mkSelK()===a.k?"sel":""}" data-mksel="${a.k}" title="${esc(c?c.name:"")} 결석 · ${esc(MK_ST[a.st][0])}${op?" — 눌러서 고르고 날짜나 보강 블록을 누르면 보강":""}"><b>${esc(stu(a.sid)?stu(a.sid).name:"")}</b> <small>${esc(c?c.name:"")}</small>${mk?` <small>→ ${md(mk.d).slice(5)}</small>`:""}</button>`}).join("")+ghost}
 /* 오른쪽 창 = 수업 화면 할 일 [보강]과 같은 학생 카드(HP.wait) */
-function mkSidePanel(st){const vw=st.mtv==="todo"?"todo":"sta";/* 261120: 선택 전 공용 창 = [현황] [할 일] 2탭 */return `<div class="panel" id="panel">${PANEL.head({icon:panelIcon(),name:"보강",belong:"",info:[" "],help:("등록(학생+클래스)마다 카드예요. 숫자 = 보강해야 할 횟수. 카드를 누르면 결석이 열리고 보강 필요 ↔ 보강 없음을 정해요. 카드를 끌어 달력 날짜에 놓으면 그 결석 수업 시간으로 새 보강이 생기고, 보강 블록에 놓으면 그 보강에 들어가요(같은 클래스만).")})}${PANEL.tabs([{id:"sta",label:"현황"},{id:"todo",label:"할 일"}],vw,"mtv")}${vw==="sta"?`<div class="pbody"><div class="tdp"><div class="tdsum"><div class="tdsr"><span>보강 대기 학생</span><b>${mkCardN()}명</b></div><div class="tdsr"><span>다가오는 보강 수업</span><b>${(DB.mk||[]).filter(m=>!m.del&&m.d>=TODAY).length}개</b></div></div></div></div>`:`<div class="box"><div class="hpm" id="hpWait"></div></div>`}${PANEL.foot({hint:"카드를 끌어 날짜(새 보강)나 보강 블록에 놓아요"})}</div>`}
+function mkSidePanel(st){const vw=st.mtv==="todo"?"todo":"sta";/* 261120: 선택 전 공용 창 = [현황] [할 일] 2탭 */return `<div class="panel" id="panel">${PANEL.head({icon:panelIcon(),name:"보강",belong:"",info:[" "],help:("등록(학생+클래스)마다 카드예요. 숫자 = 보강해야 할 횟수. 카드를 누르면 결석이 열리고 보강 필요 ↔ 보강 없음을 정해요. 카드를 끌어 달력 날짜에 놓으면 그 결석 수업 시간으로 새 보강이 생기고, 보강 블록에 놓으면 그 보강에 들어가요(같은 클래스만).")})}${PANEL.tabs([{id:"sta",label:"현황"},{id:"todo",label:"할 일"}],vw,"mtv")}${vw==="sta"?`<div class="pbody"><div class="tdp"><div class="tdsum"><div class="tdsr"><span>보강 대기 학생</span><b>${mkCardN()}명</b></div><div class="tdsr"><span>다가오는 보강 수업</span><b>${(DB.mk||[]).filter(m=>!m.del&&m.d>=TODAY).length}개</b></div></div></div></div>`:`<div class="box"><div class="hpm" id="hpWait"></div></div>`}${PANEL.foot({hint:HELPTX.mkFoot})}</div>`}
 function mkSideMount(v,st){v.querySelectorAll("[data-mtv]").forEach(b=>b.onclick=()=>{st.mtv=b.dataset.mtv;render()});const host=v.querySelector("#hpWait");if(!host)return;seedOffOnce();seedMkw();mkLink();
   const G=new Map();absAll(seaStart()).forEach(a=>{const k2=a.sid+"|"+a.classId;if(!G.has(k2))G.set(k2,{sid:a.sid,cid:a.classId,abs:[]});const s2=absState(a.k);const m=absMk(a.k);G.get(k2).abs.push({id:a.k,d:a.d,st:s2,mk:s2==="pend"&&m?`${md(m.d).slice(5)}(${DAYS[dow(m.d)]})`:"",why:(DB.mkw[a.k]||{}).why||""})});
   const items=[...G.values()].filter(g=>stu(g.sid)&&cls(g.cid)).map(g=>({sid:g.sid,cls:cls(g.cid).name,cid:g.cid,color:classBar(cls(g.cid)),abs:g.abs}));
@@ -3253,7 +3253,7 @@ function lpOpen(st,k){if(!k)return;if(k.startsWith("mk:"))return goLesson(st,k);
 /* 261119 대표: 목록 규칙(점 · 번호 앞 공백 2개, 노션과 같게)을 앱의 모든 긴 글 칸에 — 공용 memo는 field.js가, 나머지 textarea는 여기서 처음 누를 때 한 번 묶음 */
 document.addEventListener("focusin",e=>{const x=e.target;if(x&&x.tagName==="TEXTAREA"&&window.HFLIST)HFLIST.bind(x)});
 /* 261119 대표: 화면 설명은 도움말(?) 단추 안에 — 화면 위 설명 줄은 두지 않음 */
-const LVHELP={wk:"주간 수업 = 수업 일지예요. 클래스마다 한 줄, 요일마다 한 칸이고, 칸을 누르면 하루 수업 본문이 열려요. 블록: 흰 바탕 + 왼쪽 클래스 색 띠 = 정규 · 점선 테두리 = 보강 · 빗금 = 휴강 · 흐림 = 아직 생성 안 한 수업(위 [이 주 수업 생성]). 지난 수업 칸 = 노션 수업 수식과 같은 글 — 연필 학습 내용 · 클립 과제 안내, 막대 = 사람 체크 출석(초록 출석 · 파랑 보강 · 빨강 결석 · 빗금 미입력) · 체크 상자 과제 검사(초록 제출 · 노랑 일부 · 빨강 미제출) · 문서 평가 평균(0점 뺌). 막대에 마우스를 올리면 노션 글. 아직 할 수업 칸 = 체크 상자 검사할 과제(지난 수업 과제) · 사람들 학생 수. 오른쪽 위 [5|7] = 주말 넣기 · 빼기.",mon:"월간 수업 = 날짜마다 그날 수업이에요. 수업을 누르면 하루 수업 본문, 빈 곳이나 [+n개 더]를 누르면 그날 오늘 수업으로 가요. 날짜 오른쪽 위 % = 그날 출석률(출석 + 보강 ÷ 시작한 수업 학생, 빈 출결은 안 온 것으로 — 노션 출석률과 같음). 블록: 흰 바탕 + 클래스 색 띠 = 정규 · 점선 = 보강 · 빗금 = 휴강 · 흐림 = 아직 생성 안 한 수업. Ctrl + 휠 = 한 화면 주 수, [5|7] = 주말.",atm:"출결 현황 = 날짜마다 출석 · 결석 · 보강 · 미입력 수예요. 날짜를 누르면 그날 오늘 등원 학생으로 가요. 오른쪽 위 % = 그날 출석률(빈 출결은 안 온 것으로). Ctrl + 휠 = 한 화면 주 수, [5|7] = 주말."};
+const LVHELP=HELPTX.lv;/* 도움말 글은 help.js 한 곳 */
 function lvTop(st,lv,ph){return `<div class="top"><div class="zone">${ttogHtml(lv,st)}${LVHELP[lv]?HELP(LVHELP[lv]):""}</div><div class="zone end no-print"><span class="searchbox">${IC("search")}<input class="inp" id="lq" placeholder="${ph}" value="${esc(st.q||"")}"></span><span class="tb-grp"><button class="btn icon tb-ic" id="undoB" title="실행 취소 Ctrl+Z">${IC("cul")}</button><button class="btn icon tb-ic" id="redoB" title="다시 실행 Ctrl+Y">${IC("cur")}</button></span>${rvBtn()}<button class="btn pri tb-num" id="saveAll" ${dirtyCount()?"":"disabled"} title="${dirtyTitle()}">${IC("save","s")}저장 <span class="num">${dirtyCount()}</span></button></div></div>`}
 /* 261119 대표(시안 8): 수업 블록을 누르면 오른쪽 창 먼저(오늘 · 주간 · 월간 같은 창 = panelLesson / 보강 panelMk), 창의 [수업 화면]으로 하루 수업 화면 */
 function lvSelect(st,k){st.lsel=k;st.lsStu=null;st.ldStu=null;st.mkNew=null;if(st.ltab==="rep")st.ltab="att";if(!k.startsWith("mk:")&&(st.lv==="mon"||st.lv==="atm")){const d=k.split("|")[1];st.week=dPlus(d,-dow(d))}panelOpen=true;render()}
@@ -4556,7 +4556,7 @@ window.addEventListener("beforeunload",e=>{if(dirtyCount()){e.preventDefault();e
 const ttNextSea=()=>{const cur=seasonOf(seaToday());if(!cur)return null;const xs=DB.seasons.filter(z=>!z.del&&z.id!==cur.id&&(z.start||"")>(cur.start||"")).sort((a,b)=>String(a.start).localeCompare(String(b.start)));return xs[0]?xs[0].id:null};
 NCOL["blocks|day"]={"월":"yellow","화":"red","수":"blue","목":"green","금":"gray","토":"brown","일":"orange"};/* 노션 시간표 DB 요일 선택지 색 */
 const ttRowsOf=()=>{const st=activeTab&&activeTab.screen==="timetable"?activeTab.state:null;return DB.blocks.filter(b=>!st||ttSeaAll(st)||b.seasonId===st.season)};
-const TT_HELP="시즌마다 되풀이되는 주간 시간표예요(노션 시간표 메뉴 · 시간표(학원) DB). [표]는 노션 표 보기와 같은 열, [달력]은 빈 곳을 끌어 생성하고 블록을 끌어 옮겨요. 수업이 생성된 운영 중 시간표는 잠겨 있고, 자물쇠를 풀어 고치면 저장할 때 \"언제부터\" 물어요. [저장]해야 노션에 들어가요.";
+const TT_HELP=HELPTX.tt;/* 도움말 글은 help.js 한 곳 */
 /* 261118 대표: 시즌 = 필터 탭 대신 시즌 고르기 하나(클래스별 · 요일별 · 주간이 같이 씀). 목록 = 시즌마다 상태 알약 · 시간표 개수, 표에는 맨 위 "모든 시즌", 주간에는 맨 아래 "시즌 관리"(타임라인) */
 const ttSeaAll=st=>st.seaAll!==false;/* 261118 대표: 기본 = 모든 시즌(표 · 주간 모두), 시즌을 고르면 그 시즌만 */
 /* 261118 대표: 시즌 칩 = 시즌 아이콘 + 시즌명만(기간 · 상태 글 · 개수 뺌), 운영 중이면 초록 점 하나 — 기간 · 상태는 목록 · 마우스 글에 */
@@ -4896,6 +4896,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del).slice().sort(
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="appdata.js?v=690"></script><script src="appsave.js?v=690"></script><script src="appview.js?v=690"></script><script src="livelesson.js?v=690"></script><script src="live.js?v=690"></script>
+<script src="appdata.js?v=691"></script><script src="appsave.js?v=691"></script><script src="appview.js?v=691"></script><script src="livelesson.js?v=691"></script><script src="live.js?v=691"></script>
 </body>
 </html>
