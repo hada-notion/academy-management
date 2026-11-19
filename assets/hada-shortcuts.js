@@ -28,7 +28,7 @@ const PAGES=[
 ];
 const EXTERNAL=[
  ['attendance_kiosk.html','키오스크','check','학원 입구 태블릿에서 전화번호로 등원·하원 체크(새 탭)','출결 키오스크(새 탭에서 열림)'],
- ['prototype/admin-app/hada-admin.html','수업 관리','edit','수업·시간표·보강·학생 등을 보고 입력하는 관리 앱(새 탭)','수업 관리 — 관리 앱(새 탭에서 열림)'],
+ ['prototype/admin-app/hada-admin.html?live=1','수업 관리','edit','수업·시간표·보강·학생 등을 보고 입력하는 관리 앱(새 탭)','수업 관리 — 관리 앱(새 탭에서 열림)'],
 ];
 const PHONE=window.matchMedia('(max-width:700px)');
 const icon=name=>`<svg class="line nav-icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
