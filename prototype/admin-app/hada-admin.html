@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리 앱 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3C%2Fsvg%3E">
-<link rel="stylesheet" href="hada-tokens.css?v=703">
-<link rel="stylesheet" href="app.css?v=703">
-<link rel="stylesheet" href="pick.css?v=703">
-<link rel="stylesheet" href="field.css?v=703">
+<link rel="stylesheet" href="hada-tokens.css?v=705">
+<link rel="stylesheet" href="app.css?v=705">
+<link rel="stylesheet" href="pick.css?v=705">
+<link rel="stylesheet" href="field.css?v=705">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -20,7 +20,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=703"><script src="hada-rules.js?v=703"></script><script src="help.js?v=703"></script><script src="alim-preview.js?v=703"></script><script src="pick.js?v=703"></script><script src="field.js?v=703"></script><script src="panel.js?v=703"></script>
+<link rel="stylesheet" href="alim.css?v=705"><script src="hada-rules.js?v=705"></script><script src="help.js?v=705"></script><script src="alim-preview.js?v=705"></script><script src="pick.js?v=705"></script><script src="field.js?v=705"></script><script src="panel.js?v=705"></script>
 <script>
 "use strict";
 
@@ -1134,8 +1134,10 @@ const HEAD_DEF={/* 창 머리 재료(기준 4장 "창 머리 화면별 재료"):
   costs:r=>({belong:r.kind,info:[r.date?D10(r.date):"",WON(r.amount)]}),
   enrolls:r=>{const c_=cls(r.classId)||{},k_=enStat(r);return {icon:IC("usercheck"),name:(byId(DB.students,r.studentId)||{}).name||"새 등록",chipsHtml:r.studentId&&r.classId?enPill(k_):"",belong:c_.name||(r._pickStu?"학생과 클래스를 골라요":""),info:[((tch(c_.teacherId)||{}).name||"—"),k_==="pre"&&!r.end?`${D10(r.start)} (등원 예정)`:`${D10(r.start)} - ${r.end?D10(r.end):"현재"}`]}}};
 /* 표 화면 창의 머리 하나: 재료(목록의 headDef 또는 HEAD_DEF)만 모아 창 모듈에 넘긴다 */
+/* 261119 대표: 실제 자료 모드에서 줄 창 [N] = 그 줄의 노션 페이지(서버 사본 주소 _url, 없으면 노션 id로). 아직 저장 전 새 줄은 노션에 없으므로 흐리게 */
+function notionRowAttr(r){if(!(window.LIVE&&window.LIVE.loaded))return "";const u=r&&(r._url||(/^[0-9a-f-]{32,36}$/i.test(String(r.id))?"https://www.notion.so/"+String(r.id).replace(/-/g,""):""));return u?` data-nurl="${esc(u)}"`:` data-nnew="1" style="opacity:.4"`}
 function listHead(L,r,draft){const d=(L.headDef?L.headDef(r):HEAD_DEF[L.coll]?HEAD_DEF[L.coll](r):{})||{};const scr=activeTab.screen,nk=L.coll==="enrolls"?"enrolls":scr;
-  return PANEL.head({icon:d.dot?"":d.icon||panelIcon(),dot:d.dot,nameHtml:d.name!=null?esc(d.name):L.head?L.head(r):esc(L.cols[0][1](r)),draft,chipsHtml:d.chipsHtml,state:d.state,lock:d.lock||"",help:d.help,belong:d.belong,info:d.info,notion:NOTION[nk]?`data-notion="${nk}"`:""})}
+  return PANEL.head({icon:d.dot?"":d.icon||panelIcon(),dot:d.dot,nameHtml:d.name!=null?esc(d.name):L.head?L.head(r):esc(L.cols[0][1](r)),draft,chipsHtml:d.chipsHtml,state:d.state,lock:d.lock||"",help:d.help,belong:d.belong,info:d.info,notion:NOTION[nk]?`data-notion="${nk}"${notionRowAttr(r)}`:""})}
 /* 296판(대표): 오른쪽 창 제목 앞 = 그 화면 아이콘(왼쪽 메뉴와 같음, 갈래별 학년 학사모·프로그램 모니터). 색 점이 있는 창(클래스·시간표·수업·보강·시즌)은 색 점만 */
 function panelIcon(){const s=curScr(),sub=activeTab&&activeTab.state&&activeTab.state.sub;const o={schools:{g:"gradcap"},books:{p:"package",b:"bookc","":"bookc",undefined:"bookc"}}[s];const n=o&&o[sub]||(MENU.flatMap(g=>g[1]).find(x=>x[0]===s)||[])[2];return n&&FEATHER[n]?IC(n):""}
 
@@ -2153,7 +2155,16 @@ LISTS.tuition.head=x=>`${esc(nmStu(x.studentId))} <small class="hsub">${esc(nmCl
 const NOTION={today:"홈",bill:"청구서",makeup:"보강",records:"학습기록",files:"자료실",completion:"수료 보고서",etcs:"기타경비",students:"학생 목록",enrolls:"등록학생",classes:"클래스",timetable:"시간표",lesson:"수업",teachers:"직원관리",subjects:"과목",books:"라이브러리",progress:"진도관리",events:"일정",reports:"학습 보고서",tuition:"수강료",letters:"가정통신문",schools:"학교",glevels:"학년",areas:"영역",exams:"시험",costs:"비용",alims:"알림톡 설정"};
 function notionBtn(scr){const n=NOTION[scr];return n?`<button type="button" class="nlink" aria-label="노션에서 열기" data-notion="${scr}" title="노션 ‘${n}’ 페이지를 새 탭으로 열어요">${IC("notion","s")}</button>`:""}
 document.addEventListener("click",ev=>{const b=ev.target.closest&&ev.target.closest("[data-engd2]");if(!b)return;const e2=byId(DB.enrolls,b.dataset.engd2);if(e2)enGuideRun(e2)});/* 327판: 등록 화면 창 [등록 안내 전송] */
-document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-notion]");if(b)toast(`노션 ‘${NOTION[b.dataset.notion]}’ 페이지를 새 탭으로 열어요 — 시제품에는 주소가 없어요(원본에서 연결)`)});
+/* 261119 대표: 실제 자료 모드의 [N] — 줄 창 = 그 줄의 노션 페이지(data-nurl), 화면 제목 옆 = 그 메뉴의 노션 페이지(서버 사본의 메뉴(학원) DB 줄 주소를 이름으로 찾음). 예시 모드는 아래 알림 그대로 */
+let _menuPages=null;
+async function liveMenuPages(){if(_menuPages)return _menuPages;const c=window.LIVE;if(!c)return {};const rows=await appList({url:c.url,anonKey:c.anonKey,session:c.session},"메뉴(학원) DB");const m={};rows.forEach(r=>{if(!r.url)return;Object.values(r.props||{}).forEach(v=>{if(typeof v==="string"&&v.trim()&&!m[v.trim()])m[v.trim()]=r.url})});return _menuPages=m}
+document.addEventListener("click",async e=>{const b=e.target.closest&&e.target.closest("[data-notion]");if(!b)return;
+  if(window.LIVE&&window.LIVE.loaded){
+    if(b.dataset.nnew)return toast("아직 저장하지 않은 새 줄이에요 — 저장하면 노션에 페이지가 생겨요");
+    const nm=NOTION[b.dataset.notion];let u=b.dataset.nurl||"";
+    if(!u){try{u=(await liveMenuPages())[nm]||""}catch(err){return toast(`노션 주소를 받지 못했어요 — ${err.message}`)}if(!u)return toast(`노션 ‘${nm}’ 페이지 주소를 찾지 못했어요 — 노션 메뉴 DB에 그 이름의 줄이 있는지 봐요`)}
+    window.open(u,"_blank","noopener");return}
+  toast(`노션 ‘${NOTION[b.dataset.notion]}’ 페이지를 새 탭으로 열어요 — 시제품에는 주소가 없어요(원본에서 연결)`)});
 /* 바로 가기(새 탭): 키오스크·노션 페이지 */
 const EXT={kiosk:"키오스크(등·하원 체크) 화면",manual:"노션 매뉴얼",files:"노션 자료실",pubdb:"노션 공개 DB",privdb:"노션 비공개 DB"};
 
@@ -4894,6 +4905,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del).slice().sort(
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="appdata.js?v=703"></script><script src="appsave.js?v=703"></script><script src="appview.js?v=703"></script><script src="livelesson.js?v=703"></script><script src="live.js?v=703"></script>
+<script src="appdata.js?v=705"></script><script src="appsave.js?v=705"></script><script src="appview.js?v=705"></script><script src="livelesson.js?v=705"></script><script src="live.js?v=705"></script>
 </body>
 </html>
