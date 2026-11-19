@@ -6,6 +6,7 @@
 // 이름이 정확히 "메뉴(학원) DB"이고 휴지통에 없는 것이 하나뿐일 때 그 id. 0개거나 여러 개면 null(건너뜀).
 import { NOTION_API } from "./constants.ts"
 import { fetchWithRetry, notionHeaders } from "./notionClient.ts"
+import { normalizeDbName } from "./dbNames.ts"
 
 export const MENU_DS_TITLE = "메뉴(학원) DB"
 
@@ -15,12 +16,13 @@ function titleOf(item: any): string {
 }
 
 // 검색 결과에서 메뉴 데이터소스 id를 고른다. 같은 이름이 둘 이상이면 어느 쪽인지 알 수 없으므로 null.
+// 관 꼬리표("메뉴(스터디) DB" 같은 이름, v2.8.0 항목 102)도 같은 이름으로 본다 — 두 관이 한 통합에 같이 보이면 둘이라 null이고, 그때는 Secret DATA_SOURCE_MENU_ID로 정한다.
 export function pickMenuDataSourceId(results: any[]): string | null {
 	const hits = (results ?? []).filter((item) =>
 		item?.object === "data_source" &&
 		item?.in_trash !== true &&
 		item?.archived !== true &&
-		titleOf(item) === MENU_DS_TITLE
+		normalizeDbName(titleOf(item)) === MENU_DS_TITLE
 	)
 	return hits.length === 1 ? String(hits[0].id) : null
 }
@@ -35,9 +37,9 @@ export async function resolveMenuDataSourceId(): Promise<string | null> {
 		method: "POST",
 		headers: notionHeaders(),
 		body: JSON.stringify({
-			query: MENU_DS_TITLE,
+			query: "메뉴", /* 관 꼬리표 이름("메뉴(스터디) DB")도 잡히게 이름 전체가 아니라 "메뉴"로 찾고, 아래에서 이름을 정확히 거른다 */
 			filter: { property: "object", value: "data_source" },
-			page_size: 20,
+			page_size: 50,
 		}),
 	})
 	if (!res.ok) throw new Error(`search ${MENU_DS_TITLE} failed: ${res.status} ${await res.text()}`)

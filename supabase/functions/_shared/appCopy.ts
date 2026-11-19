@@ -19,6 +19,7 @@ import { NOTION_API } from "./constants.ts"
 import { fetchWithRetry, notionHeaders, queryAllPages } from "./notionClient.ts"
 import { fetchSupabaseWithRetry } from "./reportCacheShared.ts"
 import { runInBackground } from "./backgroundTask.ts"
+import { normalizeDbName } from "./dbNames.ts"
 
 type Page = Record<string, any>
 type Row = { db: string; id: string; props: Record<string, unknown>; notion_created_at: string | null; notion_edited_at: string; url: string; icon: string }
@@ -134,6 +135,13 @@ const findFetch = async (url: string, init: RequestInit): Promise<Response> => {
 	if (res.status === 429) throw new NotionBusyError()
 	return res
 }
+// 검색 결과 하나를 이름 → id 목록에 더한다. 휴지통 · 보관은 뺀다. 관 꼬리표("학생(스터디) DB")는 "학생(학원) DB"로 보고 모은다(v2.8.0 항목 102):
+// 같은 이름이 여러 관에 있으면 id가 여럿 모이고, 아래 resolveSources가 이 학원 것 하나로 좁힌다.
+export function addSource(out: Map<string, string[]>, r: any): void {
+	if (r?.in_trash || r?.archived) return
+	const name = normalizeDbName((r?.title ?? []).map((t: { plain_text?: string }) => t.plain_text ?? "").join("").trim())
+	if (name) out.set(name, [...(out.get(name) ?? []), r.id])
+}
 async function searchSources(): Promise<Map<string, string[]>> {
 	const out = new Map<string, string[]>()
 	let cursor: string | undefined
@@ -143,11 +151,7 @@ async function searchSources(): Promise<Map<string, string[]>> {
 		const res = await findFetch(`${NOTION_API}/search`, { method: "POST", headers: notionHeaders(), body: JSON.stringify(body) })
 		if (!res.ok) throw new Error(`Notion 검색 실패: ${res.status} ${await res.text()}`)
 		const data = await res.json()
-		for (const r of data.results ?? []) {
-			if (r.in_trash || r.archived) continue
-			const name = (r.title ?? []).map((t: { plain_text?: string }) => t.plain_text ?? "").join("").trim()
-			if (name) out.set(name, [...(out.get(name) ?? []), r.id])
-		}
+		for (const r of data.results ?? []) addSource(out, r)
 		cursor = data.has_more ? data.next_cursor : undefined
 	} while (cursor)
 	return out
