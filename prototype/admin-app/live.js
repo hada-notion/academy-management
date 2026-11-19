@@ -45,11 +45,12 @@
   const roPass = () => RO_PASS0 + (attw() ? ",.attseg,#allOk,#lsRev,#lsSave,#attEd,.attv.ed,.attpop .so" : ""); /* 536판(대표 261119): 출결 = 값 칸 .attv + 머리 [편집] #attEd + 떠 있는 목록 .attpop .so(body). .attseg는 과제 단추 */
   /* 학습기록 쓰기(칸 P3b — 수업 칸 P3과 함께 켤 때만, 261119 원본검수 Z1): 하루 수업 페이지의 학습기록 · 과제검사 · 학습활동 · 진도 · 루틴 탭을 풀고, 저장은 livelesson.js(update-record · create-records · save-activities · save-routines) */
   const RECW = gOn.has("P3") && gOn.has("P3b"); window.LIVE_RECW = RECW;
+  /* 판 680부터 수업은 오른쪽 창만(전체 화면 없음): 창 탭 키 = st.ltab(정보 info · 출결 att · 루틴 rt · 학습 log). 옛 페이지 탭 키(lptab)도 함께 본다(원본검수 261119: 창 학습 탭 [학습기록 추가] · [교재로 생성]이 켜도 비활성이던 것) */
   const REC_TABS = ["prog", "log", "hw", "act", "rt"];
   const inLesson = () => liveScr(typeof activeTab !== "undefined" ? activeTab : null) === "lesson";
   const recw = () => RECW && inLesson();
-  const recTab = () => recw() && REC_TABS.includes(((activeTab && activeTab.state) || {}).lptab);
-  const REC_AREA = "#lpIn,.lpx";
+  const recTab = () => { if (!recw()) return false; const s = (activeTab && activeTab.state) || {}; return REC_TABS.includes(s.ltab) || REC_TABS.includes(s.lptab); };
+  const REC_AREA = "#lpIn,.lpx,.panel";
   /* 보기만 되돌리기에서 뺄 값: 출결 쓰기면 출결 · 한마디(anotes), 학습기록 쓰기면 기록 · 오늘 진도(lpToday) */
   const roKeepKeys = () => [...(attw() ? ["att", "anotes"] : []), ...(recw() ? ["recs", "lpToday"] : [])];
   const snapRo = () => { const ks = roKeepKeys(); if (!ks.length) return snapshot(); const keep = {}; ks.forEach((k) => { keep[k] = DB[k]; DB[k] = Array.isArray(keep[k]) ? [] : {}; }); try { return snapshot(); } finally { Object.assign(DB, keep); } };
@@ -153,7 +154,7 @@
   /* 허용 목록(보기 화면에서 눌러도 되는 것 = 값이 바뀌지 않는 것). 여기 없는 단추 · 고르기 · 입력은 보기 화면에서 꺼지고 막힌다.
      창: 링크 · 도움말 · 노션 · 줄 열기/이동 · 접기 · 탭 · 할 일 줄. 위 줄: 날짜 · 달 · 주 이동, 보기 탭, 찾기, 엑셀 · 인쇄, 크기, 창 고정,
      그리고 입력 칸(P1)에서 고친 것을 다루는 실행 취소 · 다시 실행 · 모두 되돌리기 · 저장. */
-  const RO_PASS0 = "a,[data-help],[data-notion],.hnot,[data-drill],[data-go],[data-gobook],[data-gochs],[data-gobill],[data-act^=go],[data-rpdo^=open],[data-rpdo^=notion],[data-pgfold],[data-entab],.ptabs,.ro-note,.tdr,.tdmore,.qhelp,summary,"
+  const RO_PASS0 = "a,[data-help],[data-notion],.hnot,[data-drill],[data-go],[data-gobook],[data-gochs],[data-gobill],[data-act^=go],[data-rpdo^=open],[data-rpdo^=notion],[data-pgfold],[data-entab],[data-mkin],.ptabs,.ro-note,.tdr,.tdmore,.qhelp,summary,"
     + "[data-dn],[data-mn],[data-sub],[data-cfnav],[data-mtab],[data-view],[data-wkd],[data-evsel],.foldchip,#lq,.sbx,#xlB,#prB,#undoB,#redoB,#rvAll,#saveAll,#panelT,#mkPanelT,#seaChip,#wkP,#wkN,#wkT,#lmAtt,#cbFind,#zOut,#zIn,#makeWeek,#lGen"; /* #makeWeek · #lGen(수업 메뉴 v559의 생성 단추) = 수업 생성: 노션 버튼과 같은 서버 함수(generate-classes)를 부르는 run이라 보기 화면에서도 켠다(대표 261117 "수업 생성은 앱에서도") */
   const RO_HIT = "button,input,select,textarea,label,[role],[tabindex],[contenteditable],.btn,.lnk,.hf-box";
   const roBlock = (e) => {
@@ -161,7 +162,7 @@
     /* 보기 화면의 엑셀은 내려받기만: [한번에 올리기]는 어디에 떠 있든(메뉴 · 창) 막는다 */
     { const up = e.target.closest("button,label,[role=menuitem],.btn,input[type=file]"); if (up && (up.matches("input[type=file]") || /올리기/.test(up.textContent || ""))) { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); if (e.type === "click") say("이 화면은 보기만 해요 — 올리기는 노션에서 해요"); return; } }
     if (!e.target.closest("#view")) return;
-    if (e.target.closest(roPass()) || !e.target.closest(RO_HIT)) return;
+    if (e.target.closest(roPass()) || !e.target.closest(RO_HIT) || (recTab() && e.target.closest(REC_AREA))) return; /* 학습기록 쓰기 칸이 켜진 수업 창의 기록 탭(학습 · 루틴)은 막지 않음 */
     if (!e.target.closest(".panel") && !e.target.closest("button,select,[role=button],.btn,.lnk,.hf-box")) return; /* 창 밖은 단추 · 고르기만(표 줄 · 카드 · 찾기 칸은 그대로) */
     if (e.type === "keydown" && !["Enter", " ", "Delete", "Backspace"].includes(e.key)) return;
     e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
