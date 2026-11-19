@@ -734,6 +734,7 @@ td .stag,h3 .stag,.dlg h2 .stag{margin-left:var(--space-2)}
 .ltag{font-size:10px;font-weight:700;padding:0 6px;border-radius:999px;flex:none}.ltag.w{background:#FFE9B8;color:#8A5A00}
 .lbar{display:flex;height:5px;border-radius:3px;overflow:hidden;margin-top:5px;background:#EEE}.lbar i{display:block}
 .lbar .ok,.foot .lg .ok{background:#3E9B5C}.lbar .ab,.foot .lg .ab{background:#D0533F}.lbar .mk,.foot .lg .mk{background:#3D7BC9}
+.lbar .pt{background:#E9B949}.reccard .recbar{margin-top:6px;height:6px}
 .lbar .no,.foot .lg .no{background:repeating-linear-gradient(135deg,#E7DFD3 0 3px,#F4EFE8 3px 6px)}
 .foot .lg{display:flex;gap:12px;margin-left:auto;font-size:var(--text-caption);color:var(--muted);align-items:center}
 .foot .lg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
@@ -921,10 +922,16 @@ body.docked .body>.rsz{right:auto}
 .stl-nm input{border:0;outline:0;font-weight:700;font-size:var(--text-small);flex:1;min-width:0;background:none}
 .stl-nm:focus-within{box-shadow:0 0 0 2px var(--brand-deep)}
 .stl-nm svg.i{color:var(--subtle);order:2}
+.stl-nm .stl-sic{display:inline-flex}
+/* 261118 대표: 시즌 시작일 · 종료일 칸 앞 달력 아이콘(입력칸 모듈 날짜 칸과 같은 자리) */
+.stl-d{position:relative;display:inline-block}.stl-d>svg.i{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--subtle);pointer-events:none;z-index:1}.stl-d .dtxt{padding-left:34px;text-align:left}
 .stl-ed .dwrap{width:140px}.stl-ed .datebtn{height:36px;box-sizing:border-box;font-size:var(--text-small)}
 .stl-warn{display:flex;align-items:center;gap:8px;margin:0 -16px;padding:8px 16px;background:#FFF6E3;color:#8A5A00;font-size:var(--text-label);border-top:1px solid #F1D58A}
 .stl{padding-bottom:0}
 .ttl .sealbl{font-size:var(--text-label);font-weight:700;color:var(--subtle);margin-right:-4px;cursor:pointer}
+/* 261118 대표: 시즌 타임라인 막대 = 시즌 색(일정 달력 날짜 밑 선과 같은 색) — 운영 중 = 옅은 바탕, 예정 = 같은 색 빗금, 종료 = 회색 그대로 */
+.stl-b.sc.run,.stl-b.sc.c{background:color-mix(in srgb,var(--sc) 20%,#fff);color:#3D3530;box-shadow:inset 0 0 0 1.5px var(--sc)}
+.stl-b.sc.prep,.stl-b.sc.dr{background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--sc) 10%,#fff) 0 5px,color-mix(in srgb,var(--sc) 24%,#fff) 5px 10px);color:#3D3530;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--sc) 70%,#fff)}
 .stl-b.sel{cursor:grab}.stl-b.sel.moving{cursor:grabbing;box-shadow:inset 0 0 0 2px var(--brand-deep),0 6px 14px rgba(60,45,30,.18)!important;z-index:2}
 /* 261112 대표: 오늘 = C안(머리·열 옅은 배색) + 지금 시각 빨간 선. 배색은 프라임 갈색(기본) / body.today-red 면 빨강 */
 :root{--today-head:#F1E9DF;--today-col:#FAF6F0;--today-ink:var(--brand-deep)}
@@ -942,7 +949,8 @@ body.today-red{--today-head:#FDECEA;--today-col:#FFF8F6;--today-ink:#C0392B}
 .hovercard .atti.a1{color:#3E9B5C}.hovercard .atti.a2{color:#D0533F}.hovercard .atti.a3{color:#3D7BC9}.hovercard .atti.a0{color:#C9BCAB}
 /* 오늘 요일 머리 테두리 + 열 양옆 선(갈색) */
 .dayhead.dated .today{box-shadow:inset 0 2px 0 var(--brand-deep),inset 1.5px 0 0 #CDBBA4,inset -1.5px 0 0 #CDBBA4}
-.col.todaycol{box-shadow:inset 1.5px 0 0 #CDBBA4,inset -1.5px 0 0 #CDBBA4}
+:root{--today-line:#CDBBA4}/* 오늘 선 한 곳 — 주간 열 · 월간 칸 */
+.col.todaycol{box-shadow:inset 1.5px 0 0 var(--today-line),inset -1.5px 0 0 var(--today-line)}
 /* 261112 대표: 왼쪽 사이드바 묶음 이름(학원·사람·수업…)과 메뉴 구분 — 작은 굵은 글자·넓은 자간·연갈색, 위 구분선 */
 .menu .g{font-size:11px;font-weight:800;letter-spacing:.08em;color:#A8957F;margin:var(--space-3) var(--space-2) var(--space-1);padding-top:var(--space-3);border-top:1px solid var(--line2)}
 .menu .g:first-child{border-top:0;padding-top:0;margin-top:var(--space-2)}
@@ -1227,7 +1235,9 @@ table.stt .ct small{color:var(--muted);font-size:12px;margin-right:6px}
 .pg-bar .searchbox{width:168px}.pg-bar{flex-wrap:nowrap;overflow:hidden}
 .body.pg-dock.withp table.stt .pc{display:none}
 table.stt td.srel .chips{max-width:280px;overflow:hidden}
-@media(max-width:1279px){.sfseg .n{display:none}}
+@media(max-width:1279px){.sfseg .n,.subseg .n{display:none}}
+/* 보기 탭 숫자(학생1 — 공용 보기 탭에 숫자 자리) = 옛 학생 거르기 숫자와 같은 모양 */
+.subseg .n{font-size:11px;color:var(--subtle);font-variant-numeric:tabular-nums;font-weight:600}
 
 /* 94판 보완: 표 머리 위로 줄이 비치지 않게(머리를 스크롤 칸 맨 위에 붙임), 머리 아이콘 */
 .body.pg-dock>.list{padding-top:0}
@@ -1287,7 +1297,6 @@ table.stt tr.sdel td{background:#FBF8F4;color:var(--subtle);height:40px}table.st
 .stpanel textarea.inp{text-align:left}
 .stpanel textarea.inp,.panel textarea.inp,textarea.inp{resize:vertical;width:100%;max-width:100%;box-sizing:border-box}
 /* 96판 보완: 창 탭은 같은 폭으로 나눠 가운데(숫자 자리 고정 폭 없앰 — 탭 폭이 고정이라 숫자가 바뀌어도 안 움직임) */
-.ptabs .ptb{flex:1 1 0;justify-content:center;min-width:0;padding:0 6px}.ptabs .ptb .sm{min-width:0;max-width:none}
 
 .stpanel .box h3 .sp{flex:1}.stpanel .stog.sm{gap:8px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer}.stpanel .stog.sm .tl{white-space:nowrap}
 .stpanel .seln{padding:10px 0}.stpanel .seln .l2{display:flex;align-items:center;gap:10px;flex-wrap:nowrap}.stpanel .seln .l2>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.stpanel .seln .l2 .sp{flex:1}.stpanel .seln .l2 .linkbtn{flex:none;font-size:12px}
@@ -1600,11 +1609,11 @@ body.dragpush .body>.panel{transform:translateX(calc(100% - 28px));opacity:.55;p
 /* ───── 163판: 목록 위 줄이 좁으면 단추가 잘리지 않게 줄이기(261113 밤 스캔 — 1280 + 사이드바에서 [저장]·되돌리기·창 단추가 잘렸음) ─────
    줄 폭 기준: 1120 이하 = 상태 탭 숫자 숨김·찾기 칸 140, 1000 이하 = [엑셀]·[학생 추가]·[표 편집]은 아이콘만(이름은 마우스 올리면) */
 .pg-bar{container-type:inline-size;container-name:pgbar}
-@container pgbar (max-width:1120px){.sfseg .n{display:none}.pg-bar .searchbox{width:140px}}
+@container pgbar (max-width:1120px){.sfseg .n,.subseg .n{display:none}.pg-bar .searchbox{width:140px}}
 /* 163판: 블록 이름 두 줄(단어 단위, 넘치면 글자 단위) — fitTitle */
 .blk .t.w2{white-space:normal;word-break:keep-all;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;text-overflow:clip;max-height:36px}
-/* 163판: 태블릿(1023 이하)은 위 줄을 두 줄로 — 단추 잘림 없음 */
-@media(max-width:1023px){.pg-bar{flex-wrap:wrap;overflow:visible;row-gap:8px}}
+/* 519판(기준 2-1): 768 이상은 위 줄이 늘 한 줄(모자라면 왼쪽을 접는다 — fitBars). 768 미만만 두 줄 */
+@media(max-width:767px){.pg-bar{flex-wrap:wrap;overflow:visible;row-gap:8px}}
 /* 163판: 오른쪽 창이 열려 있으면 [추가 중]·[보강 중] 띠를 남은 칸 가운데로(창 단추를 가렸음) */
 .body:has(.panel) .mkbar{left:calc((100% - 384px)/2)}
 
@@ -2296,7 +2305,6 @@ table.stt tr:hover .rowdel:hover,table.stt tr.sel .rowdel:hover{background:var(-
 #lp .phead h2 .cdot,#lp h2 .cdot,.phead .cdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle;flex:none}
 #lp .hint .cdot{width:8px;height:8px;margin:0 4px 0 2px}
 /* ═════ 264판 ═════ 창 탭: 글이 긴 탭(정보 · 휴강 등)은 그만큼 넓게 — 똑같이 나눠 잘리던 것 */
-.ptabs .ptb{flex:1 1 auto}.ptabs .ptb .sm{white-space:nowrap;overflow:visible}
 /* ═════ 265판 ═════ 아래 줄에 올려도 합친 칸이 같이 밝아짐 */
 table.t td[data-mg].mghl{background:var(--brand-tint)}
 table.stt.gt td[data-mg].mgsel.mghl{background:var(--sel-bg)}
@@ -2744,7 +2752,7 @@ table.stt tr.sel,table.stt tr.sel:hover{background:var(--sel-bg)}
 
 
 /* 411판(대표): 색 알약 한 벌 — 모서리 6(반원 ✕) · 글자 한 색(--pill-ink) · 배경만 색, 55%로 연하게. 숫자 배지(.pbadge·.tn·.hp-n)는 그대로 둥글게 */
-.spill,.kpl,.sstag,.tag,.pill,.rpill,.gchip,.tchip,.stp,.mchip,.hfm-c{border-radius:var(--pill-radius)!important}
+.spill,.kpl,.sstag,.tag,.pill,.rpill,.gchip,.tchip,.stp,.mchip,.hfm-c,.hp-tag,.hp-g{border-radius:var(--pill-radius)!important}/* 261118 대표: 고르기 목록 학년 칩(.hp-g) · 태그(.hp-tag)도 같은 알약 모서리 */
 .spill,.kpl,.sstag,.tag,.pill,.rpill,.gchip,.tchip,.stp,.mchip{color:var(--pill-ink)!important;background-image:linear-gradient(var(--pill-veil),var(--pill-veil))}
 .kpl svg,.mchip svg,.spill svg,.sstag svg{color:var(--pill-ink)!important;stroke:currentColor}
 .nc-default{background:color-mix(in srgb, #E3E2E0 var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
@@ -2884,9 +2892,11 @@ body[data-w="pc"]:not(.docked) .body:has(>#panel)>.mkmain{padding-right:calc(var
 .cfcal{min-width:0}
 .cfcal .scroll{display:flex;flex-direction:column}
 .cfgrid{flex:1;display:grid;grid-template-columns:var(--hours-w) repeat(7,1fr);min-height:100%}
+/* 261118 대표: 주 수를 줄인 월간 달력은 휠로 굴려도 주 줄이 반쯤 걸치지 않고 한 주씩 딱 맞게 멈춤 */
+.cfcal .scroll:has(>.cfgrid.cfsnap){scroll-snap-type:y mandatory}.cfgrid.cfsnap>.cfax{scroll-snap-align:start}/* snap-stop:always는 ‹ › 이동(여러 주 건너뜀)을 첫 주에서 멈추게 해서 뺌 */
 .cfax{position:relative;font-size:var(--text-micro);color:var(--subtle);text-align:right;padding-right:var(--space-2)}
-.cfax span{position:relative;top:-8px;background:var(--surface);padding-left:var(--space-1)}
-.cfax:first-child span{top:4px}
+/* 261118 대표: 주차 글자 = 그 주 줄의 날짜 숫자와 같은 높이(선 위에 걸치지 않음 — 모든 주 같게) */
+.cfax span{position:relative;top:4px;background:var(--surface);padding-left:var(--space-1)}
 .cfday{position:relative;border-left:1px solid var(--line2);border-bottom:1px solid var(--line2);padding:4px 4px 6px;display:flex;flex-direction:column;gap:3px;min-width:0;overflow:hidden}
 .cfday.todaycol{background-color:var(--today-col)}
 .cfday.outside{background:var(--canvas)}.cfday.outside .cfdn{opacity:.45}
@@ -2908,7 +2918,7 @@ body.dragging-stu .blk.cfblk.drop-no{opacity:.3}
 .scal-chip{display:flex;align-items:center;gap:4px;font-size:11px;line-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-ink)}
 
 .scal-cf .cfday.picked{background:var(--brand-tint)}
-.scal-cf .cal-sbar{position:absolute;left:4px;right:4px;height:3px;border-radius:2px}
+.scal-cf .cal-sbar,.evcf .cal-sbar{position:absolute;left:4px;right:4px;height:3px;border-radius:2px}/* 일정 달력 시즌 막대(261118) */
 /* 달력 틀 결석 칸 = 바탕 색만(글자는 늘 진한 글자) · 고른 칸 = 바탕 진하게 */
 .cfday .mkab,.cfday .mkab.open{color:var(--text-ink)}
 .cfday .mkab small{color:var(--text-muted);font-weight:500}
@@ -2933,8 +2943,78 @@ table.stt.mkt{table-layout:auto}.stt.mkt td{overflow:visible}
 .evcal{overflow:hidden;height:100%;min-height:480px;display:flex}
 .evcal .cfcal{flex:1}
 .evchip{display:block;width:100%;text-align:left;font:inherit;font-size:12px;line-height:18px;border:0;border-radius:6px;padding:2px 6px;color:var(--text-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;min-height:22px}
-.evchip.ev-info{background:var(--info-soft)}.evchip.ev-danger{background:var(--danger-soft)}.evchip.ev-success{background:var(--success-soft)}.evchip.ev-gray{background:var(--canvas)}
+.evchip.ev-exam{background:var(--orange-soft)}/* 시험 달력 칩(261117) */
+/* 일정 달력(261118 대표 시안대로): 구분 색 · 여러 날 띠 · 휴원 바탕 · +n · 시즌 바탕 · 그날 창 · [보일 것] */
+/* 261118 대표: 일정 색 조금 더 진하게 — 옅은 바탕에 그 구분의 진한 색을 --ev-deep만큼 섞음(한 곳에서 조절) */
+:root{--ev-deep:18%}
+.evchip.evk-acad,.evcont.evk-acad,.evcf .evland.evk-acad{background:color-mix(in srgb,var(--info) var(--ev-deep),var(--info-soft))}.evchip.evk-todo,.evcont.evk-todo,.evcf .evland.evk-todo{background:color-mix(in srgb,var(--success) var(--ev-deep),var(--success-soft))}.evchip.evk-exam,.evcont.evk-exam,.evcf .evland.evk-exam{background:color-mix(in srgb,#F2B27A var(--ev-deep),var(--orange-soft))}.evchip.evk-event,.evcont.evk-event,.evcf .evland.evk-event{background:color-mix(in srgb,#E0A93B var(--ev-deep),#FBF1D2)}.evchip.evk-vac,.evcont.evk-vac{background:color-mix(in srgb,#9A8F87 var(--ev-deep),#ECE8E3);color:#5E554E}
+.expd{margin:-4px 0 10px;display:flex;flex-direction:column;gap:6px}.expd-h{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted,#7A6E66)}.expd-h b{color:var(--text-ink)}.expd-d{display:flex;flex-wrap:wrap;gap:6px}.expd .btn.on{background:var(--brand-deep,#6B4F3A);color:#fff;border-color:var(--brand-deep,#6B4F3A)}.expd .hint.warn{color:#B4532A}/* 시험정보 창 시험 기간 */
+.evcf .evchip.exper{opacity:.55;font-size:11px;min-height:18px;line-height:14px;cursor:default}.evcf .exsp{height:18px}/* 시험 메뉴 달력의 시험 기간 배경 막대 */
+.evchip.evk-exsub{background:#fff;border-left:3px solid #F2B27A!important;color:var(--text-ink)}/* 과목 시험일(시험정보) — 시험 기간 막대(주황 바탕)와 구분 */
+.evchip.hid{opacity:.55;border:1px dashed var(--line,#CBBBA6)}
+/* 261118 대표: 칩이 바탕에 묻히지 않게 옅은 테두리·그림자 / 여러 날 일정은 칸을 넘어 한 줄로(옆 칸 여백까지 늘림, 끝에서만 둥글게) */
+.evcf .evchip{border:1px solid rgba(61,53,48,.12);box-shadow:none;box-sizing:border-box;flex:none}/* 261118 대표: 그림자 뺌, 옅은 테두리만 */
+/* 시즌 선(날짜 바로 아래, 칸을 넘어 쭉) · 시작일 이름 · 오늘 테두리는 맨 위 */
+.evcf .evsl{position:relative;z-index:1;display:block;flex:none;height:3px;margin:0 -4px 1px -5px}.evcf .evsl.bs{margin-left:0;border-radius:2px 0 0 2px}.evcf .evsl.be{margin-right:0;border-radius:0 2px 2px 0}.evcf .evsl.bs.be{border-radius:2px}.evcf .evsl.none{background:transparent}
+.evsln{position:absolute;top:5px;left:26px;z-index:2;border:0;background:none;padding:0 2px;font:inherit;font-size:11px;font-weight:700;line-height:16px;cursor:pointer;white-space:nowrap;max-width:calc(100% - 90px);overflow:hidden;text-overflow:ellipsis}.evsln:hover{text-decoration:underline}
+/* 261118 대표: 월간 오늘 = 주간(시간표 · 수업) 오늘 열과 같은 모양 — 옅은 바탕(--today-col) + 옅은 선 1.5px(--today-line) */
+.evcf .cfday.todaycol::after{content:"";position:absolute;inset:0;border:1.5px solid var(--today-line,#CDBBA4);z-index:5;pointer-events:none}
+/* 일정 끌기·늘리기(261118): 칩 = 끌기 손, 양 끝 8px = 늘리기, 놓을 칸 강조, 잠긴 일정 = 붉은 테두리 + 되튐 */
+.evcal{user-select:none}.evcf .evchip[data-evsel]{cursor:grab}body.evdragging,body.evdragging *{cursor:grabbing!important}
+.evcf .evchip[data-evsel]:not(.evbar)::before,.evcf .evchip[data-evsel]:not(.evbar)::after,.evcf .evchip.evbar.bs::before,.evcf .evchip.evbar.be::after{content:"";position:absolute;top:0;bottom:0;width:8px;cursor:col-resize}
+.evcf .evchip[data-evsel]{position:relative}.evcf .evchip::before{left:0}.evcf .evchip::after{right:0}
+.evcf .cfday.evdrop{background:var(--brand-tint,#F3ECE3)!important}
+.evfloat{position:fixed!important;z-index:9000;margin:0!important;pointer-events:none;opacity:.92;box-shadow:0 8px 24px rgba(25,31,40,.18)!important;border-radius:6px!important;transition:none}/* 시간표 .blk.dragging과 같은 뜬 모양 */
+.evcf .evchip.evorigin{opacity:.35}/* 원래 자리 잔상 */
+.evcf .evchip .evlk{position:absolute;right:6px;top:50%;transform:translateY(-50%);display:none;color:var(--muted,#7A6E66);line-height:0;pointer-events:none}.evcf .evchip.evhov .evlk,.evcf .evchip:hover .evlk{display:block}.evcf .evchip.lk.evhov{padding-right:22px}/* 잠긴 일정 자물쇠 — 마우스를 올렸을 때만 */
+.evfloat .evlk{display:none}
+.evcf .evland{position:relative;z-index:6;display:block;flex:none;box-sizing:border-box;min-height:22px;font-size:12px;font-weight:700;line-height:18px;padding:1px 6px;color:var(--brand-deep,#6B4F3A);border:1.5px dashed var(--brand-mid,#A9825F);border-radius:6px;opacity:.85;pointer-events:none;white-space:nowrap;overflow:hidden}/* 놓일 자리 잔상(시간표 착지 상자처럼 점선, 같은 구분 색 바탕) */
+.evcf .evland.evbar{border-radius:0;margin-left:-5px;margin-right:-4px;width:calc(100% + 9px);border-left:0;border-right:0}.evcf .evland.evbar.bs{border-radius:6px 0 0 6px;margin-left:0;width:calc(100% + 4px);border-left:1.5px dashed var(--brand-mid,#A9825F)}.evcf .evland.evbar.be{border-radius:0 6px 6px 0;margin-right:0;width:calc(100% + 5px);border-right:1.5px dashed var(--brand-mid,#A9825F)}.evcf .evland.evbar.bs.be{border-radius:6px;width:100%}
+.evcf .evland.evk-acad{background:var(--info-soft)}.evcf .evland.evk-todo{background:var(--success-soft)}.evcf .evland.evk-exam{background:var(--orange-soft)}.evcf .evland.evk-event{background:#FBF1D2}.evcf .evland.evk-vac,.evcf .evland.evk-off{background:#ECE8E3}
+.evcf .cfday.evdrop{background:inherit!important}
+.evcf .evland.mkghost{background:var(--canvas,#F7F5F2);min-height:36px}.mkcal [data-mkb]{cursor:grab;position:relative}/* 보강 블록 끌기(표준 달력) */
+.evcf .evchip.lockred{outline:2.5px solid #C9604A!important;outline-offset:-2.5px!important;z-index:7}
+/* 261118 대표: 숨김 고르기 모드 · 학부모 공개 상태 */
+/* 261118 대표: 끌기 · 추가 잔상 자리 = 그 칸 일정 바로 다음 칸(1개면 2번째, 3개면 4번째) — 위에 끼우지 않아 여러 날 막대가 밀려 끊기지 않음(CALM.monthDrag가 칸 끝에 붙임) */
+.evcf.evadding .evaddg{opacity:.5}.evcf.evadding .cfday:hover .evaddg,.evcf.evadding .evaddg:hover{opacity:1}/* 261118: 일정 추가 모드 = 잔상 + 늘 옅게 */
+.btn.tb-ic#addRow.on,.btn.tb-ic#addRow.on:hover,.btn.tb-ic.evHid.on,.btn.tb-ic.evHid.on:hover{background:var(--brand-deep,#6B4F3A)!important;color:#fff!important;border-color:var(--brand-deep,#6B4F3A)!important}.evHid .bd{background:#C9604A}
+.evhidbar{display:flex;align-items:center;gap:10px;margin:8px 16px;padding:8px 12px;border-radius:10px;background:#F7F1EA;border:1px solid #E8DCCD;font-size:13px;color:#4a4038}.evhidbar b{font-weight:700}.evhidbar .sp{flex:1}.evhidbar svg{flex:none}
+.evcf .evchip .evhe{display:inline-flex;align-items:center;justify-content:center;width:16px;height:14px;margin:-3px 4px -3px -2px;border-radius:4px;background:transparent;border:0;box-shadow:none;/* 261118 대표: 바탕 투명 · 테두리·그림자 없음(표 줄 [인쇄]·[삭제] 아이콘처럼 아이콘만) */vertical-align:-2px;box-sizing:border-box;/* 261118 대표: 눈 단추가 칩보다 커서 여러 날 막대 첫 칸만 높아져 끊겨 보이던 것 — 칩 높이 안에 들어가게 */color:#5E554E;cursor:pointer;flex:none}.evcf .evchip .evhe svg{width:12px;height:12px}.evcf .evchip.hid .evhe{color:#C9604A;border-color:#E3B4A8}.evcf .evchip .evhe:hover{background:var(--canvas,#F7F5F2);color:var(--brand-deep,#6B4F3A)}
+.evhe-t{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;border:0;background:transparent;box-shadow:none;color:var(--subtle,#7A6E66);cursor:pointer}.evhe-t:hover{background:var(--canvas,#F7F5F2);color:var(--brand-deep,#6B4F3A)}.evhe-t.off{color:#C9604A}/* 261118 대표: 표 줄 [인쇄]·[삭제] 단추와 같은 모양 */
+.evpub{display:flex;align-items:flex-start;gap:6px;margin-top:8px;padding:8px 10px;border-radius:8px;font-size:12px;line-height:1.5;background:#F7F5F2;color:#7A6E66}.evpub svg{flex:none;margin-top:2px}.evpub.ok{background:#EEF4EC;color:#3F6B47}.evpub.warn{background:#FBF0E6;color:#A0522D}
+.evrc{margin-top:8px;padding:10px;border-radius:10px;border:1px solid var(--line,#E8E1D9);background:#fff}.evrc-h{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:13px;color:#3D3530}.evrc-h b{font-weight:700}.evrc-h span{font-size:12px;color:#9A8F87}.evrc-h .bad{color:#A0522D}
+.evcf.evsel-on .evchip:not(.sel){opacity:.35;transition:opacity .12s}.evcf.evsel-on .evchip:not(.sel):hover{opacity:.85}/* 261118 대표: 고른 일정만 또렷하게 */
+.evcf .evchip.sel,.evcf .evchip.evbar.sel.bs.be{box-shadow:inset 0 0 0 2px var(--brand-deep,#6B4F3A)}.evcf .evchip.evbar.sel{box-shadow:inset 0 2px 0 var(--brand-deep,#6B4F3A),inset 0 -2px 0 var(--brand-deep,#6B4F3A)}.evcf .evchip.evbar.sel.bs{box-shadow:inset 0 2px 0 var(--brand-deep,#6B4F3A),inset 0 -2px 0 var(--brand-deep,#6B4F3A),inset 2px 0 0 var(--brand-deep,#6B4F3A)}.evcf .evchip.evbar.sel.be{box-shadow:inset 0 2px 0 var(--brand-deep,#6B4F3A),inset 0 -2px 0 var(--brand-deep,#6B4F3A),inset -2px 0 0 var(--brand-deep,#6B4F3A)}
+.evxg{margin-top:10px}.evxg>b{display:block;font-size:12px;color:#7A6E66;margin:0 0 4px 2px}
+.evrc .ttrows{margin-top:8px}.evrc .ttrow.evrc-off .t{color:#9A8F87}.evrc .ttrow.evrc-off .tag{color:#A0522D}
+.evrc-m{margin-top:6px;display:inline-flex;align-items:center;gap:4px}.evrc-0{margin-top:6px;font-size:12px;color:#9A8F87}
+.evcn-act{margin-top:10px;display:flex;align-items:center;gap:10px}.evcn-act small{font-size:12px;color:#9A8F87}
+.evcf .evaddg{display:flex;align-items:center;justify-content:center;width:100%;min-height:24px;margin-top:3px;padding:0;border:1.5px dashed var(--brand-mid,#A9825F);border-radius:6px;background:transparent;color:var(--brand-deep);cursor:pointer;opacity:0;transition:opacity .12s;font:inherit;box-sizing:border-box}.evcf .cfday:hover .evaddg,.evcf .evaddg:focus-visible{opacity:.85}.evcf .evaddg:hover{opacity:1;background:var(--canvas,#F7F5F2)}body.evdragging .evcf .evaddg{display:none}/* 261118 대표: 일정 추가 = 일정 아래 빈 줄의 일정 모양 잔상 + */
+.evcf .evchip.evbar.lockred{outline:none!important;box-shadow:inset 0 2.5px 0 #C9604A,inset 0 -2.5px 0 #C9604A!important}.evcf .evchip.evbar.lockred.bs{box-shadow:inset 0 2.5px 0 #C9604A,inset 0 -2.5px 0 #C9604A,inset 2.5px 0 0 #C9604A!important}.evcf .evchip.evbar.lockred.be{box-shadow:inset 0 2.5px 0 #C9604A,inset 0 -2.5px 0 #C9604A,inset -2.5px 0 0 #C9604A!important}.evcf .evchip.evbar.lockred.bs.be{box-shadow:inset 0 0 0 2.5px #C9604A!important}/* 261118 대표: 잠긴 긴 막대 빨간 테두리도 바깥만, 막대 전체 */
+.evs-r .evs-t{display:flex;flex-direction:column;line-height:1.3}.evs-r .evs-t small{color:var(--muted,#9A8F87);font-size:11px}.evs-r input[type=radio]{width:16px;height:16px;accent-color:var(--brand-deep,#6B4F3A)}.evshowpop{max-height:calc(100vh - 140px);overflow:auto}.evshowpop .evs-r{height:auto;min-height:32px;padding:2px 10px}.evshowpop .evs-h{padding:4px 10px 2px}.evshowpop .evs-sep{margin:4px}
+.evcf .cfday{overflow:visible}.evcf .evchip.evbar{border-radius:0;margin-left:-5px;margin-right:-4px;width:calc(100% + 9px);border-left:0;border-right:0}
+.evcf .evchip.evbar.bs{border-radius:6px 0 0 6px;margin-left:0;width:calc(100% + 4px);border-left:1px solid rgba(61,53,48,.12)}
+.evcf .evchip.evbar.be{border-radius:0 6px 6px 0;margin-right:0;width:calc(100% + 5px);border-right:1px solid rgba(61,53,48,.12)}
+.evcf .evchip.evbar.bs.be{border-radius:6px;width:100%}
+.evcf .evsp{display:block;height:22px;flex:none}
+.evcont{display:block;width:100%;height:6px;min-height:6px;padding:0;border:0;border-radius:3px;cursor:pointer;flex:none;position:relative;z-index:1}
+.evcf .cfday>.evchip,.evcf .cfday>.evcont,.evcf .cfday>.cfdn{position:relative;z-index:1}.evcf .cfday>.evbg{position:absolute;inset:0;z-index:0;pointer-events:none}
+.evcf .cfday.todaycol{box-shadow:none}.evcf .cfday.evoffday{background:#E9E5E0}.evcf .cfday.picked{box-shadow:inset 0 0 0 2px var(--brand-mid,#A9825F)}
+.evcf .cfday{cursor:pointer}
+.evtr{position:absolute !important;top:4px;right:6px;display:flex;align-items:center;gap:6px;z-index:2}
+.evofft{font-size:11px;font-weight:700;color:#6F655D;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis}
+.evmore{font-size:11px;font-weight:700;color:#fff;background:var(--brand-deep,#6B4F3A);padding:1px 7px;border-radius:999px;border:0;cursor:pointer;line-height:18px;white-space:nowrap}
+.evhid{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted,#7A6E66);margin-left:8px;white-space:nowrap}.evhid b{color:var(--text-ink)}
+.pg-ttl .evsc{flex:none;width:160px;min-width:0;height:32px;font-size:13px}
+#lp .evd{padding:8px 16px 16px}.evd-g{font-size:12px;font-weight:700;color:var(--muted,#7A6E66);margin:14px 0 4px}.evd-g .n{font-weight:600;margin-left:2px}
+.evd-r{display:flex;align-items:center;gap:8px;width:100%;min-height:40px;padding:6px 8px;border:0;background:none;border-radius:8px;font:inherit;font-size:13px;text-align:left;cursor:pointer;color:var(--text-ink)}.evd-r:hover{background:var(--canvas)}
+.evd-r i{width:10px;height:10px;border-radius:3px;flex:none}.evd-r .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.evd-r .s{color:var(--muted,#7A6E66);font-size:12px}
+.evd-f{display:flex;gap:8px;margin-top:16px}
+.evEye{position:relative}.evEye .bd{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;border-radius:9px;background:var(--brand-deep,#6B4F3A);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px}
+.evshowpop{padding:8px 6px}.evs-h{font-size:12px;font-weight:700;color:var(--muted,#7A6E66);padding:6px 10px 4px}.evs-r{display:flex;align-items:center;gap:8px;height:36px;padding:0 10px;border-radius:8px;cursor:pointer;font-size:13px}.evs-r:hover{background:var(--canvas)}
+.evs-r input{width:16px;height:16px;accent-color:var(--brand-deep,#6B4F3A)}.evs-r i{width:12px;height:12px;border-radius:3px;flex:none}.evs-r .n{margin-left:auto;color:var(--muted,#9A8F87);font-size:12px}.evs-sep{border-top:1px solid var(--line2);margin:6px 4px}.evs-f{display:flex;justify-content:flex-end;padding:6px 6px 2px}.evchip.ev-info{background:var(--info-soft)}.evchip.ev-danger{background:var(--danger-soft)}.evchip.ev-success{background:var(--success-soft)}.evchip.ev-gray{background:var(--canvas)}
 .evchip.sel{box-shadow:inset 0 0 0 1.5px var(--brand-mid)}
+.evcf .evchip.evbar.sel{box-shadow:inset 0 1.5px 0 var(--brand-mid),inset 0 -1.5px 0 var(--brand-mid)}.evcf .evchip.evbar.sel.bs{box-shadow:inset 0 1.5px 0 var(--brand-mid),inset 0 -1.5px 0 var(--brand-mid),inset 1.5px 0 0 var(--brand-mid)}.evcf .evchip.evbar.sel.be{box-shadow:inset 0 1.5px 0 var(--brand-mid),inset 0 -1.5px 0 var(--brand-mid),inset -1.5px 0 0 var(--brand-mid)}.evcf .evchip.evbar.sel.bs.be{box-shadow:inset 0 0 0 1.5px var(--brand-mid)}/* 261118 대표: 고른 긴 일정은 칸 사이 세로선 없이 바깥 테두리만 */
 
 /* 달력 화면은 목록 여백 없이 — 수업 · 시간표 · 보강과 같은 자리(왼쪽 끝 · 제목 줄 아래 바로) */
 #view .list.calbody{padding:0;display:flex;flex-direction:column}
@@ -2943,6 +3023,452 @@ table.stt.mkt{table-layout:auto}.stt.mkt td{overflow:visible}
 #view .list.calbody .scal-day,#view .list.calbody .scal-src{margin-left:var(--space-4);margin-right:var(--space-4)}
 
 /* 창 탭(기준 5장 F2, 대표 261117): 이름만(숫자 없음) · 폭 = 글자 폭 + 사이 16 · 넘치면 가로로 밀기(줄바꿈 · 글자 줄임 없음) */
-.ptabs{gap:16px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;flex:none}
-.ptabs::-webkit-scrollbar{display:none}
-.ptabs .ptb{flex:0 0 auto;padding:0 2px;justify-content:flex-start}
+/* 261118 대표: 창 탭 = 정확히 나눔(2개면 1/2, 3개면 1/3 …) — 글자 폭 · 가로 밀기 규칙은 버림. 탭이 넘치지 않게 탭 수를 관리(창 탭 최대 6) */
+.ptabs{gap:0;overflow:hidden;flex:none}
+.ptabs .ptb{flex:1 1 0;min-width:0;justify-content:center;padding:0 4px}
+.ptabs .ptb .sm{min-width:0;max-width:none}
+
+/* 위 줄 접기(기준 2-1, fitBars 한 곳): 오른쪽 단추 묶음은 줄지 않는다. 접는 차례 = 찾기 칸 줄임 → 보기 탭 드롭다운 → 필터 칩 하나로 → 찾기 칸 아이콘 */
+@media(min-width:768px){
+.pg-bar>:not(.searchbox):not(.sp){flex-shrink:0}
+.pg-bar.fold-seg :is(.subseg,.sfseg,.mkseg)>button:not(.on){display:none}
+.pg-bar.fold-seg :is(.subseg,.sfseg,.mkseg)>button.on::after{content:"▾";margin-left:6px;font-size:11px;opacity:.7}
+.pg-bar.fold-chips .chip[data-f]{display:none}
+.pg-bar.fold-search .searchbox{flex:0 0 40px;width:40px;min-width:40px;padding:0 10px;overflow:hidden}
+.pg-bar.fold-search .searchbox:focus-within{flex:0 0 200px;width:200px}
+}
+.barpop{position:fixed;z-index:60;min-width:140px;max-height:60vh;overflow:auto;padding:4px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);box-shadow:0 6px 20px rgba(0,0,0,.12);display:flex;flex-direction:column;gap:2px}
+.barpop button{height:36px;padding:0 12px;border:0;border-radius:8px;background:none;text-align:left;font-size:var(--text-small);color:var(--ink);cursor:pointer;white-space:nowrap}
+.barpop button:hover{background:var(--canvas)}
+.barpop button.on{font-weight:700;background:var(--brand-light)}
+/* 261118: 표준 주간 달력 CALW — 끌기 모양을 월간 CALM과 같게(떠 있는 사본 .evfloat · 흐린 원래 자리 · 점선 놓일 자리 .landing) */
+.blk.cworigin{opacity:.35}
+.blk.cwfloat{z-index:9000}
+.cwfloat .rz,.cwfloat .blk-ul{display:none}
+/* 261118 대표: 잠긴 시간표 블록 = 마우스를 올렸을 때만 오른쪽 위 자물쇠(일정 막대 .evlk와 같은 모양 · 색) — 보이기만, 풀기는 오른쪽 창 자물쇠 */
+.blk .blk-lk{position:absolute;top:6px;right:6px;display:none;color:var(--muted,#7A6E66);line-height:0;pointer-events:none;z-index:2}.blk .blk-lk svg.i{width:14px;height:14px}.blk:hover .blk-lk,.blk.sel .blk-lk{display:block}.cwfloat .blk-lk{display:none}
+.landing.cwland{z-index:6;white-space:nowrap;overflow:hidden}
+/* 261118: CALW 인쇄 — 시간표 인쇄 규칙(A4 가로 · 창·위 줄 숨김 · prepPrint 높이 맞춤)을 그대로 쓰고, 끌기 손잡이·자물쇠 표시·끌던 것만 더 숨김 */
+@media print{.blk .rz,.blk-ul,.cwfloat,.cwland,.landing,.mkdraft{display:none!important}.blk.cworigin{opacity:1}}
+/* 261118: 수업 화면 하나 — 주간에서 수업이 하나도 없는 주 = 시간표 규칙을 흐리게("아직 안 만든 수업") + [이 주 수업 생성] 크게 */
+.blk.lc.none.rulel{opacity:.38}
+.blk.lc .l.rulet{font-weight:700;color:var(--muted)}
+#makeWeek.mkwk-big{gap:var(--space-1);padding:0 var(--space-3);width:auto}
+/* 261118: 하루 수업 페이지 — 옆 창(수업 창) 내용을 페이지 크기로. 창 머리 · 창 탭 · 창 아래 줄 자리는 페이지 머리 · 큰 단추 · 페이지 탭이 대신 */
+.lpage{flex:1;min-height:0;overflow:auto;background:var(--surface)}
+.lpwrap{max-width:960px;padding:0 var(--space-6) var(--space-8)}
+.lpgrid{display:flex;align-items:flex-start;gap:var(--space-6)}.lpgrid>.lpwrap{flex:1;min-width:0}.lpside{width:340px;flex:none;position:sticky;top:0;padding:var(--space-4) var(--space-4) var(--space-8) 0}.lpside .box{border:1px solid var(--line2);border-radius:10px;padding:12px 14px;margin-bottom:10px;background:var(--surface)}.lpside h3{font-size:var(--text-small);margin:0 0 6px}/* 261118: 하루 수업 본문 오른쪽 서포트 */
+.lp-top{display:flex;align-items:center;gap:var(--space-3);height:54px}
+.lpback{display:inline-flex;align-items:center;gap:var(--space-1);height:32px;padding:0 var(--space-2) 0 var(--space-1);margin-left:calc(-1*var(--space-1));border-radius:var(--radius-md);font-size:var(--text-small);font-weight:700;color:var(--brand-deep);text-decoration:none}
+.lpback:hover{background:var(--brand-soft)}
+.lp-head{padding:0 0 var(--space-4)}
+.lp-h1{display:flex;align-items:center;gap:var(--space-2);min-height:36px}
+.lp-h1 h1{margin:0;font-size:22px;font-weight:800;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lp-dot{flex:none;width:12px;height:12px;border-radius:50%}
+.lp-lock:empty{display:none}
+.lp-nav{display:inline-flex;gap:4px}
+.lp-nav .nb{width:32px;height:32px;border:0;border-radius:50%;background:var(--brand-soft);color:var(--brand-deep);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.lp-nav .nb:disabled{opacity:.4;cursor:not-allowed}
+.lp-sub{margin-top:var(--space-1);font-size:var(--text-label);color:var(--muted);display:flex;align-items:center;flex-wrap:wrap;gap:0 var(--space-1)}
+.lp-sub b{color:var(--ink);font-weight:600}
+.lp-acts{display:flex;align-items:center;gap:var(--space-2);padding:0 0 var(--space-4);border-bottom:1px solid var(--line2);margin-bottom:var(--space-2)}
+.lp-acts .btn.big{height:44px;padding:0 var(--space-5);font-size:var(--text-small);font-weight:700}
+.lp-acts .btn.icon.big{width:44px;padding:0}
+.lpage .ptabs{position:static;margin:0 0 var(--space-4);padding:0}
+.lpage .ptabs .ptb{flex:0 0 auto;padding:0 var(--space-4)}
+.panel.lpin{width:auto;border:0;padding:0;overflow:visible;background:none;display:block}
+.lpin>.phead,.lpin>.ptabs{display:none}
+.lpin .box{max-width:none}
+.lpin .lptm{margin-left:auto;margin-right:var(--space-3);font-size:var(--text-caption);color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.lpslot .row{margin-top:var(--space-2)}
+.lpx .box{padding:var(--space-4) 0;border-top:1px solid var(--line2)}
+.lpx .box h3{display:flex;align-items:center;gap:var(--space-2);margin:0 0 var(--space-3);font-size:15px;font-weight:700}
+.lpx .row{display:flex;gap:var(--space-2);margin-top:var(--space-2)}
+.lptimes{display:flex;flex-direction:column}
+.lptrow{display:flex;align-items:center;gap:var(--space-4);min-height:44px;border-bottom:1px solid var(--line2);font-size:var(--text-small)}
+.lptrow .t{flex:1;min-width:0;font-weight:600}
+.lptrow label{display:inline-flex;align-items:center;gap:var(--space-2);color:var(--muted);font-size:var(--text-label)}
+.lptrow .inp{height:36px;width:120px;padding:0 var(--space-2);border:1px solid var(--line);border-radius:var(--radius-md);font:inherit;color:var(--ink);background:var(--surface)}
+.lpx textarea.lpmemo{width:100%;min-height:96px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius-md);font:inherit;box-sizing:border-box;resize:vertical}
+.lpx .inp:disabled{background:var(--brand-tint);color:var(--muted)}
+.lprt{display:inline-flex;align-items:center;gap:6px;font-size:var(--text-label);color:var(--muted);cursor:pointer}.lprt.on{color:var(--ink);font-weight:600}.lprt input{width:16px;height:16px;margin:0;accent-color:var(--brand-deep)}
+.lpprev{white-space:pre-wrap;font-size:var(--text-small);padding:var(--space-3);background:var(--brand-tint);border-radius:var(--radius-md)}
+.lpnl{text-decoration:none;color:var(--ink)}
+/* 261118: 오늘 보기 = 홈 카드(.cbox · .crow) 그대로, 강사별 묶음 */
+#view .list.cards.lptoday .crow .ca .pill{margin:0}
+/* 261118: 새 시간표 창 아래 줄 = 두 줄(위 = 노션 버튼 [수업 추가] · [클래스 정보 입력], 아래 = 삭제 … 되돌리기 · 저장) */
+.panel>.actions.has2{flex-wrap:wrap;row-gap:8px}
+.panel>.actions .pact2{flex:0 0 100%;display:flex;gap:8px}
+.panel>.actions .pact2 .btn{height:32px;flex:1 1 0;justify-content:center}
+/* 261118: 새 시간표 달력 둘째 줄 — 표 화면과 같은 자리(보기 탭 · 시즌 탭 · 편집/추가 … 찾기 · 확대 · 5/7 · 표 단추) */
+#view .pg-bar .seg.mode{flex:none}
+/* 1280(메뉴 펼침)에서 창 단추가 밖으로 밀리지 않게: 달력 둘째 줄은 찾기 칸 · 편집/추가를 조금 더 줄임 */
+#view .pg-bar.ttcal .searchbox{min-width:64px}#view .pg-bar.ttcal .seg.mode button{min-width:0;padding:0 8px}
+#view .pg-bar .combo#cbFind{max-width:200px}
+/* 261118 대표: 시간표 정보 탭 세 묶음(시즌 · 기간 / 클래스 · 담당강사 / 요일 · 시간) — 묶음 사이를 조금 띄움 */
+#lp .box .ttg{margin-top:24px!important}#lp .box h3~.ttg:first-of-type{margin-top:0!important}#lp .box .ttg+.hfgrid{margin-top:12px!important}
+/* 261118 대표: 시간표 시즌 고르기(세 보기 같음) — 단추 = 시즌 칩 모양 + 개수, 목록 한 줄 = 이름 · 상태 알약 · 개수(오른쪽), 아래 기간 */
+.pg-bar .seachip.ttsea{height:32px}/* 261119 대표: 위 줄 다른 단추(32)와 같은 높이 */
+/* 261119 대표(조건부 색 ③): 공개 상태 ⚠️ 일정 = 경고 테두리 — 숨김(.hid 흐림 · 점선)과 겹치면 둘 다 */
+html:root .evchip.pubw{box-shadow:inset 0 0 0 1.5px var(--warning-graphic,#E0A93B)}
+/* ═════ 261119 대표 "이 안대로": 수업 구분 모양 한 곳(수업 주간 .blk · 오늘 수업 .ldb · 오늘 등원 학생 .lde 같은 규칙) — 정규 = 표시 없음 */
+.blk .t .kchip{display:inline-flex!important;width:auto!important}.kchip{display:inline-flex;align-items:center;height:18px;padding:0 6px;margin-right:5px;border-radius:5px;font-size:10.5px;font-weight:700;vertical-align:1px;flex:none}
+.kchip.mk{background:#E3EEFB;color:#1D5BBF}.kchip.off{background:#E9E6E2;color:#5E554E}.kchip.mv{background:#FFF4D6;color:#8A5A00}
+/* 보강 = 반 색 그대로 + 점선 테두리 */
+:is(.blk.lc,.ldb,.lde).kd-mk{outline:1.5px dashed var(--bar,#7FA6D9);outline-offset:-1.5px}
+html:root .blk.lc.mkb.kd-mk{border:0!important;border-left:3px solid var(--bar)!important}
+.ksrc{color:#1D5BBF!important;font-weight:600}
+.ldb .st{display:inline-flex;gap:4px;align-items:center}.ldb .st .kchip{margin-right:0}/* 오른쪽 위 = 구분 배지 + 진행 알약 나란히 */
+/* 261119 대표 최종: 휴강 = 빗금(반 색 위, 자리 남김) · '예정 · 시작 전' 빗금은 없앰 */
+html:root :is(.blk.lc,.ldb,.lde).kd-off{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.72) 0 6px,transparent 6px 12px)!important;opacity:1}
+html:root .blk.lc.kd-off .t{text-decoration:none}
+html:root .ldb.plan,html:root .ldworld .lde.wait{background-image:none!important}
+/* 수업 없음(아직 안 만든 수업) = 비활성 */
+html:root :is(.blk.lc,.ldb,.lde).kd-none{opacity:.45;filter:grayscale(.6)}
+/* 휴원(하루) 띠 */
+.ldclosed{display:flex;align-items:center;gap:6px;margin:0 16px 8px;padding:8px 12px;border-radius:8px;background:#F1EFEC;color:#5E554E;font-size:13px}.ldclosed b{color:var(--text-ink)}
+/* 261119 대표: 오늘 수업 = 블록 한 칸 폭 고정(LDBW), 강사 칸 = 동시 수업 수 × 칸 폭 — 화면보다 넓으면 옆으로 */
+.ldgrid:not(.one) .ldhead,.ldgrid:not(.one) .ldrows{grid-template-columns:var(--gcols);width:var(--gw)}
+/* 261119 대표(A): 시간표 시즌 창 = 보기만 · 머리 오른쪽 글자 단추 [일정에서 시즌 관리 →] [닫기] */
+.stl.ro .stl-h .btn.sm{height:32px;padding:0 12px;gap:6px;font-weight:700}.stl.ro .stl-h .btn.sm+.btn.sm{margin-left:6px}
+html:root #view .stl.ro .stl-h .btn.sm{color:var(--text-ink,#3D3530)}html:root #view .stl.ro .stl-h .btn.sm svg.i{color:currentColor}
+.stl.ro .stl-b{cursor:pointer}.stl-ed.ro{display:flex;align-items:center;gap:10px;font-size:var(--text-small)}.stl-ed.ro b{font-size:15px}.stl-ed.ro .stl-rd{display:inline-flex;align-items:center;gap:5px;color:var(--muted)}
+/* 261118 대표: 운영 중 시즌 = 시즌명 뒤 초록 점 하나 */
+.seachip .seadot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--success);flex:none}
+.ttseapop .so>span{flex:1;min-width:0}.ttseapop .r1>*:not(b){flex:none}.ttseapop .r1{display:flex;align-items:center;gap:6px;font-style:normal;font-weight:600;color:var(--ink)}.ttseapop .r1 b{margin-left:auto!important}
+/* 261118: 창 머리 오른쪽 위 작은 단추(노션 단추와 같은 모양 · 글 붙음) — 시간표 [수업 추가] */
+.phead .pt h2 .htool{display:inline-flex;align-items:center;gap:4px;height:28px;margin:-3px 2px -3px 0;padding:0 8px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface,#fff);color:var(--ink);font-size:var(--text-caption);font-weight:600;cursor:pointer;white-space:nowrap}
+.phead .pt h2 .htool:hover:not(:disabled){background:var(--brand-soft)}
+.phead .pt h2 .htool:disabled{color:var(--subtle);cursor:not-allowed}
+.phead .pt h2 .htool svg.i{width:14px;height:14px}
+/* 261118: 풀 수 없는 자물쇠(학사 일정) — 누르는 단추가 아님 */
+.lockbtn.fixed{cursor:default}
+/* 261118: 칸 이름 옆 (?)(20px)가 이름 줄(16px)을 키우지 않게 — 한쪽 이름에만 (?)가 있어도 두 칸 높이가 같음(시작일 · 종료일 등) */
+.hf-lbl .qhelp{height:16px;vertical-align:top}
+/* 261118 대표: 시간표 창 [수업] 탭 — 그 날짜 수업 하나(카드 = 누르면 하루 수업 페이지) · 없으면 안내 + [수업 추가] */
+.ttls-card{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:1px solid var(--line2);border-radius:10px;background:var(--surface);font:inherit;text-align:left;cursor:pointer;color:var(--text-ink)}
+.ttls-card:hover{border-color:var(--brand-mid,#A9825F);background:var(--canvas,#F7F5F2)}
+.ttls-card .cfbar{width:4px;align-self:stretch;border-radius:2px;flex:none}
+.ttls-card .tl{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}.ttls-card .tl small{color:var(--muted);font-size:var(--text-caption)}.ttls-card .tl small.warn{color:var(--danger-ink)}
+.ttls-card>svg.i{color:var(--subtle);flex:none}
+.ttls-card .tl b{display:flex;align-items:center;gap:6px}
+/* 261118 대표: 수업 + 학생 = 한 카드 — 바깥 테두리 하나, 위는 누르는 머리, 아래 명단(왼쪽 반 색 줄이 카드 끝까지) */
+.ttls-one{border:1px solid var(--line2);border-radius:10px;overflow:hidden;background:var(--surface)}
+.ttls-one .ttls-card{border:0;border-radius:0}.ttls-one:has(.ttls-card:hover){border-color:var(--brand-mid,#A9825F)}
+.ttls-stuh{display:flex;align-items:center;gap:4px;padding:8px 12px 4px 26px;border-top:1px solid var(--line2);font-size:var(--text-caption);color:var(--muted)}.ttls-stuh b{color:var(--text-ink);font-weight:600}
+.ttls-one .ttls-stu{padding:0 12px 6px 26px}
+.ttls-stu{display:flex;flex-direction:column}.ttls-s{display:flex;align-items:center;gap:8px;min-height:30px;border-bottom:1px solid var(--line2);font-size:var(--text-small)}.ttls-s:last-child{border-bottom:0}
+.ttls-s .atti{display:inline-flex;flex:none;width:16px;height:16px}.ttls-s .atti svg.i{width:16px;height:16px}
+.ttls-s .atti.a1{color:#3E9B5C}.ttls-s .atti.a2{color:#D0533F}.ttls-s .atti.a3{color:#3D7BC9}.ttls-s .atti.a0{color:#C9BCAB}
+/* 261118 대표: 창 안에서 B 하나 추가 = 그 목록 맨 끝 점선 잔상 한 부품(.pgaddc) — 카드 목록 뒤 = 카드 높이(기본 56), 줄 목록 뒤 = 한 줄 높이(.ln 36) */
+.pgaddc.ln{height:36px;margin-top:6px;border-radius:8px;font-weight:600}
+.pgaddc.ttls-add{margin-top:4px}.pgaddc:disabled,.pgaddc:disabled:hover{opacity:.5;cursor:default;border-color:var(--line);color:var(--muted);background:none}/* 만들 수 없는 날(휴원 · 기간 밖 · 예정 시즌) = 흐린 잔상, 이유는 위 줄 */
+.ttls-empty{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:var(--text-small);margin:2px 0 10px}
+/* ═════ 261118 대표: 수업 메뉴 하루 보기 [오늘 수업 | 오늘 등원 학생] — 주간 달력과 같은 블록 모양 · 시간 축 · 지금 선 */
+.ldbody{display:flex;min-height:0;flex:1}.ldscroll{flex:1;min-width:0;overflow:auto;position:relative}
+.ldgrid{position:relative;--hw:var(--hours-w)}.ldhead{position:sticky;top:0;z-index:7;display:grid;grid-template-columns:var(--hw) repeat(var(--n),minmax(200px,460px));background:var(--surface);border-bottom:1px solid var(--line2);width:min(100%,calc(var(--hw) + var(--n) * 460px))}
+.ldhead>div{padding:9px 8px;text-align:center;font-weight:700;font-size:var(--text-small);border-left:1px solid var(--line2)}.ldhead>div:first-child{border-left:0}.ldhead small{display:block;font-weight:500;font-size:var(--text-caption);color:var(--muted);margin-top:2px}.ldhead .av{display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--canvas,#F1ECE6);align-items:center;justify-content:center;font-size:11px;margin-right:6px;color:var(--text-muted)}
+.ldrows{display:grid;grid-template-columns:var(--hw) repeat(var(--n),minmax(200px,460px));position:relative;width:min(100%,calc(var(--hw) + var(--n) * 460px))}
+.ldgrid.one .ldrows{display:flex;width:auto}.ldax{position:relative}.ldgrid.one .ldax{position:sticky;left:0;width:var(--hw);flex:none;background:var(--surface);z-index:6}
+.ldax span{position:absolute;right:8px;font-size:var(--text-caption);color:var(--subtle);transform:translateY(-50%)}
+.ldcol{position:relative;border-left:1px solid var(--line2)}.ldcol.one{flex:1;margin-right:12px}
+.ldh{position:absolute;left:0;right:0;border-top:1px solid var(--line2)}.ldh.half{border-top:1px dashed color-mix(in srgb,var(--line2) 60%,transparent)}
+.ldnow{position:absolute;left:0;right:0;border-top:2px solid #E2554A;z-index:5;pointer-events:none}.ldnow::before{content:"";position:absolute;left:-5px;top:-6px;width:10px;height:10px;border-radius:50%;background:#E2554A}.ldnow span{position:absolute;left:4px;top:-17px;font-size:11px;color:#E2554A;font-weight:700;background:var(--surface);padding:0 3px;border-radius:3px}
+.ldcol~.ldcol .ldnow span{display:none}.ldcol~.ldcol .ldnow::before{display:none}/* 지금 시각 글자는 첫 칸에만 */
+.ldnone{position:absolute;left:16px;top:16px;display:flex;align-items:center;gap:6px;color:var(--muted);font-size:var(--text-small)}
+.ldb{position:absolute;border-radius:6px;padding:7px 9px;overflow:hidden;font-size:12px;line-height:1.45;border-left:4px solid var(--bar);cursor:pointer;color:var(--text-ink);box-sizing:border-box}
+.ldb b{display:block;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:56px}.ldb small{display:block;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ldb .st{position:absolute;top:7px;right:7px}
+.ldb.plan{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.6) 0 6px,transparent 6px 12px)!important}.ldb.dim,.lde.dim{opacity:.25}.ldb:hover,.lde:hover{box-shadow:0 2px 10px rgba(61,53,48,.16);z-index:4}
+.ldp{font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:rgba(255,255,255,.85);color:var(--text-muted)}.ldp.g{color:var(--success-ink)}.ldp.y{background:var(--warning-soft);color:var(--warning-ink)}.ldp.k{background:var(--info-soft);color:var(--info-ink)}
+.ldbar{display:flex;height:5px;border-radius:3px;overflow:hidden;background:rgba(255,255,255,.7);margin-top:5px}.ldbar i{background:#5BAA7A}.ldbar em{background:#E2726B}
+.lde{position:absolute;border-radius:6px;padding:5px 7px;font-size:12px;line-height:1.35;overflow:hidden;border:1px solid var(--surface);border-left:4px solid var(--bar);background:var(--bg);cursor:pointer;box-sizing:border-box;color:var(--text-ink)}
+.lde b{display:block;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lde small{display:block;font-size:11px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lde .s{font-weight:700}
+.lde.in .s{color:var(--success-ink)}.lde.out{opacity:.55}.lde.ab{background:var(--danger-soft)}.lde.ab .s{color:var(--danger-ink)}.lde.no{background:var(--warning-soft)}.lde.no .s{color:var(--warning-ink)}.lde.mk .s{color:var(--info-ink)}.lde.wait{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.65) 0 6px,transparent 6px 12px)}.lde.sel{box-shadow:0 0 0 2px var(--brand-deep);z-index:5}
+.lptbl{width:100%;border-collapse:collapse;font-size:var(--text-small)}.lptbl th{text-align:left;font-size:var(--text-caption);color:var(--muted);font-weight:600;padding:7px 8px;border-bottom:1px solid var(--line2)}.lptbl td{padding:7px 8px;border-bottom:1px solid var(--line2);vertical-align:middle}.lpchk{display:inline-flex;align-items:center;gap:5px;cursor:pointer}/* 261118: 하루 수업 본문 진도교재 · 학습활동 표 */
+.ldk{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ldk>div{background:var(--canvas,#FAF7F3);border-radius:10px;padding:10px 12px}.ldk span{font-size:var(--text-caption);color:var(--muted)}.ldk b{display:block;font-size:24px;font-weight:800;margin:2px 0}.ldk b em{font-size:14px;font-style:normal;color:var(--muted);font-weight:600}.ldk small{font-size:11.5px;color:var(--muted)}
+/* 261119 대표: 출결 = 공용 나눔 HF.seg, 아래 등 · 하원 줄과 간격(선에 붙지 않게) */.ldattf{margin:0 0 14px}
+.crow.ldtm .cv b{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}.crow.ldtm .cv b.in{color:var(--success-ink,#0F7B4E)}.crow.ldtm .cv b.out{color:var(--text-ink)}
+/* 261119 대표: 오늘 등원 학생 = 칸은 하루 자리에 고정(계단), 움직이는 건 시야(휠 위 = 뒤로 과거 · 아래 = 앞으로 미래) */
+.ldscroll.cam{overflow:hidden;background:var(--surface)}
+.ldworld{position:absolute;left:0;top:0;will-change:transform}
+.ldworld .ldh,.ldworld .ldnow,.ldworld .ldlook{left:-1200px;right:-40px}.ldworld .ldnow::before{display:none}
+.ldlook{position:absolute;border-top:1px dashed color-mix(in srgb,var(--text-ink) 35%,transparent);z-index:3;display:none;pointer-events:none}
+.ldax2{position:absolute;left:0;top:0;bottom:0;width:var(--hours-w);background:linear-gradient(90deg,var(--surface) 80%,transparent);z-index:8;pointer-events:none;overflow:hidden}
+.ldax2 .in{position:absolute;left:0;top:0;width:var(--hours-w);will-change:transform}.ldax2 span{position:absolute;right:8px;font-size:var(--text-caption);color:var(--subtle);transform:translateY(-50%)}
+.ldax2 span.nowlb{right:4px;color:#fff;background:#E2554A;font-weight:700;font-size:11px;padding:1px 5px;border-radius:5px;z-index:2}
+.ldworld .lde{transition:opacity .45s ease,filter .45s ease,box-shadow .2s}.ldworld .lde.past{opacity:.28;filter:saturate(.4)}.ldworld .lde.future{opacity:.5}.ldworld .lde.dim{opacity:.15}
+.ldworld .lde.unck{background:var(--warning-soft);background-image:none}.ldworld .lde.unck .s{color:var(--warning-ink)}
+.ldworld .lde.stuck{z-index:6;box-shadow:0 3px 10px rgba(61,53,48,.18)}
+.ldcamb{display:inline-flex;align-items:center;gap:6px;margin-left:12px}.ldcamb .btn.sm{height:32px;padding:0 12px;border-radius:999px}
+.ldcamt{min-width:220px;padding:6px 12px;border-radius:999px;background:var(--canvas);color:var(--text-muted,#5E554E);font-size:13px;text-align:center;font-variant-numeric:tabular-nums}.ldcamt.live{background:var(--danger-soft);color:var(--danger-ink);font-weight:700}
+/* 261119 대표 "같이 바꿔": 학생 줄의 작은 출결 · 과제 단추(.attseg)도 공용 나눔(HF.seg — 성별 · 클래스 구분)과 같은 모양 — 회색 바탕 안에서 고른 쪽만 흰 알약 + 색 글자.
+   한 곳(여기)에서 바꿔 수업 창 출석/결석 · 보강 창 보강/결석 · 과제검사 완료/일부/미제출이 모두 같이 바뀜 */
+html:root .attseg{display:inline-flex;gap:0;padding:3px;border:1px solid rgba(17,24,39,.06);border-radius:10px;background:var(--canvas,#F7F8FA);overflow:visible}
+html:root .attseg button{height:26px;min-width:44px;padding:0 10px;border:0;border-radius:8px;background:none;color:var(--text-muted);font:inherit;font-size:var(--text-small,12px);font-weight:700;cursor:pointer}
+html:root .attseg button:first-child{border-left:0}html:root .attseg button:hover:not(.on):not([disabled]){color:var(--text-ink)}
+html:root .attseg button.on{background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+html:root .attseg button.on.a1{color:var(--success-ink,#0F7B4E)}html:root .attseg button.on.a2{color:var(--danger-ink,#B42318)}html:root .attseg button.on.a3{color:var(--info-ink,#1D5BBF)}
+html:root .attseg button[disabled]{opacity:.45;cursor:default}
+/* 261119 대표 "공용표와 똑같이": 출결 칸 = 평소 값만(색 글자 알약), [편집] 중이면 눌러서 고르기(점선 → 마우스 올리면 진하게) */
+.attv{margin-left:auto;display:inline-flex;align-items:center;gap:4px;min-width:64px;justify-content:center;height:26px;padding:0 10px;border-radius:999px;font-size:12.5px;font-weight:700;background:var(--canvas,#F7F8FA);color:var(--subtle);flex:none}
+.attv.a1{background:var(--success-soft);color:var(--success-ink)}.attv.a2{background:var(--danger-soft);color:var(--danger-ink)}.attv.a3{background:var(--info-soft);color:var(--info-ink)}.attv.none{font-weight:600}
+.attv.ed{cursor:pointer;outline:1px dashed color-mix(in srgb,var(--text-ink) 25%,transparent);outline-offset:2px}.attv.ed:hover,.attv.ed:focus-visible{outline:2px solid var(--brand-deep);outline-offset:1px}.attv svg.i{width:12px;height:12px}
+.box h3 .tedtag{margin-left:8px;height:24px;font-size:12px;padding:0 10px}.box h3 #attEd{margin-left:6px;width:30px;height:30px}
+.attpop .so{display:flex;align-items:center;justify-content:space-between}.attpop .so .attv{margin:0}
+/* ═════ 261119 대표(시안 6): 수업 메뉴 2단 칩 · 주간 수업(수업 일지) · 월간 수업 · 출결 현황 ═════ */
+#view .top .ttog.lv1>button{font-weight:700}
+#view .top .ttog.lv2{margin-left:6px}
+#view .top .lgen{margin-left:8px}
+/* 수업 구분 모양 — 일지 칸(.lj) · 달력 칩(.lmc)도 같은 규칙 */
+:is(.lj,.lmc).kd-mk{outline:1.5px dashed var(--bar,#7FA6D9);outline-offset:-1.5px}
+html:root :is(.lj,.lmc).kd-off{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.72) 0 6px,transparent 6px 12px)!important}
+html:root :is(.lj,.lmc).kd-none{opacity:.45;filter:grayscale(.6)}
+.ljlg{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:2px 2px 10px;font-size:12px;color:var(--muted)}
+.ljlg>span{display:inline-flex;align-items:center;gap:6px}.ljlg .ljic{gap:3px}.ljlg svg.i{width:13px;height:13px}.ljlg .hint{display:inline-flex;align-items:center;gap:3px}.ljlg .sp{flex:1}
+.ljlg .lgi{display:inline-block;width:22px;height:14px;border-radius:4px;background:#fff;box-shadow:inset 0 0 0 1px var(--line2,#EEE8E1);border-left:4px solid #7FA3D6;box-sizing:border-box}
+.ljlg .lgi.kd-mk{outline:1.5px dashed #7FA3D6;outline-offset:-1.5px}.ljlg .lgi.kd-off{background-image:repeating-linear-gradient(135deg,rgba(94,85,78,.14) 0 4px,transparent 4px 8px)}.ljlg .lgi.kd-none{opacity:.45;filter:grayscale(.6)}
+.ljbody{display:flex;min-height:0;flex:1}.ljscroll{flex:1;overflow:auto;min-height:0}
+html:root table.stt.gt.ljt{table-layout:fixed;width:100%;min-width:1100px}html:root table.ljt td{white-space:normal;height:auto}.ljt th:nth-child(n+2) svg.i{display:none}
+.ljt th:first-child,.ljt td:first-child{position:sticky;left:0;z-index:2;background:var(--surface);box-shadow:1px 0 0 var(--line)}
+#view .tb-num.lgen{font-size:var(--text-caption);font-weight:700;padding:0 12px}#view .tb-num.lgen .num{background:rgba(0,0,0,.08);border-radius:999px;padding:0 6px;min-width:0}#view .tb-num.lgen.pri .num{background:rgba(255,255,255,.25)}#view .tb-num.act.lgen.pri{background:var(--brand-deep,#5C4A3D);color:#fff;border-color:transparent}.ljt th small{font-weight:500;color:var(--subtle);margin-left:4px}.ljt th.today,.ljt td.today{background:color-mix(in srgb,var(--brand-tint,#F6F1EA) 70%,white)}
+.ljt td{vertical-align:top}.ljt td.ljtd{padding:5px}
+/* 261119 대표: 클래스 칸 = Y축 폭(--hours-w) — 글자를 줄이고 줄바꿈, 색 점 대신 왼쪽 색 줄 */
+html:root table.ljt th:first-child,html:root table.ljt td:first-child{width:var(--hours-w);padding:6px 4px 6px 6px}.ljt th:first-child svg.i{display:none}
+.ljcl b{display:block;font-size:11px;line-height:1.3;font-weight:700;word-break:keep-all;overflow-wrap:anywhere;border-left:3px solid var(--bar,var(--subtle));padding-left:4px}.ljcl b i{display:none}.ljcl small{display:block;color:var(--muted);font-size:10px;line-height:1.3;margin:3px 0 0 7px;word-break:keep-all}
+.lj{border-radius:6px;border-left:4px solid var(--bar);padding:6px 8px;font-size:12px;line-height:1.45;color:var(--text-ink);cursor:pointer;box-sizing:border-box}.lj+.lj{margin-top:5px}
+.lj:hover{box-shadow:0 2px 10px rgba(61,53,48,.16)}.lj.kd-none{cursor:default}.lj.kd-none:hover{box-shadow:none}
+.ljh{display:flex;align-items:center;gap:4px;margin-bottom:3px}.ljh .t{font-weight:700;font-variant-numeric:tabular-nums}.ljh .sp{flex:1}.ljh .kchip{margin-right:0}
+.ljd{display:grid;grid-template-columns:auto 1fr;gap:2px 6px;margin:0}.ljd dt{color:var(--muted);font-size:11px;white-space:nowrap;display:flex;align-items:flex-start;padding-top:2px;cursor:help}.ljd dt svg.i{width:13px;height:13px}.ljd dd{margin:0;min-width:0;overflow-wrap:anywhere}.ljd dd.warn{color:var(--warning-ink);font-weight:700}.ljd dd.ok{color:var(--success-ink);font-weight:700}
+.ljn{color:var(--muted);font-size:11.5px}
+/* 오늘 수업 블록: 출석 · 과제 막대(옛 주간 블록 .lc .mr과 같은 모양) */
+.ldb .mr{display:grid;grid-template-columns:26px minmax(0,1fr) auto;align-items:center;gap:6px;margin-top:4px;font-size:11px;color:var(--muted);line-height:14px}.ldb .mr b{display:inline;font-size:11px;font-weight:600;padding:0}
+.ldb .br{display:flex;height:6px;border-radius:3px;overflow:hidden;background:rgba(255,255,255,.75);box-shadow:inset 0 0 0 1px rgba(0,0,0,.05)}.ldb .br i{display:block}.ldb .n{font-variant-numeric:tabular-nums}
+.ldb .br .ok{background:#7DBF95}.ldb .br .mk{background:#93B8E3}.ldb .br .ab{background:#E59A8A}.ldb .br .no{background:repeating-linear-gradient(135deg,#DDD3C6 0 3px,#F6F2EC 3px 6px)}
+.attrow .anb+.attv{margin-left:8px}
+/* 261119 대표(시안 8): 수업 오른쪽 창 — 위 막대(lvBars, 오늘 수업 블록과 같은 모양) · 머리 [수업 화면] */
+.lpbars .mr{display:grid;grid-template-columns:18px minmax(0,1fr) auto;align-items:center;gap:8px;margin:2px 0;font-size:12px;color:var(--muted);line-height:16px}.lpbars .mr b.lbi{display:inline-flex;align-items:center;color:var(--muted);cursor:help}.lpbars .mr b.lbi svg.i{width:14px;height:14px}
+.lpbars .br{display:flex;height:7px;border-radius:4px;overflow:hidden;background:#F1ECE6}.lpbars .br i{display:block}.lpbars .n{font-variant-numeric:tabular-nums;font-weight:700;color:var(--ink)}
+.lpbars .br .ok{background:#7DBF95}.lpbars .br .mk{background:#93B8E3}.lpbars .br .ab{background:#E59A8A}.lpbars .br .no{background:repeating-linear-gradient(135deg,#DDD3C6 0 3px,#F6F2EC 3px 6px)}.lpbars .br .hs{background:#7DBF95}.lpbars .br .hp{background:#EBCB86}.lpbars .br .hn{background:#E59A8A}.lpbars .br .evb{background:#9BB7E0}
+.btn.lpgo{white-space:nowrap;margin-left:4px}.btn.lpgo2{width:100%;justify-content:center;height:36px}
+/* 261119 대표: 출결 작은 나눔 단추(수업 창) */
+.attrow .attseg.asm{margin-left:8px;flex:none}.attseg.sm button{height:24px;padding:0 9px;font-size:12px}
+.krow .kseg button[disabled]{opacity:.4;cursor:not-allowed}
+/* 261119 대표 "둘 다 맞춰": 창 안 나눔 단추를 공용 HF.seg(hf-segbox) 모양 · 크기 · 색 하나로 — 학습기록 과제 제출(attseg) · 보강 대기 기간(mwper) · 보강 필요/없음(mkdec) · 시간표 보기(ptv) · 진도 상태(pgst) · 진도 방식(pgk) · 진도 추가 그룹/개별(pgam) · 수업 창 출결(attseg.sm). 동작은 그대로 */
+html:root :is(.attseg,.mwper,.vseg.mkdec,.seg.ptv,.seg.pgst,.seg.pgk,.seg.pgam){display:inline-flex;align-items:stretch;gap:0;height:36px;padding:3px;border:0;border-radius:10px;background:var(--brand-soft);box-shadow:none;box-sizing:border-box}
+html:root :is(.attseg,.mwper,.vseg.mkdec,.seg.ptv,.seg.pgst,.seg.pgk,.seg.pgam)>button{flex:1 1 auto;height:auto;min-width:0;margin:0;padding:0 12px;border:0;border-radius:8px;background:none;box-shadow:none;font:inherit;font-size:var(--text-small);font-weight:700;color:var(--text-muted);white-space:nowrap;cursor:pointer}
+html:root :is(.attseg,.mwper,.vseg.mkdec,.seg.ptv,.seg.pgst,.seg.pgk,.seg.pgam)>button:hover:not(.on):not([disabled]){color:var(--text-ink);background:none}
+html:root :is(.attseg,.mwper,.vseg.mkdec,.seg.ptv,.seg.pgst,.seg.pgk,.seg.pgam)>button.on{background:var(--surface);color:var(--brand-deep);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+html:root .attseg>button.on.a1{color:var(--success-ink,#0F7B4E)}html:root .attseg>button.on.a2{color:var(--danger-ink,#B42318)}html:root .attseg>button.on.a3{color:var(--warning-ink,#8A5A00)}
+html:root .attseg.sm{height:30px}html:root .attseg.sm>button{padding:0 9px;font-size:12px}
+html:root :is(.seg.pgam,.mwper){display:flex;width:100%}.krow2{height:40px;display:flex}.krow2 .hf-seg button[disabled]{opacity:.4;cursor:not-allowed}
+.lpnotabs{opacity:.4;pointer-events:none}/* 261119 대표: 수업 없음 = 탭 흐림 */
+/* 261119 대표: 클래스 [루틴] 탭 = 단원 목록과 같은 줄(.unrow) — 글 줄 · 마우스 올리면 뒤 단추 · 누른 줄만 넓은 입력칸 두 줄 */
+.rtrows .unrow{cursor:pointer}.rtrows .rtno{width:18px;flex:none;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.rtrows .unt{display:flex;flex-direction:column;min-width:0}.rtrows .unt small{color:var(--muted);font-size:11.5px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rtrows .unrow.rest .unt{color:var(--muted)}.rtrows .unrow.draft{background:#FFFCF3}
+.rtrows .unrow.rted{display:flex;align-items:flex-start;gap:8px;cursor:default}.rtin{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}.rtin .inp{width:100%;height:36px}.rtrows .unrow.rted .anb{margin-top:4px}
+.rtrows .anb[disabled]{opacity:.25;cursor:default}
+/* 261119 대표: 루틴 목록 = [학생] 탭과 같은 공용 줄(.ttrows) · 끌어 놓기 순서 */
+.rtrows2 .ttrow.rtv{cursor:pointer;gap:8px}.rtrows2 .rtgrip{color:var(--subtle);cursor:grab;display:inline-flex;margin-left:-2px}.rtrows2 .ttrow .t{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rtrows2 .ttrow .hint{flex:1 1 auto;min-width:0;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rtrows2 .ttrow .unx{display:none;gap:2px;flex:none}.rtrows2 .ttrow.rtv:hover .unx{display:inline-flex}.rtrows2 .ttrow.rtv:hover .hint{display:none}
+.rtrows2 .ttrow.rest .t{color:var(--muted)}.rtrows2 .ttrow.draft{background:#FFFCF3}.rtrows2 .ttrow.dragging{opacity:.4}.rtrows2 .ttrow.dropb{box-shadow:inset 0 2px 0 var(--brand-deep,#5C4A3D)}.rtrows2 .ttrow.dropa{box-shadow:inset 0 -2px 0 var(--brand-deep,#5C4A3D)}
+/* 261119 대표(시안 9 A): 수업 창 [루틴] 탭 — 머리 줄 · 학생 줄이 같은 격자(이름 열 + 루틴 n열 + 달성 열)라 칩이 줄마다 세로로 정확히 맞음 */
+.rtg{display:grid;grid-template-columns:56px repeat(var(--rtn,3),minmax(0,1fr)) 34px;column-gap:6px;align-items:center}
+.rthd{padding:0 0 6px;font-size:11.5px;color:var(--muted)}.rthd .rtc{text-align:center;border-bottom:1px solid var(--line2);padding-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}.rthd .rtc i{font-style:normal;margin-right:2px}
+.rtrow3{min-height:40px;border-bottom:1px solid var(--line2)}.rtrow3:last-child{border-bottom:0}.rtrow3 .rtn{font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rtrow3 .rtc{display:flex;justify-content:center}.rtrow3 .rtr{text-align:right;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}.rtrow3 .rtr.full{color:var(--g,#0F7B4E);font-weight:700}
+/* 261119 대표: 루틴 체크 = 체크박스(글 없음) · 옆으로 스크롤(이름 열 고정) · 빈 상태 = 같은 모양 흐린 잔상 + 생성 카드 */
+.rtscroll{overflow-x:auto;overflow-y:hidden;margin:0 -16px;padding:0 16px;scrollbar-width:thin}.rtin3{display:block}
+.rtscroll .rtn{position:sticky;left:0;z-index:2;background:var(--surface,#fff);padding-right:6px;box-shadow:6px 0 6px -6px rgba(0,0,0,.08)}.rtscroll .rtrow3.ab .rtn{color:var(--muted)}
+.rtscroll .rtg{grid-template-columns:56px repeat(var(--rtn,3),minmax(84px,1fr)) 34px}
+.rtbox{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:1.5px solid #C9C1B7;border-radius:7px;background:#fff;color:#fff;cursor:pointer;flex:none}
+.rtbox svg.i{width:15px;height:15px}.rtbox:hover:not([disabled]):not(.on){border-color:var(--success-ink,#0F7B4E);background:var(--success-soft,#E4F3EA)}.rtbox.on{background:var(--success-ink,#0F7B4E);border-color:var(--success-ink,#0F7B4E)}
+.rtbox.na{border-style:dashed;border-color:var(--line);background:none;opacity:.5;cursor:default}.rtbox[disabled]{cursor:default}
+.rtghostwrap{position:relative;min-height:300px}.rtghostwrap>h3{opacity:.5}.rtscroll.rtfaint{opacity:.5;filter:grayscale(.6);pointer-events:none;user-select:none}.rtghostbox{opacity:.55}.rtghostbox .br .no{opacity:.7}
+.rtghostwrap .rtscroll.rtfaint .rtn{background:transparent;box-shadow:none}
+.rtover{position:absolute;left:8px;right:8px;top:92px;bottom:8px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.55);border-radius:12px;backdrop-filter:blur(1.5px)}
+.rtcard{display:flex;flex-direction:column;align-items:stretch;gap:8px;text-align:center;background:var(--surface,#fff);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:0 8px 24px rgba(61,53,48,.14);width:100%;max-width:290px}
+.rtcard::before{display:none}
+.rtcard>b{font-size:14px;color:var(--ink)}.rtcard>span{font-size:12px;color:var(--muted);line-height:1.6}.rtcard>span b{color:var(--ink)}.rtcard .btn{width:100%;justify-content:center;height:34px}.rtcard small{font-size:11px;color:var(--muted);line-height:1.5}
+.rtsub{font-size:11.5px;color:var(--muted);margin-top:2px}html:root .rtmore{display:block;margin:6px auto 0;padding:4px 10px;border:0;background:none;box-shadow:none;font-size:12px;color:var(--muted);cursor:pointer}html:root .rtmore:hover{color:var(--ink)}
+.rtempty{background:var(--tint,#FBF8F4);border:1px dashed var(--line);border-radius:10px;padding:16px;text-align:center;color:var(--muted);line-height:1.7;margin-bottom:10px}.rtempty b{color:var(--ink)}.rtempty small{display:block;font-size:11.5px;margin-top:6px}.rtempty .btn{display:flex;margin:10px auto 0;width:100%}
+/* 결석 줄: 이름 줄 아래에 [보강 잡기]를 한 줄로(한 줄에 다 넣으면 출석/결석 단추가 잘림) */
+#panel .attrow:has(.mkin){flex-wrap:wrap;row-gap:4px}.attrow .btn.mkin{order:9;flex:0 0 auto;margin:0 0 4px 0;height:24px;padding:0 8px;font-size:11.5px;white-space:nowrap;color:var(--brand-deep,#5C4A3D)}
+/* 261119 대표: 보강 달력 [+] 추가 모드 — 날짜 칸 아래 잔상(점선 +), 일정 달력 .evaddg와 같은 모양 · 늘 옅게, 칸에 마우스를 올리면 진하게 */
+.mkcal.evadding .mkaddg{display:flex;opacity:.5}.mkcal.evadding .cfday:hover .mkaddg,.mkcal.evadding .mkaddg:hover{opacity:1}
+.mkcal .mkaddg{margin-top:3px;position:static;width:100%}.btn.tb-ic.on{background:var(--sel-bg,#F3EAE0);border-color:var(--brand-deep,#5C4A3D);color:var(--brand-deep,#5C4A3D)}
+.rtnote{display:flex;align-items:flex-start;gap:6px;margin-top:8px;font-size:11.5px;line-height:1.5}.rtnote svg.i{width:13px;height:13px;flex:none;margin-top:2px}.rtnote b{color:var(--ink)}
+.rtrows2 .ttrow.rted{display:flex;align-items:flex-start;gap:8px;cursor:default;padding:8px 10px}.rtrows2 .ttrow.rted .anb{margin-top:4px}
+.rtlist{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.rtrow{display:grid;grid-template-columns:auto 18px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px;border:1px solid var(--line2);border-radius:10px;background:var(--surface)}
+.rtrow.draft{border-color:#E0A93B;background:#FFFCF3}.rtrow.rest{opacity:.55}.rtrow.rest .rtf{filter:grayscale(.4)}
+.rtord{display:flex;flex-direction:column;gap:2px}.rtord .ib{width:22px;height:18px;border:0;background:none;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;border-radius:4px}.rtord .ib:hover:not([disabled]){background:var(--brand-tint)}.rtord .ib[disabled]{opacity:.25;cursor:default}
+.rtno{font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;text-align:center}
+.rtf{display:flex;flex-direction:column;gap:4px;min-width:0}.rtf .hf-lbl:empty{display:none}
+.rtf .hfh,.rtf .hf,.rtf .hf-box{width:100%;max-width:none}.rtf .hf-box{height:34px}
+/* 창이 좁아(약 300px) 줄 = 위: 이름 + [쉬기] · 삭제 / 아래: 설명(오른쪽 끝까지) */
+.rtrow{grid-template-columns:22px 16px minmax(0,1fr) auto;row-gap:6px}.rtrow .rtf{display:contents}.rtrow [data-rtn]{grid-column:3;grid-row:1}.rtrow [data-rtd]{grid-column:3 / 5;grid-row:2}.rtrow .rtact{grid-column:4;grid-row:1}.rtrow .rtord,.rtrow .rtno{grid-row:1 / 3}
+.rtact{display:flex;align-items:center;gap:4px}html:root .rtact .rowdel{opacity:1;visibility:visible;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:0;background:none;color:var(--muted);border-radius:6px;cursor:pointer}html:root .rtact .rowdel:hover{background:var(--danger-soft,#FBE3E0);color:var(--danger-ink,#B42318)}.ckchip.rtrest{height:28px;padding:0 10px;font-size:12px}.ckchip.rtrest.on{border-color:var(--brand-deep);background:var(--sel-bg);color:var(--brand-deep);font-weight:600}
+.btn.rtadd{width:100%;justify-content:center;border-style:dashed}
+/* 261119 대표: 안내 팝업은 스크롤 없이 한 화면 — 시간표 저장 '언제부터' 달력 칸을 낮게(1.2 비율 → 34px) */
+html:root .fc-grid{gap:4px 6px}html:root .fc-day{height:34px;aspect-ratio:auto;font-size:13.5px;border-radius:8px}
+/* 261119 대표: 알림톡 보내기 창 한 곳(alimSend) — 왼쪽 미리보기 · 오른쪽 받을 학생, 한 화면 */
+.dlg.alsendm{width:min(920px,calc(100vw - 48px));max-width:none}
+.alsend{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:18px;align-items:start}
+.alsend-l{max-height:calc(100vh - 230px);overflow:auto;border-radius:12px}.alsend-l .alv-cap{display:none}
+.alsend-r{display:flex;flex-direction:column;gap:6px;max-height:calc(100vh - 230px);min-height:0}
+.alsend-r h3{margin:0;font-size:13px}.alsend-r h3 b{color:var(--brand-deep,#5C4A3D)}.alsend-r h3.sk{margin-top:8px;color:var(--muted)}
+.alsl{list-style:none;margin:0;padding:0;border:1px solid var(--line2);border-radius:10px;overflow:auto;min-height:0}.alsl li{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--line2);font-size:13px}.alsl li:last-child{border-bottom:0}.alsl li small{color:var(--muted);font-size:11.5px}.alsl li em{margin-left:auto;font-style:normal;color:var(--muted);font-size:11.5px}.alsl li.mut{color:var(--muted)}
+.alsl:not(.sk){flex:1 1 auto}.alsl.sk{max-height:120px;opacity:.8}/* 261119 앱서버 결함 5: 말풍선과 출결 칸 사이 54px → 8px */
+.ldb .br .evb{background:#9BB7E0}.ldb .mr.ev .n{font-weight:700;color:var(--ink)}
+/* 261119 대표: 막대 앞 이름 = 아이콘(.lbi), 주간 수업 칸(.lj)도 같은 막대 */
+:is(.ldb,.lj) .mr{grid-template-columns:16px minmax(0,1fr) auto}:is(.ldb,.lj) .mr b.lbi{display:inline-flex;align-items:center;padding:0;color:var(--muted);cursor:help}:is(.ldb,.lj) .mr b.lbi svg.i{width:13px;height:13px}
+.lj .lbars{margin-top:4px}.lj .mr{display:grid;align-items:center;gap:6px;margin-top:3px;font-size:11px;color:var(--muted);line-height:14px}
+.lj .br{display:flex;height:6px;border-radius:3px;overflow:hidden;background:rgba(255,255,255,.75);box-shadow:inset 0 0 0 1px rgba(0,0,0,.05)}.lj .br i{display:block}.lj .n{font-variant-numeric:tabular-nums}.lj .mr.ev .n{font-weight:700;color:var(--ink)}
+/* 261119 대표 "수업 화면만": 수업 블록 = 흰 바탕 + 클래스 색 띠(왼쪽 5px) + 옅은 테두리, 반 이름 = 반 색 진하게. 시간표 · 일정은 그대로(바탕색).
+   쓰는 곳 = 오늘 수업 .ldb · 오늘 등원 학생 .lde(결석 · 안 옴 · 미체크 상태 바탕은 그대로) · 주간 수업 .lj · 월간 수업 칩 .lmc · 수업 주간(보강) .blk.lc */
+/* 261119 대표(번복): 수업 화면도 시간표처럼 클래스 색 바탕 — 가독성 우선, 흰 바탕 구분은 취소 */
+html:root :is(.ldb,.lj,.evchip.lmc,.blk.lc){box-shadow:inset 0 0 0 1px rgba(0,0,0,.04)}
+/* 261119 대표: 오늘 등원 학생 카드 바탕 = 출결 상태 — 출석(등원 · 하원) 초록 · 보강 파랑 · 결석 빨강(그대로) · 아직 표기 없음(안 옴 · 미체크 · 시작 전)만 흰색 */
+html:root .ldworld .lde{border-color:var(--line2,#EEE8E1);border-left-color:var(--bar)/* 261119 대표: 띠 = 클래스 색 */}
+html:root .ldworld .lde{background:color-mix(in srgb,var(--bar) 24%,white)}/* 261119 대표(시안 13 A): 바탕 = 클래스 색 */
+html:root .ldworld .lde.out{opacity:1}
+html:root :is(.ldb,.lj,.lde,.blk.lc){border-left-width:5px}html:root .evchip.lmc{border-left-width:4px}
+/* 261119 대표: 수업 화면 블록 제목 글자색은 바탕색을 따라가지 않고 시간표와 같게(진한 글자 · 자세한 글은 연한 회색) */
+html:root :is(.ldb,.lde)>b,html:root .blk.lc .t{color:var(--ink,#2B2118)}
+html:root :is(.ldb,.lj,.lde,.evchip.lmc,.blk.lc).kd-off{background-image:repeating-linear-gradient(135deg,rgba(94,85,78,.10) 0 6px,transparent 6px 12px)!important}
+html:root :is(.ldb,.lj,.evchip.lmc,.blk.lc):hover{box-shadow:inset 0 0 0 1px rgba(0,0,0,.06),0 2px 10px rgba(61,53,48,.14)}
+html:root :is(.ldb,.lj,.lde) .br{background:rgba(255,255,255,.75)}
+.lj .br .ok{background:#7DBF95}.lj .br .mk{background:#93B8E3}.lj .br .ab{background:#E59A8A}.lj .br .no{background:repeating-linear-gradient(135deg,#DDD3C6 0 3px,#F6F2EC 3px 6px)}.lj .br .hs{background:#7DBF95}.lj .br .hp{background:#EBCB86}.lj .br .hn{background:#E59A8A}.lj .br .evb{background:#9BB7E0}
+.ldb .br .hs{background:#7DBF95}.ldb .br .hp{background:#EBCB86}.ldb .br .hn{background:#E59A8A}
+/* 월간 달력 칸 */
+.lmbody{display:flex;min-height:0;flex:1}.lmbody>.cal{flex:1}
+.lmcal .cfday{position:relative;cursor:pointer;overflow:hidden;min-height:0}.lmcal .lmmore{display:block;margin:3px 0 0 auto}
+.lmrate{position:absolute;top:5px;right:6px;font-size:11px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.evchip.lmc{border-left:3px solid var(--bar);margin-top:2px}
+.lmmore{margin-top:3px}
+.lmclosed{margin-top:4px;padding:3px 6px;border-radius:5px;background:repeating-linear-gradient(135deg,#EEEAE5 0 5px,#F7F5F2 5px 10px);color:#5E554E;font-size:11.5px;font-weight:600}.lmclosed.sm{font-size:11px;padding:1px 6px}
+.lmatt{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px}
+.lmb{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap}
+/* 261119 대표: 출결 현황 보기 좋게 — 달 요약 줄 · 칸 안 비율 막대 · 학생 검색 칩 */
+.lmsum{display:flex;align-items:center;gap:var(--space-4);padding:var(--space-2) var(--space-5) var(--space-3)}
+.lmsr{display:flex;align-items:baseline;gap:var(--space-2)}.lmsr b{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums}.lmsr span{color:var(--muted);font-size:var(--text-small)}
+.lmsc{display:flex;gap:6px;flex-wrap:wrap}.lmsc .lmb{height:24px;font-size:12.5px;padding:0 10px}.lmsh{margin-left:auto}
+.lmbar{display:flex;height:6px;border-radius:3px;overflow:hidden;background:#F1ECE6;margin-top:6px}.lmbar i{display:block}.lmbar .o{background:#7DBF95}.lmbar .m{background:#7FA7E0}.lmbar .a{background:#E59A8A}.lmbar .u{background:repeating-linear-gradient(135deg,#DDD3C6 0 3px,#F6F2EC 3px 6px)}
+.lmattcal .cfday.sat .lmrate,.lmattcal .cfday.sun .lmrate{color:var(--muted)}
+.lmstus{flex-direction:column;flex-wrap:nowrap}.lmb.lmstu{cursor:pointer;border:0;height:22px;max-width:100%;overflow:hidden;text-overflow:ellipsis;justify-content:flex-start}.lmb.lmstu.p{background:#EFEAE4;color:var(--muted);font-weight:600}
+.lmb.o{background:var(--success-soft,#E3F4EA);color:var(--success-ink,#0F7B4E)}.lmb.a{background:var(--danger-soft,#FBE3E0);color:var(--danger-ink,#B42318)}.lmb.m{background:#E3EEFB;color:#1D5BBF}.lmb.u{background:var(--warning-soft,#FFF4D6);color:var(--warning-ink,#8A5A00)}
+
+/* 261119 대표: [보강 잡기] — 다가오는 보강 수업 고르기 */
+.mkpl{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow:auto}.mkpr{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface,#fff);text-align:left;font:inherit;cursor:pointer}.mkpr:hover:not(:disabled){background:var(--tint,#FBF8F4)}.mkpr:disabled{opacity:.5;cursor:not-allowed}.mkpr .mkpc{color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mkpr small{color:var(--muted)}
+
+/* 261119 대표(시안 11 A): 하루 수업 화면 = 공용 표 한 장 */
+.lpwrap.lpwide{max-width:none}
+/* 261119 대표: 칸은 값만, 누르면 입력창 · 결석이면 [보강 잡기]가 칸 위에 떠서 옆 칸을 밀지 않음 · 학습 탭 아코디언 */
+/* 알림톡 [전송] 단추 크기: 표 칸 안에서는 칩보다 조금 큰 정도(24px) */
+table.lpt td .btn.rcb,table.lpt td .btn.rcb.sm{height:24px!important;min-height:0!important;padding:0 10px!important;gap:4px;font-size:12px;line-height:1;border-radius:999px}table.lpt td .btn.rcb svg{width:12px;height:12px}
+table.lpt td{position:relative}table.lpt td:has(.lpmk){overflow:visible}.lpmk{position:absolute;left:10px;top:50%;transform:translateY(-50%);z-index:2;white-space:nowrap}
+table.lpt td.none,table.lpt td.c{text-align:left}
+tr.lpsubtr>td{padding:0!important;background:var(--tint,#FBF8F4)}tr.lpsubtr:hover>td{background:var(--tint,#FBF8F4)}
+.lpsub{padding:6px 14px 10px 40px}.lpsubh{display:flex;align-items:center;gap:8px;padding:6px 0;color:var(--muted);font-size:var(--text-label)}.lpsubh small{font-weight:500}.lpsubh .btn{margin-left:auto}
+.lpsr{display:flex;align-items:center;gap:14px;min-height:38px;padding:0 10px;border-radius:8px;cursor:pointer}.lpsr:hover{background:#F4EFE8}.lpsr.sel{background:#FFF4D6}.lpsr .nm{width:90px;font-weight:600}.lpsr .val{min-width:120px}.lpsr .mm{color:var(--muted);display:inline-flex}
+table.stt tr.open>td{background:#FBF4E6}
+/* 261119 대표: 수업 화면 표 — 칸은 늘 고침(표 편집 중엔 잠김) · 보고서 [전송] 단추는 칩 크기 · 학습활동 구역 */
+.lpt .lpc{display:inline-flex;align-items:center}.lpt .lpro{pointer-events:none;opacity:.55}
+.lpt .btn.rcb.sm{height:24px;min-height:0;padding:0 9px;gap:4px;font-size:12px;font-weight:700;border-radius:999px}.lpt .btn.rcb.sm svg{width:12px;height:12px}
+.lpt .lprc{height:28px;width:100%;min-width:90px}.lpt .lptime{height:28px;width:96px}
+.lpacts{margin-top:var(--space-5);padding-bottom:var(--space-6)}.lpah{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) 0 var(--space-3)}.lpah h3{margin:0;font-size:15px;display:flex;align-items:center;gap:6px}.lpah h3 small{font-weight:500;color:var(--muted)}.lpah .btn{margin-left:auto}
+.lpnlb{margin-right:6px}
+/* 261119 대표: 오른쪽 창 여백 규칙 한 곳 — 탭 없는 창도 머리 아래 12px, 창 끝에 아래 여유 */
+.phead+.pbody{padding-top:var(--space-3)}.panel .pbody{padding-bottom:var(--space-4)}
+table.lpt .lprc.inp,table.lpt .lptime.inp{height:28px;padding:0 8px;font-size:13px}
+.lpbar{display:flex;align-items:center;gap:var(--space-2);padding:0 0 var(--space-3)}
+.lpbar .sp{flex:1}
+.lpbar .tb-sv{height:36px;padding:0 var(--space-3);gap:6px}
+.lpprep{display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;padding:0 0 var(--space-3);font-size:var(--text-small)}
+.lpprep .pc{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-weight:700;background:#E4F3EA;color:#0F7B4E}
+.lpprep .pc.need{background:#FFF4D6;color:#8A5A00}
+.lpprep .pc .btn.sm{height:22px;padding:0 8px;font-size:11.5px}
+.lpinfo{border:1px solid var(--line2);border-radius:10px;padding:8px 14px;margin:0 0 var(--space-3);background:var(--surface)}
+.lpinfo .crow{display:flex;gap:var(--space-3);padding:3px 0;font-size:var(--text-small)}.lpinfo .cl{width:64px;color:var(--muted)}.lpinfo .cv{flex:1}
+.lptw{overflow-x:auto;border-top:1px solid var(--line);margin-bottom:var(--space-5)}
+table.lpt{min-width:0}
+table.lpt td{height:46px;white-space:nowrap;vertical-align:middle}
+table.lpt td.lpnm{font-weight:700}table.lpt td.lpnm small{font-weight:500;color:var(--muted);margin-left:6px}
+table.lpt th:first-child,table.lpt td:first-child{position:sticky;left:0;z-index:1;background:var(--surface)}
+table.lpt tr.sel td,table.lpt tr.sel td:first-child{background:#FFFBF2}
+table.lpt tr.draft td,table.lpt tr.draft td:first-child{background:#FFF8E1}
+table.lpt td.fd>*{opacity:.35;pointer-events:none}
+table.lpt td.c,table.lpt th.c{text-align:center}
+table.lpt tr[data-id]{cursor:pointer}
+.lpt .lpatt{display:flex;align-items:center;gap:6px;height:46px}.lpt .attseg{margin-left:0}
+.lpev{display:inline-flex;align-items:center;gap:6px}.lpev .recsc{width:54px;height:28px}.lpev .recpt{min-width:36px}
+.lpt .lptime{width:96px;height:28px}
+.lpt .lpsay{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:0;background:none;padding:0;font:inherit;color:var(--muted);cursor:pointer;text-align:left}.lpt .lpsay.has{color:var(--ink)}
+.lpt .lpmore{border:0;cursor:pointer}
+.lpt .rtbox{display:inline-flex;vertical-align:middle}
+.lpnone{padding:var(--space-8) 0;text-align:center}
+.lpsec{margin:0 0 var(--space-5)}.lpsech{display:flex;align-items:center;gap:6px;margin:0 0 var(--space-2);font-size:15px}
+.lpsec .panel.lpin{margin-bottom:var(--space-3)}
+.lppane .lpph{display:block}.lpphn{display:flex;align-items:center;gap:8px;font-size:16px}
+.lppane .lprow{display:flex;align-items:center;gap:8px;padding:5px 0;min-height:38px}.lppane .lprow .t{flex:1;min-width:0}.lppane .lprow small{color:var(--muted)}
+.lppane .lprv{padding:3px 0;font-size:var(--text-label)}.lppane .lprv small{display:block;color:var(--muted)}
+.lppane .lppf{display:flex;gap:8px;padding:0 0 var(--space-4)}
+.lpside.lppane{width:360px}
+/* 학생 전용 창(panelAttend) */
+.asr{display:flex;align-items:center;gap:8px;padding:5px 0;min-height:36px}.asr .t{flex:1;min-width:0}.asr small{display:block;color:var(--muted)}.asr .rtbox{flex:none}
+.asprev{background:var(--tint);border:1px solid var(--line2);border-radius:10px;padding:10px 12px;font-size:var(--text-label)}.asprev div{padding:2px 0}.asprev small{color:var(--muted);margin-right:4px}
+.asst{margin-top:6px;font-size:var(--text-label);color:var(--muted)}.asst.ok{color:#0F7B4E;font-weight:700}.asst.bad{color:#B42318;font-weight:700}/* 알림톡 보내기 묶음: 위 글 → 카카오 전송 단추 → 아래 전송 상태(전 · 완료 · 시각) */
+.aspv{display:flex;gap:8px;padding:4px 0;align-items:flex-start}.aspv .l{width:96px;flex:none;display:flex;align-items:center;gap:4px}.aspv .l b{font-weight:600;color:var(--muted)}.aspv .v{flex:1;min-width:0;overflow-wrap:anywhere}.asprev .mut{color:var(--muted)}
+.mkpl.asc{max-height:none}.aspf{display:flex;align-items:center;gap:8px}
+.lprecbox .reccard{border:0;box-shadow:none;background:none}.lprecbox .reccard .rech{display:none}.lprecbox .reccard .recb{padding:0;border:0}
+
+/* 학습 탭 학생 목록(아코디언) — 줄마다 테두리 칸 */
+.lpsub{padding:8px 16px 12px 28px}.lpsr{display:grid;grid-template-columns:88px 64px 120px 1fr 20px;align-items:center;gap:12px;min-height:40px;margin:4px 0;padding:0 12px;background:var(--surface);border:1px solid var(--line);border-radius:10px}.lpsr:hover{background:#F4EFE8}.lpsr.sel{background:#FFF4D6;border-color:#E9B949}.lpsr .mm{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lpsr .mm.none{color:var(--subtle)}.lpsr .go{color:var(--subtle);display:inline-flex;justify-content:flex-end}
+.lpsr .spill{justify-self:start}.lpsr .val{min-width:0}
+
+/* 261119 대표: 수업 창 → 학생 창 [‹ 수업] · 출결 줄의 학생 이름은 학생 창 입구 */
+.asbackrow{padding:0 0 4px}.asback{display:inline-flex;align-items:center;gap:4px;padding:2px 8px 2px 2px;border:0;background:none;color:var(--muted);font-weight:600;font-size:13px;cursor:pointer;border-radius:6px}.asback:hover{color:var(--ink);background:var(--tint,#F4EFE8)}.stuopen{cursor:pointer;display:inline-flex;align-items:center;gap:6px}.stuopen:hover .sname{text-decoration:underline}
+
+/* 261119 대표: 보강 [거르기] 팝업 — 체크 두 줄 */
+.barpop.mkfil button{display:flex;align-items:center;gap:8px;min-width:190px}.mkfck{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:1px solid var(--line);border-radius:4px;background:var(--surface)}.barpop.mkfil button.on .mkfck{background:var(--brand-deep);border-color:var(--brand-deep);color:#fff}.mkfck svg{width:12px;height:12px}
+
+.hf-dot{width:12px;height:12px;border-radius:50%;flex:none;margin:0 3px}
+
+/* 261119 대표: 결석 칩 색 = 상태(보강 필요 빨강 · 보강 잡힘 파랑 · 완료 초록 · 보강 없음 회색 · 판단 전 연한 주황), [거르기] 점도 같은 색 */
+.cfday .mkab.s-pre,.cfday .mkab.s-need,.cfday .mkab.s-re{background:var(--danger-soft)}
+.cfday .mkab.s-pend{background:#E4EEFC;color:#1F5C8A}.cfday .mkab.s-done{background:#E3F3E6;color:#2B6A3F}.cfday .mkab.s-none{background:#EFECE7;color:var(--text-subtle);font-weight:500}
+.cfday .mkab.s-pend small,.cfday .mkab.s-done small,.cfday .mkab.s-none small{color:inherit;opacity:.75}
+.mkfdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-left:-2px}.mkfdot.k-need{background:#E27A68}.mkfdot.k-pend{background:#6FA3E0}.mkfdot.k-none{background:#B9B4AB}.mkfdot.k-mk{background:#C8A97E}
+/* 학생 창 [보강] 상자 간격 */
+.box h3>.spill{margin-left:auto}.box>.hfh+.hfh,.box>.hfh+.asr,.box>.hfh+.mkpl{margin-top:10px}.box>.asr+.row,.box>.mkpl+.row,.box>.hfh+.row{margin-top:10px}.box>.asr{padding:6px 0}
+
+/* 261119 대표: 보강 완료 = 초록 칩 · [거르기] 점 · 모든 결석 칩은 눌러 고를 수 있음 · 등원/하원 한 줄 2단 */
+.mkfdot.k-done{background:#6BBF8A}.cfday .mkab{cursor:pointer}.cfday .mkab.sel:not(.open){outline:2px solid currentColor;outline-offset:-2px}
+.asstamp{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)}.asstamp .hfh{min-width:0}
+
+/* 261119 대표: 보강 대기 표 — 열 최소 · 병합 칸 · 보강 여부 칸 눌러 고침 */
+table.stt.mkwt{table-layout:auto;width:max-content;min-width:0}.mkwt th,.mkwt td{padding:0 12px;white-space:nowrap}.mkwt td.mkm{vertical-align:middle;background:var(--surface);border-right:1px solid var(--line2,#EEE8E1)}.mkwt tr.mkgf>td{border-top:1px solid var(--line2,#EEE8E1)}
+.mkwt td.mkdc.ed{cursor:pointer}.mkwt td.mkdc.ed:hover{background:var(--brand-tint,#FBF8F4);box-shadow:inset 0 0 0 1px var(--line)}.mkwt .vseg.mkdec button{height:26px;padding:0 10px}
+
+.mkwt tr.mkrow{cursor:pointer}.mkwt tr.mkrow:hover>td{background:var(--brand-tint,#FBF8F4)}.mkwt tr.mkrow.sel>td{background:#FFF4D6}
+
+/* 261119 대표: 결석 칩 이름 볼드 없음 */
+.cfday .mkab,.cfday .mkab.open,.cfday .mkab b{font-weight:500}
+
+/* 오늘 등원 학생 카드 출결 배지(시안 13 A) */
+.lde{padding-right:7px}.lde>b{padding-right:48px}.lde .bd{position:absolute;right:6px;top:6px;font-size:11px;font-weight:700;padding:0 8px;border-radius:999px;line-height:18px;white-space:nowrap}
+.lde .bd-in{background:#DDF1E4;color:#1F6B3F}.lde .bd-ab{background:#FADBD6;color:#A33A2B}.lde .bd-mk{background:#DCE8F8;color:#1F5C8A}.lde .bd-wt{background:#fff;color:#8A8F98;box-shadow:inset 0 0 0 1px #E3DDD5}.lde .bd-out{background:#E8E4DF;color:#5E554E}
+html:root .ldworld .lde.unck{background:color-mix(in srgb,var(--bar) 24%,white)}html:root .ldworld .lde.unck .s{display:none}
+
+/* 261119 대표: 오늘 등원 학생 카드 글자는 필요하면 줄바꿈 */
+html:root .ldworld .lde>b,html:root .ldworld .lde>small{white-space:normal;overflow:visible;text-overflow:clip;word-break:keep-all;overflow-wrap:anywhere}html:root .ldworld .lde{overflow:hidden}
+
+/* 261119 대표: 수업 화면 블록 글자 크기 통일 — 제목 13 · 자세한 글 12(시간표와 같음), 월간 칩만 칩 크기(12) */
+html:root :is(.ldb,.lde)>b,html:root .lj .t{font-size:13px}
+html:root :is(.ldb,.lde)>small{font-size:12px;opacity:1}
+html:root .lj .ljh,html:root .lj dl{font-size:12px}
+
+/* 261119 대표: 공용 창 [현황] / [할 일] 2탭 */
+.tdsum{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:14px}.tdsr{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-top:1px solid var(--line2,#EEE8E1);font-size:13px}.tdsr:first-child{border-top:0}.tdsr span{color:var(--muted)}.tdsr b{font-weight:700;font-variant-numeric:tabular-nums}
+.tdsubs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}.tdsb{height:28px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px;cursor:pointer}.tdsb small{color:var(--muted);margin-left:2px}.tdsb.on{background:var(--ink,#2B2118);border-color:var(--ink,#2B2118);color:#fff}.tdsb.on small{color:#fff;opacity:.8}

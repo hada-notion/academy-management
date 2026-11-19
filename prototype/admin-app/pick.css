@@ -98,7 +98,8 @@
 .hp-cards{display:flex;flex-direction:column;gap:var(--space-2)}
 .hp-card{position:relative;display:grid;grid-template-columns:14px 18px minmax(0,1fr);column-gap:var(--space-2);row-gap:2px;align-items:center;padding:8px var(--space-3) 8px var(--space-2);border:1px solid var(--brand-border);border-radius:var(--radius-md);background:var(--surface)}
 .hp-card:hover{border-color:var(--brand-mid)}
-.hp-card.off{background:var(--brand-tint)}.hp-card.off .nm{color:var(--text-muted)}
+/* 261118 대표: 뺀 학생 = 빠졌다는 게 바로 보이게 — 흐리게 · 이름 줄 긋기 · 바탕 회색, [+]만 또렷 */
+.hp-card.off{background:var(--canvas)}.hp-card.off>*:not(.hp-slot){opacity:.45}.hp-card.off .nm{color:var(--text-muted);text-decoration:line-through;text-decoration-color:var(--text-subtle)}
 .hp-card.dis{color:var(--text-subtle)}
 .hp-card input{width:16px;height:16px;margin:0;accent-color:var(--brand-deep)}
 .hp-card .nm{display:flex;align-items:center;gap:6px;min-width:0;white-space:nowrap;overflow:hidden;font-weight:600}
@@ -211,6 +212,10 @@
 @container (max-width:340px){.hp-one .sub .g{display:none}.hp-one .hp-rt .sc{margin-left:auto}}
 @container (max-width:280px){.hp-one .hp-rt .sc{display:none}.hp-one .hp-slot{margin-left:auto}}
 @container (max-width:220px){.hp-one .hp-g{display:none}}
+/* 261119 대표: 보강 학생 목록 — 결석 알림(빨강)이 있는 줄은 좁아지면 학교 → 학년 순으로 먼저 숨김(이름 · 결석한 클래스 · 날짜 · +n은 늘 보임) */
+.hp-one .hp-s.hp-ab .sub .g{display:block!important;flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;text-align:left;color:var(--danger-ink);font-weight:600}
+@container (max-width:460px){.hp-one .hp-s.hp-ab .hp-rt .sc{display:none}}
+@container (max-width:380px){.hp-one .hp-s.hp-ab .hp-g{display:none}}
 /* 한 줄: 알림·이름도 모자라면 …로 줄어듦(넘치지 않게) */
 .hp-one .nm,.hp-one .hp-nm{flex:0 1 auto;min-width:3em}
 .hp-one .sub .r,.hp-one .sub .w{flex:0 1 auto;min-width:0;max-width:none}

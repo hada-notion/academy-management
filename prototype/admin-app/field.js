@@ -24,7 +24,8 @@ const I={loader:P+'<path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83
   right:P+'<path d="m9 18 6-6-6-6"/></svg>'};
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]);
 const pad=n=>String(n).padStart(2,"0");
-const TODAY=()=>(window.HP&&HP.today)||new Date().toISOString().slice(0,10);
+/* 261119: 앱 오늘(window.TODAY · HP.today)이 먼저, 없으면 이 컴퓨터 날짜(한국 시각) — toISOString은 UTC라 새벽 0~9시에 어제가 됐음 */
+const TODAY=()=>(window.HP&&HP.today)||(typeof window.TODAY==="string"&&window.TODAY)||(()=>{const n=new Date(),p=v=>String(v).padStart(2,"0");return `${n.getFullYear()}-${p(n.getMonth()+1)}-${p(n.getDate())}`})();
 const DOW="일월화수목금토";
 const dw=iso=>DOW[new Date(iso+"T12:00:00").getDay()];
 // 떠 있는 목록(한 번에 하나)
@@ -36,7 +37,8 @@ function pop(box,build,cls){if(OPEN&&OPEN.box===box)return OPEN.pop;close();cons
   OPEN={pop:p,box};box.classList.add("open");p.style.width=Math.max(box.offsetWidth,128)+"px";build(p);/* 목록 글자가 잘리지 않게 = 글자만큼(최대 360) */p.style.width="max-content";const nat=Math.min(360,p.offsetWidth+2);p.style.width=Math.max(box.offsetWidth,p.querySelector("input")?208:128,nat)+"px";
   const r=box.getBoundingClientRect();let top=box.offsetTop+box.offsetHeight+4;
   const up=r.bottom+4+p.offsetHeight>innerHeight-8&&r.top-4-p.offsetHeight>8,op=p.offsetParent;
-  if(up&&op===box.parentElement)p.style.bottom=(op.clientHeight-box.offsetTop+4)+"px";else p.style.top=(up?box.offsetTop-4-p.offsetHeight:top)+"px";p.style.left=box.offsetLeft+"px";p.style.width=Math.max(box.offsetWidth,p.querySelector("input")?208:128,nat)+"px";/* 417판: 검색 칸·편집(…)이 있는 목록은 208부터 *//* 293판(대표): 달력처럼 칸보다 넓은 창이 오른쪽 창·화면 밖으로 나가면 칸 오른쪽 끝에 맞춰 안쪽으로 */{const lim=Math.min(innerWidth,(box.closest(".panel,#lp,#sp,.dlg,.mp-pn")||document.documentElement).getBoundingClientRect().right)-8,pr=p.getBoundingClientRect();if(pr.right>lim)p.style.left=(box.offsetLeft-(pr.right-lim))+"px"}return p}
+  if(up&&op===box.parentElement)p.style.bottom=(op.clientHeight-box.offsetTop+4)+"px";else p.style.top=(up?box.offsetTop-4-p.offsetHeight:top)+"px";p.style.left=box.offsetLeft+"px";p.style.width=Math.max(box.offsetWidth,p.querySelector("input")?208:128,nat)+"px";/* 417판: 검색 칸·편집(…)이 있는 목록은 208부터 *//* 293판(대표): 달력처럼 칸보다 넓은 창이 오른쪽 창·화면 밖으로 나가면 칸 오른쪽 끝에 맞춰 안쪽으로 */{const wr=(box.closest(".panel,#lp,#sp,.dlg,.mp-pn")||document.documentElement).getBoundingClientRect(),lim=Math.min(innerWidth,wr.right)-8,lo=Math.max(0,wr.left)+8,pr=p.getBoundingClientRect();if(pr.right>lim)p.style.left=(box.offsetLeft-(pr.right-lim))+"px";
+    /* 261119 대표: 오른쪽 창 왼쪽 끝 밖으로도 나가지 않게(클래스 · 등록 진도 교재 고르기가 잘리던 것) — 넘치면 창 폭에 맞춰 줄임 */const p2=p.getBoundingClientRect();if(p2.left<lo){if(p2.width>lim-lo)p.style.width=(lim-lo)+"px";p.style.left=(parseFloat(p.style.left)+(lo-p2.left))+"px"}}return p}
 // 칸 틀: 라벨(칸 위 12/600, 아래 4) · 칸(40) · 알림 글(칸 아래 12)
 /* 302판(대표): 알림톡으로 나가는 칸 = 칸 옵션 alim:"화면|칸" 하나 → 라벨 오른쪽 [알림톡 미리보기] 버튼, 누르면 칸 아래에 실제 알림톡 모양(입력하면 바로 바뀜). 모양·템플릿은 alim-preview.js 한 곳 */
 const alimOf=o=>o&&o.alim&&window.ALIMV&&ALIMV.forField(o.alim);
@@ -48,15 +50,25 @@ function alimBind(host,o){const a=alimOf(o);if(!a)return;const bt=host.querySele
   bt.onpointerdown=e=>e.preventDefault();/* 누를 때 칸에서 커서가 떠나지 않게(떠나면 저장·다시 그리기로 버튼이 바뀜) */
   bt.onclick=e=>{e.preventDefault();e.stopPropagation();if(box){shut();return}box=document.createElement("div");box.className="alv-pop";box.innerHTML=`<div class="alv-poph"><b>알림톡 미리보기</b><span class="alv-pops">칸에 쓰면 바로 바뀌어요</span><button type="button" class="alv-popx" aria-label="닫기">${I.x}</button></div><div class="alv-popin"></div>`;document.body.appendChild(box);box.querySelector(".alv-popx").onclick=shut;bt.setAttribute("aria-expanded","true");draw();place();addEventListener("pointerdown",out,true);addEventListener("keydown",esc1,true)};
   host.addEventListener("input",()=>{draw();place()})}
-const shell=(host,o,inner,cls)=>{host.innerHTML=`<div class="hf ${o.disabled?"dis":""}">${o.label?`<span class="hf-lbl">${esc(o.label)}${o.req?' <i>*</i>':""}${o.tipHtml||""}</span>`:""}<div class="hf-box ${cls||""}">${inner}</div><span class="hf-msg">${esc(o.help||"")}</span></div>`;alimBind(host,o);return host.querySelector(".hf-box")};
-const say=(host,t,err)=>{const m=host.querySelector(".hf-msg");m.textContent=t||"";host.querySelector(".hf").classList.toggle("err",!!(err&&t))};
+/* 261118 대표("설명은 도움말 버튼으로 다 옮기자", 기준 "설명 글은 제목 옆 (?)에"): 칸 설명(help)은 이름 옆 (?)로 — 칸 밑 글 자리는 오류 · 확인 말만. 이름 없는 칸은 예전처럼 밑에 */
+const helpTip=(o)=>o.help&&o.label&&typeof HELP==="function"?HELP(o.help):"";
+const shell=(host,o,inner,cls)=>{const tip=helpTip(o);host._help=tip?o.help:null;host.innerHTML=`<div class="hf ${o.disabled?"dis":""}">${o.label?`<span class="hf-lbl">${esc(o.label)}${o.req?' <i>*</i>':""}${o.tipHtml||""}${tip}</span>`:""}<div class="hf-box ${cls||""}">${inner}</div><span class="hf-msg">${tip?"":esc(o.help||"")}</span></div>`;alimBind(host,o);return host.querySelector(".hf-box")};
+const say=(host,t,err)=>{if(!err&&host._help&&t===host._help)t="";const m=host.querySelector(".hf-msg");m.textContent=t||"";host.querySelector(".hf").classList.toggle("err",!!(err&&t))};
 const X=`<button type="button" class="hf-x" tabindex="-1" aria-label="비우기" title="비우기">${I.x}</button>`;
 const has=(b,v)=>b.classList.toggle("has",!!v);
 // 글자 입력 공통(text·num·tel·memo)
+/* 261119 대표: 목록 규칙 = 노션과 같게 — 줄 첫머리 "- " · "* " → "  • ", "1. " → "  1. "(앞에 공백 2개), 목록 줄에서 Enter = 다음 점 · 다음 번호, 빈 목록 줄에서 Enter = 목록 끝. 모든 긴 글 칸(공용 memo) + 앱의 다른 textarea(HFLIST.bind) */
+const HFLIST={bind(i){if(!i||i._hfl)return;i._hfl=1;i.addEventListener("keydown",e=>{if(e.isComposing)return;const v=i.value,s=i.selectionStart;if(s!==i.selectionEnd)return;const ls=v.lastIndexOf("\n",s-1)+1,line=v.slice(ls,s);
+    const put=(a,b,txt)=>{e.preventDefault();i.value=v.slice(0,a)+txt+v.slice(b);const c=a+txt.length;i.setSelectionRange(c,c);i.dispatchEvent(new Event("input",{bubbles:true}))};
+    if(e.key===" "){if(/^\s*[-*]$/.test(line))return put(ls,s,"  • ");const m=line.match(/^\s*(\d+)\.$/);if(m)return put(ls,s,`  ${m[1]}. `);return}
+    if(e.key==="Enter"&&!e.shiftKey){const le=v.indexOf("\n",s),full=v.slice(ls,le<0?v.length:le);const b=full.match(/^  • (.*)$/),n=full.match(/^  (\d+)\. (.*)$/);
+      if(b){if(!b[1].trim())return put(ls,le<0?v.length:le,"");return put(s,s,"\n  • ")}
+      if(n){if(!n[2].trim())return put(ls,le<0?v.length:le,"");return put(s,s,`\n  ${+n[1]+1}. `)}}})}};
+if(typeof window!=="undefined")window.HFLIST=HFLIST;
 function typed(host,o,icon,attrs,fmt,check,cls){const tag=cls==="hf-memo"?"textarea":"input";
   const memo=tag==="textarea";const b=shell(host,o,`${memo||icon==="type"?"":o.pre?`<span class="hf-unit hf-pre">${esc(o.pre)}</span>`:icn(icon)}<${tag} ${attrs||""} placeholder="${esc(o.placeholder||"")}" ${o.disabled?"disabled":""} ${tag==="input"?`value="${esc(o.value||"")}">`:`rows="1">${esc(o.value||"")}</textarea>`}${o.unit?`<span class="hf-unit">${esc(o.unit)}</span>`:""}${o.disabled||memo?"":X}`,cls);
-  const i=b.querySelector(tag);if(memo&&!o.disabled){const g=document.createElement("span");g.className="hf-grip";g.title="끌어서 높이 조절";b.appendChild(g);/* 291판(대표): 아래로만 늘림 — 아래 선 어디서든 잡고 끌기 */
-    g.onpointerdown=e=>{e.preventDefault();g.setPointerCapture(e.pointerId);const y0=e.clientY,h0=i.offsetHeight;b.classList.add("drag");/* 351판(대표): 늘릴 때 창 스크롤도 같이 내려감(손잡이가 아래 단추 줄에 가리지 않게) */let sc=b.parentElement;while(sc&&!(sc.scrollHeight>sc.clientHeight&&/auto|scroll/.test(getComputedStyle(sc).overflowY)))sc=sc.parentElement;const s0=sc?sc.scrollTop:0;g.onpointermove=ev=>{i.style.height=Math.max(64,h0+ev.clientY-y0+(sc?sc.scrollTop-s0:0))+"px";if(sc){const ft=[...sc.children].find(c=>getComputedStyle(c).position==="sticky"&&c.getBoundingClientRect().top>sc.getBoundingClientRect().top+sc.clientHeight/2);const lim=(ft?ft.getBoundingClientRect().top:sc.getBoundingClientRect().bottom)-12,gb=g.getBoundingClientRect().bottom;if(gb>lim)sc.scrollTop+=gb-lim}};g.onpointerup=g.onpointercancel=()=>{g.onpointermove=null;b.classList.remove("drag")}}}
+  const i=b.querySelector(tag);if(memo&&!o.disabled)HFLIST.bind(i);if(memo&&!o.disabled){const g=document.createElement("span");g.className="hf-grip";g.title="끌어서 높이 조절";b.appendChild(g);/* 291판(대표): 아래로만 늘림 — 아래 선 어디서든 잡고 끌기 */
+    g.onpointerdown=e=>{e.preventDefault();g.setPointerCapture(e.pointerId);const y0=e.clientY,h0=i.offsetHeight;b.classList.add("drag");/* 351판(대표): 늘릴 때 창 스크롤도 같이 내려감(손잡이가 아래 단추 줄에 가리지 않게) */let sc=b.parentElement;while(sc&&!(sc.scrollHeight>sc.clientHeight&&/auto|scroll/.test(getComputedStyle(sc).overflowY)))sc=sc.parentElement;const s0=sc?sc.scrollTop:0;g.onpointermove=ev=>{i.style.height=Math.max(42,h0+ev.clientY-y0+(sc?sc.scrollTop-s0:0))+"px";if(sc){const ft=[...sc.children].find(c=>getComputedStyle(c).position==="sticky"&&c.getBoundingClientRect().top>sc.getBoundingClientRect().top+sc.clientHeight/2);const lim=(ft?ft.getBoundingClientRect().top:sc.getBoundingClientRect().bottom)-12,gb=g.getBoundingClientRect().bottom;if(gb>lim)sc.scrollTop+=gb-lim}};g.onpointerup=g.onpointercancel=()=>{g.onpointermove=null;b.classList.remove("drag")}}}
   const grow=()=>{if(memo&&i.scrollHeight>i.clientHeight)i.style.height=i.scrollHeight+"px"};/* 271판: 긴 글은 입력란 자체가 늘어남(손잡이로도) */
   if(fmt&&i.value)i.value=fmt(i.value);has(b,i.value);setTimeout(grow);
   b.onpointerdown=e=>{if(e.target===b||e.target.closest("svg:not(.hf-x svg)")){e.preventDefault();i.focus()}};
@@ -142,9 +154,12 @@ const date=(host,o={})=>dt(host,o,"d");
 const time=(host,o={})=>dt(host,o,"t");
 const datetime=(host,o={})=>dt(host,o,"dt");
 // 기간 = 두 칸 사이 "-" · 끝이 시작보다 앞이면 알림
-function range(host,o,fn){host.innerHTML=`<div class="hf">${o.label?`<span class="hf-lbl">${esc(o.label)}${o.req?' <i>*</i>':""}${o.tipHtml||""}</span>`:""}<div class="hf-range"><div></div><span class="hf-dash">-</span><div></div></div><span class="hf-msg">${esc(o.help||"")}</span></div>`;
-  const [A,B]=host.querySelectorAll(".hf-range>div");const v=[...(o.value||["",""])];
-  const chk=()=>{const m=v[0]&&v[1]&&v[1]<v[0]?(fn===time?"끝 시간이 시작보다 앞이에요":"끝 날짜가 시작보다 앞이에요"):"";const s=host.querySelector(".hf>.hf-msg");s.textContent=m||o.help||"";host.querySelector(".hf").classList.toggle("err",!!m);o.onChange&&o.onChange(v.slice())};
+/* 261118 대표: 두 칸 = 이름도 두 개("시작일 - 종료일" 한 이름 → 시작일 · 종료일). 이름은 o.labels:[앞,뒤], 없으면 o.label을 " - "로 나눔, 못 나누는 시간 범위는 시작 시간 · 종료 시간. 설명(?) · 필수(*)는 앞 이름에 */
+function rangeLabels(o,fn){if(Array.isArray(o.labels))return o.labels;const l=String(o.label||"");const p=l.split(/\s+[-–~]\s+/);if(p.length===2)return p;if(fn===time)return ["시작 시간","종료 시간"];return [l,""]}
+function range(host,o,fn){const tip=helpTip(o);const [la,lb]=rangeLabels(o,fn);const lbl=(t,first)=>t||first?`<span class="hf-lbl">${esc(t)}${first?`${o.req?' <i>*</i>':""}${o.tipHtml||""}${tip}`:""}</span>`:"";
+  host.innerHTML=`<div class="hf"><div class="hf-range two"><div class="hf-rc">${lbl(la,true)}<div></div></div><div class="hf-rc">${lbl(lb,false)}<div></div></div></div><span class="hf-msg">${tip?"":esc(o.help||"")}</span></div>`;
+  const [A,B]=host.querySelectorAll(".hf-rc>div");const v=[...(o.value||["",""])];
+  const chk=()=>{const m=v[0]&&v[1]&&v[1]<v[0]?(fn===time?"끝 시간이 시작보다 앞이에요":"끝 날짜가 시작보다 앞이에요"):"";const s=host.querySelector(".hf>.hf-msg");s.textContent=m||(tip?"":o.help)||"";host.querySelector(".hf").classList.toggle("err",!!m);o.onChange&&o.onChange(v.slice())};
   fn(A,Object.assign({},o,{label:"",help:"",tipHtml:"",value:v[0],placeholder:"",onChange:x=>{v[0]=x;chk()}}));fn(B,Object.assign({},o,{label:"",help:"",tipHtml:"",value:v[1],onChange:x=>{v[1]=x;chk()}}));return {get value(){return v.slice()}}}
 const dateRange=(host,o={})=>range(host,Object.assign({dow:false},o),date);
 const timeRange=(host,o={})=>range(host,o,time);

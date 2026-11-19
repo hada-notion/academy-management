@@ -31,15 +31,28 @@
   /* 보기만(P2 보기 칸): 이 칸의 화면은 노션 값을 보여 주기만 한다. 쓰는 단추는 끄고, 창의 칸은 잠그고, 그래도 값이 바뀌면 그 자리에서 되돌린다.
      고칠 것은 창 위 [노션에서 열기]로. (이 묶음들은 저장 층 대상이 아니라 노션에 갈 길도 없다) */
   /* 0단계(대표 261117): 입력 칸(P1) 안에서도 노션 버튼 · 서버 동작이 따로 있는 화면은 보기만 — 라이브러리(교재 등록 = 서버가 단원까지) · 학교(학교 검색 = 학교 코드까지) */
-  const P2ON = gOn.has("P2"), RO = new Set([...GATES.P2, ...GATES.P3, ...GATES.P3b, "books", "schools"]); /* P3 수업은 걸음 1 = 보기만 */
+  /* 일정 쓰기(칸 P2e — 화면 묶음 없음, P2와 함께 켤 때만, 261119 원본검수 Z2): 켜면 일정 화면은 보기만에서 빠지고 저장 층(appsave events)으로 노션에 씀. 꺼져 있으면 보기만 */
+  const EVW = gOn.has("P2") && gOn.has("P2e"); window.LIVE_EVW = EVW;
+  /* 보강 쓰기(칸 P3m — 화면 묶음 없음, 보강 화면 칸 P3b와 함께 켤 때만, 261119 담당 (가)): 켜면 보강 화면이 보기만에서 빠지고 [저장]이 서버 보강 동작(livelesson.js liveMakeupSave)으로 */
+  const MKW = gOn.has("P3b") && gOn.has("P3m"); window.LIVE_MKW = MKW;
+  const P2ON = gOn.has("P2"), RO = new Set([...GATES.P2, ...GATES.P3, ...GATES.P3b, "books", "schools"].filter((s) => !(EVW && s === "events") && !(MKW && s === "makeup"))); /* P3 수업은 걸음 1 = 보기만 */
   window.liveRO = (s) => RO.has(s);
   window.liveScr = (t) => (t && t.screen === "timetable" && t.state && t.state.view === "lesson" ? "lesson" : t ? t.screen : "");
   let roBase = null, roScreen = null, roBusy = false;
   /* 출결 쓰기(P3 걸음 2, 칸 P3w — 수업 칸 P3과 함께 켤 때만): 수업 창의 [출석][결석] · [모두 출석] · [되돌리기] · [수업 저장]만 풀고 나머지는 보기만 그대로 */
   const ATTW = gOn.has("P3") && gOn.has("P3w"); window.LIVE_ATTW = ATTW;
   const attw = () => ATTW && liveScr(typeof activeTab !== "undefined" ? activeTab : null) === "lesson";
-  const roPass = () => RO_PASS0 + (attw() ? ",.attseg,#allOk,#lsRev,#lsSave" : "");
-  const snapRo = () => { if (!attw()) return snapshot(); const a = DB.att; DB.att = {}; try { return snapshot(); } finally { DB.att = a; } };
+  const roPass = () => RO_PASS0 + (attw() ? ",.attseg,#allOk,#lsRev,#lsSave,#attEd,.attv.ed,.attpop .so" : ""); /* 536판(대표 261119): 출결 = 값 칸 .attv + 머리 [편집] #attEd + 떠 있는 목록 .attpop .so(body). .attseg는 과제 단추 */
+  /* 학습기록 쓰기(칸 P3b — 수업 칸 P3과 함께 켤 때만, 261119 원본검수 Z1): 하루 수업 페이지의 학습기록 · 과제검사 · 학습활동 · 진도 · 루틴 탭을 풀고, 저장은 livelesson.js(update-record · create-records · save-activities · save-routines) */
+  const RECW = gOn.has("P3") && gOn.has("P3b"); window.LIVE_RECW = RECW;
+  const REC_TABS = ["prog", "log", "hw", "act", "rt"];
+  const inLesson = () => liveScr(typeof activeTab !== "undefined" ? activeTab : null) === "lesson";
+  const recw = () => RECW && inLesson();
+  const recTab = () => recw() && REC_TABS.includes(((activeTab && activeTab.state) || {}).lptab);
+  const REC_AREA = "#lpIn,.lpx";
+  /* 보기만 되돌리기에서 뺄 값: 출결 쓰기면 출결 · 한마디(anotes), 학습기록 쓰기면 기록 · 오늘 진도(lpToday) */
+  const roKeepKeys = () => [...(attw() ? ["att", "anotes"] : []), ...(recw() ? ["recs", "lpToday"] : [])];
+  const snapRo = () => { const ks = roKeepKeys(); if (!ks.length) return snapshot(); const keep = {}; ks.forEach((k) => { keep[k] = DB[k]; DB[k] = Array.isArray(keep[k]) ? [] : {}; }); try { return snapshot(); } finally { Object.assign(DB, keep); } };
   window.liveRoReset = () => { roBase = null; };
   const roCss = document.createElement("style");
   roCss.textContent = ".live-ro #view [data-gdel]{display:none!important}.ro-note{margin:0 0 10px;padding:8px 10px;border-radius:8px;background:#FFF6DA;color:#3A3226;font-size:13px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ro-note a{color:inherit;font-weight:600;text-decoration:underline}";
@@ -47,12 +60,13 @@
   const roDress = () => {
     const q = (s) => document.querySelectorAll(s), why = "보기만 하는 화면이에요 — 노션에서 해요";
     q("#addRow,#tbEd,[data-act2]").forEach((b) => { b.disabled = true; b.title = why; });
-    q(".panel input:not([type=checkbox]):not([type=radio]),.panel textarea").forEach((i) => { i.readOnly = true; });
-    q(".panel select,.panel input[type=checkbox],.panel input[type=radio]").forEach((i) => { i.disabled = true; });
+    const recFree = (el) => recTab() && el.closest(REC_AREA); /* 학습기록 쓰기 칸이 켜진 하루 수업 페이지의 기록 탭은 잠그지 않음 */
+    q(".panel input:not([type=checkbox]):not([type=radio]),.panel textarea").forEach((i) => { if (!recFree(i)) i.readOnly = true; });
+    q(".panel select,.panel input[type=checkbox],.panel input[type=radio]").forEach((i) => { if (!recFree(i)) i.disabled = true; });
     q(".panel .tdnone").forEach((n) => { const t = n.lastChild; if (t && /여기서 고쳐요/.test(t.textContent)) t.textContent = "줄을 누르면 여기서 봐요 — 고칠 것은 노션에서 고쳐요"; });
     /* 창 안의 누르는 것은 이동(RO_PASS)만 남기고 모두 끈다: 전송 · 삭제 · 생성 · 저장 · 켜고 끄기 · 고르기 */
     /* 화면 위 줄 · 달력 · 창 어디든: 허용 목록(이동 · 보기 바꾸기 · 찾기 · 인쇄 · 입력 칸 저장 단추)에 없는 단추는 모두 끈다 — 새 단추가 생겨도 기본이 꺼짐 */
-    q("#view button,#view .hf-box,#view select").forEach((b) => { if (b.closest(roPass())) return; if ("disabled" in b) b.disabled = true; b.setAttribute("aria-disabled", "true"); b.title = why; });
+    q("#view button,#view .hf-box,#view select").forEach((b) => { if (b.closest(roPass()) || recFree(b)) return; if ("disabled" in b) b.disabled = true; b.setAttribute("aria-disabled", "true"); b.title = why; });
     const p = document.querySelector(".panel"), id = String((activeTab.state || {}).sel || "");
     if (p && /^[0-9a-f-]{32,36}$/i.test(id) && !p.querySelector(".ro-note")) {
       const n = document.createElement("div"); n.className = "ro-note";
@@ -69,8 +83,8 @@
     else if (now !== roBase && !roBusy) {
       roBusy = true;
       try {
-        const keep = attw() ? DB.att : null; /* 출결 쓰기가 켜진 수업 화면: 출결 값은 되돌리지 않는다 */
-        Object.assign(DB, JSON.parse(roBase)); if (keep) DB.att = keep; lastSnap = snapshot();
+        const ks = roKeepKeys(), keep = ks.length ? Object.fromEntries(ks.map((x) => [x, DB[x]])) : null; /* 쓰기가 켜진 수업 화면: 출결 · 기록 값은 되돌리지 않는다 */
+        Object.assign(DB, JSON.parse(roBase)); if (keep) Object.assign(DB, keep); lastSnap = snapshot();
         if (!keep) { try { LDIRTY.clear(); } catch (_) {} } /* 수업 창에서 생긴 작성 중 표시도 지운다(보기만일 때) */
         if (undoStack.length && undoStack[undoStack.length - 1] === roBase) undoStack.pop(); /* 방금 고친 것의 되돌리기 기록 */
         r0(); say("이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요");
@@ -79,6 +93,8 @@
     }
     roDress();
   };
+  /* 보강 쓰기 칸: 저장 대기 수에 서버 보강 배정 · 빼기 · 지우기 수를 더한다(새 보강은 화면이 이미 셈) */
+  if (MKW && typeof dirtyCount === "function") { const dc0 = dirtyCount; dirtyCount = function () { let n = dc0.apply(this, arguments); try { if (typeof liveMakeupPlan === "function") { const P = liveMakeupPlan(); n += P.assign.length + P.unlink.length + P.del.length + P.att.length; } } catch (_) {} return n; }; }
   const r0 = render;
   /* 수업 화면 = 시간표 화면의 [수업] 보기. 수업 칸(P3)이 꺼져 있으면 그 보기로 못 넘어가게 한다(단추도 숨김) */
   const lessonGate = () => {
@@ -89,8 +105,8 @@
   /* 0단계 — 입력 화면(P1)에서 잠그는 것(두 길로 갈라지는 일): 노션 버튼이 딸린 일까지 하는 단추는 끄고 [노션에서 해요]로 알린다.
      등록 [종료 처리] · [링크 재발급], 진도 [교재 생성] · [수료], 안내 전송 · 접수 안내 · 학사일정, 시간표 [잠금 해제](수업이 만들어진 시간표의 요일 · 시간),
      학생 [개인정보 동의](체크하면 노션 자동화가 접수 안내 알림톡을 보낸다 — 앱은 그 칸을 보내지 않는다). 저장 층(appsave.js appsOff)도 같은 것을 보내지 않는다. */
-  const P1_DENY = "[data-act=end],[data-act=enReissue],[data-act=genPg],[data-act=genPg1],[data-act=pgDone],[data-act=pgRep],[data-pgdo],#bfM,#pLock";
-  const P1_DENY_TEXT = /(접수 안내|등록 안내|안내 전송|안내문 전송|재발급|학사일정 가져오기|종료 처리|교재 생성|교재비에 담기)\s*\d*\s*$/; /* 담기 = 노션 [담기](서버가 청구서까지 만듦) */
+  const P1_DENY = "[data-act=end],[data-act=enReissue],[data-act=genPg],[data-act=genPg1],[data-act=pgDone],[data-act=pgRep],[data-pgdo],[data-cetone],#bfM,#pLock"; /* [data-cetone] = 클래스 창 [한 번 청구] — 청구서는 노션 [기타경비 청구](서버)가 만듦, 앱엔 저장 길 없음 */
+  const P1_DENY_TEXT = /(접수 안내|등록 안내|안내 전송|안내문 전송|재발급|학사일정 가져오기|종료 처리|교재 생성|교재비에 담기|한 번 청구)\s*\d*\s*$/; /* 담기 = 노션 [담기](서버가 청구서까지 만듦) */
   const P1_WHY = "노션에서 해요 — 이 일은 노션 버튼이 딸린 일(출석 · 교재 · 안내)까지 함께 해요";
   const p1Denied = (el) => { const hf = el && el.closest && el.closest(".hf"); if (hf && hf.closest("#view")) { const lb = hf.querySelector(".hf-lbl"); if (lb && /^개인정보 동의/.test(lb.textContent.trim())) return el.closest(".qhelp,[data-help]") ? null : hf; } const b = el && el.closest && el.closest("button,[role=button],.btn,.lnk,label,.swf,[data-hf]"); if (!b || !b.closest("#view")) return null; if (b.matches(P1_DENY) || b.closest(P1_DENY)) return b; const t = (b.textContent || "").trim(); if (b.matches("button,.btn,.lnk") && P1_DENY_TEXT.test(t)) return b; if (/개인정보 동의/.test(t) && t.length < 40) return b; return null; };
   const p1Dress = () => {
@@ -138,7 +154,7 @@
      창: 링크 · 도움말 · 노션 · 줄 열기/이동 · 접기 · 탭 · 할 일 줄. 위 줄: 날짜 · 달 · 주 이동, 보기 탭, 찾기, 엑셀 · 인쇄, 크기, 창 고정,
      그리고 입력 칸(P1)에서 고친 것을 다루는 실행 취소 · 다시 실행 · 모두 되돌리기 · 저장. */
   const RO_PASS0 = "a,[data-help],[data-notion],.hnot,[data-drill],[data-go],[data-gobook],[data-gochs],[data-gobill],[data-act^=go],[data-rpdo^=open],[data-rpdo^=notion],[data-pgfold],[data-entab],.ptabs,.ro-note,.tdr,.tdmore,.qhelp,summary,"
-    + "[data-dn],[data-mn],[data-sub],[data-cfnav],[data-mtab],[data-view],[data-wkd],[data-evsel],.foldchip,#lq,.sbx,#xlB,#prB,#undoB,#redoB,#rvAll,#saveAll,#panelT,#mkPanelT,#seaChip,#wkP,#wkN,#wkT,#lmAtt,#cbFind,#zOut,#zIn,#makeWeek"; /* #makeWeek = 수업 생성: 노션 버튼과 같은 서버 함수(generate-classes)를 부르는 run이라 보기 화면에서도 켠다(대표 261117 "수업 생성은 앱에서도") */
+    + "[data-dn],[data-mn],[data-sub],[data-cfnav],[data-mtab],[data-view],[data-wkd],[data-evsel],.foldchip,#lq,.sbx,#xlB,#prB,#undoB,#redoB,#rvAll,#saveAll,#panelT,#mkPanelT,#seaChip,#wkP,#wkN,#wkT,#lmAtt,#cbFind,#zOut,#zIn,#makeWeek,#lGen"; /* #makeWeek · #lGen(수업 메뉴 v559의 생성 단추) = 수업 생성: 노션 버튼과 같은 서버 함수(generate-classes)를 부르는 run이라 보기 화면에서도 켠다(대표 261117 "수업 생성은 앱에서도") */
   const RO_HIT = "button,input,select,textarea,label,[role],[tabindex],[contenteditable],.btn,.lnk,.hf-box";
   const roBlock = (e) => {
     if (!document.body.classList.contains("live-ro") || !e.target.closest) return;
@@ -272,7 +288,7 @@ function liveHooks() {
   };
 }
 /* 실제 자료 모드의 [수업 생성]: 시간표마다 다음 수업 한 번을 노션 수업 생성 큐에 맡긴다(app-api run — 시간표 [수업 추가]와 같은 처리).
-   저장 전인 새 시간표는 노션에 아직 없으므로 먼저 저장하라고 알린다. 수업 · 출석은 1~2분 뒤 노션에 생긴다(앱 화면에는 그리지 않음). */
+   저장 전인 새 시간표는 노션에 아직 없으므로 먼저 저장하라고 알린다. 수업 · 출석은 1-2분 뒤 노션에 생긴다(앱 화면에는 그리지 않음). */
 async function liveRunClasses(blockIds) {
   const isId = (v) => /^[0-9a-f-]{32,36}$/i.test(String(v));
   const ids = (blockIds || []).filter(isId), unsaved = (blockIds || []).length - ids.length;
@@ -287,7 +303,7 @@ async function liveRunClasses(blockIds) {
     if (!res.ok || !body || !body.ok) throw new Error((body && body.error) || "요청 실패 (" + res.status + ")");
     /* 맡긴 시간표는 30분 동안 [수업 생성] 대상에서 뺀다 — 서버가 만들고 사본에 오기 전에 한 번 더 눌러 뒤 주 수업이 또 생기지 않게(원본 검수 H6) */
     try { if (typeof liveGenMark === "function") liveGenMark(ids); render(); } catch (_) {}
-    toast(`수업 생성을 맡겼어요 · 시간표 ${body.queued}개 — 1~2분 뒤 노션 수업에 생겨요${unsaved ? ` (저장 전 시간표 ${unsaved}개는 빠짐)` : ""}`);
+    toast(`수업 생성을 맡겼어요 · 시간표 ${body.queued}개 — 1-2분 뒤 노션 수업에 생겨요${unsaved ? ` (저장 전 시간표 ${unsaved}개는 빠짐)` : ""}`);
     return body;
   } catch (e) { toast("수업 생성을 맡기지 못했어요 — " + e.message); return null; }
 }
@@ -298,7 +314,14 @@ async function liveSave() {
   try {
     /* 수업 출결(작성 중인 수업)이 있으면 먼저 수업 관리 서버로 보낸다(출결 쓰기 칸이 켜져 있을 때) */
     let lessons = 0;
-    if (window.LIVE_ATTW && typeof liveLessonSave === "function") { for (const k of [...LDIRTY.keys()]) { if (!k.startsWith("mk:") && await liveLessonSave(k)) lessons++; } }
+    if ((window.LIVE_ATTW || window.LIVE_RECW) && typeof liveLessonSave === "function") {
+      /* 작성 중인 수업 = 수업 창 표시(LDIRTY) + 학습기록 쓰기 칸이면 작성 중 기록이 있는 수업(Z1) — 실제 수업(LIVE_LS)만 */
+      const ks = new Set([...LDIRTY.keys()].filter((k) => !k.startsWith("mk:")));
+      if (window.LIVE_RECW) (DB.recs || []).forEach((r) => { if (r.state === "draft" && !r.del && r.key && typeof LIVE_LS !== "undefined" && LIVE_LS[r.key]) ks.add(r.key); });
+      for (const k of ks) { if (await liveLessonSave(k)) lessons++; }
+    }
+    /* 보강(칸 P3m): 만들기 · 배정 · 빼기 · 지우기를 서버 보강 동작으로 */
+    if (window.LIVE_MKW && typeof liveMakeupSave === "function") lessons += await liveMakeupSave();
     let pend = 0; try { pend = appSaveCollect(DB).changes.length; } catch (_) {}
     if (lessons && !pend) return { ok: 0, failed: [], lessons };
     return await liveSaveRun();
