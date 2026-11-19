@@ -4,6 +4,7 @@ import { APP_DBS, flattenProps, isAppDb, pageRow, pickSources, resolveSources } 
 import { CLEAR_DBS, KEEP_DBS } from "./exampleClear.ts"
 import "./dbNames_test.ts" // 관 꼬리표 이름(항목 102) 시험도 이 파일이 도는 CI에서 같이 돈다
 import "./syncCopy_test.ts" // 앱 [동기화] 버튼(항목 105) 시험
+import "./rootTitle_test.ts" // 시스템 타이틀(노션 최상위 페이지 제목, 항목 106) 시험
 
 const rt = (s: string) => [{ plain_text: s }]
 
