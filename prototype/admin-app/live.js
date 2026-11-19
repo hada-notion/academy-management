@@ -67,28 +67,40 @@ window.liveModeFor = function (search, hostname, protocol) {
   const snapRo = () => { const ks = roKeepKeys(); if (!ks.length) return snapshot(); const keep = {}; ks.forEach((k) => { keep[k] = DB[k]; DB[k] = Array.isArray(keep[k]) ? [] : {}; }); try { return snapshot(); } finally { Object.assign(DB, keep); } };
   window.liveRoReset = () => { roBase = null; };
   const roCss = document.createElement("style");
-  roCss.textContent = ".live-ro #view [data-gdel]{display:none!important}.ro-note{margin:0 0 10px;padding:8px 10px;border-radius:8px;background:#FFF6DA;color:#3A3226;font-size:13px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ro-note a{color:inherit;font-weight:600;text-decoration:underline}";
+  roCss.textContent = ".live-ro #view [data-gdel]{display:none!important}.ro-note{margin:0 0 10px;padding:8px 10px;border-radius:8px;background:#FFF6DA;color:#3A3226;font-size:13px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ro-note a{color:inherit;font-weight:600;text-decoration:underline}.ro-line{margin:-2px 0 8px;padding:0 4px;font-size:12px;color:#8A8378}";
   document.head.appendChild(roCss);
+  /* 보기 전용 화면 안내(261119 대표 "보기 중심인 화면에만 안내, 나머지는 다 사용 가능"): 시험 · 수강료 · 청구서 · 손익 분석 · 법정 서류만 제목 줄 아래 작은 회색 한 줄(토스트 아님 · 닫기 없음).
+     어느 화면인지는 이 목록 한 곳이 기준 — 목록에 없는 화면(수업 · 일정 · 학생 · 클래스 · 등록 …)에는 보기만 칸이어도 안 뜬다 */
+  const RO_NOTE_SCREENS = new Set(["exams", "tuition", "bill", "bookfees", "charges", "etcs", "profit", "costs", "legal"]);
+  const RO_NOTE_TEXT = "이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요";
+  const roNote = (show) => {
+    const v = document.getElementById("view"); if (!v) return;
+    let n = v.querySelector(":scope > .ro-line");
+    if (!show) { if (n) n.remove(); return; }
+    const top = v.querySelector(":scope > .top"); if (!top) return;
+    if (!n) { n = document.createElement("div"); n.className = "ro-line"; n.textContent = RO_NOTE_TEXT; }
+    if (top.nextElementSibling !== n) top.after(n);
+  };
   const roDress = () => {
-    const q = (s) => document.querySelectorAll(s), why = "보기만 하는 화면이에요 — 노션에서 해요";
+    const q = (s) => document.querySelectorAll(s), why = "";
     q("#addRow,#tbEd,[data-act2]").forEach((b) => { b.disabled = true; b.title = why; });
     const recFree = (el) => recTab() && el.closest(REC_AREA); /* 학습기록 쓰기 칸이 켜진 하루 수업 페이지의 기록 탭은 잠그지 않음 */
     q(".panel input:not([type=checkbox]):not([type=radio]),.panel textarea").forEach((i) => { if (!recFree(i)) i.readOnly = true; });
     q(".panel select,.panel input[type=checkbox],.panel input[type=radio]").forEach((i) => { if (!recFree(i)) i.disabled = true; });
-    q(".panel .tdnone").forEach((n) => { const t = n.lastChild; if (t && /여기서 고쳐요/.test(t.textContent)) t.textContent = "줄을 누르면 여기서 봐요 — 고칠 것은 노션에서 고쳐요"; });
     /* 창 안의 누르는 것은 이동(RO_PASS)만 남기고 모두 끈다: 전송 · 삭제 · 생성 · 저장 · 켜고 끄기 · 고르기 */
     /* 화면 위 줄 · 달력 · 창 어디든: 허용 목록(이동 · 보기 바꾸기 · 찾기 · 인쇄 · 입력 칸 저장 단추)에 없는 단추는 모두 끈다 — 새 단추가 생겨도 기본이 꺼짐 */
     q("#view button,#view .hf-box,#view select").forEach((b) => { if (b.closest(roPass()) || recFree(b)) return; if ("disabled" in b) b.disabled = true; b.setAttribute("aria-disabled", "true"); b.title = why; });
     const p = document.querySelector(".panel"), id = String((activeTab.state || {}).sel || "");
     if (p && /^[0-9a-f-]{32,36}$/i.test(id) && !p.querySelector(".ro-note")) {
       const n = document.createElement("div"); n.className = "ro-note";
-      n.innerHTML = `<span>보기만 하는 화면이에요</span><a href="https://www.notion.so/${id.replace(/-/g, "")}" target="_blank" rel="noopener">노션에서 열기</a>`;
+      n.innerHTML = `<a href="https://www.notion.so/${id.replace(/-/g, "")}" target="_blank" rel="noopener">노션에서 열기</a>`;
       const body = p.querySelector(".pbody"); body ? body.insertBefore(n, body.firstChild) : p.appendChild(n);
     }
   };
   const roLock = () => {
     const t = typeof activeTab !== "undefined" ? activeTab : null, scr = liveScr(t), on = !!(t && window.LIVE && window.LIVE.loaded && RO.has(scr));
     document.body.classList.toggle("live-ro", on);
+    roNote(on && RO_NOTE_SCREENS.has(scr));
     if (!on) { roBase = null; roScreen = null; return; }
     const now = snapRo();
     if (roBase === null || roScreen !== scr) { roBase = now; roScreen = scr; }
@@ -99,7 +111,7 @@ window.liveModeFor = function (search, hostname, protocol) {
         Object.assign(DB, JSON.parse(roBase)); if (keep) Object.assign(DB, keep); lastSnap = snapshot();
         if (!keep) { try { LDIRTY.clear(); } catch (_) {} } /* 수업 창에서 생긴 작성 중 표시도 지운다(보기만일 때) */
         if (undoStack.length && undoStack[undoStack.length - 1] === roBase) undoStack.pop(); /* 방금 고친 것의 되돌리기 기록 */
-        r0(); say("이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요");
+        r0();
       } finally { roBusy = false; }
       const after = snapRo(); if (after !== roBase) roBase = after; /* 그리면서 스스로 바뀌는 값은 받아들인다(되돌리기를 되풀이하지 않게) */
     }
@@ -124,7 +136,7 @@ window.liveModeFor = function (search, hostname, protocol) {
      학생 [개인정보 동의](체크하면 노션 자동화가 접수 안내 알림톡을 보낸다 — 앱은 그 칸을 보내지 않는다). 저장 층(appsave.js appsOff)도 같은 것을 보내지 않는다. */
   const P1_DENY = "[data-act=end],[data-act=enReissue],[data-act=genPg],[data-act=genPg1],[data-act=pgDone],[data-act=pgRep],[data-pgdo],[data-cetone],#bfM,#pLock"; /* [data-cetone] = 클래스 창 [한 번 청구] — 청구서는 노션 [기타경비 청구](서버)가 만듦, 앱엔 저장 길 없음 */
   const P1_DENY_TEXT = /(접수 안내|등록 안내|안내 전송|안내문 전송|재발급|학사일정 가져오기|종료 처리|교재 생성|교재비에 담기|한 번 청구)\s*\d*\s*$/; /* 담기 = 노션 [담기](서버가 청구서까지 만듦) */
-  const P1_WHY = "노션에서 해요 — 이 일은 노션 버튼이 딸린 일(출석 · 교재 · 안내)까지 함께 해요";
+  const P1_WHY = "";
   const p1Denied = (el) => { const hf = el && el.closest && el.closest(".hf"); if (hf && hf.closest("#view")) { const lb = hf.querySelector(".hf-lbl"); if (lb && /^개인정보 동의/.test(lb.textContent.trim())) return el.closest(".qhelp,[data-help]") ? null : hf; } const b = el && el.closest && el.closest("button,[role=button],.btn,.lnk,label,.swf,[data-hf]"); if (!b || !b.closest("#view")) return null; if (b.matches(P1_DENY) || b.closest(P1_DENY)) return b; const t = (b.textContent || "").trim(); if (b.matches("button,.btn,.lnk") && P1_DENY_TEXT.test(t)) return b; if (/개인정보 동의/.test(t) && t.length < 40) return b; return null; };
   const p1Dress = () => {
     if (!(window.LIVE && window.LIVE.loaded) || document.body.classList.contains("live-ro")) return;
@@ -132,7 +144,7 @@ window.liveModeFor = function (search, hostname, protocol) {
   };
   /* 꺼진 것은 꺼진 모양으로(원본 검수 H3): 실제 자료 모드에서 잠근 단추 · 칸은 글자까지 흐리게 */
   roCss.textContent += ".live-off,.live-ro #view button[aria-disabled=true],.live-ro #view .hf-box[aria-disabled=true]{opacity:.45!important;filter:grayscale(1);cursor:not-allowed!important}";
-  const p1Block = (e) => { if (!(window.LIVE && window.LIVE.loaded) || document.body.classList.contains("live-ro")) return; const b = p1Denied(e.target); if (!b) return; if (e.type === "keydown" && !["Enter", " "].includes(e.key)) return; e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); if (e.type === "click") say(/개인정보 동의/.test(b.textContent) ? "개인정보 동의는 노션에서 체크해요 — 체크하면 접수 안내 알림톡이 나가요" : P1_WHY); };
+  const p1Block = (e) => { if (!(window.LIVE && window.LIVE.loaded) || document.body.classList.contains("live-ro")) return; const b = p1Denied(e.target); if (!b) return; if (e.type === "keydown" && !["Enter", " "].includes(e.key)) return; e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); if (e.type === "click" && /개인정보 동의/.test(b.textContent)) say("개인정보 동의는 노션에서 체크해요 — 체크하면 접수 안내 알림톡이 나가요"); };
   ["click", "mousedown", "pointerdown", "keydown", "change"].forEach((ev) => document.addEventListener(ev, p1Block, true));
   /* 수업이 만들어진 시간표의 요일 · 시간 · 명단, 이미 있는 등록의 종료일은 그 자리에서 되돌린다(끌어 옮기기 · 명단 넣기처럼 단추가 아닌 길까지) */
   const p1Guard = () => {
@@ -176,13 +188,12 @@ window.liveModeFor = function (search, hostname, protocol) {
   const roBlock = (e) => {
     if (!document.body.classList.contains("live-ro") || !e.target.closest) return;
     /* 보기 화면의 엑셀은 내려받기만: [한번에 올리기]는 어디에 떠 있든(메뉴 · 창) 막는다 */
-    { const up = e.target.closest("button,label,[role=menuitem],.btn,input[type=file]"); if (up && (up.matches("input[type=file]") || /올리기/.test(up.textContent || ""))) { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); if (e.type === "click") say("이 화면은 보기만 해요 — 올리기는 노션에서 해요"); return; } }
+    { const up = e.target.closest("button,label,[role=menuitem],.btn,input[type=file]"); if (up && (up.matches("input[type=file]") || /올리기/.test(up.textContent || ""))) { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); return; } }
     if (!e.target.closest("#view")) return;
     if (e.target.closest(roPass()) || !e.target.closest(RO_HIT)) return;
     if (!e.target.closest(".panel") && !e.target.closest("button,select,[role=button],.btn,.lnk,.hf-box")) return; /* 창 밖은 단추 · 고르기만(표 줄 · 카드 · 찾기 칸은 그대로) */
     if (e.type === "keydown" && !["Enter", " ", "Delete", "Backspace"].includes(e.key)) return;
     e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-    if (e.type === "click") say("이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요");
   };
   ["click", "mousedown", "pointerdown", "keydown", "change"].forEach((ev) => document.addEventListener(ev, roBlock, true));
   let roTick = null;
