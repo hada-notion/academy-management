@@ -334,8 +334,8 @@ function liveHooks() {
   setTimeout(() => { try { liveMenuPages().catch(() => {}); } catch (_) {} }, 2500);
   /* 라이브러리(교재) 입력(261119 대표): [+] = 새 교재 등록 창(서버 textbook-api register-custom — 교재 + 단원목록을 노션에), 줄·표 편집은 저장의 update. 프로그램은 노션에서 */
   try {
-    bookFindOpen = () => liveBookRegisterOpen();
-    LISTS.books_b.add = LISTS.books.add = () => liveBookRegisterOpen();
+    bookFindOpen = () => liveBookRegisterOpen("교재");
+    LISTS.books_b.add = LISTS.books.add = () => liveBookRegisterOpen("교재"); /* 261120 대표: [교재] 탭 [+] = 구분 교재로 채워 열림(창 첫 칸에서 바꿀 수 있음). [프로그램] 탭 [+]은 서버가 프로그램 등록 동작을 알려 주면 liveBookRegisterOpen("프로그램")으로 연결 */
     LISTS.books_b.addLabel = "교재 등록";
     LISTS.books_p.add = null; LISTS.books_p.blank = null; LISTS.books_p.noAddWhy = "프로그램은 노션 라이브러리에서 추가해요";
   } catch (_) {}
@@ -354,15 +354,16 @@ async function liveBookApi(body) {
   if (!res.ok || !out || out.error) { const e = new Error((out && out.error) || "요청 실패 (" + res.status + ")"); e.status = res.status; throw e; }
   return out;
 }
-function liveBookRegisterOpen() {
-  const F = { title: "", publisher: "", series: "", price: "", pages: "", isbn: "", units: "" };
+function liveBookRegisterOpen(kind0) {
+  const F = { kind: kind0 === "프로그램" ? "프로그램" : "교재", title: "", publisher: "", series: "", price: "", pages: "", isbn: "", units: "" };
   const opts = (k) => (DB.opts && Array.isArray(DB.opts[k]) ? DB.opts[k] : []).map((v) => ({ v, t: v }));
   modal(`<h2>교재 등록${HELP("노션 라이브러리에 교재 1권과 단원 목록을 만들어요. 과목 · 구분 등은 등록한 뒤 줄 창에서 넣어요. 같은 ISBN의 교재가 이미 있으면 등록되지 않아요. 출판사 · 시리즈는 노션 선택지에 있는 값만 고를 수 있어요.")}</h2>
-    <div class="hfgrid nc"><div class="hfh" id="brT"></div><div class="hfh" id="brP"></div><div class="hfh" id="brS"></div><div class="hfh" id="brPr"></div><div class="hfh" id="brPg"></div><div class="hfh" id="brI"></div></div>
+    <div class="hfh" id="brK"></div><div class="hfgrid nc"><div class="hfh" id="brT"></div><div class="hfh" id="brP"></div><div class="hfh" id="brS"></div><div class="hfh" id="brPr"></div><div class="hfh" id="brPg"></div><div class="hfh" id="brI"></div></div>
     <div class="hfh" id="brU"></div><div class="hint" id="brM"></div>
     <div class="actions"><span class="sp"></span><button class="btn" id="brC">취소</button><button class="btn pri" id="brO" disabled>교재 등록</button></div>`, (m, close) => {
     const ok = m.querySelector("#brO"), msg = m.querySelector("#brM");
     const upd = () => { ok.disabled = !F.title.trim(); };
+    HF.seg(m.querySelector("#brK"), { label: "구분", items: ["교재", "프로그램"], value: F.kind, onChange: (v) => { F.kind = v; } });
     HF.text(m.querySelector("#brT"), { label: "교재명", placeholder: "예: 쎈 고등 수학(상)", max: 200, onChange: (v) => { F.title = v; upd(); } });
     HF.select(m.querySelector("#brP"), { label: "출판사", value: null, clear: true, placeholder: "고르기", items: opts("pub"), onChange: (v) => { F.publisher = v || ""; } });
     HF.select(m.querySelector("#brS"), { label: "시리즈", value: null, clear: true, placeholder: "고르기", items: opts("series"), onChange: (v) => { F.series = v || ""; } });
@@ -381,9 +382,14 @@ function liveBookRegisterOpen() {
         if (F.pages) body.pages = +F.pages;
         if (F.series) body.series = F.series;
         if (F.publisher) body.publisher = F.publisher;
-        await liveBookApi(body);
+        const made = await liveBookApi(body);
         close();
-        if (dirtyCount() === 0 && typeof window.liveReload === "function") { await window.liveReload(); toast("교재를 등록했어요 — 과목 · 구분은 줄을 눌러 넣어요"); }
+        if (dirtyCount() === 0 && typeof window.liveReload === "function") {
+          await window.liveReload();
+          /* 서버 등록은 구분을 비워 두므로, 고른 구분은 새 줄에 넣어 보통 저장과 같은 길로 노션에 저장 */
+          try { const pid = String((made && made.pageId) || "").replace(/-/g, "").toLowerCase(); const nb = pid && (DB.books || []).find((x) => String(x.id).replace(/-/g, "").toLowerCase() === pid); if (nb && nb.kind !== F.kind) { nb.kind = F.kind; await liveSaveRow({ coll: "books" }, nb); } } catch (_) { toast("교재는 등록했지만 구분은 못 넣었어요 — 줄을 눌러 구분을 골라 저장해요"); return; }
+          toast("교재를 등록했어요 — 구분은 " + F.kind + "로 넣었어요. 과목은 줄을 눌러 넣어요");
+        }
         else toast("교재를 등록했어요 — 저장하지 않은 변경이 있어서 목록은 저장하고 새로고침하면 보여요");
       } catch (e) {
         ok.textContent = "교재 등록"; upd();
