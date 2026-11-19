@@ -7,7 +7,7 @@
 //       복사본에 반영. 줄마다 성공 · 실패 · 충돌을 돌려준다. 지우기는 없다. 로직은 _shared/appSave.ts.
 // 읽기 로직은 _shared/appCopy.ts.
 import { CORS_HEADERS, requireAdminKey } from "../_shared/adminShared.ts"
-import { APP_DBS, isAppDb, listApp, statusApp, warmSources, NotionBusyError } from "../_shared/appCopy.ts"
+import { APP_DBS, isAppDb, listApp, statusApp, warmSources, syncCopy, lastSyncedAt, NotionBusyError } from "../_shared/appCopy.ts"
 import { checkChanges, saveChanges, runGenerateClasses, writeOptions, SaveError } from "../_shared/appSave.ts"
 
 const json = (data: unknown, status = 200) =>
@@ -36,14 +36,20 @@ Deno.serve(async (req: Request) => {
       warmSources() // (항목 99) 앱 첫 로드가 데우기 — 응답은 안 기다림
       return json({ ok: true, db: body.db, at, rows })
     }
-    if (body?.action === "status") return json({ ok: true, dbs: await statusApp() })
+    if (body?.action === "status") return json({ ok: true, dbs: await statusApp(), syncedAt: await lastSyncedAt() })
     if (body?.action === "save") {
       const results = await saveChanges(checkChanges(body.changes))
       return json({ ok: results.every((r) => r.ok), results })
     }
     // (항목 76) 시간표마다 다음 수업 한 번을 기존 수업 생성 큐에 넣는다. timetableIds가 없으면 시간표 전부.
     if (body?.action === "run") {
-      if (body.name !== "generate-classes") return json({ error: 'run의 name은 "generate-classes"여야 합니다.' }, 400)
+      // [동기화] 버튼: 노션 → 사본을 지금 한 번 맞춘다(바뀐 줄만, dbs 없으면 전체 앱 DB). full:true는 dbs 1~3개를 통째로 대조(노션에서 지운 줄도 뺌).
+      if (body.name === "sync-copy") {
+        if (body.dbs !== undefined && (!Array.isArray(body.dbs) || body.dbs.length > 40 || !body.dbs.every(isAppDb))) return json({ error: "dbs는 앱 DB 이름 목록이어야 합니다." }, 400)
+        if (body.full === true && (!Array.isArray(body.dbs) || !body.dbs.length || body.dbs.length > 3)) return json({ error: "full은 dbs를 1~3개 줄 때만 씁니다." }, 400)
+        return json({ ok: true, ...(await syncCopy(body.dbs, body.full === true)) })
+      }
+      if (body.name !== "generate-classes") return json({ error: 'run의 name은 "generate-classes" 또는 "sync-copy"여야 합니다.' }, 400)
       return json({ ok: true, ...(await runGenerateClasses(body.timetableIds)) })
     }
     // 쓸 수 있는 DB의 고르기 칸 선택지(앱이 Notion에 있는 값만 고르게).

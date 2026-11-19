@@ -208,13 +208,16 @@ export const DELETE_BLOCKERS: Record<string, string[]> = {
 	"영역(학원) DB": ["클래스"],
 	"진도관리(학원) DB": ["학습기록", "개별교재"],
 }
-export const isDeleteDb = (v: unknown): v is keyof typeof DELETE_BLOCKERS => typeof v === "string" && Object.prototype.hasOwnProperty.call(DELETE_BLOCKERS, v)
+// (대표 261119) 특별한 이유가 없으면 삭제하지 못하게 — 종료·보류로 처리하고, 단순 실수면 이름에 "실수"라고 적는다. 구조 줄인 시간표만 지울 수 있고 나머지는 금지(위 막는 관계 검사는 그대로).
+export const DELETE_ALLOWED: readonly string[] = ["시간표(학원) DB"]
+export const DELETE_FORBIDDEN_MESSAGE = "삭제하지 않아요 — 종료·보류로 처리해요"
+export const isDeleteDb = (v: unknown): v is keyof typeof DELETE_BLOCKERS => typeof v === "string" && DELETE_ALLOWED.includes(v) && Object.prototype.hasOwnProperty.call(DELETE_BLOCKERS, v)
 async function removeCopy(id: string): Promise<void> {
 	const res = await fetchSupabaseWithRetry(`${SB_URL()}/rest/v1/app_rows?id=eq.${encodeURIComponent(id)}`, { method: "DELETE", headers: sbHeaders({ Prefer: "return=minimal" }) })
 	if (!res.ok) throw new Error(`app_rows 지우기 실패: ${res.status} ${await res.text()}`)
 }
 async function deleteOne(i: number, c: Change): Promise<ChangeResult> {
-	if (!isDeleteDb(c.db)) throw new SaveError(400, `${c.db}의 줄은 앱에서 지우지 않습니다. 노션에서 지우세요.`)
+	if (!isDeleteDb(c.db)) throw new SaveError(400, DELETE_FORBIDDEN_MESSAGE)
 	const id = c.id!
 	const page = await getPage(id)
 	if (page.archived === true || page.in_trash === true) { await removeCopy(id); return { i, ok: true, id, deleted: true } } // 이미 지워졌으면 복사본만 맞춤
@@ -241,7 +244,7 @@ export function checkChanges(changes: unknown): Change[] {
 		if (!isWriteDb(c.db)) throw new SaveError(400, `${i + 1}번째: 앱에서 쓸 수 없는 DB(${c.db})`)
 		if (c.op === "delete") {
 			if (!isId(c.id)) throw new SaveError(400, `${i + 1}번째: 지울 페이지 id가 없습니다.`)
-			if (!isDeleteDb(c.db)) throw new SaveError(400, `${i + 1}번째: ${c.db}의 줄은 앱에서 지우지 않습니다.`)
+			if (!isDeleteDb(c.db)) throw new SaveError(400, DELETE_FORBIDDEN_MESSAGE)
 			return c as Change
 		}
 		if (c.op === "update" && !isId(c.id)) throw new SaveError(400, `${i + 1}번째: 고칠 페이지 id가 없습니다.`)
