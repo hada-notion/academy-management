@@ -327,6 +327,9 @@ function liveHooks() {
     }
     toast0(m);
   };
+  /* [동기화] 버튼(261119 대표 "느려도 정확하게"): 우측 상단 [저장] 옆. render 뒤마다 붙이고, 마지막 동기화 시각은 서버 status의 syncedAt으로 */
+  try { const render0 = render; render = function () { const o = render0.apply(this, arguments); try { liveSyncMount(); } catch (_) {} return o; }; } catch (_) {}
+  setTimeout(() => { try { liveSyncStatus(); } catch (_) {} }, 3000);
   /* 메뉴 [N] 주소를 미리 받아 둔다(누를 때 새 탭이 팝업으로 막히지 않게) — 못 받아도 누를 때 다시 시도 */
   setTimeout(() => { try { liveMenuPages().catch(() => {}); } catch (_) {} }, 2500);
   /* 라이브러리(교재) 입력(261119 대표): [+] = 새 교재 등록 창(서버 textbook-api register-custom — 교재 + 단원목록을 노션에), 줄·표 편집은 저장의 update. 프로그램은 노션에서 */
@@ -405,6 +408,61 @@ function liveSaveRow(L, r) {
   }
   const only = (coll, row) => row === r || (L.coll === "students" && coll === "enrolls" && row.studentId === r.id);
   return liveSave({ only }).then((res) => { try { if (res && res.deleted && activeTab.state.sel === r.id && !(DB[L.coll] || []).includes(r)) { activeTab.state.sel = null; render(); } } catch (_) {} return res; });
+}
+/* ═════ [동기화](노션 → 서버 사본, 261119) — 서버 app-api { action:"run", name:"sync-copy", dbs, full:true }(노션에서 지운 줄까지 통째로 대조, 느려도 됨).
+   현재 화면이 보여 주는 DB(3개 이하)만. 끝나면 목록을 다시 읽어 화면을 맞추고 "마지막 동기화 HH:MM"(서버 syncedAt)을 보인다.
+   저장 안 한 변경이 있으면 막는다(동기화가 덮어쓰지 않게). 503 busy는 appPostJson이 한 번 다시 시도, 504 등은 사람 말로 ═════ */
+const LIVE_SYNC_DBS = {
+  students: ["학생(학원) DB", "등록(학원) DB"], enrolls: ["등록(학원) DB", "학생(학원) DB", "클래스(학원) DB"], classes: ["클래스(학원) DB", "강사(학원) DB", "시간표(학원) DB"],
+  teachers: ["강사(학원) DB"], schools: ["학교(학원) DB", "학년(학원) DB"], subjects: ["과목(학원) DB", "영역(학원) DB"], books: ["라이브러리(학원) DB"],
+  progress: ["진도관리(학원) DB", "라이브러리(학원) DB", "클래스(학원) DB"], timetable: ["시간표(학원) DB", "클래스(학원) DB", "등록(학원) DB"], events: ["일정(학원) DB", "시즌(학원) DB"],
+  exams: ["시험정보(학원) DB", "시험(학원) DB", "성적(학원) DB"], tuition: ["수강료(학원) DB", "결제(학원) DB"], bill: ["청구서(학원) DB", "청구 항목(학원) DB", "청구 결제(학원) DB"],
+  profit: ["결제(학원) DB", "기타경비(학원) DB"], reports: ["보고서(학원) DB", "알림톡 발송함(학원) DB"], completion: ["보고서(학원) DB", "알림톡 발송함(학원) DB"],
+  letters: ["가정통신문(학원) DB", "알림톡 발송함(학원) DB"], files: ["자료(학원) DB"], alims: ["알림톡 설정(학원) DB", "알림톡 발송함(학원) DB"],
+};
+function liveSyncDbs() { const s = window.liveScr ? window.liveScr(activeTab) : (activeTab && activeTab.screen) || ""; return LIVE_SYNC_DBS[s] || ["시간표(학원) DB", "등록(학원) DB"]; }
+function liveSyncTime(iso) { try { return new Date(iso).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Seoul" }); } catch (_) { return ""; } }
+function liveSyncMount() {
+  const sa = document.getElementById("saveAll");
+  const on = !!(window.LIVE && window.LIVE.loaded);
+  let b = document.getElementById("syncBtn"), t = document.getElementById("syncAt");
+  if (!sa || !on) { if (b) b.remove(); if (t) t.remove(); return; }
+  if (b && b.parentElement !== sa.parentElement) { b.remove(); if (t) t.remove(); b = t = null; }
+  if (!b) {
+    sa.insertAdjacentHTML("beforebegin", `<span class="sync-at" id="syncAt"></span><button type="button" class="btn tb-sync ${window._liveSyncing ? "busy" : ""}" id="syncBtn" ${window._liveSyncing ? "disabled" : ""} title="동기화 — 노션에서 바뀐 것 · 지운 줄까지 이 화면의 자료를 통째로 맞춰요(오래 걸릴 수 있어요). 저장과는 달라요: 노션 → 앱 방향이에요">${IC("rotc", "s")}<span>${window._liveSyncing ? "맞추는 중…" : "동기화"}</span></button>`);
+    b = document.getElementById("syncBtn"); t = document.getElementById("syncAt"); b.onclick = liveSyncRun;
+  }
+  if (t) t.textContent = window.LIVE_SYNCED_AT ? `마지막 동기화 ${liveSyncTime(window.LIVE_SYNCED_AT)}` : "";
+}
+async function liveSyncStatus() {
+  try { const res = await liveApi(window.LIVE, { action: "status" }); if (res && res.syncedAt) { window.LIVE_SYNCED_AT = res.syncedAt; liveSyncMount(); } } catch (_) {}
+}
+async function liveSyncRun() {
+  if (!(window.LIVE && window.LIVE.loaded)) { toast("노션 자료를 받은 뒤에 동기화해요"); return; }
+  if (window._liveSyncing || window._liveSaving) return;
+  let dirty = 0; try { dirty = dirtyCount(); } catch (_) {}
+  if (dirty > 0) { toast(`저장하지 않은 변경이 ${dirty}개 있어요 — 먼저 위 [저장]을 눌러요(동기화가 덮어쓰지 않게)`); return; }
+  const dbs = liveSyncDbs();
+  window._liveSyncing = true; liveSyncMount(); try { render(); } catch (_) {}
+  toast("노션과 맞추는 중이에요 — 노션에서 지운 줄까지 대조해서 오래 걸릴 수 있어요");
+  const c = window.LIVE;
+  try {
+    const { res, body } = await appPostJson(String(c.url).replace(/\/+$/, "") + "/functions/v1/app-api", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-key": c.session, Authorization: "Bearer " + c.anonKey, apikey: c.anonKey },
+      body: JSON.stringify({ action: "run", name: "sync-copy", dbs, full: true }),
+    });
+    if (res.status === 504 || res.status === 502) throw new Error("시간이 오래 걸려 연결이 끊겼어요 — 서버가 계속 맞추고 있을 수 있어요. 잠시 뒤 다시 눌러요");
+    if (res.status === 503 || (body && body.busy)) throw new Error("노션이 바빠요 — 잠시 뒤 다시 눌러요");
+    if (!res.ok || !body || !body.ok) throw new Error((body && body.error) || "동기화하지 못했어요 (" + res.status + ")");
+    if (body.syncedAt) window.LIVE_SYNCED_AT = body.syncedAt;
+    window._liveSyncing = false;
+    if (typeof window.liveReload === "function") await window.liveReload(); /* 사본을 다시 읽어 화면을 서버 값으로 맞춘다 */
+    const probs = Object.entries(body.problems || {}).map(([db, why]) => `${String(db).replace(/\(학원\) DB$/, "")}: ${why}`);
+    const nf = (body.notFilled || []).length;
+    toast(`동기화했어요 · 바뀐 ${body.changed || 0}줄${body.deleted ? ` · 노션에서 지운 ${body.deleted}줄` : ""}${nf ? ` — 아직 처음 채우는 중인 항목이 있어요(${(body.notFilled || []).map((x) => String(x).replace(/\(학원\) DB$/, "")).join(", ")})` : ""}${probs.length ? ` — 맞추지 못한 것: ${probs.join(" · ")}` : ""}`);
+  } catch (e) { toast("동기화하지 못했어요 — " + e.message); }
+  finally { window._liveSyncing = false; try { liveSyncMount(); const b = document.getElementById("syncBtn"); if (b) { b.classList.remove("busy"); b.disabled = false; const s = b.querySelector("span"); if (s) s.textContent = "동기화"; } } catch (_) {} }
 }
 /* 실제 자료 모드의 [수업 생성]: 시간표마다 다음 수업 한 번을 노션 수업 생성 큐에 맡긴다(app-api run — 시간표 [수업 추가]와 같은 처리).
    저장 전인 새 시간표는 노션에 아직 없으므로 먼저 저장하라고 알린다. 수업 · 출석은 1-2분 뒤 노션에 생긴다(앱 화면에는 그리지 않음). */
