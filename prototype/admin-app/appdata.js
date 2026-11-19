@@ -10,18 +10,19 @@ const APP_CLS_HEX = { 빨강: "#E5484D", 주황: "#F0A35E", 노랑: "#E8C547", �
 const APP_SEASON_STATE = { "준비 중": "초안", "운영 중": "확정", "끝남": "확정" }
 
 function appX(raw, mapped) {
-	const pad = (n) => String(n).padStart(2, "0")
-	const now = new Date()
+	// 한국 시각 "YYYY-MM-DDTHH:MM": 날짜만이거나 +09:00이면 글자 그대로, 그 밖(Z · 다른 시간대)은 9시간 더해 한국 날짜로(261119 9시간 점검 — 아침 9시 전 수업이 전날로 보이지 않게)
+	const kst = (s) => { s = String(s || ""); if (s.length <= 10 || /\+09:?00$/.test(s)) return s.slice(0, 16); const t = Date.parse(s); return Number.isNaN(t) ? s.slice(0, 16) : new Date(t + 9 * 3600000).toISOString().slice(0, 16) }
 	const X = {
-		today: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+		// 오늘 = 한국 날짜(PC 시간대와 무관)
+		today: new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10),
 		// 관계 첫 값(id) 또는 ""
 		id1: (v) => (Array.isArray(v) && v.length ? String(v[0]) : ""),
 		ids: (v) => (Array.isArray(v) ? v.map(String) : []),
 		// 날짜 {start,end} → "YYYY-MM-DD"
-		d: (v) => (v && v.start ? String(v.start).slice(0, 10) : ""),
-		dEnd: (v) => (v && v.end ? String(v.end).slice(0, 10) : ""),
-		// 날짜시각 → "YYYY-MM-DDTHH:MM"(시각 없으면 날짜만)
-		dt: (v) => { const s = v && v.start ? String(v.start) : ""; return s.length > 10 ? s.slice(0, 16) : s },
+		d: (v) => (v && v.start ? kst(v.start).slice(0, 10) : ""),
+		dEnd: (v) => (v && v.end ? kst(v.end).slice(0, 10) : ""),
+		// 날짜시각 → "YYYY-MM-DDTHH:MM"(시각 없으면 날짜만, 한국 시각)
+		dt: (v) => (v && v.start ? kst(v.start) : ""),
 		// "HH:mm" → 분(시제품 blocks.start/end). 못 읽으면 null
 		min: (s) => { const m = /^\s*(\d{1,2})\s*[:시.]\s*(\d{1,2})?/.exec(String(s || "")); return m ? +m[1] * 60 + +(m[2] || 0) : null },
 		num: (v) => (typeof v === "number" && isFinite(v) ? v : (v == null || v === "" ? "" : (isFinite(+v) ? +v : ""))),
@@ -43,7 +44,8 @@ const APPMAP = {
 		db: "시즌(학원) DB",
 		row: (r, X, p = r.props) => ({
 			id: r.id, name: X.str(p["이름"]), start: X.d(p["기간"]), end: X.dEnd(p["기간"]) || X.d(p["기간"]),
-			state: APP_SEASON_STATE[p["상태"]] || "초안", color: APP_SEA_COLOR[p["색"]] || "",
+			// 상태 = 노션 수식 글(261118부터 날짜로 계산) 또는 옛 고르기 값 — 앞 기호 · 빈칸을 떼고 세 이름에 맞춤(화면은 seaAuto로 날짜 계산값을 다시 씌움)
+			state: APP_SEASON_STATE[X.str(p["상태"]).replace(/^[^\p{L}]+/u, "").trim()] || "초안", color: APP_SEA_COLOR[p["색"]] || "",
 		}),
 	},
 	teachers: {
@@ -71,7 +73,14 @@ const APPMAP = {
 		row: (r, X, p = r.props) => ({
 			id: r.id, name: X.str(p["이름"]), kind: X.str(p["학교 구분"]), addr: X.str(p["주소"]),
 			code: !!X.str(p["학교 코드"]), sync: X.d(p["학사일정 마지막 동기화"]), state: "saved",
+			// 학사일정 기간(날짜 범위, 2.8) → nfrom·nto(화면 학교 창 두 날짜 칸 이름 그대로, 최종 261118). 칸이 없거나 비면 "" = 학년도 전체
+			nfrom: X.d(p["학사일정 기간"]), nto: X.dEnd(p["학사일정 기간"]) || X.d(p["학사일정 기간"]),
 		}),
+	},
+	// 클래스 루틴(261119, 화면 594판 클래스 창 [루틴] 탭): 노션 루틴(학원) DB — 이름 · 클래스 · 순서 · 설명 · 쉬기. 서버 사본에 DB가 들어온 뒤 켬(APP_RT_ON)
+	routines: {
+		db: "루틴(학원) DB",
+		row: (r, X, p = r.props) => ({ id: r.id, classId: X.id1(p["클래스"]), name: X.str(p["이름"]), desc: X.str(p["설명"]), ord: X.num(p["순서"]), rest: !!p["쉬기"], state: "saved" }),
 	},
 	subjects: {
 		db: "과목(학원) DB",
@@ -155,8 +164,12 @@ const APPMAP = {
 				lessons: X.ids(p["수업"]).length > 0 || !!p["수업#more"],
 				_lessonIds: X.ids(p["수업"]), // 이 시간표에 이어진 노션 수업 id(관계는 25개까지 온다) — 수업 ↔ 시간표를 정확히 잇는 데 쓴다(livelesson.js)
 			}
-			if (X.d(per)) o.from = X.d(per)
-			if (X.dEnd(per)) o.to = X.dEnd(per)
+			// 기간(대표 261118 "시작일 종료일 2개로"): 새 칸 `시작일` · `종료일`에 값이 하나라도 있으면 그 둘만, 둘 다 비면 옛 `적용 기간`
+			const s1 = X.d(p["시작일"]), e1 = X.d(p["종료일"])
+			if (s1 || e1) { if (s1) o.from = s1; if (e1) o.to = e1 }
+			else { if (X.d(per)) o.from = X.d(per); if (X.dEnd(per)) o.to = X.dEnd(per) }
+			// 처리 상태(261118, 담당): 실시간 처리 상태 · 마지막 오류 · 최근 수업(칸이 없으면 "")
+			o.busy = X.str(p["실시간 처리 상태"]); o.error = X.str(p["마지막 오류"]); o.recent = X.d(p["최근 수업"]) || X.str(p["최근 수업"])
 			return o
 		},
 	},
@@ -182,6 +195,9 @@ const APPMAP = {
 		},
 	},
 }
+// 루틴(학원) DB를 서버 사본 · 저장 층이 받기 전에는 읽지 않음(app-api가 모르는 DB면 불러오기 전체가 실패) — 노션서버 배포 뒤 true(appsave.js APPS_RT_ON과 함께)
+const APP_RT_ON = true /* 노션서버 PR #478(4db5fc9) 원본 배포 — app-api list 루틴(학원) DB */
+if (!APP_RT_ON) delete APPMAP.routines
 // 이번 범위 밖(다음 출시) · 노션 대응 없음 → 빈 배열(MAPPING.md)
 const APP_EMPTY = ["events", "reports", "tuition", "bookfees", "letters", "exams", "costs", "alims", "grades", "charges", "etcs", "files", "recs", "anotes", "series", "mk"]
 

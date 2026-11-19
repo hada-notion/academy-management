@@ -5,12 +5,17 @@ const APPS_DAYS = typeof APP_DAYS !== "undefined" ? APP_DAYS : ["월", "화", "�
 const APPS_SEA_COLOR_IN = typeof APP_SEA_COLOR !== "undefined" ? APP_SEA_COLOR : { 초록: "green", 파랑: "blue", 보라: "purple", 분홍: "pink", 주황: "orange", 노랑: "yellow", 빨강: "red", 갈색: "brown", 회색: "gray" }
 const APPS_SEA_COLOR = Object.fromEntries(Object.entries(APPS_SEA_COLOR_IN).map(([ko, en]) => [en, ko])) // 영문 키 → 노션 옵션
 const APPS_CLS_HEX = typeof APP_CLS_HEX !== "undefined" ? APP_CLS_HEX : { 빨강: "#E5484D", 주황: "#F0A35E", 노랑: "#E8C547", 초록: "#5BBF8A", 파랑: "#7FA6D9", 보라: "#B794F6", 분홍: "#E88FB5", 갈색: "#B08D6E", 회색: "#A3A3A3", 기본: "#CFC8BE" }
-const APPS_SEASON_STATE = { 초안: "준비 중", 확정: "운영 중" } // 끝남은 노션에서(앱은 보내지 않음)
 const APPS_PRE = ["어머니", "아버지", "기타 보호자"] // 학생 [우선 연락 대상] 노션 선택지("학생"은 없음)
 // 시즌 색: 노션 9색에 있는 것만(기본 등 그 밖은 빈 값)
 const appsSeaColor = (k) => (typeof k === "string" && Object.prototype.hasOwnProperty.call(APPS_SEA_COLOR, k) ? APPS_SEA_COLOR[k] : Object.values(APPS_SEA_COLOR).includes(k) ? k : "")
 // 관계 대상이 먼저 오는 순서
-const APPS_ORDER = ["areas", "glevels", "schools", "subjects", "teachers", "seasons", "books", "classes", "students", "enrolls", "blocks", "progress"]
+// 일정 세부 구분 · 기록(내부용) 저장 — 서버가 받음(노션서버 PR #459) + 원본에 칸 있음(노션완성 261118). 운영 학원은 이 칸을 넣은 뒤에 이 판을 적용
+const APPS_EV_MORE = true
+// 시간표 기간을 새 두 칸(`시작일` · `종료일`)으로 쓰기 — 서버 받음(노션서버 PR #463) + 원본에 칸 있음(노션완성 261118, 32줄 옮김). 운영 학원은 이 칸을 넣고 옮긴 뒤 이 판을 적용
+const APPS_BLOCK_2DATE = true
+const APPS_ORDER = ["areas", "glevels", "schools", "subjects", "teachers", "seasons", "books", "classes", "routines", "students", "enrolls", "blocks", "progress", "events"]
+// 루틴 저장: 서버 저장 층이 루틴(학원) DB를 받은 뒤 true(appdata.js APP_RT_ON과 함께)
+const APPS_RT_ON = true /* 노션서버 PR #478 — save create/update, 칸 5개만(그 밖은 400), 지우기 안 엶 */
 const APPS_MAX = 60 // app-api 한 요청 줄 수
 // 마지막으로 노션과 같았던 값(id → 노션 속성 값). 고친 줄은 이것과 다른 칸만 보낸다(읽을 때 뭉개진 칸을 덮어쓰지 않게)
 const APPS_BASE = new Map()
@@ -36,10 +41,12 @@ function appSaveX(DB, warn) {
 			if (!r) { say(`${what}: '${name}'을(를) ${coll}에서 찾지 못해 그 칸은 보내지 않았어요`); return undefined }
 			return X.rel(r.id)
 		},
+		// 여러 이름 → 관계 값. 없는 이름이 하나라도 섞이면 그 칸은 통째로 보내지 않음(undefined) — 찾은 것만 보내면 노션 관계가 말없이 줄어든다(담당 261118)
 		byNames: (coll, names, what) => {
 			const out = []
-			for (const n of Array.isArray(names) ? names : []) { const v = X.byName(coll, n, what); if (v) out.push(...v) }
-			return [...new Set(out)]
+			let miss = false
+			for (const n of Array.isArray(names) ? names : []) { const v = X.byName(coll, n, what); if (v) out.push(...v); else miss = true }
+			return miss ? undefined : [...new Set(out)]
 		},
 		str: (v) => (v == null ? "" : String(v)),
 		// 제목(title) 만들기: 그 줄 · 그 줄의 이름 · 빈 조각을 뺀 이어 붙이기(다 비면 undefined = 보내지 않음)
@@ -84,12 +91,18 @@ function appSaveX(DB, warn) {
 		// 시간표 적용 기간: 시작이 있으면 그대로. 끝만 있으면(노션 날짜는 시작이 꼭 있어야 함) 시작을 시즌 시작일 → 클래스 개강일로 채운다.
 		// 둘 다 없으면 보내지 않고 알린다(끝나는 날이 노션에 안 들어가면 그 시간표로 수업이 계속 만들어지므로).
 		period: (r) => {
-			if (r.from) return X.range(r.from, r.to)
+			const f = X.periodFrom(r)
+			if (f === undefined) return undefined
+			return f ? X.range(f, r.to) : null
+		},
+		// 시작일: 있으면 그대로, 끝만 있으면 시즌 시작일 → 클래스 개강일. 둘 다 없으면 null(비움), 시작을 알 수 없으면 undefined(보내지 않고 알림)
+		periodFrom: (r) => {
+			if (r.from) return r.from
 			if (!r.to) return null
 			const sea = X.row("seasons", r.seasonId), cls = X.row("classes", r.classId)
 			const from = (sea && !sea._virtual && sea.start) || (cls && cls.open) || ""
-			if (from && String(from).slice(0, 10) <= String(r.to).slice(0, 10)) return X.range(from, r.to)
-			say(`시간표 ${X.nameOf("classes", r.classId)}: 끝나는 날(${r.to})만 있고 시작일을 알 수 없어 적용 기간을 보내지 않았어요 — 시작일을 넣어요`)
+			if (from && String(from).slice(0, 10) <= String(r.to).slice(0, 10)) return from
+			say(`시간표 ${X.nameOf("classes", r.classId)}: 끝나는 날(${r.to})만 있고 시작일을 알 수 없어 기간을 보내지 않았어요 — 시작일을 넣어요`)
 			return undefined
 		},
 		// 개별 진도 줄의 반 교재(같은 클래스·같은 교재의 그룹 줄)
@@ -149,6 +162,11 @@ const APPSAVE = {
 		db: "학교(학원) DB",
 		props: (r, X) => ({ "이름": X.str(r.name), "학교 구분": X.str(r.kind), "주소": X.str(r.addr) }),
 	},
+	// 클래스 루틴(261119): 이름 · 클래스 · 순서 · 설명 · 쉬기만. 지우기는 다른 묶음처럼 보내지 않음(노션에서 직접)
+	routines: {
+		db: "루틴(학원) DB",
+		props: (r, X) => ({ "이름": X.str(r.name), "클래스": X.rel(r.classId), "순서": X.num(r.ord), "설명": X.str(r.desc), "쉬기": !!r.rest }),
+	},
 	subjects: {
 		db: "과목(학원) DB",
 		props: (r, X) => appsPut({
@@ -166,8 +184,8 @@ const APPSAVE = {
 	seasons: {
 		db: "시즌(학원) DB",
 		props: (r, X) => ({
-			"이름": X.str(r.name), "기간": X.range(r.start, r.end),
-			"상태": APPS_SEASON_STATE[r.state] || "준비 중", "색": appsSeaColor(r.color),
+			// `상태`는 보내지 않음(261118 대표 "시즌 상태 수식으로" — 노션이 기간에서 계산, 읽기만 appdata.js APP_SEASON_STATE)
+			"이름": X.str(r.name), "기간": X.range(r.start, r.end), "색": appsSeaColor(r.color),
 		}),
 	},
 	books: {
@@ -222,7 +240,10 @@ const APPSAVE = {
 			"시즌": X.rel(r.seasonId), "클래스": X.rel(r.classId), "요일": APPS_DAYS[r.day] || "",
 			"등원시간(HH:mm)": X.hhmm(r.start), "하원시간(HH:mm)": X.hhmm(r.end),
 			"등록": X.rels(r.regs), "수업 방식": r.mode === "individual" ? "개별 수업" : "그룹 수업",
-			"적용 기간": X.period(r),
+			// 기간: 노션에 `시작일` · `종료일`이 생기고 서버가 받으면(APPS_BLOCK_2DATE) 새 두 칸, 그 전엔 옛 `적용 기간`
+			...(APPS_BLOCK_2DATE
+				? (() => { const f = X.periodFrom(r); return f === undefined ? {} : { "시작일": f ? X.d(f) : null, "종료일": f && r.to ? X.d(r.to) : null } })()
+				: { "적용 기간": X.period(r) }),
 		}),
 	},
 	progress: {
@@ -245,6 +266,20 @@ const APPSAVE = {
 			})
 		},
 	},
+	// 일정(2.8, 담당 261118): 이미 있는 일정의 이름 · 날짜 · 구분 · 잠금 · 숨김 · 학부모 공개 · 보일 범위(클래스 · 학생 · 학교 · 학년) — 서버가 받는 10칸 안. 새 일정은 보내지 않음
+	// 날짜: 시각이 있는 일정(_time)은 보내지 않음(날짜만 보내면 시각이 지워짐 — 노션에서). 잠긴 줄 날짜는 appsEvLock이 거름
+	// 구분(kind)은 노션에서 수식이 될 예정이라 읽기만(담당 261118). 세부 구분 · 기록(내부용)은 서버 저장 층이 받게 되면(APPS_EV_MORE) 보냄
+	events: {
+		db: "일정(학원) DB",
+		props: (r, X) => appsPut({
+			// 잠금 칸은 쓰지 않음(대표 261118: `잠금` 칸을 버리고 학사 일정은 자동 잠금 — appsEvLock)
+			"이름": X.str(r.name), "날짜": r._time ? undefined : X.range(r.start, r.end),
+			"세부 구분": APPS_EV_MORE ? X.str(r.sub) : undefined, "기록(내부용)": APPS_EV_MORE ? X.str(r.rec) : undefined,
+			"숨김": !!r.hide, "학부모 공개": !!r.pub,
+			"클래스": X.rels(r.classIds), "학생": X.rels(r.students), "학교": X.rels(r.schools),
+			"학년": X.byNames("glevels", r.grades, "일정 학년"), // 학년 이름 → 학년(학원) DB id
+		}),
+	},
 }
 
 // ---------- 기준 값(불러온 직후 · 저장 직후) ----------
@@ -262,13 +297,32 @@ function appSaveMark(DB) {
 //   통째로: 라이브러리(서버 textbook-api가 단원까지 함) · 학교(school-api가 학교 코드까지 함)
 //   진도관리: 학생 한 명의 줄(개별 진도 복사 = 노션 [교재 생성]) · 이미 있는 줄의 진행상태(수료 = 노션 [수료])
 //   등록: 이미 있는 줄의 종료일(노션 [종료 처리]) / 시간표: 수업이 만들어진 줄의 요일 · 시간 · 명단 · 적용 기간(출석이 함께 맞춰져야 함)
+// events: 서버 저장 층이 일정 DB를 받음(PR #450, 2e8da51 — 일정 저장 칸 10개: 이름·날짜·구분·잠금·숨김·학부모 공개·클래스·학생·학교·학년). 앱은 그중 보이기 칸 6개만 보냄
 const APPS_OFF = ["books", "schools"]
 function appsOff(coll, row, isNew, send) {
 	if (APPS_OFF.includes(coll)) return "all"
+	if (coll === "routines" && !APPS_RT_ON) return "all"
+	if (coll === "events" && isNew) return "all" // 새 일정은 노션에서
+	// 실제 자료 모드에서 일정 쓰기 칸(P2e — live.js LIVE_EVW)이 꺼져 있으면 일정은 보내지 않음(261119 원본검수 Z2)
+	if (coll === "events" && typeof window !== "undefined" && window.LIVE && window.LIVE.loaded && !window.LIVE_EVW) return "all"
 	if (coll === "progress") { if (row.mode === "개별" && row.studentId) return "all"; if (!isNew) delete send["진행상태"] }
 	if (coll === "enrolls" && !isNew) delete send["종료일"]
-	if (coll === "blocks" && !isNew && row.lessons) ["요일", "등원시간(HH:mm)", "하원시간(HH:mm)", "등록", "적용 기간", "이름"].forEach((k) => delete send[k])
+	if (coll === "blocks" && !isNew && row.lessons) ["요일", "등원시간(HH:mm)", "하원시간(HH:mm)", "등록", "적용 기간", "시작일", "종료일", "이름"].forEach((k) => delete send[k])
 	return ""
+}
+
+// 일정 자동 잠금과 날짜(대표 261118: `잠금` 칸을 버리고 학사 일정은 자동 잠금 — 화면이 끌기를 막고, 여기서도 날짜를 보내지 않는다)
+//   학사 일정(구분 수식 값에 "학사 일정")인데 날짜가 바뀜 → 날짜를 노션 값으로 되돌리고 알림
+// 돌려줌: partial 여부(지금은 늘 false)
+function appsEvLock(row, base, send, say) {
+	if (!("날짜" in send)) return false
+	// 기준 = 노션에 저장된 구분(_kind0, 화면 SAVEDC 판정과 같음 — 앱에서 세부 구분을 바꿔도 저장 전엔 잠김 유지)
+	if (!/학사 일정/.test(String(row._kind0 !== undefined ? row._kind0 : row.kind || ""))) return false
+	delete send["날짜"]
+	const d = base && base["날짜"]
+	if (d && d.start) { row.start = d.start; row.end = d.end || "" }
+	say(`일정 ${row.name || ""}: 학사 일정은 날짜를 바꿀 수 없어 되돌렸어요 — 학교 학사일정에서 와요`.trim())
+	return false
 }
 
 // ---------- 모으기 ----------
@@ -320,6 +374,8 @@ function appSaveCollect(DB) {
 				if (!Object.keys(send).length) { noop.push({ coll, row }); continue }
 			}
 			if (!base) { appsOff(coll, row, false, send); if (!Object.keys(send).length) { noop.push({ coll, row }); continue } }
+			if (coll === "events" && appsEvLock(row, base, send, (m) => warn.push(m))) partial = true
+			if (coll === "events" && !Object.keys(send).length) { noop.push({ coll, row }); warnKeep = warn.length; continue } // 되돌림 알림은 남긴다
 			const ch = { op: "update", db: APPSAVE[coll].db, id: row.id, props: send }
 			if (row._edited) ch.edited = row._edited
 			changes.push(ch)
