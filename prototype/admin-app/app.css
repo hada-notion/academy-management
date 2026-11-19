@@ -893,6 +893,7 @@ body.docked .body>.rsz{right:auto}
 .stl-b.dr{background:repeating-linear-gradient(135deg,#FBF5EC 0 5px,#F3EADF 5px 10px);color:#8A5A00;box-shadow:inset 0 0 0 1.5px #E1CFB5}
 .stl-b.sel{box-shadow:inset 0 0 0 2px var(--brand-deep);overflow:visible;cursor:default}
 .stl-b.ghost{opacity:.8;pointer-events:none}
+#stl .stl-b.sc.vir,#stl .stl-b.sc.vir.sel{background:transparent;color:var(--muted);box-shadow:none;border:1.5px dashed #B8AFA6;font-weight:600}
 .stl-b .hd{position:absolute;top:2px;bottom:2px;width:8px;border-radius:4px;background:var(--brand-deep);cursor:ew-resize}
 .stl-b .hd.l{left:-4px}.stl-b .hd.r{right:-4px}
 .stl-w{position:absolute;top:16px;bottom:0;background:rgba(214,69,69,.14);border-left:2px solid #D64545;pointer-events:none}
