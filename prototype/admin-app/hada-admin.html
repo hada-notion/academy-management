@@ -2024,7 +2024,7 @@ function ftHtml(L,st){const d=ftDefs(L);if(!d||!d.length)return "";ftKey(L,st);c
 function ftName(L,st){const d=ftDefs(L);if(!d||!st.ft||st.ft==="all")return "";const x=d.find(z=>z[0]===st.ft);return x?x[1]:""}
 function curRows(st){if(lpOn())return LPR.all;return listRows(listOf(curScr(),st),st)}
 function gtVis(L){const cfg=stuColsCfg(),all=listCols(L);const wd=c=>cfg.widths[c.k]?Object.assign({},c,{w:cfg.widths[c.k]}):c;const out=cfg.order.filter(k=>!cfg.hidden.includes(k)).map(k=>all.find(c=>c.k===k)).filter(Boolean).map(wd);const PIN=L.pin||L.merge;if(!PIN)return out;const pn=PIN.map(l=>all.find(c=>c.l===l)).filter(Boolean).map(wd);return [...pn,...out.filter(c=>!PIN.includes(c.l))]}
-function gtRowCells(L,r,mg){const op=tblOp(r,L.opOf?L.opOf(r):{noOp:!!L.noCard,del:L.noDel?"":"data-gdel",undel:"data-gundel",ops:cardBtn});/* 261119 대표: 모든 표의 줄에 [카드](한 장 보기 · 인쇄) — 삭제가 없는 표도 */const cs=activeTab&&activeTab.state.tedit&&activeTab.state.csel,ck=c=>`<td data-c="${c.k}"${cs&&cs.id===r.id&&cs.k===c.k?" data-csel":""}`;return gtVis(L).map(c=>{if(mg&&L.merge&&L.merge.includes(c.l)){if(mg.skip)return "";return lcell(c.src,r,L).replace(/^<td/,`${ck(c)} data-mg rowspan="${mg.span}"`)}return lcell(c.src,r,L).replace(/^<td/,ck(c))}).join("")+op}
+function gtRowCells(L,r,mg){const op=tblOp(r,L.opOf?L.opOf(r):{noOp:!!L.noCard,del:(L.noDel||liveNoDel(L,r))?"":"data-gdel",undel:"data-gundel",ops:cardBtn});/* 261119 대표: 모든 표의 줄에 [카드](한 장 보기 · 인쇄) — 삭제가 없는 표도 */const cs=activeTab&&activeTab.state.tedit&&activeTab.state.csel,ck=c=>`<td data-c="${c.k}"${cs&&cs.id===r.id&&cs.k===c.k?" data-csel":""}`;return gtVis(L).map(c=>{if(mg&&L.merge&&L.merge.includes(c.l)){if(mg.skip)return "";return lcell(c.src,r,L).replace(/^<td/,`${ck(c)} data-mg rowspan="${mg.span}"`)}return lcell(c.src,r,L).replace(/^<td/,ck(c))}).join("")+op}
 function gtTable(L,rows,st){const vis=gtVis(L),MG=gtMerge(L,rows,st);L._num=new Set(listCols(L).map(z=>z.src).filter(c=>lnum(c,rows)).map(c=>c[0]));
   return tblDraw({cols:vis,rows,st,cls:`${L.plain?"":"gt"} ${L.ro?"ro":""} ${L.grid?"grid":""} ${L.tcls||""}`,noOp:!!L.noCard&&!L.opOf,num:c=>L._num.has(c.l),row:(r,ri)=>tblRow(r,{st,dirty:z=>isDirty(L,z)},gtRowCells(L,r,MG&&MG[ri]))})}
 /* 줄 삭제: 이어진 것이 있으면 못 지움(이유를 알림). 저장한 줄 = 삭제 예정(저장하면 삭제), 새로 생성한 줄 = 바로 없앰 */
@@ -2033,7 +2033,18 @@ function gtRefs(L,r){const c=L.coll;if(c==="areas"){const n=DB.subjects.filter(z
   if(c==="seasons"){const n=DB.blocks.filter(x=>x.seasonId===r.id).length;return n?`시간표 ${n}개가 있어요`:""}
   if(c==="subjects"){const n=DB.books.filter(x=>x.subjectId===r.id).length;return n?`교재 ${n}권이 이어져 있어요`:""}
   if(c==="books"){const n=bookUsers(r).length;return n?`쓰는 학생 ${n}명이 있어요`:""}return ""}
-function gtDel(L,id,on){const r=DB[L.coll].find(x=>x.id===id);if(!r)return;const st=activeTab.state;if(L.delFn)return L.delFn(r,on);/* 줄 삭제 규칙을 따로 정한 화면(학생1 = 학생 삭제 규칙) */
+/* 261119 대표 "특별한 이유가 없으면 삭제하지 못하게": 실제 자료 모드에서 노션에 있는 줄은 삭제하지 않는다(시간표만 서버 delete 허용). 학생 · 클래스 · 시즌은 [실수로 만든 줄] =
+   이름 앞에 "(실수) "만 붙여 저장(대표: "이름을 실수로 바꿔 놓고 나중에 동기화되면 노션에서 삭제") — 상태는 건드리지 않음, 되돌리기 = 접두사만 지움. 이름을 고칠 수 있는 목록(학생 · 클래스 · 시즌 · 강사 · 과목 · 영역)에 있고,
+   그 밖은 "삭제·종료는 노션에서 해요" + [노션 열기]. 저장 전 새 줄 · 예시 모드는 그대로 */
+const MISTAKE="(실수) ",MISTAKE_COLLS=["students","classes","seasons","teachers","subjects","areas"];
+function liveNoDel(L,r){return !!(window.LIVE&&window.LIVE.loaded&&r&&L&&L.coll!=="blocks"&&typeof appsIsId==="function"&&appsIsId(r.id))}
+function liveNoDelBox(L,r){const nk=L.coll==="enrolls"?"enrolls":activeTab.screen;const mk=String(r.name||"").startsWith(MISTAKE);
+  if(MISTAKE_COLLS.includes(L.coll))return `<button type="button" class="btn" id="rowMistake" title="${mk?"이름 앞의 (실수) 표시를 지워요":"이름 앞에 (실수)를 붙여 저장해요 — 삭제하지 않고, 나중에 노션에서 정리해요"}">${IC(mk?"undo":"x","s")}${mk?"실수 표시 풀기":"실수로 만든 줄"}</button>`;
+  return `<span class="hint">삭제·종료는 노션에서 해요</span><button type="button" class="lnk" data-notion="${nk}"${notionRowAttr(r)}>${IC("notion","s")}노션 열기</button>`}
+function liveMistake(L,r){const mk=String(r.name||"").startsWith(MISTAKE);
+  r.name=mk?r.name.slice(MISTAKE.length):MISTAKE+(r.name||"");
+  markDirty(L,r);commit();toast(mk?"실수 표시를 풀었어요 — 저장하면 노션에 반영돼요":"이름 앞에 (실수)를 붙였어요 — 저장하면 노션에 반영돼요(삭제하지 않아요)")}
+function gtDel(L,id,on){const r=DB[L.coll].find(x=>x.id===id);if(!r)return;const st=activeTab.state;if(on&&liveNoDel(L,r))return toast("삭제하지 않아요 — 종료 · 보류로 처리하거나 노션에서 해요");if(L.delFn)return L.delFn(r,on);/* 줄 삭제 규칙을 따로 정한 화면(학생1 = 학생 삭제 규칙) */
   if(on){const why=gtRefs(L,r);if(why)return toast(`삭제할 수 없어요 — ${why}. 그쪽을 먼저 정리해 주세요`);
     if(!(SAVEDC[L.coll]&&SAVEDC[L.coll].has(id))){DB[L.coll].splice(DB[L.coll].indexOf(r),1);if(st.sel===id)st.sel=null;commit();return toast("새로 생성한 줄을 삭제했어요 — Ctrl+Z로 되돌려요")}
     r.del=true;markDirty(L,r);if(st.sel===id)st.sel=null}else delete r.del;
@@ -4143,7 +4154,8 @@ function detailHtml(L,r){const tf=LTABS[L.coll];const tabs=tf?(L.coll==="enrolls
   const EN=L.coll==="enrolls";/* 339판(대표): 등록 창 정보 탭 = 정보 탭 틀 — 기본 → 안내(등록 안내 메모 + 전송) → 수강료 조정·종료 → 메모(내부용) 맨 끝 */const fl=lFields(L,r).filter(([k])=>!EN||(k!=="note"&&k!=="memo"));
   const info=`${PANEL.infoBoxes(fl.map(f=>f[0]),L.secs,r,L.help)}${EN&&enStat(r)!=="end"&&r.studentId&&r.classId?`<section class="box"><h3>안내</h3><div class="hfgrid"><div class="hfh" data-hf="note"></div>${enAlimHtml(r,"data-engd2",r.state!=="draft","등록 저장")/* 375판(대표): 고치는 중에는 알림톡 꺼짐 — 저장해야 보냄 */}</div></section>`:""}${L.infoX?L.infoX(r):""}${EN?`<section class="box"><h3>메모</h3><div class="hfgrid"><div class="hfh" data-hf="memo"></div></div></section>`:""}${!tabs&&L.extra?L.extra(r):""}`;
   const body=tab==="info"?info:tabs.find(t=>t[0]===tab)[3];
-  const foot=PANEL.foot({del:!L.noDel,undo:isDirty(L,r)&&(L.revFn?!!r._o||isDirty(L,r):SAVEDC[L.coll]&&SAVEDC[L.coll].has(r.id)),save:`${L.coll==="books"&&r.kind==="프로그램"?"프로그램":SAVE_NAME[L.coll]||COLLNAME[L.coll]||""} 저장`,saveOn:rowDirty(L,r),ids:{del:"rowDel",undo:"rowRev",save:"rowSave"},icons:{trash:IC("trash","s"),undo:IC("undo"),save:IC("save","s")}});
+  const nodel=!L.noDel&&liveNoDel(L,r);/* 261119 대표: 실제 자료 모드에서 노션에 있는 줄은 삭제하지 않음(시간표만 예외) — 종료 · 보류 · 실수 표시 또는 노션 안내 */
+  const foot=PANEL.foot({left:nodel?liveNoDelBox(L,r):"",del:!L.noDel&&!nodel,undo:isDirty(L,r)&&(L.revFn?!!r._o||isDirty(L,r):SAVEDC[L.coll]&&SAVEDC[L.coll].has(r.id)),save:`${L.coll==="books"&&r.kind==="프로그램"?"프로그램":SAVE_NAME[L.coll]||COLLNAME[L.coll]||""} 저장`,saveOn:rowDirty(L,r),ids:{del:"rowDel",undo:"rowRev",save:"rowSave"},icons:{trash:IC("trash","s"),undo:IC("undo"),save:IC("save","s")}});
   return `${back}${head}${tabBar}${body}${foot}`}
 // 163판: 목록 창 칸 붙이기(입력칸 모듈). 종류: text·date·won·cnt·tel·days·seg, 선택지 배열·"teachers" = 드롭다운
 const DAYS7="월화수목금토일";const daysArr=v=>{v=(v||"").replace(/\s/g,"");const m=v.match(/^([월화수목금토일])~([월화수목금토일])$/);if(m)return DAYS7.slice(DAYS7.indexOf(m[1]),DAYS7.indexOf(m[2])+1).split("");return DAYS7.split("").filter(d=>v.includes(d))};
@@ -4238,7 +4250,7 @@ function bindDetail(p,L,r,t){mountDetail(p,L,r);if(L.coll==="enrolls")enTypeMoun
   // 칸을 옮겨도 창을 다시 그리지 않는다: 값만 바꾸고 표·숫자만 새로 고침(커서 유지)
   p.querySelectorAll("[data-k]").forEach(i=>{const upd=()=>{let val=i.value;if(["fee","discount"].includes(i.dataset.k))val=+val||0;if(r[i.dataset.k]===val)return;r[i.dataset.k]=val;r.state="draft";commitQuiet();refreshListQuiet(p,L,r)};i.oninput=upd;i.onchange=upd});
   bindPhead(p,t);const rs=p.querySelector("#rowSave");if(rs){rs.onmousedown=e=>e.preventDefault();rs.onclick=()=>rowSaveOne(L,r)}
-  {const rd=p.querySelector("#rowDel");if(rd)rd.onclick=()=>gtDel(L,r.id,true);const rv=p.querySelector("#rowRev");if(rv)rv.onclick=()=>{if(L.revFn)return L.revFn(r);/* 되돌리기 규칙을 따로 정한 화면(학생1) */const a=DB[L.coll],i=a.indexOf(r),sv=SAVEDC[L.coll].get(r.id);if(i>-1&&sv){a[i]=JSON.parse(sv);commit();toast("저장 상태로 되돌렸어요 — Ctrl+Z로 다시 살릴 수 있어요")}}}
+  {const rm=p.querySelector("#rowMistake");if(rm)rm.onclick=()=>liveMistake(L,r);const rd=p.querySelector("#rowDel");if(rd)rd.onclick=()=>gtDel(L,r.id,true);const rv=p.querySelector("#rowRev");if(rv)rv.onclick=()=>{if(L.revFn)return L.revFn(r);/* 되돌리기 규칙을 따로 정한 화면(학생1) */const a=DB[L.coll],i=a.indexOf(r),sv=SAVEDC[L.coll].get(r.id);if(i>-1&&sv){a[i]=JSON.parse(sv);commit();toast("저장 상태로 되돌렸어요 — Ctrl+Z로 다시 살릴 수 있어요")}}}
   p.querySelectorAll("[data-ecm]").forEach(b=>b.onclick=()=>{t.state.enCal=Object.assign({},t.state.enCal,{mode:b.dataset.ecm});render()});
   p.querySelectorAll("[data-ecn]").forEach(b=>b.onclick=()=>{const c=t.state.enCal||{},m=c.m||TODAY.slice(0,7),n=+b.dataset.ecn;let y=+m.slice(0,4),mo=+m.slice(5,7)+n;if(!n){t.state.enCal=Object.assign({},c,{m:TODAY.slice(0,7)});return render()}if(mo<1){mo=12;y--}if(mo>12){mo=1;y++}t.state.enCal=Object.assign({},c,{m:y+"-"+String(mo).padStart(2,"0")});render()});
   p.querySelectorAll("[data-erk]").forEach(b=>b.onclick=()=>{t.state.enRpt=b.dataset.erk;t.state.enRptI=0;t.state.enRptOpen=null;render()});
