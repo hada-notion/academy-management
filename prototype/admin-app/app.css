@@ -1746,7 +1746,7 @@ svg.i.xl{color:var(--excel)}
 /* ───── 172판 ───── */
 /* 클래스 표 이름 앞 색 점(클래스 색 하나에서) */
 table.t .cdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:var(--space-2);vertical-align:-1px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
-table.t .cchip{display:inline-block;width:20px;height:20px;border-radius:6px;vertical-align:middle;box-shadow:inset 0 0 0 1px rgba(0,0,0,.1)}
+
 /* 표 화면 머리 = 위 줄 바로 아래(학생 화면 기준). 위 여백 16이 있으면 스크롤할 때 머리 위 틈으로 행이 비쳐 보였음 */
 #view .list:has(>table.t),#view .list:has(>.twrap table.t){padding-top:0}
 #view .list table.t th{box-shadow:0 1px 0 var(--line)}
