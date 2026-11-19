@@ -21,14 +21,14 @@ const ICONS={
 // 새 탭 메뉴는 넓은 화면에서 ↗와 이름, 태블릿 폭에서는 각자의 아이콘만 보인다. 휴대폰 폭(700px 이하)에서는 상단 바에 ☰만 두고 전부 사이드바로 옮긴다.
 const PAGES=[
  ['admin_settings.html','관리자 설정','settings','관리자 비밀번호 변경과 Notion 웹훅 키 교체'],
- ['library.html','라이브러리','book','교재를 시리즈별로 보고, 찾아서 추가'],
+ ['library.html','라이브러리','book','교재를 시리즈별로 보고, 찾아서 추가(관리 앱으로 옮기는 중)',false], // 화면을 다시 열면 false를 지운다
  ['exam.html','시험 관리','award','학교·학년별 시험 범위와 일정 관리(준비 중)',false], // 화면을 만들면 false를 지운다
- ['school_search.html','학교 검색','school','나이스에서 학교를 찾아 Notion 학교 페이지와 연결'],
- ['legal_documents.html','법정 서류','legal','출석부·원부·영수증 서식을 기간별로 조회하고 출력'],
+ ['school_search.html','학교 검색','school','나이스에서 학교를 찾아 Notion 학교 페이지와 연결(관리 앱으로 옮기는 중)',false],
+ ['legal_documents.html','법정 서류','legal','출석부·원부·영수증 서식을 기간별로 조회하고 출력(관리 앱으로 옮기는 중)',false],
 ];
 const EXTERNAL=[
  ['attendance_kiosk.html','키오스크','check','학원 입구 태블릿에서 전화번호로 등원·하원 체크(새 탭)','출결 키오스크(새 탭에서 열림)'],
- ['class_room.html','수업 관리','edit','선생님이 수업별 출석·과제·학습기록을 관리(새 탭)','수업 관리(새 탭에서 열림)'],
+ ['prototype/admin-app/hada-admin.html?live=1','수업 관리','edit','수업·시간표·보강·학생 등을 보고 입력하는 관리 앱(새 탭)','수업 관리 — 관리 앱(새 탭에서 열림)'],
 ];
 const PHONE=window.matchMedia('(max-width:700px)');
 const icon=name=>`<svg class="line nav-icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
