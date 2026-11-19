@@ -298,9 +298,10 @@ function appSaveMark(DB) {
 //   진도관리: 학생 한 명의 줄(개별 진도 복사 = 노션 [교재 생성]) · 이미 있는 줄의 진행상태(수료 = 노션 [수료])
 //   등록: 이미 있는 줄의 종료일(노션 [종료 처리]) / 시간표: 수업이 만들어진 줄의 요일 · 시간 · 명단 · 적용 기간(출석이 함께 맞춰져야 함)
 // events: 서버 저장 층이 일정 DB를 받음(PR #450, 2e8da51 — 일정 저장 칸 10개: 이름·날짜·구분·잠금·숨김·학부모 공개·클래스·학생·학교·학년). 앱은 그중 보이기 칸 6개만 보냄
-const APPS_OFF = ["books", "schools"]
+const APPS_OFF = ["schools"]
 function appsOff(coll, row, isNew, send) {
 	if (APPS_OFF.includes(coll)) return "all"
+	if (coll === "books" && isNew) return "all" // 261119: 새 교재는 라이브러리 등록(textbook-api register-custom)으로만 — 서버가 save create를 400으로 거절
 	if (coll === "routines" && !APPS_RT_ON) return "all"
 	if (coll === "events" && isNew) return "all" // 새 일정은 노션에서
 	// 실제 자료 모드에서 일정 쓰기 칸(P2e — live.js LIVE_EVW)이 꺼져 있으면 일정은 보내지 않음(261119 원본검수 Z2)

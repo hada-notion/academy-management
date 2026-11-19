@@ -46,7 +46,7 @@ window.liveModeFor = function (search, hostname, protocol) {
   const EVW = gOn.has("P2") && gOn.has("P2e"); window.LIVE_EVW = EVW;
   /* 보강 쓰기(칸 P3m — 화면 묶음 없음, 보강 화면 칸 P3b와 함께 켤 때만, 261119 담당 (가)): 켜면 보강 화면이 보기만에서 빠지고 [저장]이 서버 보강 동작(livelesson.js liveMakeupSave)으로 */
   const MKW = gOn.has("P3b") && gOn.has("P3m"); window.LIVE_MKW = MKW;
-  const P2ON = gOn.has("P2"), RO = new Set([...GATES.P2, ...GATES.P3, ...GATES.P3b, "books", "schools"].filter((s) => !(EVW && s === "events") && !(MKW && s === "makeup"))); /* P3 수업은 걸음 1 = 보기만 */
+  const P2ON = gOn.has("P2"), RO = new Set([...GATES.P2, ...GATES.P3, ...GATES.P3b, "schools"].filter((s) => !(EVW && s === "events") && !(MKW && s === "makeup"))); /* P3 수업은 걸음 1 = 보기만 */
   window.liveRO = (s) => RO.has(s);
   window.liveScr = (t) => (t && t.screen === "timetable" && t.state && t.state.view === "lesson" ? "lesson" : t ? t.screen : "");
   let roBase = null, roScreen = null, roBusy = false;
@@ -71,10 +71,10 @@ window.liveModeFor = function (search, hostname, protocol) {
   document.head.appendChild(roCss);
   /* 보기 전용 화면 안내(261119 대표 "보기 중심인 화면에만 안내, 나머지는 다 사용 가능"): 시험 · 수강료 · 청구서 · 손익 분석 · 법정 서류만 제목 줄 아래 작은 회색 한 줄(토스트 아님 · 닫기 없음).
      어느 화면인지는 이 목록 한 곳이 기준 — 목록에 없는 화면(수업 · 일정 · 학생 · 클래스 · 등록 …)에는 보기만 칸이어도 안 뜬다 */
-  const RO_NOTE_SCREENS = new Set(["exams", "tuition", "bill", "bookfees", "charges", "etcs", "profit", "costs", "legal", "books", "schools", "records", "reports", "completion", "letters", "files", "alims"]);
+  const RO_NOTE_SCREENS = new Set(["exams", "tuition", "bill", "bookfees", "charges", "etcs", "profit", "costs", "legal", "schools", "records", "reports", "completion", "letters", "files", "alims"]);
   const RO_NOTE_TEXT = "이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요";
   /* 261119 대표("라이브러리 [+] · [연필]이 막혀 있다"): [+] · [연필]이 꺼진 화면은 이유를 한 줄로 — 라이브러리 · 학교는 노션 버튼이 서버 동작(교재 단원 · 학교 코드)까지 해서 앱에서 직접 추가하지 않음 */
-  const RO_NOTE_BY = { books: "라이브러리는 보기만 해요 — 교재 추가 · 수정은 노션 라이브러리에서 해요(단원까지 만드는 노션 버튼이 필요해요)", schools: "학교는 보기만 해요 — 학교 추가는 노션 학교 페이지의 [학교 검색]에서 해요(학교 코드까지 가져와요)" };
+  const RO_NOTE_BY = { schools: "학교는 보기만 해요 — 학교 추가는 노션 학교 페이지의 [학교 검색]에서 해요(학교 코드까지 가져와요)" };
   const roNote = (show, scr) => {
     const v = document.getElementById("view"); if (!v) return;
     let n = v.querySelector(":scope > .ro-line");
@@ -265,6 +265,7 @@ window.liveModeFor = function (search, hostname, protocol) {
       pw.onkeydown = (e) => { if (e.key === "Enter") submit(); };
       setTimeout(() => pw.focus(), 0);
     });
+    window.liveReload = go; /* 교재 등록처럼 서버가 직접 만든 자료를 다시 받을 때 */
     session ? go() : ask();
   }
   setTimeout(start, 0);
@@ -321,6 +322,67 @@ function liveHooks() {
     }
     toast0(m);
   };
+  /* 라이브러리(교재) 입력(261119 대표): [+] = 새 교재 등록 창(서버 textbook-api register-custom — 교재 + 단원목록을 노션에), 줄·표 편집은 저장의 update. 프로그램은 노션에서 */
+  try {
+    bookFindOpen = () => liveBookRegisterOpen();
+    LISTS.books_b.add = LISTS.books.add = () => liveBookRegisterOpen();
+    LISTS.books_b.addLabel = "교재 등록";
+    LISTS.books_p.add = null; LISTS.books_p.blank = null; LISTS.books_p.noAddWhy = "프로그램은 노션 라이브러리에서 추가해요";
+  } catch (_) {}
+}
+/* 새 교재 등록 창(실제 자료 모드): 교재명 · 출판사 · 시리즈 · 가격 · 전체 분량 · ISBN13 · 단원 목록(한 줄에 하나 "이름 쪽"). 과목 · 구분 등은 등록 뒤 줄 창에서.
+   서버(textbook-api register-custom)가 거절하면 사람 말로 보여 주고 창은 열어 둔다(같은 ISBN13 = 409). 성공하면 저장 안 한 변경이 없을 때 노션 자료를 다시 받아 목록에 바로 나타낸다 */
+async function liveBookApi(body) {
+  const c = window.LIVE;
+  if (!c) throw new Error("노션 자료를 받은 뒤에 등록해요");
+  const res = await fetch(String(c.url).replace(/\/+$/, "") + "/functions/v1/textbook-api", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-admin-key": c.session, Authorization: "Bearer " + c.anonKey, apikey: c.anonKey },
+    body: JSON.stringify(body),
+  });
+  const out = await res.json().catch(() => null);
+  if (!res.ok || !out || out.error) { const e = new Error((out && out.error) || "요청 실패 (" + res.status + ")"); e.status = res.status; throw e; }
+  return out;
+}
+function liveBookRegisterOpen() {
+  const F = { title: "", publisher: "", series: "", price: "", pages: "", isbn: "", units: "" };
+  const opts = (k) => (DB.opts && Array.isArray(DB.opts[k]) ? DB.opts[k] : []).map((v) => ({ v, t: v }));
+  modal(`<h2>교재 등록${HELP("노션 라이브러리에 교재 1권과 단원 목록을 만들어요. 과목 · 구분 등은 등록한 뒤 줄 창에서 넣어요. 같은 ISBN의 교재가 이미 있으면 등록되지 않아요. 출판사 · 시리즈는 노션 선택지에 있는 값만 고를 수 있어요.")}</h2>
+    <div class="hfgrid nc"><div class="hfh" id="brT"></div><div class="hfh" id="brP"></div><div class="hfh" id="brS"></div><div class="hfh" id="brPr"></div><div class="hfh" id="brPg"></div><div class="hfh" id="brI"></div></div>
+    <div class="hfh" id="brU"></div><div class="hint" id="brM"></div>
+    <div class="actions"><span class="sp"></span><button class="btn" id="brC">취소</button><button class="btn pri" id="brO" disabled>교재 등록</button></div>`, (m, close) => {
+    const ok = m.querySelector("#brO"), msg = m.querySelector("#brM");
+    const upd = () => { ok.disabled = !F.title.trim(); };
+    HF.text(m.querySelector("#brT"), { label: "교재명", placeholder: "예: 쎈 고등 수학(상)", max: 200, onChange: (v) => { F.title = v; upd(); } });
+    HF.select(m.querySelector("#brP"), { label: "출판사", value: null, clear: true, placeholder: "고르기", items: opts("pub"), onChange: (v) => { F.publisher = v || ""; } });
+    HF.select(m.querySelector("#brS"), { label: "시리즈", value: null, clear: true, placeholder: "고르기", items: opts("series"), onChange: (v) => { F.series = v || ""; } });
+    HF.num(m.querySelector("#brPr"), { label: "가격", unit: "원", onChange: (v) => { F.price = String(v || "").replace(/[^\d]/g, ""); } });
+    HF.num(m.querySelector("#brPg"), { label: "전체 분량", unit: "쪽", onChange: (v) => { F.pages = String(v || "").replace(/[^\d]/g, ""); } });
+    HF.text(m.querySelector("#brI"), { label: "ISBN13", placeholder: "978으로 시작하는 13자리", max: 17, onChange: (v) => { F.isbn = v; } });
+    HF.memo(m.querySelector("#brU"), { label: "단원 목록", placeholder: "한 줄에 하나씩 — 예) 1. 집합 8", rows: 5, onChange: (v) => { F.units = v; } });
+    m.querySelector("#brC").onclick = close;
+    ok.onclick = async () => {
+      msg.textContent = ""; ok.disabled = true; ok.textContent = "등록 중…";
+      try {
+        const units = (typeof unitParse === "function" ? unitParse(F.units, F.pages) : []).map((u) => ({ name: u.name, page: u.from == null ? 0 : u.from }));
+        const body = { action: "register-custom", title: F.title.trim(), units };
+        if (F.isbn.trim()) body.isbn13 = F.isbn.trim();
+        if (F.price) body.price = +F.price;
+        if (F.pages) body.pages = +F.pages;
+        if (F.series) body.series = F.series;
+        if (F.publisher) body.publisher = F.publisher;
+        await liveBookApi(body);
+        close();
+        if (dirtyCount() === 0 && typeof window.liveReload === "function") { await window.liveReload(); toast("교재를 등록했어요 — 과목 · 구분은 줄을 눌러 넣어요"); }
+        else toast("교재를 등록했어요 — 저장하지 않은 변경이 있어서 목록은 저장하고 새로고침하면 보여요");
+      } catch (e) {
+        ok.textContent = "교재 등록"; upd();
+        msg.className = "hint warn";
+        msg.textContent = e.status === 409 ? "이미 라이브러리에 있는 교재예요(ISBN이 같아요)" : e.status === 401 || e.status === 403 ? "관리자 로그인이 필요해요 — 새로고침해서 다시 로그인해요" : e.message || "등록하지 못했어요";
+      }
+    };
+    setTimeout(() => { const i = m.querySelector("#brT input"); if (i) i.focus(); }, 0);
+  });
 }
 /* 실제 자료 모드의 [수업 생성]: 시간표마다 다음 수업 한 번을 노션 수업 생성 큐에 맡긴다(app-api run — 시간표 [수업 추가]와 같은 처리).
    저장 전인 새 시간표는 노션에 아직 없으므로 먼저 저장하라고 알린다. 수업 · 출석은 1-2분 뒤 노션에 생긴다(앱 화면에는 그리지 않음). */
