@@ -388,13 +388,11 @@ function appSaveCollect(DB) {
 
 // ---------- 보내기 ----------
 async function appSavePost({ url, anonKey, session }, changes) {
-	const res = await fetch(String(url).replace(/\/+$/, "") + "/functions/v1/app-api", {
+	const { res, body } = await appPostJson(String(url).replace(/\/+$/, "") + "/functions/v1/app-api", { /* 노션이 바쁘면(503 busy) 한 번 자동 재시도 — 저장은 노션에 쓰기 전 단계에서 끊겨 중복 없음(appdata.js) */
 		method: "POST",
 		headers: { "Content-Type": "application/json", "x-admin-key": session, Authorization: "Bearer " + anonKey, apikey: anonKey },
 		body: JSON.stringify({ action: "save", changes }),
 	})
-	let body = null
-	try { body = await res.json() } catch (_) { /* 아래에서 던짐 */ }
 	if (!res.ok || !body || !Array.isArray(body.results)) throw new Error(`저장 실패 (${res.status}${body && body.error ? " · " + body.error : ""})`)
 	return body.results
 }
@@ -459,4 +457,4 @@ async function appSaveSend(conn, DB) {
 	return out
 }
 
-if (typeof window === "undefined" && typeof module !== "undefined") module.exports = { APPSAVE, APPS_ORDER, APPS_MAX, APPS_BASE, APPS_DAYS, APPS_SEA_COLOR, APPS_CLS_HEX, APPS_PRE, appsFailText, appSaveX, appSaveMark, appSaveCollect, appSaveRemap, appSaveSend }
+if (typeof window === "undefined" && typeof module !== "undefined") module.exports = { APPSAVE, APPS_ORDER, APPS_MAX, APPS_BASE, APPS_DAYS, APPS_SEA_COLOR, APPS_CLS_HEX, APPS_PRE, appsFailText, appSaveX, appSaveMark, appSaveCollect, appSaveRemap, appSavePost, appSaveSend }

@@ -18,6 +18,9 @@
     if (!b) { b = document.createElement("div"); b.id = "liveBanner"; b.setAttribute("role", "status"); b.style.cssText = "position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:9999;padding:8px 14px;border-radius:10px;font-size:13px;box-shadow:0 2px 10px rgba(0,0,0,.12);max-width:90vw"; document.body.appendChild(b); }
     b.style.background = bad ? "#FDECEC" : "#FFF6DA"; b.style.color = "#3A3226"; b.textContent = msg;
   };
+  /* 노션이 바빠요(app-api 503 busy, 노션서버 항목 100): 데이터 층(appdata.js appPostJson)이 재시도를 기다리는 동안 안내 띠. 끝나면 있던 띠(예: 받는 중)로 되돌린다 */
+  let busyPrev = null;
+  window.liveBusy = (msg) => { if (msg) { if (busyPrev === null) { const b0 = document.getElementById("liveBanner"); busyPrev = b0 ? b0.textContent : ""; } banner(msg, false); } else if (busyPrev !== null) { banner(busyPrev); busyPrev = null; } };
   /* 칸 켜기(hada-rules.js GATES · GATES_ON): 꺼진 칸의 화면은 메뉴에서 빼고 열리지 않게 한다. 주소 &gates=P1,P2 = 검수용 */
   const gOn = new Set(((/[?&]gates=([\w,]+)/.exec(location.search) || [])[1] || GATES_ON.join(",")).split(",").filter(Boolean));
   window.gateOn = (s) => String(s).startsWith("ext:") || Object.entries(GATES).some(([g, list]) => gOn.has(g) && list.includes(s));
@@ -239,12 +242,11 @@
 /* 실제 자료 모드의 [저장]: 작성 중인 줄(입력 범위 12개 묶음)을 app-api save로 노션에 쓴다. 저장 창의 [저장]이 부른다(LIVE일 때만).
    성공한 줄은 저장됨으로, 실패 · 충돌 줄은 작성 중으로 남기고 이유를 보여 준다. 지우기는 보내지 않는다(노션에서 직접). */
 async function liveApi(conn, body) {
-  const res = await fetch(String(conn.url).replace(/\/+$/, "") + "/functions/v1/app-api", {
+  const { res, body: out } = await appPostJson(String(conn.url).replace(/\/+$/, "") + "/functions/v1/app-api", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-admin-key": conn.session, Authorization: "Bearer " + conn.anonKey, apikey: conn.anonKey },
     body: JSON.stringify(body),
   });
-  const out = await res.json().catch(() => null);
   if (!res.ok || !out || !out.ok) throw new Error((out && out.error) || "요청 실패 (" + res.status + ")");
   return out;
 }
