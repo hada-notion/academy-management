@@ -19,11 +19,15 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ error: "POST 요청만 지원합니다." }, 405)
   const authError = await requireAdminKey(req)
   if (authError) return authError
+  // (v2.8.0 항목 101) 어느 요청이 느린지 로그로 보려고 action 이름과 걸린 시간을 한 줄 남긴다 — 1초 넘은 요청만(평소 수십 개 list는 안 남김).
+  const t0 = Date.now()
+  let action = "?", dbName = ""
   try {
     const raw = await req.text()
     if (raw.length > 200_000) return json({ error: "요청이 너무 큽니다." }, 413)
     let body: any
     try { body = JSON.parse(raw) } catch { return json({ error: "요청 형식이 올바르지 않습니다." }, 400) }
+    action = String(body?.action ?? "?").slice(0, 20); dbName = typeof body?.db === "string" ? body.db.slice(0, 40) : ""
     if (body?.action === "list") {
       if (!isAppDb(body.db)) return json({ error: `db는 ${APP_DBS.join(", ")} 중 하나여야 합니다.` }, 400)
       if (body.since !== undefined && body.since !== null && !isIso(body.since)) return json({ error: "since 형식이 올바르지 않습니다." }, 400)
@@ -55,5 +59,8 @@ Deno.serve(async (req: Request) => {
     }
     console.error("[app-api]", (err as Error).message)
     return json({ error: "처리 중 문제가 생겼어요. 잠시 후 다시 시도해 주세요." }, 500)
+  } finally {
+    const ms = Date.now() - t0
+    if (ms >= 1000) console.log(`[app-api] action=${action}${dbName ? ` db=${dbName}` : ""} ${ms}ms`)
   }
 })
