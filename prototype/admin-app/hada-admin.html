@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=694">
-<link rel="stylesheet" href="app.css?v=694">
-<link rel="stylesheet" href="pick.css?v=694">
-<link rel="stylesheet" href="field.css?v=694">
+<link rel="stylesheet" href="hada-tokens.css?v=696">
+<link rel="stylesheet" href="app.css?v=696">
+<link rel="stylesheet" href="pick.css?v=696">
+<link rel="stylesheet" href="field.css?v=696">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=694"><script src="hada-rules.js?v=694"></script><script src="help.js?v=694"></script><script src="alim-preview.js?v=694"></script><script src="pick.js?v=694"></script><script src="field.js?v=694"></script><script src="panel.js?v=694"></script>
+<link rel="stylesheet" href="alim.css?v=696"><script src="hada-rules.js?v=696"></script><script src="help.js?v=696"></script><script src="alim-preview.js?v=696"></script><script src="pick.js?v=696"></script><script src="field.js?v=696"></script><script src="panel.js?v=696"></script>
 <script>
 "use strict";
 
@@ -2491,9 +2491,9 @@ function renderAdmin(v){cardScreen(v,{title:"관리자 설정",scr:"admin",help:
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-cact]");if(!b)return;const a=b.dataset.cact;
   if(a.startsWith("copy:"))return toast(`${a.slice(5)} 주소를 복사했어요(시제품: 주소 없음)`);if(a.startsWith("open:"))return toast(`${josa(a.slice(5),"을","를")} 새 탭으로 열어요 — 시제품에는 주소가 없어요`);
   if(a==="notionTitle")return toast("노션 첫 페이지(하다 학원관리 v2.0)를 새 탭으로 열어요 — 맨 위 제목을 바꾸면 학원 이름이 바뀌어요(시제품에는 주소가 없어요)");
-  if(a==="soon")return toast("준비 중이에요");/* 261119 대표: 비밀번호 바꾸기·웹훅 키 교체는 아직 서버에 안 붙어서 눌러도 준비 중 */
   if(a==="stampUp")return stampPick();if(a==="stampRm"){LS.set("stamp","");toast("학원 도장을 삭제했어요");return render()}
   if(a==="ver")return toast("지금 버전이 가장 새 버전이에요");if(a==="ping")return toast("서버와 노션 연결을 확인했어요 — 정상");if(a==="logout")return toast("시제품에는 로그인이 없어요 — 원본에서는 로그인 화면으로 가요");
+  if(a==="soon")return toast("준비 중이에요");/* 261119 대표: 비밀번호 바꾸기·웹훅 키 교체는 아직 서버에 안 붙어서 눌러도 준비 중 */
   if(a==="clear"){const WS="하다 예시 학원";const cs=[["학생",DB.students.length],["등록",DB.enrolls.length],["클래스",DB.classes.length],["시간표",DB.blocks.length],["수강료",DB.tuition.length],["일정",DB.events.length]];return modal(`<h2>예시 데이터 비우기</h2><div class="box">아래 자료를 노션에서 모두 비워요. <b>되돌릴 수 없어요.</b><div class="hklist" style="margin-top:8px">${cs.map(c=>`<label class="hk"><input type="checkbox" checked><span>${c[0]}</span><span class="hint">${c[1]}건</span></label>`).join("")}</div><div class="warnbox" style="margin-top:8px">확인을 위해 워크스페이스 이름 <b>${WS}</b>을 그대로 입력해 주세요.</div><input class="inp" id="wsn" placeholder="워크스페이스 이름" autocomplete="off" style="width:100%;margin-top:8px"></div><div class="actions"><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn danger pri2" id="co" disabled>비우기</button></div>`,(m,close)=>{const i=m.querySelector("#wsn"),o=m.querySelector("#co");i.oninput=()=>o.disabled=i.value.trim()!==WS;m.querySelector("#cc").onclick=close;o.onclick=()=>{close();ADM.cleared=true;render();toast("예시 데이터를 비웠어요(시제품: 실제로 비우지 않음) — 이 기능은 이제 잠겨요")};setTimeout(()=>m.querySelector("#cc").focus(),0)})}});
 
 /* 168판: 수강·시즌도 엑셀로 한번에 올리기(대표) — 수강 = 학생 이름 + 클래스 이름(같은 학생·클래스 수강 중이면 건너뜀), 시즌 = 준비 중으로 */
@@ -4893,6 +4893,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del).slice().sort(
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="appdata.js?v=694"></script><script src="appsave.js?v=694"></script><script src="appview.js?v=694"></script><script src="livelesson.js?v=694"></script><script src="live.js?v=694"></script>
+<script src="appdata.js?v=696"></script><script src="appsave.js?v=696"></script><script src="appview.js?v=696"></script><script src="livelesson.js?v=696"></script><script src="live.js?v=696"></script>
 </body>
 </html>

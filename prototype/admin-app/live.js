@@ -1,7 +1,15 @@
 /* 실제 자료 모드: 주소에 ?live=1 → 학원 연결 설정(hada_config.js) · 관리자 로그인(admin_auth.js) → app-api 읽기(appdata.js)로 예시 자료를 노션 자료로 바꿔 끼운다.
    연결 설정 파일은 저장소 맨 위(이 화면 기준 ../../)에 있다. 없으면(시제품 로컬 서버) 예시 자료 그대로 둔다. 저장 연결은 다음 단계. */
+/* 실제 자료 모드 판정(한 곳, 261119 대표 "?live=1 없이 바로 메인으로"): 명시한 주소 매개변수가 먼저 — live=1 = 실제 자료, live=0 · demo=1 = 예시 자료.
+   없으면 배포 사이트(localhost · 127.0.0.1 · 파일 열기가 아닌 곳)는 실제 자료, 로컬 시제품 서버는 지금처럼 예시 자료(시험 도구 · 시연용 예시는 그대로). */
+window.liveModeFor = function (search, hostname, protocol) {
+  const has = (re) => re.test(String(search || ""));
+  if (has(/[?&]demo=1(&|$)/) || has(/[?&]live=0(&|$)/)) return false;
+  if (has(/[?&]live=1(&|$)/)) return true;
+  return !(protocol === "file:" || /^(localhost|127\.0\.0\.1|\[::1\]|)$/.test(String(hostname || "")) || /\.localhost$/.test(String(hostname || "")));
+};
 (function () {
-  if (!/[?&]live=1(&|$)/.test(location.search)) return;
+  if (!window.liveModeFor(location.search, location.hostname, location.protocol)) return;
   const ROOT = "../../";
   const load = (src) => new Promise((ok, no) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = () => no(new Error(src)); document.head.appendChild(s); });
   const say = (m) => (typeof toast === "function" ? toast(m) : console.log(m));
@@ -185,7 +193,7 @@
   banner("노션 자료를 받는 중이에요 — 받기 전에는 저장할 수 없어요");
   const sd0 = saveDialog;
   saveDialog = (only) => { if (!(window.LIVE && window.LIVE.loaded)) { say("노션 자료를 다 받기 전에는 저장할 수 없어요"); return; } try { p1Guard(); } catch (_) {} /* 저장 창을 열기 전에 잠근 값(종료일 등)을 한 번 더 되돌린다 */ return sd0(only); };
-  const stop = (msg) => { banner(msg + " — 저장할 수 없어요. 주소에서 ?live=1을 빼면 예시 자료로 열려요", true); };
+  const stop = (msg) => { banner(msg + " — 저장할 수 없어요. 주소 끝에 ?demo=1을 붙이면 예시 자료로 열려요", true); };
   /* 판 확인: 브라우저가 옛 화면 파일을 들고 있으면(판 번호가 서버와 다름) 한 번 새로 받는다 */
   const fresh = async () => {
     try {
@@ -232,7 +240,7 @@
     };
     const ask = () => modal(`<h2>관리자 로그인</h2><div class="box"><p class="hint">노션 자료를 읽으려면 관리자 비밀번호를 넣어요.</p><input id="lvpw" type="password" autocomplete="current-password" aria-label="관리자 비밀번호"><p class="hint" id="lverr"></p></div><div class="actions"><span class="sp"></span><button class="btn" id="cc">예시 자료로 보기</button><button class="btn pri" id="co">로그인</button></div>`, (m, close) => {
       const pw = m.querySelector("#lvpw"), err = m.querySelector("#lverr");
-      m.querySelector("#cc").onclick = () => { location.href = location.pathname; }; /* 예시 자료 = 실제 자료 모드를 벗어난 주소 */
+      m.querySelector("#cc").onclick = () => { location.href = location.pathname + "?demo=1"; }; /* 예시 자료 = 실제 자료 모드를 벗어난 주소(배포 사이트는 매개변수 없이 열면 실제 자료라 ?demo=1을 붙인다) */
       const submit = async () => {
         err.textContent = "";
         try { session = await HadaAdminAuth.login(cfg.url, pw.value); HadaAdminAuth.saveSession(session); close(); go(); }
