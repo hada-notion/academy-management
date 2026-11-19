@@ -321,7 +321,7 @@ function renderChecklist(){
   const hasView=l&&safeView(l.view);
   if(hasView)nav.append(link(l.view,'웹훅 등록',db+' DB의 "웹훅 등록" 보기 열기','link-chip main icon-ext'));
   if(l&&safeDb(l.db))nav.append(link(l.db,'DB 열기',db+' DB 열기',hasView?'link-chip icon-ext':'link-chip main icon-ext'));
-  if(!nav.childNodes.length)nav.append(el('span','muted','Notion에서 이 DB를 찾지 못했습니다'));
+  if(!nav.childNodes.length)nav.append(el('span','muted','Notion에서 이 DB를 찾지 못했거나 같은 이름 DB가 여럿이라 이 학원 것을 고르지 못했습니다'));
   head.append(nav);
   card.append(head);
   const list=el('ul','items');
@@ -389,6 +389,8 @@ async function profile(){
  text('last-change',date(info.changed_at));text('next-change',mustChange?'변경 후 3개월 기준':date(info.recommended_at));
  notice('관리자 인증 서버에 연결되었습니다.');
  HadaAdminAuth.saveSession(mustChange?'':session);
+ // Tab title follows the top Notion page title (e.g. "하다 학원관리 v2.0(스터디)") so two 관 can be told apart; unchanged when unreadable.
+ if(!mustChange)request('root-title').then(d=>{if(d&&d.rootTitle)document.title='관리자 설정 | '+d.rootTitle;}).catch(()=>{});
  if(mustChange){text('owner-status','초기 비밀번호 사용 중');notice('초기 비밀번호를 사용 중입니다. 새 비밀번호로 변경해 주세요.','warn');showChange(true);return;}
  text('owner-status','변경 완료');
  try{await loadWebhook();}catch{text('webhook-summary','웹훅 키 상태를 확인하지 못했습니다. 잠시 후 다시 로그인해 주세요.');}

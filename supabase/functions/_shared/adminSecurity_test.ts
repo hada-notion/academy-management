@@ -3,7 +3,7 @@ function assert(v:unknown,m='assertion failed'){if(!v)throw new Error(m);}
 function rejects(fn:()=>unknown){try{fn();}catch(e){assert(e instanceof SecurityError);return;}throw new Error('expected rejection');}
 Deno.env.set('SB_URL','https://mock.supabase.co');Deno.env.set('SB_SERVICE_ROLE_KEY','test-only-service');Deno.env.set('ADMIN_ALLOWED_ORIGINS','https://admin.example.test');Deno.env.set('ADMIN_SECRET','test-only-webhook-key-0123456789abcdef');Deno.env.set('NOTION_TOKEN','test-only-notion');
 const originalServe=Deno.serve;(Deno as any).serve=()=>({});
-const {handleAdminSecurity,notionDatabaseLinks,webhookViewUrl}=await import('../admin-security/index.ts');(Deno as any).serve=originalServe;
+const {handleAdminSecurity,notionDatabaseLinks,webhookViewUrl,chooseDbLinks}=await import('../admin-security/index.ts');(Deno as any).serve=originalServe;
 async function withFetch(fn:(action:string,data:any,url:string)=>unknown,run:()=>Promise<void>){const old=fetch;globalThis.fetch=(async(input:any,init:any)=>{const b=init?.body?JSON.parse(init.body):{};return new Response(JSON.stringify(await fn(b.p_action,b.p_data,String(input))),{headers:{'Content-Type':'application/json'}});}) as typeof fetch;try{await run();}finally{globalThis.fetch=old;Deno.env.delete('ADMIN_SECURITY_ENABLED');}}
 const request=(body:any,origin='https://admin.example.test',key='')=>new Request('https://mock.supabase.co/functions/v1/admin-security',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json','x-admin-key':key},body:JSON.stringify(body)});
 const ready={initialized:true,password_set:true};
@@ -50,12 +50,20 @@ Deno.test('webhook rotation cancel needs the password; finish asks for confirmat
   assert((await handleAdminSecurity(request({action:'webhook-finish',force:true},undefined,'s'))).status===200);});});
 Deno.test('webhook status lists only webhook routes and flags a short initial key',()=>withFetch(()=>({rotating:true,started_at:'2026-10-13T00:00:00Z',changed_at:null,usage:[{route:'send-report',key:'old',calls:2,last_at:'2026-10-13T01:00:00Z'},{route:'admin-security',key:'old',calls:1,last_at:'2026-10-13T01:00:00Z'}]}),async()=>{Deno.env.set('ADMIN_SECURITY_ENABLED','true');const saved=Deno.env.get('ADMIN_SECRET')!;Deno.env.set('ADMIN_SECRET','short');try{const data=await (await handleAdminSecurity(request({action:'webhook-status'},undefined,'s'))).json();assert(data.rotating===true&&data.weak===true);assert(data.usage.length===1&&data.usage[0].route==='send-report');}finally{Deno.env.set('ADMIN_SECRET',saved);}}));
 Deno.test('authorize sends the function name so rotation calls can be counted',async()=>{const seen:any[]=[];await withFetch((action,data)=>{if(action==='authorize')seen.push(data);return {kind:'webhook'};},async()=>{Deno.env.set('ADMIN_SECURITY_ENABLED','true');assert(await authorizeKey(new Request('https://mock.supabase.co/functions/v1/sync-registration-textbook/create-class'),'test-only',''));assert(seen[0].route==='sync-registration-textbook');await authorizeKey(new Request('https://mock.supabase.co/functions/v1/not-a-webhook-route'),'test-only','');assert(seen[1].route==='');});});
-Deno.test('Notion DB links: academy databases only, trashed skipped, newest duplicate wins, paginated',async()=>{const old=fetch;const bodies:any[]=[];
-  const ds=(title:string,db:string,edited:string,extra:any={})=>({object:'data_source',title:[{plain_text:title}],parent:{type:'database_id',database_id:db},last_edited_time:edited,...extra});
+Deno.test('Notion DB links: same-name DBs (two 관) are narrowed to this academy, ambiguous ones get no link (item 107)',async()=>{
+  const c=(title:string,ds:string,dbId:string):any=>({title,ds,dbId,edited:'2026-10-01T00:00:00Z'});
+  const cands=[c('클래스(학원)','ds-study','a'.repeat(32)),c('클래스(학원)','ds-start','b'.repeat(32)),c('시즌(학원)','se-1','c'.repeat(32)),c('시즌(학원)','se-2','d'.repeat(32)),c('학생(학원)','st-1','e'.repeat(32))];
+  // narrow: 클래스는 이 학원 것(스타트) 하나로 좁혀지고, 시즌은 모호함
+  const links=await chooseDbLinks(cands,async()=>({map:new Map([['클래스(학원)',['ds-start']]]),problems:new Map([['시즌(학원)','모호']])}));
+  assert(JSON.stringify(links)===JSON.stringify({'클래스(학원)':'https://www.notion.so/'+'b'.repeat(32),'학생(학원)':'https://www.notion.so/'+'e'.repeat(32)}),JSON.stringify(links));
+  let asked=0;await chooseDbLinks([c('학생(학원)','x','1'.repeat(32))],async()=>{asked++;return {map:new Map(),problems:new Map()};});
+  assert(asked===0,'unique titles are not narrowed');});
+Deno.test('Notion DB links: academy databases only, trashed skipped, same name narrowed by the injected rule, paginated',async()=>{const old=fetch;const bodies:any[]=[];
+  const ds=(title:string,db:string,edited:string,extra:any={})=>({object:'data_source',id:'ds-'+db.slice(0,2),title:[{plain_text:title}],parent:{type:'database_id',database_id:db},last_edited_time:edited,...extra});
   const pages=[{results:[ds('등록(학원) DB','11111111-1111-1111-1111-111111111111','2026-10-01T00:00:00Z'),ds('등록(학원) DB','22222222222222222222222222222222','2026-10-05T00:00:00Z'),ds('출석(학원) DB','33333333333333333333333333333333','2026-10-01T00:00:00Z',{in_trash:true})],has_more:true,next_cursor:'c2'},
     {results:[ds('알림톡 발송함(학원) DB','44444444444444444444444444444444','2026-10-01T00:00:00Z'),ds('패치·이슈 관리 DB','55555555555555555555555555555555','2026-10-01T00:00:00Z'),ds('교재결제(학원) DB','not-an-id','2026-10-01T00:00:00Z')],has_more:false}];
   globalThis.fetch=(async(_u:any,init:any)=>{const b=JSON.parse(init.body);bodies.push(b);return new Response(JSON.stringify(pages[bodies.length-1]));}) as typeof fetch;
-  try{const links=await notionDatabaseLinks();
+  try{const links=await notionDatabaseLinks(async(m)=>({map:new Map([...m].map(([k,v])=>[k,[v[1]]])),problems:new Map()})); // 이 학원 것 = 두 번째(ds-22)로 좁혀졌다고 가정
     assert(JSON.stringify(links)===JSON.stringify({'등록(학원)':'https://www.notion.so/22222222222222222222222222222222','알림톡발송함(학원)':'https://www.notion.so/44444444444444444444444444444444'}),JSON.stringify(links));
     assert(bodies[0].filter.value==='data_source'&&bodies[1].start_cursor==='c2');}finally{globalThis.fetch=old;}});
 Deno.test('webhook view link: finds the view named 웹훅등록 with the views API version',async()=>{const old=fetch;const seen:any[]=[];const db='2'.repeat(32),v1='3'.repeat(32),v2='4'.repeat(32);

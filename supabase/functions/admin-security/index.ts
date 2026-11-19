@@ -1,6 +1,7 @@
 import { SecurityError,securityEnabled,securityRpc,sha256,randomToken,validatePassword,hashPassword,verifyPassword,nextRecommended,ensureInitialized,fixedWebhookKey,SECURITY_WEBHOOK_ROUTES } from '../_shared/adminSecurity.ts';
 import { NOTION_API,NOTION_TOKEN,NOTION_VERSION } from '../_shared/constants.ts';
 import { normalizeBareDbTitle } from '../_shared/dbNames.ts';
+import { narrowSameName,rootTitle } from '../_shared/appCopy.ts';
 // While security is disabled the function only answers with a fixed 503 message and no secrets, so the
 // browser must be able to read it for the legacy-login fallback even before ADMIN_ALLOWED_ORIGINS is set.
 function cors(req:Request,enforceOrigin:boolean):Record<string,string> {
@@ -11,10 +12,26 @@ function cors(req:Request,enforceOrigin:boolean):Record<string,string> {
 }
 // Links for the webhook checklist: each academy's own "(학원)" databases, found through its Notion
 // integration so no per-academy configuration is needed. Normalized title (no spaces, no trailing "DB")
-// -> database URL; trashed sources are skipped and the most recently edited wins on duplicate titles.
-export async function notionDatabaseLinks():Promise<Record<string,string>> {
+// -> database URL; trashed sources are skipped. When the same title is visible more than once (two 관 in one Notion
+// workspace, v2.8.0 item 107) it is narrowed to this academy's DB by the app's rule (Secrets id, then the same top page
+// as the registration DB); if that does not leave exactly one, no link is made for that title.
+export type LinkCand={title:string,ds:string,dbId:string,edited:string};
+export type Narrow=(found:Map<string,string[]>)=>Promise<{map:Map<string,string[]>,problems:Map<string,string>}>;
+export async function chooseDbLinks(cands:LinkCand[],narrow:Narrow=narrowSameName):Promise<Record<string,string>> {
+  const byTitle=new Map<string,LinkCand[]>();for(const c of cands){const l=byTitle.get(c.title)??[];l.push(c);byTitle.set(c.title,l);}
+  const multi=new Map<string,string[]>();for(const [t,l] of byTitle)if(l.length>1)multi.set(t,l.map(c=>c.ds));
+  const r=multi.size?await narrow(multi):{map:new Map<string,string[]>(),problems:new Map<string,string>()};
+  const out:Record<string,string>={};
+  for(const [t,l] of byTitle){
+    let pick=l[0];
+    if(l.length>1){const ids=r.map.get(t);if(!ids||ids.length!==1){console.warn('[admin-security] same-name DB, no link:',t,r.problems.get(t)??'');continue;}pick=l.find(c=>c.ds===ids[0])??l[0];}
+    out[t]=`https://www.notion.so/${pick.dbId}`;
+  }
+  return out;
+}
+export async function notionDatabaseLinks(narrow:Narrow=narrowSameName):Promise<Record<string,string>> {
   if(!NOTION_TOKEN)return {};
-  const found=new Map<string,{url:string,edited:string}>();let cursor:string|undefined;
+  const cands:LinkCand[]=[];let cursor:string|undefined;
   for(let page=0;page<5;page++){
     const res=await fetch(`${NOTION_API}/search`,{method:'POST',headers:{Authorization:`Bearer ${NOTION_TOKEN}`,'Notion-Version':NOTION_VERSION,'Content-Type':'application/json'},
       body:JSON.stringify({filter:{property:'object',value:'data_source'},page_size:100,...(cursor?{start_cursor:cursor}:{})}),signal:AbortSignal.timeout(10000)});
@@ -25,11 +42,11 @@ export async function notionDatabaseLinks():Promise<Record<string,string>> {
       const title=normalizeBareDbTitle((r.title??[]).map((t:any)=>t.plain_text??'').join('').replace(/\s+/g,'').replace(/DB$/i,'')); // 관 꼬리표("학생(스터디)")도 "(학원)"으로 보고 링크 키를 만든다(v2.8.0 항목 102)
       const id=String(r.parent?.database_id??'').replace(/-/g,'');
       if(!title.includes('(학원)')||!/^[0-9a-f]{32}$/.test(id))continue;
-      const prev=found.get(title);if(!prev||String(r.last_edited_time)>prev.edited)found.set(title,{url:`https://www.notion.so/${id}`,edited:String(r.last_edited_time)});
+      cands.push({title,ds:String(r.id??''),dbId:id,edited:String(r.last_edited_time)});
     }
     if(!data.has_more||!data.next_cursor)break;cursor=data.next_cursor;
   }
-  return Object.fromEntries([...found].map(([k,v])=>[k,v.url]));
+  return await chooseDbLinks(cands,narrow);
 }
 // The Views API needs a newer Notion-Version than the rest of the code base.
 const VIEWS_VERSION='2026-03-11';
@@ -115,6 +132,11 @@ export async function handleAdminSecurity(req:Request):Promise<Response> {
       const st=await securityRpc('webhook-status',{session_hash:await sha256(session)});
       const usage=(Array.isArray(st.usage)?st.usage:[]).filter((u:any)=>SECURITY_WEBHOOK_ROUTES.has(u.route));
       return result({rotating:!!st.rotating,started_at:st.started_at,changed_at:st.changed_at,weak:!st.changed_at&&fixedWebhookKey().length<32,usage,checks:st.checks??{}});
+    }
+    if(b.action==='root-title'){
+      // Page title for the settings tab: the top Notion page title (e.g. "하다 학원관리 v2.0(스터디)"); null when unreadable.
+      await securityRpc('webhook-status',{session_hash:await sha256(session)}); // session check
+      return result({rootTitle:await rootTitle()});
     }
     if(b.action==='webhook-links'){
       // Cached per academy; searching Notion (databases and their views) only on first use or refresh.
