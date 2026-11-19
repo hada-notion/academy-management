@@ -213,7 +213,10 @@
         try { liveStuMark(); } catch (_) {} /* 학생 되돌리기 기준 */
         /* [모두 되돌리기]가 돌아갈 값도 불러온 값으로 적어 둔다(안 적으면 고친 줄이 되돌리기 때 화면에서 빠진다) */
         try { savedSync(); DB.blocks.forEach((b) => { try { tSnap(b); } catch (_) {} }); } catch (_) {}
-        try { liveOptions(await liveApi({ url: cfg.url, anonKey: cfg.anonKey, session }, { action: "options" })); } catch (_) { /* 선택지를 못 받아도 화면은 열린다(저장 때 서버가 거름) */ }
+        /* 노션 선택지(options)는 첫 화면을 그린 뒤 뒤에서 받는다(261119 첫 로드 느림: 서버가 options를 처음 부를 때 노션을 20여 번 불러 6~9초). 화면은 선택지 없이도 열리고,
+           받는 동안 고르기 칸에서 새 값 만들기는 막고(optAdd) 저장은 받기를 기다린다(liveSave). 받으면 다시 그린다. 못 받아도 화면은 그대로(저장 때 서버가 거름) */
+        window.LIVE_OPTS_PENDING = true;
+        window.LIVE_OPTS_PROMISE = liveApi({ url: cfg.url, anonKey: cfg.anonKey, session }, { action: "options" }).then((res) => { liveOptions(res); }, () => {}).then(() => { window.LIVE_OPTS_PENDING = false; try { if (typeof render === "function") render(); } catch (_) {} });
         /* loaded = 이번에 노션 자료를 끝까지 받았다는 표시. 이 표시가 있을 때만 저장한다 */
         window.LIVE = { url: cfg.url, anonKey: cfg.anonKey, session, at: new Date().toISOString(), loaded: true };
         liveHooks();
@@ -281,6 +284,7 @@ function liveHooks() {
   const dc0 = dirtyCount, toast0 = toast, optAdd0 = optAdd;
   /* 노션 선택지로 바꾼 목록에는 앱에서 새 값을 만들지 않는다(노션에서 선택지를 먼저 만든다) */
   optAdd = (k, t) => {
+    if (window.LIVE && window.LIVE_OPTS_PENDING) { toast0("노션 선택지를 불러오는 중이에요 — 잠시 뒤 다시 만들어요"); return null; }
     if (window.LIVE && window.LIVE_OPTS && window.LIVE_OPTS[k]) { toast0(`'${String(t || "").trim()}'은(는) 노션 [${window.LIVE_OPTS[k]}] 선택지에 없어요 — 노션에서 선택지를 먼저 만들어요`); return null; }
     return optAdd0(k, t);
   };
@@ -320,6 +324,7 @@ async function liveSave() {
   if (window._liveSaving) return null;
   window._liveSaving = true;
   try {
+    if (window.LIVE_OPTS_PENDING && window.LIVE_OPTS_PROMISE) { toast("노션 선택지를 불러온 뒤에 저장해요"); await window.LIVE_OPTS_PROMISE; } /* 선택지에 없는 값을 거르려면 선택지가 먼저 필요(저장 층이 읽음) */
     /* 수업 출결(작성 중인 수업)이 있으면 먼저 수업 관리 서버로 보낸다(출결 쓰기 칸이 켜져 있을 때) */
     let lessons = 0;
     if ((window.LIVE_ATTW || window.LIVE_RECW) && typeof liveLessonSave === "function") {
