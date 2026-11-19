@@ -49,7 +49,7 @@
   const inLesson = () => liveScr(typeof activeTab !== "undefined" ? activeTab : null) === "lesson";
   const recw = () => RECW && inLesson();
   /* 학습기록 쓰기가 켜지면 수업 창의 [학습] 탭 · 학생 창의 [학습] 탭 안을 잠그지 않는다(수업 전체 화면은 없어져 옛 #lpIn · .lpx · lptab은 더 쓰지 않음) */
-  const recTab = () => { if (!recw()) return false; const st = (activeTab && activeTab.state) || {}; return st.lsStu ? st.astab === "learn" : st.ltab === "log"; };
+  const recTab = () => { if (!recw()) return false; const st = (activeTab && activeTab.state) || {}; return st.lsStu ? st.astab === "learn" : (st.ltab === "log" || st.ltab === "rt"/* 루틴 탭: P3b의 루틴 체크 · [루틴 체크 생성] 쓰기도 같은 칸(원본검수 261119) */); };
   const REC_AREA = ".panel .ptab.on,.panel .pbody";
   /* 보기만 되돌리기에서 뺄 값: 출결 쓰기면 출결 · 한마디(anotes), 학습기록 쓰기면 기록 · 오늘 진도(lpToday) */
   const roKeepKeys = () => [...(attw() ? ["att", "anotes"] : []), ...(recw() ? ["recs", "lpToday"] : [])];
