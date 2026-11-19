@@ -260,7 +260,7 @@ function appApply(raw, out) {
 	for (const [coll, m] of Object.entries(APPMAP)) {
 		const rows = raw[m.db] ? [...raw[m.db].values()] : []
 		// _edited = 노션에서 마지막으로 고친 시각(저장할 때 그사이 노션에서 바뀌었는지 확인)
-		const list = rows.map((r) => Object.assign(m.row({ ...r, props: r.props || {} }, X), { _edited: r.notion_edited_at || "" }))
+		const list = rows.map((r) => Object.assign(m.row({ ...r, props: r.props || {} }, X), { _edited: r.notion_edited_at || "", _url: r.url || "" })) // _url = 그 줄의 노션 페이지 주소(서버 사본 app_rows.url) — 줄 창 [N]이 엶
 		if (m.sort) list.sort(m.sort)
 		mapped[coll] = list
 		out[coll] = list

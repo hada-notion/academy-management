@@ -327,6 +327,8 @@ function liveHooks() {
     }
     toast0(m);
   };
+  /* 메뉴 [N] 주소를 미리 받아 둔다(누를 때 새 탭이 팝업으로 막히지 않게) — 못 받아도 누를 때 다시 시도 */
+  setTimeout(() => { try { liveMenuPages().catch(() => {}); } catch (_) {} }, 2500);
   /* 라이브러리(교재) 입력(261119 대표): [+] = 새 교재 등록 창(서버 textbook-api register-custom — 교재 + 단원목록을 노션에), 줄·표 편집은 저장의 update. 프로그램은 노션에서 */
   try {
     bookFindOpen = () => liveBookRegisterOpen();
