@@ -184,34 +184,78 @@ export async function resolveSources(found: Map<AppDb, string[]>, envIds: string
 	}
 	return { map, problems }
 }
-// 부모를 위로 따라가며 만난 페이지 · DB id(자기 자신 제외). 워크스페이스에 닿거나 12단계에서 멈춘다.
-async function notionAncestors(dataSourceId: string): Promise<Set<string>> {
-	const out = new Set<string>()
-	let kind = "data_sources", id = dataSourceId
-	for (let i = 0; i < 12; i++) {
-		const res = await findFetch(`${NOTION_API}/${kind}/${id}`, { headers: notionHeaders() })
-		if (!res.ok) break
-		const parent = (await res.json())?.parent
-		if (!parent) break
-		if (parent.type === "database_id") { kind = "databases"; id = parent.database_id }
-		else if (parent.type === "page_id") { kind = "pages"; id = parent.page_id }
-		else if (parent.type === "block_id") { kind = "blocks"; id = parent.block_id }
-		else if (parent.type === "data_source_id") { kind = "data_sources"; id = parent.data_source_id }
-		else break
-		out.add(norm(id))
-	}
-	return out
+// ---------- 부모 따라가기(한 번 가 본 노드는 기억) ----------
+// 같은 이름 DB가 많은 학원(한 노션에 두 관)에서 이름마다 후보 DB를 순차로 위로 따라가면 호출이 수백 번이 되어 시간 초과가 났다(261120 비아).
+// 노드(데이터소스 · DB · 페이지 · 블록)의 응답과 "그 위 조상 집합"을 30분 기억하고(진행 중인 것도 공유), 이미 아는 노드를 만나면 거기서 멈춘다.
+// 시간 상한(deadlineAt)을 넘으면 새로 부르지 않고(그 결과는 기억하지 않음) 이미 구한 만큼만 쓴다 → 못 좁힌 이름은 "모호함"으로 남는다.
+const NODE_TTL_MS = 30 * 60 * 1000
+let nodeEpoch = Date.now()
+const nodeCache = new Map<string, Promise<any | null>>()
+const ancCache = new Map<string, Promise<Set<string>>>()
+export const notionStats = { calls: 0 }
+function freshCaches() { if (Date.now() - nodeEpoch > NODE_TTL_MS) { nodeCache.clear(); ancCache.clear(); nodeEpoch = Date.now() } }
+export function clearAncestorCaches() { nodeCache.clear(); ancCache.clear(); nodeEpoch = Date.now() }
+async function cachedGet(url: string, deadlineAt = Infinity): Promise<any | null> {
+	freshCaches()
+	const hit = nodeCache.get(url)
+	if (hit) return hit
+	if (Date.now() > deadlineAt) return null
+	const p = (async () => { notionStats.calls++; const res = await findFetch(url, { headers: notionHeaders() }); return res.ok ? await res.json() : null })()
+	nodeCache.set(url, p)
+	p.then((v) => { if (v === null) nodeCache.delete(url) }, () => nodeCache.delete(url))
+	return p
 }
+function parentRef(parent: any): { kind: string; id: string } | null {
+	if (!parent) return null
+	if (parent.type === "database_id") return { kind: "databases", id: parent.database_id }
+	if (parent.type === "page_id") return { kind: "pages", id: parent.page_id }
+	if (parent.type === "block_id") return { kind: "blocks", id: parent.block_id }
+	if (parent.type === "data_source_id") return { kind: "data_sources", id: parent.data_source_id }
+	return null // workspace
+}
+// 부모를 위로 따라가며 만난 페이지 · DB id(자기 자신 제외). 워크스페이스에 닿거나 12단계에서 멈춘다.
+async function ancestorsOfNode(kind: string, id: string, deadlineAt: number, depth = 0): Promise<Set<string>> {
+	if (depth >= 12) return new Set()
+	freshCaches()
+	const key = `${kind}/${norm(id)}`
+	const hit = ancCache.get(key)
+	if (hit) return hit
+	const p = (async () => {
+		const obj = await cachedGet(`${NOTION_API}/${kind}/${id}`, deadlineAt)
+		const ref = parentRef(obj?.parent)
+		if (!ref) return new Set<string>()
+		return new Set([norm(ref.id), ...await ancestorsOfNode(ref.kind, ref.id, deadlineAt, depth + 1)])
+	})()
+	ancCache.set(key, p)
+	p.then(() => { if (Date.now() > deadlineAt) ancCache.delete(key) }, () => ancCache.delete(key))
+	return p
+}
+export const ancestorsWithin = (ms: number): AncestorsOf => { const at = Date.now() + ms; return (ds) => ancestorsOfNode("data_sources", ds, at) }
 const envDataSourceIds = () => Object.entries(Deno.env.toObject()).filter(([k, v]) => k.startsWith("DATA_SOURCE_") && v).map(([, v]) => v)
-// 같은 이름 DB가 여럿 보일 때 이 학원 것 하나로 좁힌다(앱 읽기·쓰기와 같은 규칙: Secrets id → 기준 DB와 같은 최상위 페이지 → 모호하면 problems). 관리자 설정의 DB 링크도 쓴다.
-export async function narrowSameName(found: Map<string, string[]>, ancestorsOf: AncestorsOf = notionAncestors, envIds: string[] = envDataSourceIds(), anchorId: string | null = Deno.env.get("DATA_SOURCE_REGISTRATION_ID") || null): Promise<{ map: Map<string, string[]>; problems: Map<string, string> }> {
-	return await resolveSources(found as Map<AppDb, string[]>, envIds, anchorId, ancestorsOf) as unknown as { map: Map<string, string[]>; problems: Map<string, string> }
+// resolveSources 앞에서 조상 조회가 필요한 DB들(Secrets로 이미 하나로 좁혀지는 이름은 제외)을 6개씩 병렬로 미리 구해 둔다. 호출 수 · 시간을 로그 한 줄로 남긴다.
+async function resolveFast(found: Map<string, string[]>, envIds: string[], anchorId: string | null, ancestorsOf: AncestorsOf, label: string): Promise<SourcePick> {
+	const t0 = Date.now(), c0 = notionStats.calls
+	const env = new Set(envIds.map(norm)), need = new Set<string>()
+	for (const list of found.values()) {
+		const uniq = [...new Set(list)]
+		if (uniq.length <= 1 || uniq.filter((i) => env.has(norm(i))).length === 1) continue
+		uniq.forEach((i) => need.add(i))
+	}
+	if (need.size && anchorId) need.add(anchorId)
+	if (need.size) await mapWithConcurrency([...need], 6, (id) => ancestorsOf(id))
+	const pick = await resolveSources(found as Map<AppDb, string[]>, envIds, anchorId, ancestorsOf)
+	console.log(`[appCopy] ${label}: 이름 ${found.size}개 · 조상 조회 대상 ${need.size}개 · Notion 호출 ${notionStats.calls - c0}번 · 모호 ${pick.problems.size}개 · ${Date.now() - t0}ms`)
+	return pick
+}
+// 같은 이름 DB가 여럿 보일 때 이 학원 것 하나로 좁힌다(앱 읽기·쓰기와 같은 규칙: Secrets id → 기준 DB와 같은 최상위 페이지 → 모호하면 problems). 관리자 설정의 DB 링크도 쓴다. 기본 시간 상한 40초.
+export async function narrowSameName(found: Map<string, string[]>, ancestorsOf: AncestorsOf = ancestorsWithin(40_000), envIds: string[] = envDataSourceIds(), anchorId: string | null = Deno.env.get("DATA_SOURCE_REGISTRATION_ID") || null): Promise<{ map: Map<string, string[]>; problems: Map<string, string> }> {
+	return await resolveFast(found, envIds, anchorId, ancestorsOf, "같은 이름 DB 좁히기(링크)") as unknown as { map: Map<string, string[]>; problems: Map<string, string> }
 }
 
 let sourceCache: { at: number; pick: SourcePick } | null = null
 async function sourcePick(): Promise<SourcePick> {
 	if (sourceCache && Date.now() - sourceCache.at < 10 * 60 * 1000) return sourceCache.pick
-	const pick = await resolveSources(pickSources(await searchSources()), envDataSourceIds(), Deno.env.get("DATA_SOURCE_REGISTRATION_ID") || null, notionAncestors)
+	const pick = await resolveFast(pickSources(await searchSources()) as unknown as Map<string, string[]>, envDataSourceIds(), Deno.env.get("DATA_SOURCE_REGISTRATION_ID") || null, ancestorsWithin(40_000), "앱 DB 고르기")
 	sourceCache = { at: Date.now(), pick }
 	return pick
 }
@@ -221,7 +265,7 @@ export async function sourceProblem(db: AppDb): Promise<string | null> { return 
 
 // ---------- 시스템 타이틀(노션 최상위 페이지 제목) ----------
 // 기준 DB(등록, 없으면 학생)의 부모를 위로 따라가 워크스페이스 바로 아래 페이지를 찾고 그 제목을 돌려준다(앱 사이드바·탭 제목). Secret 없음. 30분 기억, 실패하면 null(앱은 지금 글자 그대로).
-export async function topPageTitleFrom(startDataSourceId: string, fetcher: (url: string) => Promise<any | null> = async (url) => { const res = await findFetch(url, { headers: notionHeaders() }); return res.ok ? await res.json() : null }): Promise<string | null> {
+export async function topPageTitleFrom(startDataSourceId: string, fetcher: (url: string) => Promise<any | null> = (() => { const at = Date.now() + 20_000; return (url: string) => cachedGet(url, at) })()): Promise<string | null> {
 	let kind = "data_sources", id = startDataSourceId, topPage: string | null = null
 	for (let i = 0; i < 14; i++) {
 		const obj = await fetcher(`${NOTION_API}/${kind}/${id}`)
