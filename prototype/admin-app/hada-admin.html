@@ -2034,23 +2034,16 @@ function gtRefs(L,r){const c=L.coll;if(c==="areas"){const n=DB.subjects.filter(z
   if(c==="subjects"){const n=DB.books.filter(x=>x.subjectId===r.id).length;return n?`교재 ${n}권이 이어져 있어요`:""}
   if(c==="books"){const n=bookUsers(r).length;return n?`쓰는 학생 ${n}명이 있어요`:""}return ""}
 /* 261119 대표 "특별한 이유가 없으면 삭제하지 못하게": 실제 자료 모드에서 노션에 있는 줄은 삭제하지 않는다(시간표만 서버 delete 허용). 학생 · 클래스 · 시즌은 [실수로 만든 줄] =
-   이름 앞 "(실수) " + 종료·보류 상태로 저장(되돌리기 = 접두사 제거 + 상태 복구), 그 밖은 "삭제·종료는 노션에서 해요" + [노션 열기]. 저장 전 새 줄 · 예시 모드는 그대로 */
-const MISTAKE="(실수) ",MISTAKE_COLLS=["students","classes","seasons"];
+   이름 앞에 "(실수) "만 붙여 저장(대표: "이름을 실수로 바꿔 놓고 나중에 동기화되면 노션에서 삭제") — 상태는 건드리지 않음, 되돌리기 = 접두사만 지움. 이름을 고칠 수 있는 목록(학생 · 클래스 · 시즌 · 강사 · 과목 · 영역)에 있고,
+   그 밖은 "삭제·종료는 노션에서 해요" + [노션 열기]. 저장 전 새 줄 · 예시 모드는 그대로 */
+const MISTAKE="(실수) ",MISTAKE_COLLS=["students","classes","seasons","teachers","subjects","areas"];
 function liveNoDel(L,r){return !!(window.LIVE&&window.LIVE.loaded&&r&&L&&L.coll!=="blocks"&&typeof appsIsId==="function"&&appsIsId(r.id))}
 function liveNoDelBox(L,r){const nk=L.coll==="enrolls"?"enrolls":activeTab.screen;const mk=String(r.name||"").startsWith(MISTAKE);
-  if(MISTAKE_COLLS.includes(L.coll))return `<button type="button" class="btn" id="rowMistake" title="${mk?"이름의 (실수) 표시를 지우고 상태를 되돌려요":L.coll==="students"?"이름 앞에 (실수)를 붙이고 등록 보류로 저장해요 — 삭제하지 않아요":L.coll==="classes"?"이름 앞에 (실수)를 붙이고 종강일을 어제로 해 종료로 저장해요 — 삭제하지 않아요":"이름 앞에 (실수)를 붙이고 기간 끝을 어제로 해 종료로 저장해요 — 삭제하지 않아요"}">${IC(mk?"undo":"x","s")}${mk?"실수 표시 풀기":"실수로 만든 줄"}</button>`;
+  if(MISTAKE_COLLS.includes(L.coll))return `<button type="button" class="btn" id="rowMistake" title="${mk?"이름 앞의 (실수) 표시를 지워요":"이름 앞에 (실수)를 붙여 저장해요 — 삭제하지 않고, 나중에 노션에서 정리해요"}">${IC(mk?"undo":"x","s")}${mk?"실수 표시 풀기":"실수로 만든 줄"}</button>`;
   return `<span class="hint">삭제·종료는 노션에서 해요</span><button type="button" class="lnk" data-notion="${nk}"${notionRowAttr(r)}>${IC("notion","s")}노션 열기</button>`}
-function liveMistake(L,r){const mk=String(r.name||"").startsWith(MISTAKE),y=dPlus(TODAY,-1);
-  if(!mk){r._mx={hold:r.hold,close:r.close,open:r.open,start:r.start,end:r.end};r.name=MISTAKE+(r.name||"");
-    if(L.coll==="students")r.hold=true;
-    if(L.coll==="classes"){r.close=y;if(r.open&&r.open>y)r.open=y}
-    if(L.coll==="seasons"){r.end=y;if(r.start>y)r.start=y}}
-  else{const x=r._mx||{};r.name=r.name.slice(MISTAKE.length);
-    if(L.coll==="students")r.hold=x.hold===undefined?false:x.hold;
-    if(L.coll==="classes"){r.close=x.close===undefined?"":x.close;if(x.open!==undefined)r.open=x.open}
-    if(L.coll==="seasons"&&x.start!==undefined){r.start=x.start;r.end=x.end}
-    delete r._mx}
-  markDirty(L,r);commit();toast(mk?"실수 표시를 풀었어요 — 저장하면 노션에 반영돼요":"실수로 표시했어요 — 저장하면 노션에 반영돼요(삭제하지 않아요)")}
+function liveMistake(L,r){const mk=String(r.name||"").startsWith(MISTAKE);
+  r.name=mk?r.name.slice(MISTAKE.length):MISTAKE+(r.name||"");
+  markDirty(L,r);commit();toast(mk?"실수 표시를 풀었어요 — 저장하면 노션에 반영돼요":"이름 앞에 (실수)를 붙였어요 — 저장하면 노션에 반영돼요(삭제하지 않아요)")}
 function gtDel(L,id,on){const r=DB[L.coll].find(x=>x.id===id);if(!r)return;const st=activeTab.state;if(on&&liveNoDel(L,r))return toast("삭제하지 않아요 — 종료 · 보류로 처리하거나 노션에서 해요");if(L.delFn)return L.delFn(r,on);/* 줄 삭제 규칙을 따로 정한 화면(학생1 = 학생 삭제 규칙) */
   if(on){const why=gtRefs(L,r);if(why)return toast(`삭제할 수 없어요 — ${why}. 그쪽을 먼저 정리해 주세요`);
     if(!(SAVEDC[L.coll]&&SAVEDC[L.coll].has(id))){DB[L.coll].splice(DB[L.coll].indexOf(r),1);if(st.sel===id)st.sel=null;commit();return toast("새로 생성한 줄을 삭제했어요 — Ctrl+Z로 되돌려요")}
