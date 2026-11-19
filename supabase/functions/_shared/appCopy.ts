@@ -122,13 +122,25 @@ export function pickSources(found: Map<string, string[]>): Map<AppDb, string[]> 
 	}
 	return out
 }
+// (v2.8.0 항목 100) Notion이 한도(429)로 오래 기다리라고 하면 앱 요청을 몇 십 초 붙잡지 않고 "잠시 뒤 다시"로 돌려준다.
+// DB 찾기(`status`·`list` 데우기·저장 앞 찾기)에만 쓴다 — 저장 본 경로와 다른 큐 작업의 429 처리는 그대로.
+export const NOTION_BUSY_WAIT_MS = 15_000
+export const NOTION_BUSY_RETRY_SEC = 10
+export class NotionBusyError extends Error {
+	constructor(public retryAfterSec = NOTION_BUSY_RETRY_SEC) { super("Notion이 바빠 잠시 뒤 다시 시도해야 합니다.") }
+}
+const findFetch = async (url: string, init: RequestInit): Promise<Response> => {
+	const res = await fetchWithRetry(url, init, 5, { maxWaitMs: NOTION_BUSY_WAIT_MS })
+	if (res.status === 429) throw new NotionBusyError()
+	return res
+}
 async function searchSources(): Promise<Map<string, string[]>> {
 	const out = new Map<string, string[]>()
 	let cursor: string | undefined
 	do {
 		const body: Record<string, unknown> = { filter: { property: "object", value: "data_source" }, page_size: 100 }
 		if (cursor) body.start_cursor = cursor
-		const res = await fetchWithRetry(`${NOTION_API}/search`, { method: "POST", headers: notionHeaders(), body: JSON.stringify(body) })
+		const res = await findFetch(`${NOTION_API}/search`, { method: "POST", headers: notionHeaders(), body: JSON.stringify(body) })
 		if (!res.ok) throw new Error(`Notion 검색 실패: ${res.status} ${await res.text()}`)
 		const data = await res.json()
 		for (const r of data.results ?? []) {
@@ -173,7 +185,7 @@ async function notionAncestors(dataSourceId: string): Promise<Set<string>> {
 	const out = new Set<string>()
 	let kind = "data_sources", id = dataSourceId
 	for (let i = 0; i < 12; i++) {
-		const res = await fetchWithRetry(`${NOTION_API}/${kind}/${id}`, { headers: notionHeaders() })
+		const res = await findFetch(`${NOTION_API}/${kind}/${id}`, { headers: notionHeaders() })
 		if (!res.ok) break
 		const parent = (await res.json())?.parent
 		if (!parent) break

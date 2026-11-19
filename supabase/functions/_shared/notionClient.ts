@@ -50,7 +50,9 @@ const FETCH_TIMEOUT_MS = 12_000
 // (v2.6.13) retryAmbiguous=false: 429(요청을 처리하지 않았다는 뜻)만 다시 보낸다. 5xx·시간 초과·연결 끊김은 Notion이
 // 이미 처리했을 수 있어 다시 보내지 않는다 — 페이지 만들기(POST)를 다시 보내면 같은 페이지가 두 번 생긴다
 // (2026-10-16 메뉴 일괄 생성에서 출석 1건이 9초 차로 두 번 생긴 원인). 읽기·고치기는 여러 번 보내도 결과가 같아 기본값(true).
-export async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 5, opts: { retryAmbiguous?: boolean } = {}): Promise<Response> {
+// (v2.8.0 항목 100) maxWaitMs: 429 다시 시도 대기가 이 값보다 길면 기다리지 않고 그 429 응답을 돌려준다(호출자가 "잠시 뒤 다시"로
+// 처리). 관리 앱 `status`·DB 찾기만 쓴다 — 주지 않으면 전과 같이 Retry-After를 그대로 기다린다.
+export async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 5, opts: { retryAmbiguous?: boolean; maxWaitMs?: number } = {}): Promise<Response> {
 	const retryAmbiguous = opts.retryAmbiguous ?? true
 	const callStartedAt = Date.now()
 	let lastRes: Response | undefined
@@ -74,6 +76,10 @@ export async function fetchWithRetry(url: string, init: RequestInit, maxRetries 
 			const retryAfterHeader = res.headers.get("Retry-After")
 			const retryAfterMs = retryAfterHeader ? Number(retryAfterHeader) * 1000 : NaN
 			const backoffMs = Number.isFinite(retryAfterMs) ? retryAfterMs : 300 * Math.pow(2, attempt)
+			if (res.status === 429 && opts.maxWaitMs !== undefined && backoffMs > opts.maxWaitMs) {
+				console.error(`[fetchWithRetry] ${url} 응답 429, 대기 ${backoffMs}ms가 상한 ${opts.maxWaitMs}ms보다 길어 기다리지 않고 돌려줌`)
+				return res
+			}
 			console.error(
 				`[fetchWithRetry] ${url} 응답 ${res.status}, ${backoffMs}ms 대기 후 재시도 (시도 ${attempt + 1}/${maxRetries + 1}, 누적 ${Date.now() - callStartedAt}ms)`,
 			)
