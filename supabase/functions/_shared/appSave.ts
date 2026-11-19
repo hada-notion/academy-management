@@ -17,6 +17,8 @@ import { createPage, fetchWithRetry, notionHeaders, updatePageProperties, getPag
 import { fetchSupabaseWithRetry } from "./reportCacheShared.ts"
 import { appSources, pageRow, sourceProblem, SKIP_PROPS, type AppDb } from "./appCopy.ts"
 import { enqueueSync, wakeSyncQueueWorker } from "./syncQueue.ts"
+import { textbookSources } from "./textbookSearch.ts"
+import { syncBookCopy } from "./libraryCopy.ts"
 import { runInBackground } from "./backgroundTask.ts"
 import { getCurrentAdminKey } from "./adminShared.ts"
 
@@ -50,7 +52,12 @@ export function checkAllowedProps(db: WriteDb, props: Record<string, unknown>): 
 	if (bad.length) throw new SaveError(400, `앱에서 ${db}에 쓰지 않는 칸: ${bad.join(", ")}`)
 }
 // 앱이 고친 일정의 학부모 리포트 맞추기: sync-report-cache를 force로 부른다(건너뛰기 없이, 응답을 기다리지 않음).
+export const LIBRARY_DB = "라이브러리(학원) DB"
 export const saveDeps = {
+	// 라이브러리 교재를 고쳤으면 라이브러리 복사본(lib_books)도 바로 맞춘다(library.html과 같은 복사본). 응답은 기다리지 않음.
+	syncLibraryBook: (bookId: string): void => {
+		runInBackground(async () => { await syncBookCopy(await textbookSources(), bookId) })
+	},
 	refreshReport: (pageId: string): void => {
 		runInBackground(async () => {
 			try {
@@ -224,6 +231,8 @@ export async function saveChanges(changes: Change[]): Promise<ChangeResult[]> {
 			const ds = (sources.get(c.db as AppDb) ?? [])[0]
 			if (!ds) throw new SaveError(404, `Notion에서 ${c.db}를 찾지 못했습니다.`)
 			checkAllowedProps(c.db as WriteDb, c.props)
+			// 새 교재는 단원목록까지 만들어야 하므로 textbook-api(register-custom)로만 만든다 — 이 길로는 만들지 않는다.
+			if (c.db === LIBRARY_DB && c.op === "create") throw new SaveError(400, "교재 추가는 라이브러리 등록(textbook-api register-custom)으로 하세요. 단원목록까지 함께 만들어요.")
 			const props = toNotionProps(c.props, await timed("칸형식", () => dataSourceSchema(ds)), resolve)
 			let page: Record<string, any>
 			if (c.op === "create") {
@@ -243,6 +252,7 @@ export async function saveChanges(changes: Change[]): Promise<ChangeResult[]> {
 			// 앱(서버 봇)이 고친 일정은 리포트 반영 웹훅이 "서버가 고친 비공개 나이스 일정"으로 건너뛸 수 있으므로
 			// (scheduleVisibility.noticeReportSyncNotNeeded) 여기서 직접 리포트를 맞춘다(학부모 공개를 끈 것도 빠지게).
 			if (eventAffectsReport(c.db as WriteDb, c.props)) saveDeps.refreshReport(page.id)
+			if (c.db === LIBRARY_DB) saveDeps.syncLibraryBook(page.id)
 			const row = await timed("복사본반영", () => upsertCopy(c.db as WriteDb, page))
 			out.push({ i, ok: true, id: page.id, tmp: c.tmp, row })
 			console.log(`[appSave] ${c.db} ${c.op} ${Date.now() - t0}ms (${steps.join(" ")})`)
