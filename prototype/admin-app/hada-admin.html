@@ -325,7 +325,7 @@ const {n:todo,tip}=todoOf(scr);const c=todo?`<b class="todo" title="${scr==="les
   const goTT=nt=>{if(!nt){const isTT=x=>x.screen==="timetable"&&x.state.view!=="lesson";const has=activeTab&&isTT(activeTab)?activeTab:tabs.find(isTT);if(has){if(has!==activeTab){navPush();activeTab=has}return render()}}openScreen("timetable",nt,{view:"tt"})};
   const go=(scr,nt)=>{if(scr==="timetable")return goTT(nt);if(!nt){const want=scr==="lesson"?"timetable":scr;const isL=x=>x.screen===want&&(want!=="timetable"||x.state.view==="lesson")/* 261118: 수업 메뉴는 수업 보기 탭만(시간표 탭은 그대로 둠) — 지금 탭이 시간표면 그 자리에서 수업으로 */;const has=(activeTab&&isL(activeTab)?activeTab:tabs.find(isL))||(activeTab&&activeTab.screen===want?activeTab:null);if(has){if(want==="timetable"){const hs=has.state;if(has!==activeTab){navPush();activeTab=has}if(hs.view==="lesson"&&hs.lv==="week"){navPush();hs.lv="today"}/* 261118: 주간은 보강에서만 — 수업 메뉴는 오늘 수업으로 */if(hs.view!=="lesson"){if(has===activeTab)navPush();hs.view="lesson";hs.lv="today";hs.sel=null;hs.pending=null;hs.panel=null}return render()}if(has!==activeTab){navPush();activeTab=has;render()}return}}
     if(scr!=="lesson")return openScreen(scr,nt);openScreen("timetable",nt,{view:"lesson"})};
-  el.querySelectorAll(".it[data-scr]").forEach(x=>{x.onclick=e=>{if(!x.dataset.scr)return toast("준비 중인 화면이에요");if(x.dataset.scr.startsWith("ext:"))return toast(`${josa(EXT[x.dataset.scr.slice(4)],"을","를")} 새 탭으로 열어요 — 시제품에는 주소가 없어요(원본에서 연결)`);drawerOpen=false;go(x.dataset.scr,e.ctrlKey||e.metaKey)};
+  el.querySelectorAll(".it[data-scr]").forEach(x=>{x.onclick=e=>{if(!x.dataset.scr)return toast("준비 중인 화면이에요");if(x.dataset.scr.startsWith("ext:")){if(window.LIVE&&window.LIVE.loaded)return liveOpenExt(x.dataset.scr.slice(4));return toast(`${josa(EXT[x.dataset.scr.slice(4)],"을","를")} 새 탭으로 열어요 — 시제품에는 주소가 없어요(원본에서 연결)`)}drawerOpen=false;go(x.dataset.scr,e.ctrlKey||e.metaKey)};
     x.onauxclick=e=>{if(e.button===1&&x.dataset.scr&&!x.dataset.scr.startsWith("ext:")){e.preventDefault();go(x.dataset.scr,true)}};x.onmousedown=e=>{if(e.button===1)e.preventDefault()}});
 }
 // 요일 머리와 아래 칸 너비 맞추기: 아래 스크롤 막대 폭만큼 머리 오른쪽을 비움(261112 대표)
@@ -2153,11 +2153,15 @@ function seedX(){const live=DB.enrolls.filter(e=>!e.ended);const m=TODAY.slice(0
 /* 노션 페이지로 가기(화면 ↔ 노션 메뉴 페이지 1:1). 시제품에는 주소가 없어 알림만, 원본에서는 페이지 ID로 엶 */
 LISTS.tuition.head=x=>`${esc(nmStu(x.studentId))} <small class="hsub">${esc(nmCls(x.classId))} · ${x.month} · ${WON(tuAmt(x))}</small>`;LISTS.bookfees.head=x=>`${esc(nmStu(x.studentId))} <small class="hsub">${esc(x.items)}</small>`;LISTS.reports.head=x=>`${esc(nmCls(x.classId))} <small class="hsub">${x.kind} 보고서 · ${D10(x.from)} - ${D10(x.to)}</small>`;LISTS.letters.head=x=>`${esc(nmCls(x.classId))} <small class="hsub">${x.month} 가정통신문</small>`;LISTS.progress.head=x=>`${esc(nmBook(x.bookId))} <small class="hsub">${esc(nmCls(x.classId))} · ${x.mode==="개별"?esc(nmStu(x.studentId)):"클래스 전체"}</small>`;
 const NOTION={today:"홈",bill:"청구서",makeup:"보강",records:"학습기록",files:"자료실",completion:"수료 보고서",etcs:"기타경비",students:"학생 목록",enrolls:"등록학생",classes:"클래스",timetable:"시간표",lesson:"수업",teachers:"직원관리",subjects:"과목",books:"라이브러리",progress:"진도관리",events:"일정",reports:"학습 보고서",tuition:"수강료",letters:"가정통신문",schools:"학교",glevels:"학년",areas:"영역",exams:"시험",costs:"비용",alims:"알림톡 설정"};
-function notionBtn(scr){const n=NOTION[scr];return n?`<button type="button" class="nlink" aria-label="노션에서 열기" data-notion="${scr}" title="노션 ‘${n}’ 페이지를 새 탭으로 열어요">${IC("notion","s")}</button>`:""}
+function notionBtn(scr){const n=NOTION[scr];if(!n)return "";const miss=window.LIVE&&window.LIVE.loaded&&_menuPages&&!_menuPages[n];/* 261119: 메뉴 주소를 받았는데 그 이름의 줄이 없으면 흐리게 + 이유 */return `<button type="button" class="nlink" aria-label="노션에서 열기" data-notion="${scr}" ${miss?`data-nmiss="1" style="opacity:.4" title="노션 ‘${n}’ 페이지 주소를 찾지 못했어요 — 노션 메뉴 DB에 그 이름의 줄이 있는지 봐요"`:`title="노션 ‘${n}’ 페이지를 새 탭으로 열어요"`}>${IC("notion","s")}</button>`}
 document.addEventListener("click",ev=>{const b=ev.target.closest&&ev.target.closest("[data-engd2]");if(!b)return;const e2=byId(DB.enrolls,b.dataset.engd2);if(e2)enGuideRun(e2)});/* 327판: 등록 화면 창 [등록 안내 전송] */
 /* 261119 대표: 실제 자료 모드의 [N] — 줄 창 = 그 줄의 노션 페이지(data-nurl), 화면 제목 옆 = 그 메뉴의 노션 페이지(서버 사본의 메뉴(학원) DB 줄 주소를 이름으로 찾음). 예시 모드는 아래 알림 그대로 */
 let _menuPages=null;
-async function liveMenuPages(){if(_menuPages)return _menuPages;const c=window.LIVE;if(!c)return {};const rows=await appList({url:c.url,anonKey:c.anonKey,session:c.session},"메뉴(학원) DB");const m={};rows.forEach(r=>{if(!r.url)return;Object.values(r.props||{}).forEach(v=>{if(typeof v==="string"&&v.trim()&&!m[v.trim()])m[v.trim()]=r.url})});return _menuPages=m}
+async function liveMenuPages(){if(_menuPages)return _menuPages;const c=window.LIVE;if(!c)return {};const rows=await appList({url:c.url,anonKey:c.anonKey,session:c.session},"메뉴(학원) DB");const m={};rows.forEach(r=>{if(!r.url)return;Object.values(r.props||{}).forEach(v=>{if(typeof v==="string"&&v.trim()&&!m[v.trim()])m[v.trim()]=r.url})});_menuPages=m;try{render()}catch(_){}return m}
+/* 앱 전체의 노션 연결 한 곳: 사이드바 바깥 메뉴(매뉴얼 · 공개 DB · 비공개 DB · 키오스크) · 학생 보고서 [노션에서 열기] · 수업 페이지 링크 */
+const EXT_MENU={manual:"매뉴얼",pubdb:"공개 DB",privdb:"비공개 DB",files:"자료실"};
+async function liveOpenExt(key){const nm=EXT_MENU[key];let u="";try{u=(await liveMenuPages())[nm]||""}catch(err){return toast(`노션 주소를 받지 못했어요 — ${err.message}`)}if(!u)return toast(`노션 ‘${nm}’ 주소를 찾지 못했어요 — 노션 메뉴 DB에 그 이름의 줄이 있는지 봐요`);window.open(u,"_blank","noopener")}
+document.addEventListener("click",e=>{const a=e.target.closest&&e.target.closest("[data-lpnl]");if(!a)return;e.preventDefault();toast(window.LIVE&&window.LIVE.loaded?"이 수업은 아직 노션에 없어요 — 수업을 생성하면 노션 수업 페이지가 생겨요":"노션 수업 페이지를 새 탭으로 열어요 — 시제품에는 주소가 없어요(원본에서 연결)")});
 document.addEventListener("click",async e=>{const b=e.target.closest&&e.target.closest("[data-notion]");if(!b)return;
   if(window.LIVE&&window.LIVE.loaded){
     if(b.dataset.nnew)return toast("아직 저장하지 않은 새 줄이에요 — 저장하면 노션에 페이지가 생겨요");
@@ -2650,7 +2654,7 @@ document.addEventListener("click",ev=>{if(!activeTab||!ev.target.closest)return;
   const d=t.closest("[data-rpdo]");if(d){ev.stopPropagation();const [a,id]=d.dataset.rpdo.split("|"),nt=ev.ctrlKey||ev.metaKey;
     if(a==="all"){const z=byId(DB.reports,id);if(z)rpAllAsk(z)}
     if(a==="one"){const it=byId(DB.rpStu||[],id);if(it)rpSendOne(it)}
-    if(a==="notion")toast("이 학생의 노션 보고서 페이지를 열어요(시제품: 노션 주소 없음)");
+    if(a==="notion"){if(window.LIVE&&window.LIVE.loaded){const it=byId(DB.rpStu||[],id)||{};const nid=[it.rpId,it.id].find(x=>/^[0-9a-f-]{32,36}$/i.test(String(x||"")));if(nid)window.open("https://www.notion.so/"+String(nid).replace(/-/g,""),"_blank","noopener");else toast("이 학생의 보고서는 아직 노션에 없어요 — 보고서를 보내면 노션에 남아요")}else toast("이 학생의 노션 보고서 페이지를 열어요(시제품: 노션 주소 없음)")}
     if(a==="open"){panelOpen=true;openScreen("reports",nt,{sel:id,ltab:"stu",lf:{}})}
     if(a==="stu")openScreen("students",nt,{sel:id});return}
   const row=t.closest("[data-rpx]");if(!row||t.closest(".bkm"))return;const st=activeTab.state,id=row.dataset.rpx;st.rpX=st.rpX===id?null:id;render()});
