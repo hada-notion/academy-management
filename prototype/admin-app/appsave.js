@@ -327,8 +327,12 @@ function appsEvLock(row, base, send, say) {
 }
 
 // ---------- 모으기 ----------
-function appSaveCollect(DB) {
-	const warn = [], changes = [], refs = [], noop = [], dels = []
+// 지우기(서버 save op:"delete", 노션 휴지통 + 사본 삭제)를 받는 DB(앱 컬렉션 → 노션 DB). 그 밖은 앱에서 지우지 않음(서버가 요청 전체를 400으로 거절하므로 앱이 미리 걸러 이유를 보여 줌).
+// 지우는 순서 = 딸린 줄 먼저(진도 → 시간표 → 등록 → 학생 → 클래스 → 시즌 → 강사 → 과목 → 영역): 서버가 연결된 기록이 있으면 막기 때문
+const APPS_DEL_ORDER = ["progress", "blocks", "enrolls", "students", "classes", "seasons", "teachers", "subjects", "areas"]
+// only(coll, row) = 이 줄만 모으는 거름(창 [저장]); 없으면 모두(위 [저장])
+function appSaveCollect(DB, only) {
+	const warn = [], changes = [], refs = [], noop = [], dels = [], delRows = [], refused = []
 	let warnKeep = 0
 	const X = appSaveX(DB, warn)
 	const made = new Set() // 이 요청에서 먼저 만들어지는 tmp
@@ -337,9 +341,13 @@ function appSaveCollect(DB) {
 		if (coll === "progress") rows.sort((a, b) => (a.mode === "개별") - (b.mode === "개별")) // 반 교재(그룹) 먼저
 		for (const row of rows) {
 			if (!row || row._virtual) continue
+			if (only && !only(coll, row)) continue
 			warn.length = warnKeep // 앞 줄이 보낼 것 없이 넘어갔으면 그 줄의 알림은 버린다(이미 저장된 줄 알림이 저장마다 되풀이되지 않게)
 			const isNew = !appsIsId(row.id)
-			if (row.del) { if (!isNew) dels.push({ coll, id: row.id, name: row.name || "" }); continue } // 지우기는 보내지 않음(노션에서 직접)
+			if (row.del) { // 지우기: 노션에 있는 줄만(저장 전 새 줄은 화면에서만 사라짐). 허용 DB는 아래에서 op:"delete"로, 그 밖은 이유와 함께 거절
+					if (!isNew) { dels.push({ coll, id: row.id, name: row.name || "" }); if (APPS_DEL_ORDER.includes(coll)) delRows.push({ coll, row }); else refused.push({ coll, row }) }
+					continue
+				}
 			// 창 아래 [ㅇㅇ 저장]은 앱 안에서만 "저장됨"으로 바꾸므로, 작성 중 표시가 없어도 불러온 값(기준)과 달라진 줄은 보낸다
 			if (!isNew && !appsDirty(coll, row) && !APPS_BASE.has(coll + ":" + row.id)) continue
 			const props = APPSAVE[coll].props(row, X)
@@ -384,7 +392,14 @@ function appSaveCollect(DB) {
 		}
 	}
 	warn.length = warnKeep
-	return { changes, refs, noop, dels, warn }
+	// 지우기는 만들기·고치기 뒤에, 딸린 줄 먼저
+	for (const coll of APPS_DEL_ORDER) for (const d of delRows) {
+		if (d.coll !== coll) continue
+		const ch = { op: "delete", db: APPSAVE[coll].db, id: d.row.id }
+		if (d.row._edited) ch.edited = d.row._edited
+		changes.push(ch); refs.push({ coll, row: d.row, del: true })
+	}
+	return { changes, refs, noop, dels, refused, warn }
 }
 
 // ---------- 보내기 ----------
@@ -411,19 +426,29 @@ function appSaveRemap(DB, oldId, newId) {
 		}
 	}
 }
-async function appSaveSend(conn, DB) {
+// opts = { only(coll,row): 이 줄만(창 [저장]) · step: 한 번에 보낼 줄(진행 n/m 단위, 기본 10) · onProgress(n, m): 보낸 줄 수 }
+async function appSaveSend(conn, DB, opts) {
+	opts = opts || {}
 	// 노션 자료를 이번에 끝까지 받은 뒤에만 보낸다(예시 자료 · 반쯤 받은 자료가 노션에 들어가는 것을 막음)
 	if (!conn || conn.loaded !== true) throw new Error("노션 자료를 다 받기 전에는 저장할 수 없어요")
-	const col = appSaveCollect(DB)
-	const out = { sent: 0, ok: 0, failed: [], skipped: col.noop.length, dels: col.dels, warn: col.warn, idMap: {} }
+	const col = appSaveCollect(DB, opts.only)
+	const out = { sent: 0, ok: 0, deleted: 0, failed: [], skipped: col.noop.length, dels: [], warn: col.warn, idMap: {} }
+	// 앱에서 지우지 않는 DB의 삭제 예정 줄: 보내지 않고 이유를 보여 준 뒤 삭제 예정을 풀어 숫자에 남지 않게(거짓 성공 없음)
+	for (const { coll, row } of col.refused || []) {
+		out.failed.push({ coll, id: row.id, name: row.name || "", error: "이 항목은 앱에서 지우지 않아요 — 노션에서 지워요(삭제 예정을 풀었어요)" })
+		delete row.del
+	}
 	const real = new Map() // "tmp:<옛 id>" → 노션 id(앞 묶음에서 만든 것)
 	const done = [] // 성공한 줄(기준 값은 id를 다 바꾼 뒤에 적는다)
 	const fail = (ref, error, conflict, row) => out.failed.push({ coll: ref.coll, id: ref.row.id, name: ref.row.name || "", error, conflict: !!conflict, ...(row ? { row } : {}) })
 	let stop = ""
-	for (let at = 0; at < col.changes.length; at += APPS_MAX) {
-		const refs = col.refs.slice(at, at + APPS_MAX)
+	const STEP = Math.max(1, Math.min(APPS_MAX, opts.step || 10))
+	for (let at = 0; at < col.changes.length; at += STEP) {
+		const refs = col.refs.slice(at, at + STEP)
 		if (stop) { refs.forEach((ref) => fail(ref, "앞 묶음 저장이 실패해 보내지 않았어요")); continue }
-		const batch = col.changes.slice(at, at + APPS_MAX).map((c) => {
+		if (opts.onProgress) { try { opts.onProgress(at, col.changes.length) } catch (_) {} }
+		const batch = col.changes.slice(at, at + STEP).map((c) => {
+			if (c.op === "delete") return { ...c } // 지우기는 props 없음
 			const props = {}
 			for (const [k, v] of Object.entries(c.props)) props[k] = Array.isArray(v) ? v.map((s) => (real.has(s) ? real.get(s) : s)) : v
 			return { ...c, props }
@@ -433,8 +458,15 @@ async function appSaveSend(conn, DB) {
 		out.sent += batch.length
 		refs.forEach((ref, i) => {
 			const r = results.find((x) => x.i === i)
-			if (!r || !r.ok) return fail(ref, appsFailText(ref.coll, (r && r.error) || "결과가 없어요"), r && r.conflict, r && r.conflict ? r.row : null)
+			if (!r || !r.ok) return fail(ref, ref.del ? ((r && r.error) || "결과가 없어요") : appsFailText(ref.coll, (r && r.error) || "결과가 없어요"), r && r.conflict, r && r.conflict ? r.row : null)
 			const { coll, row } = ref
+			if (ref.del) { // 지우기 성공: 노션 휴지통 + 사본에서 빠짐 → 화면 목록에서도 뺌
+				const arr = DB[coll] || [], at2 = arr.indexOf(row)
+				if (at2 > -1) arr.splice(at2, 1)
+				APPS_BASE.delete(coll + ":" + row.id)
+				out.deleted++; out.ok++
+				return
+			}
 			if (batch[i].op === "create" && r.id && r.id !== row.id) {
 				const old = row.id
 				real.set("tmp:" + old, r.id)

@@ -317,8 +317,13 @@ function liveHooks() {
   toast = (msg) => {
     const m = String(msg), tag = /\s*\(시제품: 노션에 쓰지 않음\)/;
     if (window.LIVE && tag.test(m)) {
-      if (!window._liveSaving && pending()) { setTimeout(() => liveSave(), 0); return; }
-      return toast0(m.replace(tag, ""));
+      /* 서버에 쓰는 길은 창 [저장](그 창의 줄만)과 위 [저장](모두) 둘뿐 — 예전에는 이 알림이 뜰 때마다 모두 저장했다(자동 저장). 이제 창이 열려 있으면 그 줄만, 아니면 저장하지 않고 위 [저장]을 안내한다 */
+      if (window._liveSaving) return toast0(m.replace(tag, ""));
+      const sel = typeof activeTab !== "undefined" && activeTab && activeTab.state ? activeTab.state.sel : null;
+      let hit = null;
+      if (sel) for (const coll of APPS_ORDER) { const r = (DB[coll] || []).find((x) => x && x.id === sel); if (r) { hit = { coll, r }; break; } }
+      if (hit && pending()) { setTimeout(() => liveSaveRow({ coll: hit.coll }, hit.r), 0); return; }
+      return toast0(m.replace(tag, "") + (pending() ? " — 위 [저장]을 눌러 노션에 저장해요" : ""));
     }
     toast0(m);
   };
@@ -384,6 +389,21 @@ function liveBookRegisterOpen() {
     setTimeout(() => { const i = m.querySelector("#brT input"); if (i) i.focus(); }, 0);
   });
 }
+/* 창 [저장](대표 261119): 그 창의 줄만 서버에 저장한다(학생 창은 그 학생의 작성 중 등록까지). 삭제 예정 줄은 save op:"delete"로 — 성공한 줄만 화면에서 빠진다.
+   저장 전 새 줄을 삭제한 경우는 노션에 없으므로 화면에서만 지운다. 서버 반영이 끝난 뒤 위 숫자와 창이 함께 맞춰진다(liveSaveRun) */
+function liveSaveRow(L, r) {
+  if (!r) return null;
+  if (L.coll === "enrolls" && !r.del && (!r.studentId || !r.classId)) { toast("학생과 클래스를 골라야 등록을 저장할 수 있어요"); return null; }
+  if (r.del && typeof appsIsId === "function" && !appsIsId(r.id)) {
+    const a = DB[L.coll] || [], i = a.indexOf(r);
+    if (i > -1) a.splice(i, 1);
+    try { if (activeTab.state.sel === r.id) { activeTab.state.sel = null; } commit(); } catch (_) {}
+    toast("삭제했어요 — 저장 전에 만든 줄이라 노션에는 없었어요");
+    return null;
+  }
+  const only = (coll, row) => row === r || (L.coll === "students" && coll === "enrolls" && row.studentId === r.id);
+  return liveSave({ only }).then((res) => { try { if (res && res.deleted && activeTab.state.sel === r.id && !(DB[L.coll] || []).includes(r)) { activeTab.state.sel = null; render(); } } catch (_) {} return res; });
+}
 /* 실제 자료 모드의 [수업 생성]: 시간표마다 다음 수업 한 번을 노션 수업 생성 큐에 맡긴다(app-api run — 시간표 [수업 추가]와 같은 처리).
    저장 전인 새 시간표는 노션에 아직 없으므로 먼저 저장하라고 알린다. 수업 · 출석은 1-2분 뒤 노션에 생긴다(앱 화면에는 그리지 않음). */
 async function liveRunClasses(blockIds) {
@@ -404,7 +424,8 @@ async function liveRunClasses(blockIds) {
     return body;
   } catch (e) { toast("수업 생성을 맡기지 못했어요 — " + e.message); return null; }
 }
-async function liveSave() {
+async function liveSave(opts) { /* opts.only(coll,row) = 이 줄만 저장(창 [저장]) · 없으면 모든 수정(우측 상단 [저장]) */
+  opts = opts || {};
   if (!(window.LIVE && window.LIVE.loaded)) { toast("노션 자료를 다 받기 전에는 저장할 수 없어요"); return null; }
   if (window._liveSaving) return null;
   window._liveSaving = true;
@@ -412,7 +433,7 @@ async function liveSave() {
     if (window.LIVE_OPTS_PENDING && window.LIVE_OPTS_PROMISE) { toast("노션 선택지를 불러온 뒤에 저장해요"); await window.LIVE_OPTS_PROMISE; } /* 선택지에 없는 값을 거르려면 선택지가 먼저 필요(저장 층이 읽음) */
     /* 수업 출결(작성 중인 수업)이 있으면 먼저 수업 관리 서버로 보낸다(출결 쓰기 칸이 켜져 있을 때) */
     let lessons = 0;
-    if ((window.LIVE_ATTW || window.LIVE_RECW) && typeof liveLessonSave === "function") {
+    if (!opts.only && (window.LIVE_ATTW || window.LIVE_RECW) && typeof liveLessonSave === "function") {
       /* 작성 중인 수업 = 수업 창 표시(LDIRTY) + 학습기록 쓰기 칸이면 작성 중 기록이 있는 수업(Z1) — 실제 수업(LIVE_LS)만 */
       const ks = new Set([...LDIRTY.keys()].filter((k) => !k.startsWith("mk:")));
       if (window.LIVE_RECW) (DB.recs || []).forEach((r) => { if (r.state === "draft" && !r.del && r.key && typeof LIVE_LS !== "undefined" && LIVE_LS[r.key]) ks.add(r.key); });
@@ -420,18 +441,19 @@ async function liveSave() {
       for (const k of ks) { if (await liveLessonSave(k)) lessons++; }
     }
     /* 보강(칸 P3m): 만들기 · 배정 · 빼기 · 지우기를 서버 보강 동작으로 */
-    if (window.LIVE_MKW && typeof liveMakeupSave === "function") lessons += await liveMakeupSave();
-    let pend = 0; try { pend = appSaveCollect(DB).changes.length; } catch (_) {}
+    if (!opts.only && window.LIVE_MKW && typeof liveMakeupSave === "function") lessons += await liveMakeupSave();
+    let pend = 0; try { pend = appSaveCollect(DB, opts.only).changes.length; } catch (_) {}
     if (lessons && !pend) return { ok: 0, failed: [], lessons };
-    return await liveSaveRun();
+    return await liveSaveRun(opts);
   } finally { window._liveSaving = false; }
 }
-async function liveSaveRun() {
+async function liveSaveRun(opts) {
   const say = (m) => toast(m);
   const esc2 = (s) => (typeof esc === "function" ? esc(s) : String(s));
   say("노션에 저장하는 중이에요");
   let res;
-  try { res = await appSaveSend(window.LIVE, DB); }
+  /* 서버는 줄을 하나씩 순서대로 노션에 쓴다 — 느려도 되고, 앱은 몇 줄째인지 보여 준다 */
+  try { res = await appSaveSend(window.LIVE, DB, { only: opts && opts.only, onProgress: (n, m) => { if (m > 10) say(`노션에 저장하는 중이에요 · ${n}/${m}줄`); } }); }
   catch (e) { say("저장하지 못했어요 — " + e.message); return null; }
   /* 새 줄은 노션 id로 바뀐다: 열려 있는 탭이 가리키던 옛 id도 바꾼다 */
   if (window.liveRoReset) window.liveRoReset(); /* 보기 화면에서 저장했을 때 저장 결과(새 id · 저장됨)를 되돌리지 않게 */
@@ -445,9 +467,14 @@ async function liveSaveRun() {
   try { undoStack.length = 0; if (typeof redoStack !== "undefined") redoStack.length = 0; lastSnap = snapshot(); } catch (_) {}
   try { if (window.liveSelBack) window.liveSelBack(); } catch (_) {}
   render(); try { savedSync(); } catch (_) {} try { if (window.liveStuMark) window.liveStuMark(); } catch (_) {} /* 저장된 학생의 되돌리기 기준을 새로 적는다 */
-  const dels = (res.dels || []).length, warn = (res.warn || []).length;
-  if (!res.failed.length && !dels && !warn) { say(`노션에 저장했어요 · ${res.ok}줄`); return res; }
+  const warn = (res.warn || []).length;
+  /* 저장 버튼 규칙(대표 261119): 서버 반영이 끝난 뒤 숫자를 줄이고, 실패한 줄은 이유와 함께 숫자에 남긴다. 바뀐 것이 없으면 "저장할 변경이 없어요" */
+  let left = 0; try { left = dirtyCount(); } catch (_) {}
+  if (!res.failed.length && !warn) {
+    if (!res.ok && !res.sent) { say("저장할 변경이 없어요"); return res; }
+    say(`저장했어요 · ${res.ok}줄${res.deleted ? ` (삭제 ${res.deleted}줄 포함)` : ""}${opts && opts.only && left ? ` · 저장할 것 ${left}개 남음(위 [저장])` : ""}`); return res;
+  }
   const li = (a) => a.map((f) => `<li><b>${esc2(f.name || f.coll || "")}</b> — ${esc2(f.conflict ? "그사이 노션에서 바뀌었어요. 새로 고친 뒤 다시 저장해요" : f.error || f.msg || f)}</li>`).join("");
-  modal(`<h2>저장 결과</h2><div class="box"><p>노션에 저장 ${res.ok}줄${res.failed.length ? ` · 저장 안 됨 ${res.failed.length}줄(작성 중으로 남겼어요)` : ""}</p>${res.failed.length ? `<ul>${li(res.failed)}</ul>` : ""}${warn ? `<p class="hint">확인할 것 ${warn}건</p><ul>${li((res.warn || []).map((w) => (typeof w === "string" ? { error: w } : w)))}</ul>` : ""}${dels ? `<p class="hint">삭제 예정 ${dels}줄은 보내지 않았어요 — 노션에서 직접 지워요.</p>` : ""}</div><div class="actions"><span class="sp"></span><button class="btn pri" id="co">확인</button></div>`, (m, close) => { m.querySelector("#co").onclick = close; });
+  modal(`<h2>저장 결과</h2><div class="box"><p>노션에 저장 ${res.ok}줄${res.failed.length ? ` · 저장 안 됨 ${res.failed.length}줄(작성 중으로 남겼어요)` : ""}</p>${res.failed.length ? `<ul>${li(res.failed)}</ul>` : ""}${warn ? `<p class="hint">확인할 것 ${warn}건</p><ul>${li((res.warn || []).map((w) => (typeof w === "string" ? { error: w } : w)))}</ul>` : ""}</div><div class="actions"><span class="sp"></span><button class="btn pri" id="co">확인</button></div>`, (m, close) => { m.querySelector("#co").onclick = close; });
   return res;
 }
