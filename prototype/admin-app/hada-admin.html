@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리 앱 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3C%2Fsvg%3E">
-<link rel="stylesheet" href="hada-tokens.css?v=705">
-<link rel="stylesheet" href="app.css?v=705">
-<link rel="stylesheet" href="pick.css?v=705">
-<link rel="stylesheet" href="field.css?v=705">
+<link rel="stylesheet" href="hada-tokens.css?v=706">
+<link rel="stylesheet" href="app.css?v=706">
+<link rel="stylesheet" href="pick.css?v=706">
+<link rel="stylesheet" href="field.css?v=706">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -20,7 +20,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=705"><script src="hada-rules.js?v=705"></script><script src="help.js?v=705"></script><script src="alim-preview.js?v=705"></script><script src="pick.js?v=705"></script><script src="field.js?v=705"></script><script src="panel.js?v=705"></script>
+<link rel="stylesheet" href="alim.css?v=706"><script src="hada-rules.js?v=706"></script><script src="help.js?v=706"></script><script src="alim-preview.js?v=706"></script><script src="pick.js?v=706"></script><script src="field.js?v=706"></script><script src="panel.js?v=706"></script>
 <script>
 "use strict";
 
@@ -1625,7 +1625,7 @@ function pickStudents(title,classId,block,done){
 }
 /* 270판(대표 261115 D안 — Make 모듈 [OK]·시나리오 저장처럼 두 단계): 창 아래 = 이 줄만 바로 저장(목록 창 없음), 위 [저장 n] = 작성 중 모두 */
 const rowDirty=(L,r)=>!!r&&(L.dirtyFn?L.dirtyFn(r):L.coll==="seasons"?!!r.dirty:r.state==="draft");/* dirtyFn = 화면이 정하는 "고친 것 있음"(학생1 = 학생 + 그 학생 작성 중 등록) */
-function rowSaveOne(L,r){if(!rowDirty(L,r))return;if(L.saveFn)return L.saveFn(r);/* 한 줄 저장 규칙을 따로 정한 화면(학생1 = 학생 + 그 학생 작성 중 등록) */if(L.coll==="enrolls"&&!r.del&&(!r.studentId||!r.classId)){toast("학생과 클래스를 골라야 등록을 저장할 수 있어요");return}if(L.coll==="enrolls"){const s0=stu(r.studentId);if(s0&&s0._newHere&&s0.state==="draft"){s0.state="saved";delete s0._newHere}delete r._pickStu}if(L.coll==="seasons"){delete r.dirty;const left0=dirtyCount();commit();toast(`저장했어요${left0?` · 작성 중 ${left0}개 남음(위 [저장])`:""} (시제품: 노션에 쓰지 않음)`);return}if(r.del){const a=DB[L.coll],i=a.indexOf(r);if(i>-1)a.splice(i,1)}else r.state="saved";const left=dirtyCount();commit();toast(`저장했어요${left?` · 작성 중 ${left}개 남음(위 [저장])`:""} (시제품: 노션에 쓰지 않음)`)}
+function rowSaveOne(L,r){if(window.LIVE&&window.LIVE.loaded&&typeof liveSaveRow==="function")return liveSaveRow(L,r);/* 261119 대표: 실제 자료 모드 창 [저장] = 그 줄만 서버에 저장(삭제 포함), 끝난 뒤에 숫자·창을 맞춤 — 예시 모드는 아래 그대로 */if(!rowDirty(L,r))return;if(L.saveFn)return L.saveFn(r);/* 한 줄 저장 규칙을 따로 정한 화면(학생1 = 학생 + 그 학생 작성 중 등록) */if(L.coll==="enrolls"&&!r.del&&(!r.studentId||!r.classId)){toast("학생과 클래스를 골라야 등록을 저장할 수 있어요");return}if(L.coll==="enrolls"){const s0=stu(r.studentId);if(s0&&s0._newHere&&s0.state==="draft"){s0.state="saved";delete s0._newHere}delete r._pickStu}if(L.coll==="seasons"){delete r.dirty;const left0=dirtyCount();commit();toast(`저장했어요${left0?` · 작성 중 ${left0}개 남음(위 [저장])`:""} (시제품: 노션에 쓰지 않음)`);return}if(r.del){const a=DB[L.coll],i=a.indexOf(r);if(i>-1)a.splice(i,1)}else r.state="saved";const left=dirtyCount();commit();toast(`저장했어요${left?` · 작성 중 ${left}개 남음(위 [저장])`:""} (시제품: 노션에 쓰지 않음)`)}
 function saveDialog(only){if(DB.enrolls.some(e=>e.state==="draft"&&!e.del&&(!e.studentId||!e.classId))){toast("새 등록에 학생과 클래스를 골라야 저장돼요");return}
   const blocks=(only||DB.blocks.filter(b=>b.state==="draft"));const deps=new Set();
   blocks.forEach(b=>{const c=cls(b.classId);if(c&&c.state==="draft")deps.add("클래스 "+c.name);b.regs.forEach(r=>{const e=enr(r);if(e&&e.state==="draft")deps.add("수강 "+studentLabel(stu(e.studentId))+" · "+(cls(e.classId)||{name:""}).name)})});
@@ -4912,6 +4912,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del&&!z._virtual).
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="appdata.js?v=705"></script><script src="appsave.js?v=705"></script><script src="appview.js?v=705"></script><script src="livelesson.js?v=705"></script><script src="live.js?v=705"></script>
+<script src="appdata.js?v=706"></script><script src="appsave.js?v=706"></script><script src="appview.js?v=706"></script><script src="livelesson.js?v=706"></script><script src="live.js?v=706"></script>
 </body>
 </html>
