@@ -31,7 +31,7 @@ window.liveModeFor = function (search, hostname, protocol) {
   window.liveBusy = (msg) => { if (msg) { if (busyPrev === null) { const b0 = document.getElementById("liveBanner"); busyPrev = b0 ? b0.textContent : ""; } banner(msg, false); } else if (busyPrev !== null) { banner(busyPrev); busyPrev = null; } };
   /* 칸 켜기(hada-rules.js GATES · GATES_ON): 꺼진 칸의 화면은 메뉴에서 빼고 열리지 않게 한다. 주소 &gates=P1,P2 = 검수용 */
   const gOn = new Set(((/[?&]gates=([\w,]+)/.exec(location.search) || [])[1] || GATES_ON.join(",")).split(",").filter(Boolean));
-  window.gateOn = (s) => String(s).startsWith("ext:") || Object.entries(GATES).some(([g, list]) => gOn.has(g) && list.includes(s));
+  window.gateOn = (s) => String(s).startsWith("ext:") || String(s).startsWith("web:") || Object.entries(GATES).some(([g, list]) => gOn.has(g) && list.includes(s));
   for (let i = MENU.length - 1; i >= 0; i--) { MENU[i][1] = MENU[i][1].filter((x) => gateOn(x[0])); if (!MENU[i][1].length) MENU.splice(i, 1); }
   const os0 = openScreen;
   openScreen = (s, ...rest) => { if (!gateOn(s)) { say("이 화면은 아직 열지 않았어요 — 노션에서 봐요"); return; } return os0(s, ...rest); };
@@ -186,7 +186,7 @@ window.liveModeFor = function (search, hostname, protocol) {
   /* 허용 목록(보기 화면에서 눌러도 되는 것 = 값이 바뀌지 않는 것). 여기 없는 단추 · 고르기 · 입력은 보기 화면에서 꺼지고 막힌다.
      창: 링크 · 도움말 · 노션 · 줄 열기/이동 · 접기 · 탭 · 할 일 줄. 위 줄: 날짜 · 달 · 주 이동, 보기 탭, 찾기, 엑셀 · 인쇄, 크기, 창 고정,
      그리고 입력 칸(P1)에서 고친 것을 다루는 실행 취소 · 다시 실행 · 모두 되돌리기 · 저장. */
-  const RO_PASS0 = "a,[data-help],[data-notion],.hnot,[data-drill],[data-go],[data-gobook],[data-gochs],[data-gobill],[data-act^=go],[data-rpdo^=open],[data-rpdo^=notion],[data-pgfold],[data-entab],[data-ldn],[data-lmn],.ptabs,.ro-note,.tdr,.tdmore,.qhelp,summary,"
+  const RO_PASS0 = "a,[data-web],[data-help],[data-notion],.hnot,[data-drill],[data-go],[data-gobook],[data-gochs],[data-gobill],[data-act^=go],[data-rpdo^=open],[data-rpdo^=notion],[data-pgfold],[data-entab],[data-ldn],[data-lmn],.ptabs,.ro-note,.tdr,.tdmore,.qhelp,summary,"
     + "[data-dn],[data-mn],[data-sub],[data-cfnav],[data-mtab],[data-view],[data-wkd],[data-evsel],.foldchip,#lq,.sbx,#xlB,#prB,#undoB,#redoB,#rvAll,#saveAll,#panelT,#mkPanelT,#seaChip,#wkP,#wkN,#wkT,#lmAtt,#cbFind,#zOut,#zIn,#makeWeek,#lGen"; /* #makeWeek · #lGen(수업 메뉴 v559의 생성 단추) = 수업 생성: 노션 버튼과 같은 서버 함수(generate-classes)를 부르는 run이라 보기 화면에서도 켠다(대표 261117 "수업 생성은 앱에서도") */
   const RO_HIT = "button,input,select,textarea,label,[role],[tabindex],[contenteditable],.btn,.lnk,.hf-box";
   const roBlock = (e) => {
