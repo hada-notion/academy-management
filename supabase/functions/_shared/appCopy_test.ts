@@ -2,6 +2,7 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts"
 import { APP_DBS, flattenProps, isAppDb, pageRow, pickSources, resolveSources } from "./appCopy.ts"
 import { CLEAR_DBS, KEEP_DBS } from "./exampleClear.ts"
+import "./dbNames_test.ts" // 관 꼬리표 이름(항목 102) 시험도 이 파일이 도는 CI에서 같이 돈다
 
 const rt = (s: string) => [{ plain_text: s }]
 

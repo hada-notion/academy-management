@@ -1,5 +1,6 @@
 import { SecurityError,securityEnabled,securityRpc,sha256,randomToken,validatePassword,hashPassword,verifyPassword,nextRecommended,ensureInitialized,fixedWebhookKey,SECURITY_WEBHOOK_ROUTES } from '../_shared/adminSecurity.ts';
 import { NOTION_API,NOTION_TOKEN,NOTION_VERSION } from '../_shared/constants.ts';
+import { normalizeBareDbTitle } from '../_shared/dbNames.ts';
 // While security is disabled the function only answers with a fixed 503 message and no secrets, so the
 // browser must be able to read it for the legacy-login fallback even before ADMIN_ALLOWED_ORIGINS is set.
 function cors(req:Request,enforceOrigin:boolean):Record<string,string> {
@@ -21,7 +22,7 @@ export async function notionDatabaseLinks():Promise<Record<string,string>> {
     const data=await res.json();
     for(const r of data.results??[]){
       if(r.in_trash||r.archived)continue;
-      const title=(r.title??[]).map((t:any)=>t.plain_text??'').join('').replace(/\s+/g,'').replace(/DB$/i,'');
+      const title=normalizeBareDbTitle((r.title??[]).map((t:any)=>t.plain_text??'').join('').replace(/\s+/g,'').replace(/DB$/i,'')); // 관 꼬리표("학생(스터디)")도 "(학원)"으로 보고 링크 키를 만든다(v2.8.0 항목 102)
       const id=String(r.parent?.database_id??'').replace(/-/g,'');
       if(!title.includes('(학원)')||!/^[0-9a-f]{32}$/.test(id))continue;
       const prev=found.get(title);if(!prev||String(r.last_edited_time)>prev.edited)found.set(title,{url:`https://www.notion.so/${id}`,edited:String(r.last_edited_time)});
