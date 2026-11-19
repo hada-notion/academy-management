@@ -143,7 +143,6 @@
 .hf-custom:hover{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--brand-mid)}
 .hf-custom svg{width:16px;height:16px}
 .hf-custom input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
-.hf-hex{color:var(--text-muted);font-size:var(--text-caption)}
 /* v37 글자 높이 가운데: 한글 글꼴은 글자 몸통이 줄 가운데보다 1px 아래에 앉아 처져 보임 → 칸 안 글자만 1px 올림(아이콘·칸 높이는 그대로) */
 .hf-box input,.hf-val,.hf-unit,.hf-dw,.hf-cnt,.hf-seg button,.hf-days button,.hp-sfld input,.hp-cardfld .nm,.hp-cardfld .hp-rt{position:relative;top:-1px}
 .hf-days button,.hf-seg button{top:0;padding-bottom:2px}
