@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리 앱 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3C%2Fsvg%3E">
-<link rel="stylesheet" href="hada-tokens.css?v=711">
-<link rel="stylesheet" href="app.css?v=711">
-<link rel="stylesheet" href="pick.css?v=711">
-<link rel="stylesheet" href="field.css?v=711">
+<link rel="stylesheet" href="hada-tokens.css?v=712">
+<link rel="stylesheet" href="app.css?v=712">
+<link rel="stylesheet" href="pick.css?v=712">
+<link rel="stylesheet" href="field.css?v=712">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -20,7 +20,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=711"><script src="hada-rules.js?v=711"></script><script src="help.js?v=711"></script><script src="alim-preview.js?v=711"></script><script src="pick.js?v=711"></script><script src="field.js?v=711"></script><script src="panel.js?v=711"></script>
+<link rel="stylesheet" href="alim.css?v=712"><script src="hada-rules.js?v=712"></script><script src="help.js?v=712"></script><script src="alim-preview.js?v=712"></script><script src="pick.js?v=712"></script><script src="field.js?v=712"></script><script src="panel.js?v=712"></script>
 <script>
 "use strict";
 
@@ -286,7 +286,7 @@ let lastW=WMODE();window.addEventListener("resize",()=>{const w=WMODE();if(w!==l
 document.addEventListener("keydown",e=>{if(e.ctrlKey||e.metaKey||e.altKey||(e.key!=="["&&e.key!=="]"))return;const t=e.target;if(t&&(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)))return;if(document.querySelector("#modalRoot .modal, .modal.on"))return;
   if(!activeTab)return;e.preventDefault();if(e.key==="["){const b=document.getElementById("sideT");if(b)b.click();return}
   // ] = [창] 단추와 같음: 펼치기 → 고정 → 닫기(261112 대표)
-  const b=document.getElementById("panelT")||document.getElementById("stPanelT");if(b)b.click()});
+  const b=document.getElementById("panelT")||document.getElementById("stPanelT")||document.getElementById("mkPanelT");if(b)b.click()});
 // 브라우저 뒤로(마우스 뒤로 버튼·Alt+←)도 앱 안 뒤로로
 // 브라우저 뒤로·앞으로(마우스 버튼·Alt+←→·위 버튼)를 앱 안 이동으로 바꾼다
 window.addEventListener("popstate",e=>{const i=(e.state&&e.state.hada)||0;const ok=i<navIdx?goBack():goFwd();navIdx=i;if(!ok)render()});
@@ -3282,7 +3282,7 @@ function lpOpen(st,k){if(!k)return;if(k.startsWith("mk:"))return goLesson(st,k);
 document.addEventListener("focusin",e=>{const x=e.target;if(x&&x.tagName==="TEXTAREA"&&window.HFLIST)HFLIST.bind(x)});
 /* 261119 대표: 화면 설명은 도움말(?) 단추 안에 — 화면 위 설명 줄은 두지 않음 */
 const LVHELP=HELPTX.lv;/* 도움말 글은 help.js 한 곳 */
-function lvTop(st,lv,ph){return `<div class="top"><div class="zone">${ttogHtml(lv,st)}${LVHELP[lv]?HELP(LVHELP[lv]):""}</div><div class="zone end no-print"><span class="searchbox">${IC("search")}<input class="inp" id="lq" placeholder="${ph}" value="${esc(st.q||"")}"></span><span class="tb-grp"><button class="btn icon tb-ic" id="undoB" title="실행 취소 Ctrl+Z">${IC("cul")}</button><button class="btn icon tb-ic" id="redoB" title="다시 실행 Ctrl+Y">${IC("cur")}</button></span>${rvBtn()}<button class="btn pri tb-num" id="saveAll" ${dirtyCount()?"":"disabled"} title="${dirtyTitle()}">${IC("save","s")}저장 <span class="num">${dirtyCount()}</span></button></div></div>`}
+function lvTop(st,lv,ph){return `<div class="top"><div class="zone">${ttogHtml(lv,st)}${LVHELP[lv]?HELP(LVHELP[lv]):""}</div><div class="zone end no-print"><span class="searchbox">${IC("search")}<input class="inp" id="lq" placeholder="${ph}" value="${esc(st.q||"")}"></span><span class="tb-grp"><button class="btn icon tb-ic" id="undoB" title="실행 취소 Ctrl+Z">${IC("cul")}</button><button class="btn icon tb-ic" id="redoB" title="다시 실행 Ctrl+Y">${IC("cur")}</button></span>${rvBtn()}<button class="btn pri tb-num" id="saveAll" ${dirtyCount()?"":"disabled"} title="${dirtyTitle()}">${IC("save","s")}저장 <span class="num">${dirtyCount()}</span></button>${lv==="atm"?"":`<button class="btn icon tb-ic" id="panelT" title="${pTT(!!(panelOpen&&(st.lsel||st.mkNew)))}">${IC("panel")}</button>`}</div></div>`}/* 261120: 주간 · 월간 수업 화면에도 오른쪽 창 단추(다른 화면과 같은 자리 = [저장] 오른쪽). 출결 현황은 오른쪽 창을 쓰지 않아(날짜를 누르면 그날 등원 학생으로 감) 단추 없음 */
 /* 261119 대표(시안 8): 수업 블록을 누르면 오른쪽 창 먼저(오늘 · 주간 · 월간 같은 창 = panelLesson / 보강 panelMk), 창의 [수업 화면]으로 하루 수업 화면 */
 function lvSelect(st,k){st.lsel=k;st.lsStu=null;st.ldStu=null;st.mkNew=null;if(st.ltab==="rep")st.ltab="att";if(!k.startsWith("mk:")&&(st.lv==="mon"||st.lv==="atm")){const d=k.split("|")[1];st.week=dPlus(d,-dow(d))}panelOpen=true;render()}
 /* 261119 대표: 보강 추가 = [5 | 7] 단추 옆 [+] → 오른쪽 창에 새 보강(날짜 · 시간 · 클래스 · 학생) */
@@ -3291,6 +3291,7 @@ function lvMkBind(v,st,d0){const b=v.querySelector("#lvMkAdd");if(b)b.onclick=()
 function lvPanelMount(v,t){const st=t.state;const p=v.querySelector("#panel.lvpanel");if(!p||!(st.lsel||st.mkNew))return;if(st.mkNew&&!st.lsel)return panelLesson(p,t,[]);let items=[];if(!st.lsel.startsWith("mk:")){const [bid,d]=st.lsel.split("|");const b=byId(DB.blocks,bid);if(!b){st.lsel=null;return}items=[{b,d}]}panelLesson(p,t,items)}
 const lvPanelHtml=st=>panelOpen&&(st.lsel||st.mkNew)?'<div class="panel lvpanel" id="panel"></div>':"";
 function lvBind(v,t){const st=t.state;bindTitle(v,t);bindTtog(v,t);
+  {const pt=v.querySelector("#panelT");if(pt)pt.onclick=()=>{if(!(st.lsel||st.mkNew))return toast("수업을 누르면 오른쪽에 그 수업 창이 열려요");/* 이 보기의 오른쪽 창 = 고른 수업 창 */if(panelOpen)return closePanel(t);panelOpen=true;LS.set("panel",true);render()}}
   {const qi=v.querySelector("#lq");if(qi){const go=()=>{st.q=qi.value;const p=qi.selectionStart;render();const n=document.querySelector("#lq");if(n){n.focus();n.setSelectionRange(p,p)}};bindSearch(qi,go)}}
   v.querySelector("#undoB").onclick=undo;v.querySelector("#redoB").onclick=redo;v.querySelector("#saveAll").onclick=()=>saveDialog(null);
   v.querySelectorAll("[data-lpg]").forEach(x=>{if(x.dataset.lpg)x.onclick=e=>{e.stopPropagation();lvSelect(st,x.dataset.lpg)}});
@@ -4925,6 +4926,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del&&!z._virtual).
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="appdata.js?v=711"></script><script src="appsave.js?v=711"></script><script src="appview.js?v=711"></script><script src="livelesson.js?v=711"></script><script src="live.js?v=711"></script>
+<script src="appdata.js?v=712"></script><script src="appsave.js?v=712"></script><script src="appview.js?v=712"></script><script src="livelesson.js?v=712"></script><script src="live.js?v=712"></script>
 </body>
 </html>
