@@ -213,16 +213,31 @@ async function appList({ url, anonKey, session }, db) {
 	if (!res.ok || !body || !Array.isArray(body.rows)) throw new Error(`${db} 읽기 실패 (${res.status}${body && body.error ? " · " + body.error : ""})`)
 	return body.rows
 }
+// DB 여러 개를 동시에(기본 6개씩) 받는다(261119 첫 로드 10초 → 순차 받기 28번이 원인). 결과는 요청한 순서 그대로 { "<DB 제목>": Map }.
+// 하나라도 실패하면 새로 시작하지 않고, 이미 받는 중인 것이 끝나면 요청 순서가 가장 앞인 실패를 던진다(순차 받기와 같은 메시지).
+async function appListMany(cfg, dbs, limit = 6) {
+	const res = new Array(dbs.length), errs = new Array(dbs.length)
+	let next = 0, stop = false
+	const worker = async () => {
+		while (!stop) {
+			const i = next++
+			if (i >= dbs.length) return
+			try { res[i] = new Map((await appList(cfg, dbs[i])).map((r) => [r.id, r])) } catch (e) { errs[i] = e; stop = true }
+		}
+	}
+	await Promise.all(Array.from({ length: Math.max(1, Math.min(limit, dbs.length)) }, worker))
+	const bad = errs.findIndex((e) => e)
+	if (bad >= 0) throw errs[bad]
+	const raw = {}
+	dbs.forEach((db, i) => { raw[db] = res[i] })
+	return raw
+}
 // 모든 DB를 먼저 받고(같은 db는 한 번) 컬렉션 순서대로 바꾼다. target 없으면 시제품 전역 DB에 끼운다.
 async function appLoad({ url, anonKey, session, target }) {
 	const out = target || (typeof DB !== "undefined" ? DB : null)
 	if (!out) throw new Error("DB 객체가 없습니다")
-	const raw = {}
-	for (const coll of Object.keys(APPMAP)) {
-		const db = APPMAP[coll].db
-		if (raw[db]) continue
-		raw[db] = new Map((await appList({ url, anonKey, session }, db)).map((r) => [r.id, r]))
-	}
+	const dbs = [...new Set(Object.keys(APPMAP).map((coll) => APPMAP[coll].db))]
+	const raw = await appListMany({ url, anonKey, session }, dbs)
 	return appApply(raw, out)
 }
 // raw = { "<DB 제목>": Map(id → app-api 줄) } → out[coll]. 검사(check.cjs)도 이 함수를 쓴다.
@@ -275,4 +290,4 @@ function appFixLinks(out) {
 	return out
 }
 
-if (typeof window === "undefined" && typeof module !== "undefined") module.exports = { APPMAP, APP_EMPTY, appLoad, appApply, appX }
+if (typeof window === "undefined" && typeof module !== "undefined") module.exports = { APPMAP, APP_EMPTY, appLoad, appListMany, appApply, appX }

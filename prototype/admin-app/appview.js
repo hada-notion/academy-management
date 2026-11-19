@@ -353,9 +353,8 @@ function appViewFixLinks(out) {
 async function appViewLoad({ url, anonKey, session, target }) {
 	const out = target || (typeof DB !== "undefined" ? DB : null)
 	if (!out) throw new Error("DB 객체가 없습니다")
-	const raw = {}
 	const dbs = [...new Set([...Object.values(APPMAP).map((m) => m.db), ...APPV_DBS])]
-	for (const db of dbs) raw[db] = new Map((await appList({ url, anonKey, session }, db)).map((r) => [r.id, r]))
+	const raw = await appListMany({ url, anonKey, session }, dbs) /* 동시에 받음(appdata.js) — 요청 순서 · 실패 메시지는 순차 받기와 같음 */
 	appApply(raw, out)
 	return appViewApply(raw, out)
 }
