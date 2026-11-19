@@ -209,32 +209,40 @@ export async function saveChanges(changes: Change[]): Promise<ChangeResult[]> {
 	}
 	const out: ChangeResult[] = []
 	for (const [i, c] of changes.entries()) {
+		// (v2.8.0 항목 97) 저장이 오래 걸릴 때 어느 단계인지 보려고 단계별 시간(ms)을 로그 한 줄로만 남긴다 — 동작은 그대로.
+		const t0 = Date.now(), steps: string[] = []
+		const timed = async <T>(name: string, fn: () => Promise<T>): Promise<T> => {
+			const s = Date.now()
+			try { return await fn() } finally { steps.push(`${name}=${Date.now() - s}`) }
+		}
 		try {
-			const problem = await sourceProblem(c.db as AppDb)
+			const problem = await timed("연결확인", () => sourceProblem(c.db as AppDb))
 			if (problem) throw new SaveError(409, `${c.db}: ${problem}`)
 			const ds = (sources.get(c.db as AppDb) ?? [])[0]
 			if (!ds) throw new SaveError(404, `Notion에서 ${c.db}를 찾지 못했습니다.`)
 			checkAllowedProps(c.db as WriteDb, c.props)
-			const props = toNotionProps(c.props, await dataSourceSchema(ds), resolve)
+			const props = toNotionProps(c.props, await timed("칸형식", () => dataSourceSchema(ds)), resolve)
 			let page: Record<string, any>
 			if (c.op === "create") {
-				page = await createPage(ds, props)
+				page = await timed("노션쓰기", () => createPage(ds, props))
 				if (c.tmp) made.set(c.tmp, page.id)
 			} else {
-				if ((await copyDbOf(c.id!)) !== c.db) throw new SaveError(400, "이 DB의 줄이 아닙니다.")
-				const now = c.edited ? await getPage(c.id!) : null
+				if ((await timed("복사본확인", () => copyDbOf(c.id!))) !== c.db) throw new SaveError(400, "이 DB의 줄이 아닙니다.")
+				const now = c.edited ? await timed("충돌확인", () => getPage(c.id!)) : null
 				if (c.edited && now) {
 					if (Date.parse(now.last_edited_time) > Date.parse(c.edited) + 1000) {
 						out.push({ i, ok: false, id: c.id, conflict: true, error: "그사이 Notion에서 바뀌었습니다. 다시 불러온 뒤 저장하세요.", row: await upsertCopy(c.db as WriteDb, now) })
 						continue
 					}
 				}
-				page = await updatePageProperties(c.id!, props)
+				page = await timed("노션쓰기", () => updatePageProperties(c.id!, props))
 			}
 			// 앱(서버 봇)이 고친 일정은 리포트 반영 웹훅이 "서버가 고친 비공개 나이스 일정"으로 건너뛸 수 있으므로
 			// (scheduleVisibility.noticeReportSyncNotNeeded) 여기서 직접 리포트를 맞춘다(학부모 공개를 끈 것도 빠지게).
 			if (eventAffectsReport(c.db as WriteDb, c.props)) saveDeps.refreshReport(page.id)
-			out.push({ i, ok: true, id: page.id, tmp: c.tmp, row: await upsertCopy(c.db as WriteDb, page) })
+			const row = await timed("복사본반영", () => upsertCopy(c.db as WriteDb, page))
+			out.push({ i, ok: true, id: page.id, tmp: c.tmp, row })
+			console.log(`[appSave] ${c.db} ${c.op} ${Date.now() - t0}ms (${steps.join(" ")})`)
 		} catch (err) {
 			out.push({ i, ok: false, id: c.id, tmp: c.tmp, error: err instanceof SaveError ? err.message : "Notion에 쓰지 못했습니다: " + String((err as Error).message).slice(0, 200) })
 		}
