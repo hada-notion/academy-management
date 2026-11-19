@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=695">
-<link rel="stylesheet" href="app.css?v=695">
-<link rel="stylesheet" href="pick.css?v=695">
-<link rel="stylesheet" href="field.css?v=695">
+<link rel="stylesheet" href="hada-tokens.css?v=697">
+<link rel="stylesheet" href="app.css?v=697">
+<link rel="stylesheet" href="pick.css?v=697">
+<link rel="stylesheet" href="field.css?v=697">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=695"><script src="hada-rules.js?v=695"></script><script src="help.js?v=695"></script><script src="alim-preview.js?v=695"></script><script src="pick.js?v=695"></script><script src="field.js?v=695"></script><script src="panel.js?v=695"></script>
+<link rel="stylesheet" href="alim.css?v=697"><script src="hada-rules.js?v=697"></script><script src="help.js?v=697"></script><script src="alim-preview.js?v=697"></script><script src="pick.js?v=697"></script><script src="field.js?v=697"></script><script src="panel.js?v=697"></script>
 <script>
 "use strict";
 
@@ -2072,7 +2072,7 @@ function renderList(v,t,L0){v.classList.toggle("tedit-on",!!(t.state&&t.state.te
 }
 // 163판 표 칸 공통: 숫자는 오른쪽(같은 폭 숫자), 빈 값 "—"는 회색, "!"는 빨간 칸, "@g:"는 학년 배지
 const NUMV=/^-?[\d,]+(\.\d+)?(\/[\d,]+)?\s?(원|명|회|분|시간|개|권|건|곳|%)?$/;const lnum=(c,rows)=>rows.slice(0,8).some(r=>NUMV.test(String(c[1](r))));
-function lcell(c,r,L){const raw=c[1](r),val=String(raw);if(L&&L.coll==="enrolls"&&(c[2]==="s_name"||c[2]==="s_school")&&val!=="—"){const go=c[2]==="s_name"?"stu:"+r.studentId:"sch:"+val;return `<td><a class="golink" href="#" data-golink="${esc(go)}" title="${c[2]==="s_name"?"이 학생 열기":"이 학교 열기"}">${esc(val)}</a></td>`}const nc=L&&L._num&&L._num.has(c[0]);const gk=c[2]&&((L&&L.edk&&L.edk[c[2]])||c[2]);const ed=L&&(L._ed||L.alwaysEd)&&gk&&((L.fields||[]).some(f=>f[0]===gk)||(L.cellPick&&L.cellPick[gk]))&&!(L.roRow&&L.roRow(r))?` data-ge="${gk}"`:"";let h=lcellIn(c,r,L,raw,val,nc).replace(/^<td/,"<td"+ed);/* 271판(대표 '교재에 색 반영 안 됨'): 노션 선택 옵션 색이 있는 칸은 표에서도 같은 색 칩 */if(L&&c[2]&&NCOL[L.coll+"|"+c[2]]&&val&&val!=="—"&&!/^[!@]/.test(val)){const cc=ncCls(L.coll,c[2],val);if(cc)h=h.replace(/^(<td[^>]*>)([\s\S]*)(<\/td>)$/,(m,a,b,z)=>`${a}<span class="tchip ${cc}">${b}</span>${z}`)}if(L&&L.coll==="classes"&&c[2]==="name")h=h.replace(/^(<td[^>]*>)/,`$1<i class="cdot" style="background:${clsHex(r)}"></i>`);/* 257판: 클래스 이름 칸은 어느 표에서나 색 점과 같이(대표 지정) */if(L&&L.coll!=="classes"&&(c[0]==="클래스"||c[0]==="반")&&r&&r.classId&&val!=="—"&&cls(r.classId))h=h.replace(/^(<td[^>]*>)/,`$1<i class="cdot" style="background:${clsHex(cls(r.classId)||{})}"></i>`);return h}
+function lcell(c,r,L){const raw=c[1](r),val=String(raw);if(L&&L.coll==="enrolls"&&(c[2]==="s_name"||c[2]==="s_school")&&val!=="—"){const go=c[2]==="s_name"?"stu:"+r.studentId:"sch:"+val;return `<td><a class="golink" href="#" data-golink="${esc(go)}" title="${c[2]==="s_name"?"이 학생 열기":"이 학교 열기"}">${esc(val)}</a></td>`}const nc=L&&L._num&&L._num.has(c[0]);const gk=c[2]&&((L&&L.edk&&L.edk[c[2]])||c[2]);const ed=L&&(L._ed||L.alwaysEd)&&gk&&((L.fields||[]).some(f=>f[0]===gk)||(L.cellPick&&L.cellPick[gk]))&&!(L.roRow&&L.roRow(r))?` data-ge="${gk}"`:"";let h=lcellIn(c,r,L,raw,val,nc).replace(/^<td/,"<td"+ed);/* 271판(대표 '교재에 색 반영 안 됨'): 노션 선택 옵션 색이 있는 칸은 표에서도 같은 색 칩 */if(L&&c[2]&&NCOL[L.coll+"|"+c[2]]&&val&&val!=="—"&&!/^[!@]/.test(val)){const cc=ncCls(L.coll,c[2],val);if(cc)h=h.replace(/^(<td[^>]*>)([\s\S]*)(<\/td>)$/,(m,a,b,z)=>`${a}<span class="tchip ${cc}">${b}</span>${z}`)}if(L&&L.coll==="classes"&&c[2]==="name")h=h.replace(/^(<td[^>]*>)/,`$1<i class="cdot" style="background:${clsHex(r)}"></i>`);/* 257판: 클래스 이름 칸은 어느 표에서나 색 점과 같이(대표 지정) */if(L&&L.coll!=="classes"&&(c[0]==="클래스"||c[0]==="반")&&r&&r.classId&&val!=="—"&&cls(r.classId))h=h.replace(/^(<td[^>]*>)/,`$1<i class="cdot" style="background:${clsHex(cls(r.classId)||{})}"></i>`);/* 261119 대표: 클래스 [색] 칸은 노션에 hex로 저장돼도 앱 표에서는 늘 색 칩(글자 코드 없음, 마우스를 올리면 코드) */if(L&&L.coll==="classes"&&c[2]==="hex")h=h.replace(/^(<td[^>]*>)[\s\S]*(<\/td>)$/,(m,a,z)=>`${a}<span class="cchip" style="background:${clsHexRaw(r)}" title="${esc(clsHexRaw(r))}"></span>${z}`);return h}
 /* 252판: 요일 칩 — 노션 다중 선택처럼 요일마다 색(월 노랑 · 화 빨강 · 수 파랑 · 목 초록 · 금 회색 · 토 갈색 · 일 보라) */
 const DAY_K={"월":"mon","화":"tue","수":"wed","목":"thu","금":"fri","토":"sat","일":"sun"};
 const dayCls=t=>{t=String(t||"").trim();if(t.startsWith("일정"))return "";const k=DAY_K[t[0]];return k&&(t.length===1||/^\S\s/.test(t)||t[1]===" ")?" d"+k:""};
@@ -4896,6 +4896,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del).slice().sort(
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="appdata.js?v=695"></script><script src="appsave.js?v=695"></script><script src="appview.js?v=695"></script><script src="livelesson.js?v=695"></script><script src="live.js?v=695"></script>
+<script src="appdata.js?v=697"></script><script src="appsave.js?v=697"></script><script src="appview.js?v=697"></script><script src="livelesson.js?v=697"></script><script src="live.js?v=697"></script>
 </body>
 </html>
