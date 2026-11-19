@@ -248,6 +248,19 @@ Deno.test("register-custom: title required, optional ISBN/cover/price, https cov
 	})
 })
 
+Deno.test("register-custom 프로그램: kind=프로그램이면 구분=프로그램, 단원·ISBN 없이 만들고, 교재는 구분 칸을 보내지 않음, 그 밖 값은 400", async () => {
+	const m = mock()
+	await withMock(m, async () => {
+		const r: any = await tb.registerCustom({ kind: "프로그램", title: "수채화 1", price: 20000, pages: 12, units: [] })
+		const p = m.created[0].properties
+		assert(r.ok && r.kind === "프로그램" && r.units === 0 && p["구분"].select.name === "프로그램" && p["교재명"].title[0].text.content === "수채화 1" && p["가격"].number === 20000 && p["전체 분량"].number === 12 && !("ISBN13" in p), JSON.stringify(p))
+		const b: any = await tb.registerCustom({ title: "일반 교재", units: [] })
+		assert(b.kind === "교재" && !("구분" in m.created[m.created.length - 1].properties))
+		await rejects(() => tb.registerCustom({ kind: "음악", title: "x", units: [] }), 400, /구분은/)
+		await rejects(() => tb.registerCustom({ kind: "프로그램", title: " ", units: [] }), 400, /프로그램 이름/)
+	})
+})
+
 // ---------- v2.5.121: 단원 편집·북커버 수정 ----------
 const BOOK = "22222222-2222-4222-8222-222222222222"
 Deno.test("units: uses counts links other than the library relation", async () => {

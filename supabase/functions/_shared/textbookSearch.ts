@@ -163,7 +163,7 @@ export async function registerBook(body: any) {
 	return await createLibraryBook({ name, isbn13, price: book.price, pages: book.pages, cover, publisher: book.publisher, seriesHint: book.series, units: body?.units, seriesPick: await pickOption(body?.series, "series"), publisherPick: await pickOption(body?.publisher, "publishers") })
 }
 
-type NewBook = { name: string; isbn13?: string; price?: number | null; pages?: number | null; cover?: string; publisher?: string; seriesHint?: string; units: unknown; seriesPick?: string | null; publisherPick?: string | null }
+type NewBook = { kind?: "교재" | "프로그램"; name: string; isbn13?: string; price?: number | null; pages?: number | null; cover?: string; publisher?: string; seriesHint?: string; units: unknown; seriesPick?: string | null; publisherPick?: string | null }
 // 라이브러리 교재 1권 + 단원목록. 같은 ISBN13이 있으면 409. 출판사·시리즈는 화면에서 고른 값(…Pick), 없으면 기존 선택지와 맞을 때만.
 async function createLibraryBook(b: NewBook) {
 	const units = cleanUnits(b.units)
@@ -175,6 +175,7 @@ async function createLibraryBook(b: NewBook) {
 	const props: Record<string, unknown> = {
 		"교재명": title(b.name),
 		"사용중": { checkbox: true },
+		...(b.kind === "프로그램" ? { "구분": { select: { name: "프로그램" } } } : {}),
 		...(b.isbn13 ? { "ISBN13": { rich_text: [{ text: { content: b.isbn13 } }] } } : {}),
 		...(b.price ? { "가격": { number: b.price } } : {}),
 		...(b.pages ? { "전체 분량": { number: b.pages } } : {}),
@@ -196,21 +197,23 @@ async function createLibraryBook(b: NewBook) {
 		return { ok: false, pageId, name, units: created, failed: units.length - created, error: `단원 ${units.length}개 중 ${created}개만 만들었습니다. 나머지는 Notion에서 직접 추가하세요.` }
 	}
 	await syncBookCopy(src, pageId) // 복사본도 바로 맞춘다(v2.5.125)
-	return { ok: true, pageId, name, units: created, publisher, series, cover: !!b.cover }
+	return { ok: true, pageId, name, kind: b.kind ?? "교재", units: created, publisher, series, cover: !!b.cover }
 }
 
 // ---------- 직접 추가(v2.5.119) ----------
 // 검색에 없는 교재(학원 자체 교재 등)와 교보문고에서 가져온 교재(v2.6.6). ISBN·표지·가격·쪽수는 있을 때만. 표지는 https 주소만.
 export async function registerCustom(body: any) {
 	const name = String(body?.title ?? "").replace(/\s+/g, " ").trim().slice(0, 200)
-	if (!name) throw new TextbookError(400, "교재명을 입력하세요.")
+	const kind = body?.kind === undefined || body?.kind === "" ? "교재" : body.kind
+	if (kind !== "교재" && kind !== "프로그램") throw new TextbookError(400, "구분은 교재 또는 프로그램이어야 합니다.")
+	if (!name) throw new TextbookError(400, kind === "프로그램" ? "프로그램 이름을 입력하세요." : "교재명을 입력하세요.")
 	const isbn13 = String(body?.isbn13 ?? "").replace(/[-\s]/g, "")
 	if (isbn13 && !isIsbn13(isbn13)) throw new TextbookError(400, "ISBN13은 978 또는 979로 시작하는 13자리 숫자입니다.")
 	const cover = String(body?.cover ?? "").trim()
 	if (cover && (!/^https:\/\/[^\s]+$/i.test(cover) || cover.length > 1000)) throw new TextbookError(400, "표지 주소는 https로 시작하는 이미지 주소여야 합니다.")
 	const price = Number(body?.price)
 	const pages = Number(body?.pages)
-	return await createLibraryBook({ name, isbn13: isbn13 || undefined, price: price > 0 && price < 10_000_000 ? Math.round(price) : null, pages: pages > 0 && pages < 10_000 ? Math.round(pages) : null, cover, units: body?.units, seriesPick: await pickOption(body?.series, "series"), publisherPick: await pickOption(body?.publisher, "publishers") })
+	return await createLibraryBook({ kind, name, isbn13: isbn13 || undefined, price: price > 0 && price < 10_000_000 ? Math.round(price) : null, pages: pages > 0 && pages < 10_000 ? Math.round(pages) : null, cover, units: body?.units, seriesPick: await pickOption(body?.series, "series"), publisherPick: await pickOption(body?.publisher, "publishers") })
 }
 
 // ---------- 라이브러리 열기(v2.5.118) ----------
