@@ -18,6 +18,7 @@
 import { NOTION_API } from "./constants.ts"
 import { fetchWithRetry, notionHeaders, queryAllPages } from "./notionClient.ts"
 import { fetchSupabaseWithRetry } from "./reportCacheShared.ts"
+import { runInBackground } from "./backgroundTask.ts"
 
 type Page = Record<string, any>
 type Row = { db: string; id: string; props: Record<string, unknown>; notion_created_at: string | null; notion_edited_at: string; url: string; icon: string }
@@ -313,6 +314,13 @@ export async function reconcileNext(): Promise<AppSyncResult> {
 
 // ---------- 읽기(app-api) ----------
 // since가 있으면 그 뒤에 동기화된 줄만(앱이 화면을 열어 둔 채 바뀐 것만 다시 받을 때).
+// (v2.8.0 항목 99) 앱 첫 로드가 곧 데우기: 목록 응답을 만든 뒤 뒤에서 Notion DB 찾기(sourcePick, 10분 캐시)를 채워 둔다.
+// 저장 첫 호출이 DB 29개를 찾느라 6~7초 걸리던 것(원본 261119)을 줄인다. 응답은 기다리지 않고, 실패해도 저장·목록에 영향 없음.
+export function warmSources(): void {
+	if (sourceCache && Date.now() - sourceCache.at < 10 * 60 * 1000) return
+	runInBackground(async () => { await sourcePick() })
+}
+
 export async function listApp(db: AppDb, since?: string | null): Promise<Record<string, unknown>[]> {
 	const rows: Record<string, unknown>[] = []
 	const cond = since ? `&synced_at=gt.${encodeURIComponent(since)}` : ""

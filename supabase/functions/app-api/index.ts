@@ -7,7 +7,7 @@
 //       복사본에 반영. 줄마다 성공 · 실패 · 충돌을 돌려준다. 지우기는 없다. 로직은 _shared/appSave.ts.
 // 읽기 로직은 _shared/appCopy.ts.
 import { CORS_HEADERS, requireAdminKey } from "../_shared/adminShared.ts"
-import { APP_DBS, isAppDb, listApp, statusApp } from "../_shared/appCopy.ts"
+import { APP_DBS, isAppDb, listApp, statusApp, warmSources } from "../_shared/appCopy.ts"
 import { checkChanges, saveChanges, runGenerateClasses, writeOptions, SaveError } from "../_shared/appSave.ts"
 
 const json = (data: unknown, status = 200) =>
@@ -28,7 +28,9 @@ Deno.serve(async (req: Request) => {
       if (!isAppDb(body.db)) return json({ error: `db는 ${APP_DBS.join(", ")} 중 하나여야 합니다.` }, 400)
       if (body.since !== undefined && body.since !== null && !isIso(body.since)) return json({ error: "since 형식이 올바르지 않습니다." }, 400)
       const at = new Date().toISOString()
-      return json({ ok: true, db: body.db, at, rows: await listApp(body.db, body.since ?? null) })
+      const rows = await listApp(body.db, body.since ?? null)
+      warmSources() // (항목 99) 앱 첫 로드가 데우기 — 응답은 안 기다림
+      return json({ ok: true, db: body.db, at, rows })
     }
     if (body?.action === "status") return json({ ok: true, dbs: await statusApp() })
     if (body?.action === "save") {
