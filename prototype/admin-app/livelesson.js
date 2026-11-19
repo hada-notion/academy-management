@@ -128,11 +128,13 @@ function liveLessonDays(dates) {
 /* lite = 여러 수업을 미리 받을 때(주간 · 출결 현황 보기): 명단 · 출결 · 학습기록만 — 학습활동 · 루틴은 창을 열 때 */
 function liveLessonOpen(k, lite) {
   const L = LIVE_L[k];
+  /* 미리 받기(lite)로 열린 수업을 창으로 열 때: 빠졌던 학습활동 · 루틴만 이어서 받는다(안 받으면 창의 루틴 탭 · 과제 결과가 비어 있음 — 원본검수 261119) */
+  if (L && !lite && LIVE_LS[k] && LIVE_LS[k].lite && LIVE_LS[k].state === "ok" && window.LIVE && window.LIVE.loaded) { LIVE_LS[k].lite = false; liveLessonActs(k); liveLessonRoutines(k); return; }
   if (!L || LIVE_LS[k] || !(window.LIVE && window.LIVE.loaded)) return;
   /* times = 학생 id → { in, out }(등 · 하원 "HH:MM", 없으면 "" — 화면이 고치면 저장 때 바뀐 것만) · report = 학생 id → 일일 보고서 전송 상태(비면 "")
      recIds = 노션에 있는 학습기록 id · info = 수업 머리 값(서버 session.session 그대로: kind · summary · busy · error · blockId · notice(수업 안내 메모 — 화면이 고치면 저장 때) · noticeStatus · noticePreview …)
      routines = 서버 routines 결과({ available, status, checks[] }) — 받기 전 null */
-  LIVE_LS[k] = { state: "loading", roster: [], att: {}, times: {}, report: {}, recIds: new Set(), info: null, routines: null };
+  LIVE_LS[k] = { state: "loading", roster: [], att: {}, times: {}, report: {}, recIds: new Set(), info: null, routines: null, lite: !!lite };
   liveLessonApi({ action: "session", sessionId: L.id }).then((res) => {
     if (!LIVE_LS[k] || LIVE_L[k] !== L) return;
     const [bid, d] = k.split("|"), b = byId(DB.blocks, bid), S = LIVE_LS[k];
@@ -260,6 +262,23 @@ function liveLessonPlan(k) {
   /* 루틴 체크 했음(칸 P3b, 서버 PR #462 save-routines): 받은 값과 달라진 줄만 */
   const routines = RECW && S.routines && S._rt0 ? (S.routines.checks || []).filter((c) => c.checkId in S._rt0 && !!c.done !== S._rt0[c.checkId]).map((c) => ({ checkId: c.checkId, done: !!c.done })) : [];
   return { att: Object.values(by), miss, recUpd, recNew, acts, notice, routines };
+}
+/* 루틴 체크를 눌러 바뀐 수업(칸 P3b, 261119 원본검수): 수업 창 루틴 탭의 클릭은 S.routines.checks[].done만 바꾸고 작성 중 표시(LDIRTY)를 안 만들어, 위 [저장] 수에 안 잡히고 save-routines가 안 나갔다.
+   받은 값(S._rt0)과 달라진 체크가 있는 수업 열쇠를 돌려준다 — 저장 수(dirtyCount)와 저장 대상(liveSave)이 함께 쓴다 */
+function liveRoutineChangedN(k) {
+  const S = typeof LIVE_LS !== "undefined" ? LIVE_LS[k] : null;
+  if (!window.LIVE_RECW || !S || S.state !== "ok" || !S.routines || !S._rt0) return 0;
+  return (S.routines.checks || []).filter((c) => c.checkId in S._rt0 && !!c.done !== S._rt0[c.checkId]).length;
+}
+function liveRoutineDirtyKeys() {
+  if (!window.LIVE_RECW || typeof LIVE_LS === "undefined") return [];
+  return Object.keys(LIVE_LS).filter((k) => liveRoutineChangedN(k) > 0);
+}
+/* 수업 창 [되돌리기]: 눌러 바꾼 루틴 체크도 받은 값으로 */
+function liveRoutineRevert(k) {
+  const S = typeof LIVE_LS !== "undefined" ? LIVE_LS[k] : null;
+  if (!window.LIVE_RECW || !S || !S.routines || !S._rt0) return;
+  (S.routines.checks || []).forEach((c) => { if (c.checkId in S._rt0) c.done = S._rt0[c.checkId]; });
 }
 async function liveLessonSave(k) {
   if (!(window.LIVE && window.LIVE.loaded && (window.LIVE_ATTW || window.LIVE_RECW))) { toast("이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요"); return false; }

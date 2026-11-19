@@ -45,7 +45,7 @@
   /* 출결 쓰기(P3 걸음 2, 칸 P3w — 수업 칸 P3과 함께 켤 때만): 수업 창의 [출석][결석] · [모두 출석] · [되돌리기] · [수업 저장]만 풀고 나머지는 보기만 그대로 */
   const ATTW = gOn.has("P3") && gOn.has("P3w"); window.LIVE_ATTW = ATTW;
   const attw = () => ATTW && liveScr(typeof activeTab !== "undefined" ? activeTab : null) === "lesson";
-  const roPass = () => RO_PASS0 + (attw() ? ",.attseg,#allOk,#lsRev,#lsSave,#attEd,.attv.ed,.attpop .so" : "") + (recTab() ? "," + REC_AREA : "") + (window.LIVE_MKW && inLesson() ? ",[data-mkin]" : ""); /* 536판(대표 261119): 출결 = 값 칸 .attv + 머리 [편집] #attEd + 떠 있는 목록 .attpop .so(body). .attseg는 과제 단추 */
+  const roPass = () => RO_PASS0 + (attw() ? ",.attseg,#allOk,#lsRev,#lsSave,#attEd,.attv.ed,.attpop .so" : "") + (recTab() ? "," + REC_AREA : "") + (recw() ? ",#lsRev,#lsSave" : "") /* 학습기록 쓰기(P3b)만 켜도 수업 창 아래 [수업 저장] · [되돌리기]가 눌림(기록 · 루틴 체크 저장) */ + (window.LIVE_MKW && inLesson() ? ",[data-mkin]" : ""); /* 536판(대표 261119): 출결 = 값 칸 .attv + 머리 [편집] #attEd + 떠 있는 목록 .attpop .so(body). .attseg는 과제 단추 */
   /* 학습기록 쓰기(칸 P3b — 수업 칸 P3과 함께 켤 때만, 261119 원본검수 Z1): 하루 수업 페이지의 학습기록 · 과제검사 · 학습활동 · 진도 · 루틴 탭을 풀고, 저장은 livelesson.js(update-record · create-records · save-activities · save-routines) */
   const RECW = gOn.has("P3") && gOn.has("P3b"); window.LIVE_RECW = RECW;
   const REC_TABS = ["prog", "log", "hw", "act", "rt"];
@@ -99,6 +99,11 @@
   };
   /* 보강 쓰기 칸: 저장 대기 수에 서버 보강 배정 · 빼기 · 지우기 수를 더한다(새 보강은 화면이 이미 셈) */
   if (MKW && typeof dirtyCount === "function") { const dc0 = dirtyCount; dirtyCount = function () { let n = dc0.apply(this, arguments); try { if (typeof liveMakeupPlan === "function") { const P = liveMakeupPlan(); n += P.assign.length + P.unlink.length + P.del.length + P.att.length; } } catch (_) {} return n; }; }
+  /* 학습기록 쓰기 칸: 루틴 체크를 눌러 바뀐 수업도 저장 대기 수에 더한다(이미 작성 중으로 센 수업은 빼서 두 번 세지 않음) */
+  if (RECW && typeof dirtyCount === "function") { const dc1 = dirtyCount; dirtyCount = function () { let n = dc1.apply(this, arguments); try { if (typeof liveRoutineDirtyKeys === "function") n += liveRoutineDirtyKeys().filter((k) => !LDIRTY.has(k)).length; } catch (_) {} return n; }; }
+  /* 수업 창 아래 [수업 저장 n] · [되돌리기]도 루틴 체크 변경을 센다(원본검수 261119: 체크를 눌러도 [수업 저장]이 비활성이던 것) */
+  if (RECW && typeof lCount === "function") { const lc0 = lCount; lCount = function (k) { let n = lc0.apply(this, arguments); try { if (typeof liveRoutineChangedN === "function") n += liveRoutineChangedN(k); } catch (_) {} return n; }; }
+  if (RECW && typeof lRevert === "function") { const lr0 = lRevert; lRevert = function (k) { const r = lr0.apply(this, arguments); try { if (typeof liveRoutineRevert === "function") liveRoutineRevert(k); } catch (_) {} return r; }; }
   const r0 = render;
   /* 수업 화면 = 시간표 화면의 [수업] 보기. 수업 칸(P3)이 꺼져 있으면 그 보기로 못 넘어가게 한다(단추도 숨김) */
   const lessonGate = () => {
@@ -321,6 +326,7 @@ async function liveSave() {
       /* 작성 중인 수업 = 수업 창 표시(LDIRTY) + 학습기록 쓰기 칸이면 작성 중 기록이 있는 수업(Z1) — 실제 수업(LIVE_LS)만 */
       const ks = new Set([...LDIRTY.keys()].filter((k) => !k.startsWith("mk:")));
       if (window.LIVE_RECW) (DB.recs || []).forEach((r) => { if (r.state === "draft" && !r.del && r.key && typeof LIVE_LS !== "undefined" && LIVE_LS[r.key]) ks.add(r.key); });
+      if (window.LIVE_RECW && typeof liveRoutineDirtyKeys === "function") liveRoutineDirtyKeys().forEach((k) => ks.add(k)); /* 루틴 체크만 바뀐 수업 */
       for (const k of ks) { if (await liveLessonSave(k)) lessons++; }
     }
     /* 보강(칸 P3m): 만들기 · 배정 · 빼기 · 지우기를 서버 보강 동작으로 */
