@@ -7,7 +7,7 @@
 //       복사본에 반영. 줄마다 성공 · 실패 · 충돌을 돌려준다. 지우기는 없다. 로직은 _shared/appSave.ts.
 // 읽기 로직은 _shared/appCopy.ts.
 import { CORS_HEADERS, requireAdminKey } from "../_shared/adminShared.ts"
-import { APP_DBS, isAppDb, listApp, statusApp, warmSources, syncCopy, lastSyncedAt, NotionBusyError } from "../_shared/appCopy.ts"
+import { APP_DBS, isAppDb, listApp, statusApp, warmSources, syncCopy, lastSyncedAt, rootTitle, NotionBusyError } from "../_shared/appCopy.ts"
 import { checkChanges, saveChanges, runGenerateClasses, writeOptions, SaveError } from "../_shared/appSave.ts"
 
 const json = (data: unknown, status = 200) =>
@@ -36,7 +36,7 @@ Deno.serve(async (req: Request) => {
       warmSources() // (항목 99) 앱 첫 로드가 데우기 — 응답은 안 기다림
       return json({ ok: true, db: body.db, at, rows })
     }
-    if (body?.action === "status") return json({ ok: true, dbs: await statusApp(), syncedAt: await lastSyncedAt() })
+    if (body?.action === "status") { const dbs = await statusApp(); const [syncedAt, title] = await Promise.all([lastSyncedAt(), rootTitle()]); return json({ ok: true, dbs, syncedAt, rootTitle: title }) }
     if (body?.action === "save") {
       const results = await saveChanges(checkChanges(body.changes))
       return json({ ok: results.every((r) => r.ok), results })

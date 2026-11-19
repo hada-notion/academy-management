@@ -434,8 +434,15 @@ function liveSyncMount() {
   }
   if (t) { const txt = window.LIVE_SYNCED_AT ? `마지막 동기화 ${liveSyncTime(window.LIVE_SYNCED_AT)}` : ""; if (t.textContent !== txt || !t.dataset.f) { t.textContent = txt; t.dataset.f = "1"; try { if (typeof fitBars === "function") fitBars(); } catch (_) {} } } /* 단추 · 시각이 붙은 뒤 위 줄이 맞는지 다시 잰다 */
 }
+/* 시스템 타이틀 = 노션 최상위 페이지 제목(서버 status.rootTitle). 사이드바 제목 · 탭 제목 앞부분에 쓰고, 없으면 지금 글자 그대로. */
+function liveRootTitle(t) {
+  t = String(t || "").trim(); if (!t) return;
+  window.LIVE_ROOT_TITLE = t;
+  document.title = "관리 앱 | " + t;
+  document.querySelectorAll(".brand").forEach((b) => { b.textContent = t; b.title = "노션 첫 페이지 제목 · " + t; });
+}
 async function liveSyncStatus() {
-  try { const res = await liveApi(window.LIVE, { action: "status" }); if (res && res.syncedAt) { window.LIVE_SYNCED_AT = res.syncedAt; liveSyncMount(); } } catch (_) {}
+  try { const res = await liveApi(window.LIVE, { action: "status" }); if (res && res.rootTitle) liveRootTitle(res.rootTitle); if (res && res.syncedAt) { window.LIVE_SYNCED_AT = res.syncedAt; liveSyncMount(); } } catch (_) {}
 }
 async function liveSyncRun() {
   if (!(window.LIVE && window.LIVE.loaded)) { toast("노션 자료를 받은 뒤에 동기화해요"); return; }

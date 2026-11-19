@@ -215,6 +215,42 @@ async function sourcePick(): Promise<SourcePick> {
 export async function appSources(): Promise<Map<AppDb, string[]>> { return (await sourcePick()).map }
 export async function sourceProblem(db: AppDb): Promise<string | null> { return (await sourcePick()).problems.get(db) ?? null }
 
+// ---------- 시스템 타이틀(노션 최상위 페이지 제목) ----------
+// 기준 DB(등록, 없으면 학생)의 부모를 위로 따라가 워크스페이스 바로 아래 페이지를 찾고 그 제목을 돌려준다(앱 사이드바·탭 제목). Secret 없음. 30분 기억, 실패하면 null(앱은 지금 글자 그대로).
+export async function topPageTitleFrom(startDataSourceId: string, fetcher: (url: string) => Promise<any | null> = async (url) => { const res = await findFetch(url, { headers: notionHeaders() }); return res.ok ? await res.json() : null }): Promise<string | null> {
+	let kind = "data_sources", id = startDataSourceId, topPage: string | null = null
+	for (let i = 0; i < 14; i++) {
+		const obj = await fetcher(`${NOTION_API}/${kind}/${id}`)
+		if (!obj) break
+		if (kind === "pages") topPage = id
+		const parent = obj.parent
+		if (!parent) break
+		if (parent.type === "database_id") { kind = "databases"; id = parent.database_id }
+		else if (parent.type === "page_id") { kind = "pages"; id = parent.page_id }
+		else if (parent.type === "block_id") { kind = "blocks"; id = parent.block_id }
+		else if (parent.type === "data_source_id") { kind = "data_sources"; id = parent.data_source_id }
+		else break // workspace
+	}
+	if (!topPage) return null
+	const page = await fetcher(`${NOTION_API}/pages/${topPage}`)
+	const props = page?.properties ?? {}
+	const t = (Object.values(props).find((p: any) => p?.type === "title") as any)?.title ?? []
+	const text = t.map((x: any) => x?.plain_text ?? "").join("").trim()
+	return text || null
+}
+let titleCache: { at: number; title: string | null } | null = null
+export async function rootTitle(): Promise<string | null> {
+	if (titleCache && Date.now() - titleCache.at < 30 * 60 * 1000) return titleCache.title
+	let title: string | null = null
+	try {
+		const map = (await sourcePick()).map
+		const start = (map.get("등록(학원) DB") ?? [])[0] ?? (map.get("학생(학원) DB") ?? [])[0]
+		if (start) title = await topPageTitleFrom(start)
+	} catch (err) { console.warn("[appCopy] 시스템 타이틀 조회 실패:", (err as Error).message) }
+	if (title) titleCache = { at: Date.now(), title } // 실패(null)는 기억하지 않아 다음에 다시 본다
+	return title
+}
+
 // ---------- Supabase ----------
 const SB_URL = () => Deno.env.get("SB_URL") ?? ""
 const SB_KEY = () => Deno.env.get("SB_SERVICE_ROLE_KEY") ?? ""
