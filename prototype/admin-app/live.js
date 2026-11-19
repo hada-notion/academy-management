@@ -42,14 +42,15 @@
   /* 출결 쓰기(P3 걸음 2, 칸 P3w — 수업 칸 P3과 함께 켤 때만): 수업 창의 [출석][결석] · [모두 출석] · [되돌리기] · [수업 저장]만 풀고 나머지는 보기만 그대로 */
   const ATTW = gOn.has("P3") && gOn.has("P3w"); window.LIVE_ATTW = ATTW;
   const attw = () => ATTW && liveScr(typeof activeTab !== "undefined" ? activeTab : null) === "lesson";
-  const roPass = () => RO_PASS0 + (attw() ? ",.attseg,#allOk,#lsRev,#lsSave,#attEd,.attv.ed,.attpop .so" : ""); /* 536판(대표 261119): 출결 = 값 칸 .attv + 머리 [편집] #attEd + 떠 있는 목록 .attpop .so(body). .attseg는 과제 단추 */
+  const roPass = () => RO_PASS0 + (attw() ? ",.attseg,#allOk,#lsRev,#lsSave,#attEd,.attv.ed,.attpop .so" : "") + (recTab() ? "," + REC_AREA : "") + (window.LIVE_MKW && inLesson() ? ",[data-mkin]" : ""); /* 536판(대표 261119): 출결 = 값 칸 .attv + 머리 [편집] #attEd + 떠 있는 목록 .attpop .so(body). .attseg는 과제 단추 */
   /* 학습기록 쓰기(칸 P3b — 수업 칸 P3과 함께 켤 때만, 261119 원본검수 Z1): 하루 수업 페이지의 학습기록 · 과제검사 · 학습활동 · 진도 · 루틴 탭을 풀고, 저장은 livelesson.js(update-record · create-records · save-activities · save-routines) */
   const RECW = gOn.has("P3") && gOn.has("P3b"); window.LIVE_RECW = RECW;
   const REC_TABS = ["prog", "log", "hw", "act", "rt"];
   const inLesson = () => liveScr(typeof activeTab !== "undefined" ? activeTab : null) === "lesson";
   const recw = () => RECW && inLesson();
-  const recTab = () => recw() && REC_TABS.includes(((activeTab && activeTab.state) || {}).lptab);
-  const REC_AREA = "#lpIn,.lpx";
+  /* 학습기록 쓰기가 켜지면 수업 창의 [학습] 탭 · 학생 창의 [학습] 탭 안을 잠그지 않는다(수업 전체 화면은 없어져 옛 #lpIn · .lpx · lptab은 더 쓰지 않음) */
+  const recTab = () => { if (!recw()) return false; const st = (activeTab && activeTab.state) || {}; return st.lsStu ? st.astab === "learn" : st.ltab === "log"; };
+  const REC_AREA = ".panel .ptab.on,.panel .pbody";
   /* 보기만 되돌리기에서 뺄 값: 출결 쓰기면 출결 · 한마디(anotes), 학습기록 쓰기면 기록 · 오늘 진도(lpToday) */
   const roKeepKeys = () => [...(attw() ? ["att", "anotes"] : []), ...(recw() ? ["recs", "lpToday"] : [])];
   const snapRo = () => { const ks = roKeepKeys(); if (!ks.length) return snapshot(); const keep = {}; ks.forEach((k) => { keep[k] = DB[k]; DB[k] = Array.isArray(keep[k]) ? [] : {}; }); try { return snapshot(); } finally { Object.assign(DB, keep); } };
