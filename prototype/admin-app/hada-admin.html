@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리 앱 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3C%2Fsvg%3E">
-<link rel="stylesheet" href="hada-tokens.css?v=700">
-<link rel="stylesheet" href="app.css?v=700">
-<link rel="stylesheet" href="pick.css?v=700">
-<link rel="stylesheet" href="field.css?v=700">
+<link rel="stylesheet" href="hada-tokens.css?v=701">
+<link rel="stylesheet" href="app.css?v=701">
+<link rel="stylesheet" href="pick.css?v=701">
+<link rel="stylesheet" href="field.css?v=701">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -20,7 +20,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=700"><script src="hada-rules.js?v=700"></script><script src="help.js?v=700"></script><script src="alim-preview.js?v=700"></script><script src="pick.js?v=700"></script><script src="field.js?v=700"></script><script src="panel.js?v=700"></script>
+<link rel="stylesheet" href="alim.css?v=701"><script src="hada-rules.js?v=701"></script><script src="help.js?v=701"></script><script src="alim-preview.js?v=701"></script><script src="pick.js?v=701"></script><script src="field.js?v=701"></script><script src="panel.js?v=701"></script>
 <script>
 "use strict";
 
@@ -133,7 +133,7 @@ function tRevert(cid,sid){const ids=DB.blocks.filter(x=>x.classId===cid&&x.seaso
   const used=new Set(DB.blocks.flatMap(x=>x.regs));for(let i=DB.enrolls.length-1;i>=0;i--){const e=DB.enrolls[i];if(e.state==="draft"&&!used.has(e.id))DB.enrolls.splice(i,1)}return ids.length}
 let tabs=[],activeTab=null,tourOpen=false,clip=null,mkClip=null,undoStack=[],redoStack=[],hoverDay=0;
 /* 282판(대표 캡처 '수업 · undefined'): 탭에 남은 시즌이 지금 자료에 없으면(지운 시즌·새로고침 전 새 시즌) 오늘이 든 시즌으로 */
-const seaToday=()=>{const xs=DB.seasons.filter(z=>!z.del&&z.start&&z.start<=TODAY&&(!z.end||TODAY<=z.end));return (xs.find(z=>z.state==="확정")||xs[0]||DB.seasons.find(z=>!z.del)||{id:"s1"}).id};
+const seaToday=()=>{const xs=DB.seasons.filter(z=>!z.del&&z.start&&z.start<=TODAY&&(!z.end||TODAY<=z.end));return (xs.find(z=>z.state==="확정")||xs[0]||DB.seasons.find(z=>!z.del)||{id:""}).id};/* 261119 대표: 시즌이 없으면 빈 값(나중에 정해도 돼요) — 있지도 않은 가짜 시즌 id를 쓰지 않음 */
 const curSeason=()=>{const id=activeTab&&activeTab.state.season;if(id&&DB.seasons.some(z=>z.id===id&&!z.del))return id;if(activeTab&&id)activeTab.state.season=seaToday();return id?activeTab.state.season:seaToday()};
 const byId=(arr,id)=>arr.find(x=>x.id===id);
 const cls=id=>byId(DB.classes,id),stu=id=>byId(DB.students,id),tch=id=>byId(DB.teachers,id),enr=id=>byId(DB.enrolls,id);
@@ -290,7 +290,7 @@ document.addEventListener("keydown",e=>{if(e.ctrlKey||e.metaKey||e.altKey||(e.ke
 // 브라우저 뒤로(마우스 뒤로 버튼·Alt+←)도 앱 안 뒤로로
 // 브라우저 뒤로·앞으로(마우스 버튼·Alt+←→·위 버튼)를 앱 안 이동으로 바꾼다
 window.addEventListener("popstate",e=>{const i=(e.state&&e.state.hada)||0;const ok=i<navIdx?goBack():goFwd();navIdx=i;if(!ok)render()});
-function tabLabel(t){if(t.screen==="timetable")return (t.state.view==="lesson"?"수업 · ":"시간표 · ")+(seasonOf(t.state.season)||{}).name;/* 261118: 메뉴 "수업"(st.view lesson) · "시간표"(그 밖) */if(t.screen==="classes"&&t.state.sel&&cls(t.state.sel))return "클래스 · "+cls(t.state.sel).name;return TITLES[t.screen]||t.screen}
+function tabLabel(t){if(t.screen==="timetable")return (t.state.view==="lesson"?"수업 · ":"시간표 · ")+(seasonOf(t.state.season)||{}).name;/* 261118: 메뉴 "수업"(st.view lesson) · "시간표"(그 밖) */if(t.screen==="classes"&&t.state.sel&&cls(t.state.sel))return "클래스 · "+(cls(t.state.sel)||{}).name;return TITLES[t.screen]||t.screen}
 function renderTabs(){
   const el=document.getElementById("tabs");
   const t0=activeTab;
@@ -449,7 +449,7 @@ let hcTimer=null;const hcHide=()=>{clearTimeout(hcTimer);hcTimer=setTimeout(()=>
 function hcHtml(b){const c=cls(b.classId),s=seasonOf(b.seasonId),studs=studentsOfBlock(b);const hasL=b.lessons&&s.state==="확정";const open=UNLOCKED.has(b.id);
   const status=hasL?`<span class="pill on">운영 중</span>`:b.state==="draft"?`<span class="pill w">작성 중</span>`:`<span class="pill">저장됨</span>`;
   return `<div class="hc-top"><b>${esc(c.name)}</b>${status}${hasL?`<button class="lockbtn ${open?"open":""}" data-lock="${b.id}" title="${open?"다시 잠그기":"잠금 해제 — 끌어서 옮길 수 있어요(다음 수업부터 바뀜)"}">${IC(open?"unlock":"lock")}</button>`:""}</div>
-  <div class="hc-rows"><div class="hc-r">${IC("clock")}<span>${fmt(b.start)}–${fmt(b.end)} · ${DAYS[b.day]}</span></div><div class="hc-r">${IC("calendar")}<span>${md(effPeriod(b).from)} - ${md(effPeriod(b).to)}${isCustom(b)?" · 직접 정함":""}</span></div><div class="hc-r">${IC("user")}<span>${esc(tch(c.teacherId).name)}</span></div><div class="hc-r">${IC("users")}<span>${studs.length}명</span>${modePill(b.mode==="individual")}</div></div>
+  <div class="hc-rows"><div class="hc-r">${IC("clock")}<span>${fmt(b.start)}–${fmt(b.end)} · ${DAYS[b.day]}</span></div><div class="hc-r">${IC("calendar")}<span>${md(effPeriod(b).from)} - ${md(effPeriod(b).to)}${isCustom(b)?" · 직접 정함":""}</span></div><div class="hc-r">${IC("user")}<span>${esc(((tch(c.teacherId)||{}).name||"—"))}</span></div><div class="hc-r">${IC("users")}<span>${studs.length}명</span>${modePill(b.mode==="individual")}</div></div>
   ${open?`<div class="hc-note">잠금 풀림 — 옮기면 다음 수업부터 바뀌어요</div>`:""}
   <div class="hc-sep"></div><div class="hc-stu">${studs.map(x=>`<div class="hc-s">${stuHtml(x)}</div>`).join("")||'<div class="hint">학생 없음</div>'}</div>`}
 // 165판: 누른 블록·열린 블록에는 정보 카드를 띄우지 않음(사용성 시험: 누른 뒤에도 카드가 남아 편집 창을 가렸음). 마우스가 그 블록을 떠나면 다시 띄움
@@ -491,7 +491,7 @@ function lessonDate(b,wk){return dPlus(wk.from,b.day)}
 /* 휴원 제외(F-035·137): 구분이 휴원이고 클래스·날짜가 있는 일정 — 그 클래스의 그 기간 수업은 없다 */
 function closedOn(b,d){return DB.events.some(e=>!e.del&&evSubOf(e)==="학원 휴원"&&e.start&&e.start<=d&&(e.end||e.start)>=d&&(e.classIds||[]).includes(b.classId))}
 /* 요일 머리 한 곳(수업 · 시간표 달력): 요일 · 날짜 · 오늘 · 시즌 밖 · 휴원 알약 */
-function dayHead(from,NDAYS,s){return `<div class="dayhead dated" style="grid-template-columns:var(--hours-w) repeat(${NDAYS},1fr)"><div></div>${DAYS.slice(0,NDAYS).map((d,i)=>{const dt=dPlus(from,i);const ids=[...new Set(DB.events.filter(e=>!e.del&&evSubOf(e)==="학원 휴원"&&e.start&&e.start<=dt&&(e.end||e.start)>=dt).flatMap(e=>e.classIds||[]))].filter(id=>cls(id)&&!cls(id).del);const all=DB.classes.filter(c=>!c.del).length;const off=ids.length?`<span class="spill nc-gray dhoff" title="휴원 — ${esc(ids.map(id=>cls(id).name).join(", "))}">휴원${ids.length<all?" "+ids.length:""}</span>`:"";return `<div class="${i===5?"sat":i===6?"sun":""} ${dt===TODAY?"today":""} ${dt<s.start||dt>s.end?"outs":""} ${ids.length?"closed":""}"><span class="dw">${d}</span><span class="dt"><span class="yy">${md(dt).slice(0,5)}</span>${md(dt).slice(5)}</span>${off}</div>`}).join("")}</div>`}
+function dayHead(from,NDAYS,s){return `<div class="dayhead dated" style="grid-template-columns:var(--hours-w) repeat(${NDAYS},1fr)"><div></div>${DAYS.slice(0,NDAYS).map((d,i)=>{const dt=dPlus(from,i);const ids=[...new Set(DB.events.filter(e=>!e.del&&evSubOf(e)==="학원 휴원"&&e.start&&e.start<=dt&&(e.end||e.start)>=dt).flatMap(e=>e.classIds||[]))].filter(id=>cls(id)&&!(cls(id)||{}).del);const all=DB.classes.filter(c=>!c.del).length;const off=ids.length?`<span class="spill nc-gray dhoff" title="휴원 — ${esc(ids.map(id=>(cls(id)||{}).name).join(", "))}">휴원${ids.length<all?" "+ids.length:""}</span>`:"";return `<div class="${i===5?"sat":i===6?"sun":""} ${dt===TODAY?"today":""} ${s&&(dt<s.start||dt>s.end)?"outs":""} ${ids.length?"closed":""}"><span class="dw">${d}</span><span class="dt"><span class="yy">${md(dt).slice(0,5)}</span>${md(dt).slice(5)}</span>${off}</div>`}).join("")}</div>`}
 function lessonMade(b,d){if(!inPer(effPeriod(b),d)||closedOn(b,d))return false;if(DB.made[lkey(b,d)])return true;return !!b.lessons&&seasonOf(b.seasonId).state==="확정"&&d<=MADE_TO()}
 function seedAtt(sid,d){let h=0;for(const ch of sid+d)h=(h*31+ch.charCodeAt(0))%997;if(d<TODAY)return h%11===0?"결석":"출석";if(d===TODAY)return h%3===0?null:(h%13===0?"결석":"출석");return null}
 // 수업 명단(261112 어사이드 검수): 시간표에서 저장 안 한 학생은 빼고(regs0 = 저장된 명단), 수강 시작 전·종료 뒤 수업에도 넣지 않음
@@ -646,7 +646,7 @@ function lSaveDialog(k,after){const nm=lName(k),c0=lChanges(k)||{att:[],other:[]
   modal(`<h2>저장</h2><div class="box"><ul class="savelist"><li><span class="dotc" style="background:${nm.bar}"></span>${esc(nm.name)} ${mdw(nm.d)} <span class="sl-t">${[c.att.length?`출결 ${c.att.length}명`:"",...c.other].filter(Boolean).join(" · ")}</span></li></ul>${noticeAsk(ns)}</div>
   <div class="actions"><span class="sp"></span><button class="btn" id="lsC">취소</button><button class="btn pri" id="lsO">${IC("save","s")}수업 저장</button></div>`,(m,close)=>{m.querySelector("#lsC").onclick=close;m.querySelector("#lsO").onclick=()=>{close();const n=lSaveOne(k);render();toast(`저장했어요 — 노션 ${n}건 (시제품: 노션에 쓰지 않음)`);if(after)after()}})}
 function lSaveOne(k){const n=lCount(k)+lxRows(k).length;lxSave(k);LDIRTY.delete(k);return n}
-function lName(k){if(k.startsWith("mk:")){const m=DB.mk.find(x=>"mk:"+x.id===k);return m?{name:mkName(m),d:m.d,bar:mkCol(m).bar}:null}const [bid,d]=k.split("|");const b=byId(DB.blocks,bid);return b?{name:cls(b.classId).name,d,bar:classBar(cls(b.classId))}:null}
+function lName(k){if(k.startsWith("mk:")){const m=DB.mk.find(x=>"mk:"+x.id===k);return m?{name:mkName(m),d:m.d,bar:mkCol(m).bar}:null}const [bid,d]=k.split("|");const b=byId(DB.blocks,bid);return b?{name:(cls(b.classId)||{}).name,d,bar:classBar(cls(b.classId))}:null}
 // 다른 수업으로 옮길 때 저장 안 한 것 묻기
 // 수업 창 아래 [되돌리기] [저장 n]
 const lsFoot=(k,extra,nm)=>{const n=lCount(k)+lxRows(k).length;/* 287판: 수업·보강 아래 단추 = 오른쪽 창 모듈 */return PANEL.foot({left:extra||"",undo:!!n,save:nm||"수업 저장",saveOn:!!n,count:n||"",ids:{undo:"lsRev",save:"lsSave"},icons:{trash:IC("trash","s"),undo:IC("undo"),save:IC("save","s")},undoTitle:"저장 상태로 되돌리기 — 이 수업에서 고친 것 모두",saveTitle:"고친 것을 노션에 보내요(Ctrl+Enter)"})};
@@ -664,8 +664,8 @@ function lessonEff(b,d){const o=DB.lov[lkey(b,d)];return o?{d:o.d,start:o.start,
 /* 261119 대표 "각 수업에서 정규 · 보강 · 휴강 표기 — 추천대로": 수업 구분 알약 = 공용 LK 칩. 정규 = 표시 없음(옮긴 정규면 '시간 바뀜'), 보강 · 휴강 = 칩. 수업 본문 머리 · 수업 창 · 마우스 카드 · 일정 달력이 모두 이것 */
 const kindPill=(k,moved)=>k==="보강"?LK.chip("mk"):k==="휴강"?LK.chip("off"):moved?LK.chip("mv"):"";
 // 클래스 없는 보강 이름 = "보강 11.14(토)"(261113 대표 — "여러 반" 대신)
-const mkTitle=m=>m.classId?cls(m.classId).name:`보강 ${md(m.d).slice(5)}(${DAYS[dow(m.d)]})`;
-const mkName=m=>m.classId?`${cls(m.classId).name} 보강`:mkTitle(m);
+const mkTitle=m=>m.classId?(cls(m.classId)||{}).name:`보강 ${md(m.d).slice(5)}(${DAYS[dow(m.d)]})`;
+const mkName=m=>m.classId?`${(cls(m.classId)||{}).name} 보강`:mkTitle(m);
 const mkCol=m=>m.classId?{bg:classColor(cls(m.classId)).bg,bar:classBar(cls(m.classId))}:{bg:"#EAF1FA",bar:"#7FA6D9"};
 // 보강 대기(261112 대표, 원본 매뉴얼 6-7): 지난 4주 결석 하나하나. 판단 전 + 보강 필요(아직 보강에 안 넣음)가 할 일.
 // [없음]은 사유와 함께 빠지고, 보강에 연결되면(아래 mkLink) 빠짐. 보강도 결석이면 다시 뜸
@@ -717,7 +717,7 @@ function mkPicker(w,upto,seasonId){
   const wt=new Map(),wl=new Map();mkWait().forEach(x=>{if(!wt.has(x.sid))wt.set(x.sid,x);(wl.get(x.sid)||wl.set(x.sid,[]).get(x.sid)).push(x)});
   /* 261119 대표: 학생 목록엔 그 학생의 모든 클래스가 아니라 보강이 필요한 클래스 · 결석한 날 하나(가장 오래된 것) + 더 있으면 +n */
   const abList=id=>{const L=(wl.get(id)||[]).slice().sort((p1,p2)=>String(p1.d).localeCompare(String(p2.d)));return L.length?L:(abs.get(id)?[abs.get(id)]:[])};
-  const absTag=id=>{const L=abList(id);if(!L.length)return "";const a=L[0];return `${cls(a.classId).name} ${md(a.d).slice(5)} 결석${L.length>1?` +${L.length-1}`:""}`};
+  const absTag=id=>{const L=abList(id);if(!L.length)return "";const a=L[0];return `${(cls(a.classId)||{}).name} ${md(a.d).slice(5)} 결석${L.length>1?` +${L.length-1}`:""}`};
   // 목록 묶음(비었을 때): 보강 대기 → 최근 결석 학생 → 최근 휴강 클래스별([모두 넣기]) → 그 클래스 학생
   w._hp={c,allow,groups:()=>[{title:"보강 대기",ids:[...wt.keys()].filter(ok)},{title:"최근 결석 학생 <small>4주</small>",ids:[...abs.keys()].filter(ok)},
       ...offs.map(o2=>({title:`최근 휴강 · ${esc(o2.c.name)} <small>${md(o2.d)}</small>`,ids:o2.sids.filter(ok),act:true})),...(c?[{title:`${esc(c.name)} 학생`,ids:[...allow].filter(ok)}]:[])],
@@ -730,16 +730,16 @@ function bindMkPicker(p,w,after){const h=w._hp;if(!h)return;
     onFind:(cur,add)=>{const c=h.c;const ab=recentAbsAll(w.d||TODAY);
       stuModal({title:c?`보강 학생 추가 — ${c.name} 수강생`:"보강 학생 추가",help:c?`클래스를 골라서 ${c.name} 수강생만 넣을 수 있어요. 여러 클래스 학생을 함께 넣으려면 클래스를 비워요.`:"여러 클래스 학생을 함께 넣을 수 있어요.",only:h.allow,exclude:new Set(cur),
         busy:w.start!=null?sid=>{const bz=busyAt(w.d,w.start,w.end,w.id?"mk:"+w.id:null).st.get(sid);return bz?`${bz} 수업`:null}:null,
-        sub:sid=>{const a=ab.get(sid);return a?`${esc(cls(a.classId).name)} ${md(a.d)} 결석`:""},
+        sub:sid=>{const a=ab.get(sid);return a?`${esc((cls(a.classId)||{}).name)} ${md(a.d)} 결석`:""},
         done:ids=>{if(ids.length)add(ids)}})}})}
 function lessonsOn(date){const out=[];const inS=b=>{const se=seasonOf(b.seasonId);return se&&se.state==="확정"&&!b.del&&inPer(effPeriod(b),date)};
-  DB.blocks.filter(b=>b.day===dow(date)&&inS(b)).forEach(b=>{const e=lessonEff(b,date);if(!e.moved&&!e.off)out.push({k:lkey(b,date),name:cls(b.classId).name,tch:cls(b.classId).teacherId,sids:studentsOfBlock(b).map(x=>x.id),start:e.start,end:e.end})});
-  Object.entries(DB.lov).forEach(([k,o])=>{if(o.d!==date||o.off)return;const [bid,od]=k.split("|");const b=byId(DB.blocks,bid);if(!b)return;if(o.d===od&&o.start===b.start&&o.end===b.end)return;out.push({k,name:cls(b.classId).name,tch:cls(b.classId).teacherId,sids:studentsOfBlock(b).map(x=>x.id),start:o.start,end:o.end})});
-  DB.mk.filter(m=>m.d===date&&!m.off).forEach(m=>out.push({k:"mk:"+m.id,name:mkName(m),tch:m.classId?cls(m.classId).teacherId:null,sids:m.sids,start:m.start,end:m.end}));return out}
+  DB.blocks.filter(b=>b.day===dow(date)&&inS(b)).forEach(b=>{const e=lessonEff(b,date);if(!e.moved&&!e.off)out.push({k:lkey(b,date),name:(cls(b.classId)||{}).name,tch:(cls(b.classId)||{}).teacherId,sids:studentsOfBlock(b).map(x=>x.id),start:e.start,end:e.end})});
+  Object.entries(DB.lov).forEach(([k,o])=>{if(o.d!==date||o.off)return;const [bid,od]=k.split("|");const b=byId(DB.blocks,bid);if(!b)return;if(o.d===od&&o.start===b.start&&o.end===b.end)return;out.push({k,name:(cls(b.classId)||{}).name,tch:(cls(b.classId)||{}).teacherId,sids:studentsOfBlock(b).map(x=>x.id),start:o.start,end:o.end})});
+  DB.mk.filter(m=>m.d===date&&!m.off).forEach(m=>out.push({k:"mk:"+m.id,name:mkName(m),tch:m.classId?(cls(m.classId)||{}).teacherId:null,sids:m.sids,start:m.start,end:m.end}));return out}
 // 학생마다 겹치는 수업 이름(그 시간), 강사 겹침
 function busyAt(date,start,end,selfKey){const st=new Map();let tch=new Map();lessonsOn(date).forEach(l=>{if(l.k===selfKey||!(l.start<end&&start<l.end))return;l.sids.forEach(id=>{if(!st.has(id))st.set(id,`${l.name} ${fmt(l.start)}`)});if(l.tch&&!tch.has(l.tch))tch.set(l.tch,`${l.name} ${fmt(l.start)}`)});return {st,tch}}
 function clashToast(date,start,end,sids,tchId,selfKey,prefix){const bz=busyAt(date,start,end,selfKey);const hit=sids.filter(id=>bz.st.has(id));const tb=null; // 강사 겹침은 알리지 않음(같은 강사가 같은 시간 여러 반 = 세션 수업)
-  if(!hit.length&&!tb)return toast(prefix);const first=hit[0];toast(`${prefix} — 겹침: ${hit.length?`${stu(first).name}(${bz.st.get(first)})${hit.length>1?` 외 ${hit.length-1}명`:""}`:""}${tb?`${hit.length?" · ":""}강사 ${tch(tchId).name}(${tb})`:""}`)}
+  if(!hit.length&&!tb)return toast(prefix);const first=hit[0];toast(`${prefix} — 겹침: ${hit.length?`${(stu(first)||{}).name}(${bz.st.get(first)})${hit.length>1?` 외 ${hit.length-1}명`:""}`:""}${tb?`${hit.length?" · ":""}강사 ${((tch(tchId)||{}).name||"—")}(${tb})`:""}`)}
 function recentAbsent(classId,upto){const out=new Map();DB.blocks.filter(b=>b.classId===classId).forEach(b=>{for(let i=1;i<=28;i++){const d=dPlus(upto,-i);if(dow(d)!==b.day||!lessonMade(b,d))continue;studentsOfBlock(b).forEach(x=>{if(attOf(b,d,x.id)==="결석"&&!out.has(x.id))out.set(x.id,d)})}});return out}
 function makeLessons(list){list.forEach(([b,d])=>{DB.made[lkey(b,d)]=true;b.lessons=true});commit()}
 
@@ -839,12 +839,12 @@ function bindTitle(v,t){const st=t.state;
 function lessonHc(b,d){const c=cls(b.classId),studs=lessonRoster(b,d),made=lessonMade(b,d);const sm=made?attSum(b,d):null;const hw=made&&d<=TODAY?hwSum(b,d):null,ev=made&&d<=TODAY?evalAvg(b,d):null;const n=studs.length;
   const k=lkey(b,d),op=LUN.has(k);
   return `<div class="hc-top"><b>${esc(c.name)}</b>${!made?'<span class="pill">수업 없음</span>':kindPill(lessonEff(b,d).off?"휴강":"정규",lessonEff(b,d).moved)}${made?`<button class="lockbtn ${op?"open":""}" data-llock="${k}" title="${op?"다시 잠그기":"잠금 해제 — 이 주 이 수업만 끌어 옮기거나 늘릴 수 있어요"}">${IC(op?"unlock":"lock")}</button>`:""}</div>
-  <div class="hc-rows">${(()=>{const e=lessonEff(b,d);return `<div class="hc-r">${IC("clock")}<span>${fmt(e.start)}–${fmt(e.end)} · ${mdw(e.d)}${e.moved?` <small class="hint">(${md(d)}에서 옮김)</small>`:""}</span></div>`})()}<div class="hc-r">${IC("user")}<span>${esc(tch(c.teacherId).name)}</span></div>
+  <div class="hc-rows">${(()=>{const e=lessonEff(b,d);return `<div class="hc-r">${IC("clock")}<span>${fmt(e.start)}–${fmt(e.end)} · ${mdw(e.d)}${e.moved?` <small class="hint">(${md(d)}에서 옮김)</small>`:""}</span></div>`})()}<div class="hc-r">${IC("user")}<span>${esc(((tch(c.teacherId)||{}).name||"—"))}</span></div>
   ${made&&d<=TODAY?`<div class="hc-r">${IC("users")}<span>출석 ${sm.출석+sm.보강}/${n}${sm.결석?` · 결석 ${sm.결석}`:""}${sm.미입력?` · 미입력 ${sm.미입력}`:""}</span></div>${hw?`<div class="hc-r">${IC("clip")}<span>과제 제출 ${hw["완료"]}/${n}${hw["일부 완료"]?` · 일부 ${hw["일부 완료"]}`:""}${hw["미제출"]?` · 미제출 ${hw["미제출"]}`:""}</span></div>`:""}${ev!=null?`<div class="hc-r">${IC("filetext")}<span>평가 평균 ${ev}점</span></div>`:""}`:`<div class="hc-r">${IC("users")}<span>${n}명</span></div>`}</div>
   <div class="hc-sep"></div><div class="hc-stu">${studs.map(x=>{const a=made?attOf(b,d,x.id):null;return `<div class="hc-s">${made?`<span class="atti ${a?({출석:"a1",결석:"a2",보강:"a3"})[a]:"a0"}" title="${a||"미입력"}">${IC(a==="출석"?"chkc":a==="결석"?"xc":a==="보강"?"rotc":"dotc")}</span>`:""}${stuHtml(x)}</div>`}).join("")||'<div class="hint">학생 없음</div>'}</div>`}
 function mkHc(m){const c=m.classId?cls(m.classId):null,k="mk:"+m.id,op=LUN.has(k);const abs=recentAbsAll(m.d);const pres=m.sids.filter(x=>m.att[x]==="출석").length;
   return `<div class="hc-top"><b>${esc(mkTitle(m))}</b>${m.classId||m.off?kindPill(m.off?"휴강":"보강"):""}<button class="lockbtn ${op?"open":""}" data-llock="${k}" title="${op?"다시 잠그기":"잠금 해제 — 끌어 옮기거나 늘릴 수 있어요"}">${IC(op?"unlock":"lock")}</button></div>
-  <div class="hc-rows"><div class="hc-r">${IC("clock")}<span>${fmt(m.start)}–${fmt(m.end)} · ${mdw(m.d)}</span></div>${c?`<div class="hc-r">${IC("user")}<span>${esc(tch(c.teacherId).name)}</span></div>`:""}<div class="hc-r">${IC("users")}<span>${m.sids.length}명${m.d<=TODAY?` · 출석 ${pres}`:""}</span></div></div>
+  <div class="hc-rows"><div class="hc-r">${IC("clock")}<span>${fmt(m.start)}–${fmt(m.end)} · ${mdw(m.d)}</span></div>${c?`<div class="hc-r">${IC("user")}<span>${esc(((tch(c.teacherId)||{}).name||"—"))}</span></div>`:""}<div class="hc-r">${IC("users")}<span>${m.sids.length}명${m.d<=TODAY?` · 출석 ${pres}`:""}</span></div></div>
   <div class="hc-sep"></div><div class="hc-stu">${m.sids.map(id=>{const x=stu(id);if(!x)return"";const a=m.att[id];return `<div class="hc-s"><span class="atti ${a==="출석"?"a3":a==="결석"?"a2":"a0"}" title="${a==="출석"?"보강":a||"미입력"}">${IC(a==="출석"?"chkc":a==="결석"?"xc":"dotc")}</span>${stuHtml(x)}</div>`}).join("")}</div>`}
 function bindLessonHover(grid,items){bindHoverCard(document.createElement("div"));const card=document.getElementById("hc");if(!grid.querySelector("[data-l]:hover"))card.hidden=true;
   grid.querySelectorAll("[data-l]").forEach(el=>{el.addEventListener("mouseenter",()=>{if(document.body.classList.contains("dragging-blk")||el.closest(".col.mkmode")||hcSkip(el))return;const it=items.find(x=>lkey(x.b,x.d)===el.dataset.l);
@@ -852,11 +852,11 @@ function bindLessonHover(grid,items){bindHoverCard(document.createElement("div")
       if(!it)return;hcKeep();card.innerHTML=lessonHc(it.b,it.d);card.hidden=false;hcPlace(card,el)});
     el.addEventListener("mouseleave",()=>{if(HC_SUP===el.dataset.l)HC_SUP=null;hcHide()});el.addEventListener("mousedown",()=>{card.hidden=true;HC_SUP=el.dataset.l})})}
 function makeWeekDialog(missing,wk){modal(`<h2>수업 생성${HELP("이 주 시간표 중 수업이 없는 것을 노션 수업 페이지로 생성해요(원본 [다음 주 수업 일괄 생성]과 같음). 학생 출석 칸도 함께 생겨요. 이미 있는 수업은 건드리지 않아요. 일정에 휴원으로 적은 클래스·날짜는 건너뛰어요.")}</h2>
-  <div class="box"><div>${md(wk.from)}-${md(wk.to)} · 수업 ${missing.length}개</div><ul class="savelist">${missing.slice().sort((a,b)=>a.d.localeCompare(b.d)||a.b.start-b.b.start).map(({b,d})=>`<li><span class="dotc" style="background:${classBar(cls(b.classId))}"></span>${mdw(d)} ${esc(cls(b.classId).name)} <span class="sl-t">(${fmt(b.start)}–${fmt(b.end)} · ${studentsOfBlock(b).length}명)</span></li>`).join("")}</ul></div>
+  <div class="box"><div>${md(wk.from)}-${md(wk.to)} · 수업 ${missing.length}개</div><ul class="savelist">${missing.slice().sort((a,b)=>a.d.localeCompare(b.d)||a.b.start-b.b.start).map(({b,d})=>`<li><span class="dotc" style="background:${classBar(cls(b.classId))}"></span>${mdw(d)} ${esc((cls(b.classId)||{}).name)} <span class="sl-t">(${fmt(b.start)}–${fmt(b.end)} · ${studentsOfBlock(b).length}명)</span></li>`).join("")}</ul></div>
   <div class="actions"><span class="sp"></span><button class="btn" id="mc">취소</button><button class="btn pri" id="mo">생성</button></div>`,(m,close)=>{m.querySelector("#mc").onclick=close;m.querySelector("#mo").onclick=()=>{if(window.LIVE){close();liveRunClasses([...new Set(missing.map(x=>x.b.id))]);return}/* 실제 자료 모드: 노션 수업 생성 큐에 맡김(live.js) */makeLessons(missing.map(x=>[x.b,x.d]));close();toast(`수업 ${missing.length}개를 생성했어요 (시제품: 노션에 쓰지 않음)`)}})}
-const clsItems=()=>[{v:"",label:"클래스 없음"},...DB.classes.filter(x=>!x.close||x.close>=TODAY).map(x=>({v:x.id,label:x.name,sub:`${tch(x.teacherId).name} · ${DB.enrolls.filter(e=>e.classId===x.id&&!e.ended).length}명`,dot:classBar(x),grp:x.open&&x.open>TODAY?"오픈 예정":"운영 중"})).sort((a,b)=>(a.grp===b.grp?0:a.grp==="운영 중"?-1:1))];
+const clsItems=()=>[{v:"",label:"클래스 없음"},...DB.classes.filter(x=>!x.close||x.close>=TODAY).map(x=>({v:x.id,label:x.name,sub:`${((tch(x.teacherId)||{}).name||"—")} · ${DB.enrolls.filter(e=>e.classId===x.id&&!e.ended).length}명`,dot:classBar(x),grp:x.open&&x.open>TODAY?"오픈 예정":"운영 중"})).sort((a,b)=>(a.grp===b.grp?0:a.grp==="운영 중"?-1:1))];
 function panelMakeup(p,t){const st=t.state;const m=st.mkNew;if(!m.sids)m.sids=[];
-  const make=()=>{const id=uid("mk");const nm={id,classId:m.classId,d:m.d,start:m.start,end:m.end,sids:m.sids.slice(),att:{}};DB.mk.push(nm);(st.mkFrom||[]).forEach(k=>{if(nm.sids.includes(k.split("|").pop()))DB.mkw[k]=Object.assign({},DB.mkw[k],{mk:id})});st.mkFrom=null;LUN.add("mk:"+id);if(m.classId)st.mkCls=m.classId;st.mkNew=null;st.mkPick=false;st.lsel="mk:"+id;st.lmode="att";st.ltab="att";commit();clashToast(nm.d,nm.start,nm.end,nm.sids,nm.classId?cls(nm.classId).teacherId:null,"mk:"+id,`${nm.classId?`${mkName(nm)}을`:"보강을"} 생성했어요 — ${mdw(m.d)} ${fmt(m.start)} · ${m.sids.length}명`)};
+  const make=()=>{const id=uid("mk");const nm={id,classId:m.classId,d:m.d,start:m.start,end:m.end,sids:m.sids.slice(),att:{}};DB.mk.push(nm);(st.mkFrom||[]).forEach(k=>{if(nm.sids.includes(k.split("|").pop()))DB.mkw[k]=Object.assign({},DB.mkw[k],{mk:id})});st.mkFrom=null;LUN.add("mk:"+id);if(m.classId)st.mkCls=m.classId;st.mkNew=null;st.mkPick=false;st.lsel="mk:"+id;st.lmode="att";st.ltab="att";commit();clashToast(nm.d,nm.start,nm.end,nm.sids,nm.classId?(cls(nm.classId)||{}).teacherId:null,"mk:"+id,`${nm.classId?`${mkName(nm)}을`:"보강을"} 생성했어요 — ${mdw(m.d)} ${fmt(m.start)} · ${m.sids.length}명`)};
   if(st.mkPick){const before=m.sids.slice();
     p.innerHTML=`${PANEL.head({name:"학생 편집",belong:"새 보강",info:[`${mdw(m.d)} ${fmt(m.start)}–${fmt(m.end)}`]})}${mkPicker(m,m.d,st.season)}
     ${PANEL.foot({back:{id:"mpC"},go:{id:"mpO",label:"완료"}})}`;
@@ -874,7 +874,7 @@ function panelMakeup(p,t){const st=t.state;const m=st.mkNew;if(!m.sids)m.sids=[]
   ${PANEL.foot({back:{id:"mkC"},go:{id:"mkO",label:"보강 생성"}})}`;
   bindPhead(p,t);
   /* 308판: 날짜·시간 = 입력칸 모듈 */HF.date(p.querySelector("#nDH"),{label:"날짜",value:m.d,clear:false,onChange:v=>{if(v){m.d=v;render()}}});HF.timeRange(p.querySelector("#nTH"),{label:"수업 시간",value:[fmt(m.start),fmt(m.end)],step:5,onChange:([a2,b2])=>{const s1=parseT(a2),e1=parseT(b2);if(s1==null||e1==null||e1<=s1)return;if(s1===m.start&&e1===m.end)return;m.start=s1;m.end=e1;render()}});
-  hpCls(p.querySelector("#hpNC"),{none:true,value:m.classId,onChange:v2=>{{st.fo=null;m.classId=v2||null;if(m.classId){const al=new Set(DB.enrolls.filter(e=>e.classId===m.classId&&!e.ended).map(e=>e.studentId));const out=m.sids.filter(id=>!al.has(id));m.sids=m.sids.filter(id=>al.has(id));if(out.length)toast(`${cls(m.classId).name} 수강생이 아닌 ${out.length}명은 뺐어요`)}render()}}});
+  hpCls(p.querySelector("#hpNC"),{none:true,value:m.classId,onChange:v2=>{{st.fo=null;m.classId=v2||null;if(m.classId){const al=new Set(DB.enrolls.filter(e=>e.classId===m.classId&&!e.ended).map(e=>e.studentId));const out=m.sids.filter(id=>!al.has(id));m.sids=m.sids.filter(id=>al.has(id));if(out.length)toast(`${(cls(m.classId)||{}).name} 수강생이 아닌 ${out.length}명은 뺐어요`)}render()}}});
   bindMkPicker(p,m,()=>{});
   p.querySelector("#mkC").onclick=()=>{st.mkNew=null;st.mkPick=false;render()};
   p.querySelector("#mkO").onclick=make}
@@ -913,7 +913,7 @@ function panelMk(p,t,id){const st=t.state;const m=DB.mk.find(x=>x.id===id);if(!m
   /* 308판 */{const mh=p.querySelector("#mDH");if(mh){const dis1=!!mh.dataset.dis;HF.date(mh,{label:"날짜",value:m.d,clear:false,disabled:dis1,onChange:v=>{if(v&&v!==m.d){lBase(mk);m.d=v;commit()}}});HF.timeRange(p.querySelector("#mTH"),{label:"수업 시간",value:[fmt(m.start),fmt(m.end)],step:5,disabled:dis1,onChange:([a2,b2])=>{const s1=parseT(a2),e1=parseT(b2);if(s1==null||e1==null||e1<=s1)return;if(s1===m.start&&e1===m.end)return;lBase(mk);m.start=s1;m.end=e1;commit()}})}}
   const ms2=p.querySelector("#mS"),me2=p.querySelector("#mE");if(ms2&&!ml&&!off){ms2.onclick=ev=>openTimeWheel(ev.currentTarget,{value:m.start,max:m.end-5,step:5,label:"시작"},v2=>{lBase(mk);m.start=v2;commit()});me2.onclick=ev=>openTimeWheel(ev.currentTarget,{value:m.end,min:m.start+5,step:5,label:"끝"},v2=>{lBase(mk);m.end=v2;commit()})}
   {const hc2=p.querySelector("#mCls");if(hc2&&window.HF){HF.text(hc2,{label:"클래스",icon:"layers",value:c?c.name:"클래스 없음",disabled:true});if(c)hfDot(hc2,classBar(c))}const ht2=p.querySelector("#mTch");if(ht2&&window.HF)HF.text(ht2,{label:"담당강사",icon:"users",value:c?(tch(c.teacherId)||{}).name||"—":"—",disabled:true})}
-  if(!off)hpCls(p.querySelector("#hpMC"),{none:true,value:m.classId,onChange:v2=>{{st.fo=null;const nc=v2||null;if(nc===m.classId)return render();lBase(mk);if(nc){const al=new Set(DB.enrolls.filter(e=>e.classId===nc&&!e.ended).map(e=>e.studentId));const out=m.sids.filter(id=>!al.has(id));const go=()=>{out.forEach(id=>delete m.att[id]);m.sids=m.sids.filter(id=>al.has(id));m.classId=nc;commit()};if(out.length){render();askRun("보강 클래스를 바꿀까요?",`<div>${esc(cls(nc).name)} 수강생이 아닌 <b>${out.length}명</b>은 이 보강에서 빠져요.</div><div class="hint">${out.map(id=>esc(nmStu(id))).join(" · ")}</div>`,"바꾸기",go);return}go();return}m.classId=nc;commit()}}});
+  if(!off)hpCls(p.querySelector("#hpMC"),{none:true,value:m.classId,onChange:v2=>{{st.fo=null;const nc=v2||null;if(nc===m.classId)return render();lBase(mk);if(nc){const al=new Set(DB.enrolls.filter(e=>e.classId===nc&&!e.ended).map(e=>e.studentId));const out=m.sids.filter(id=>!al.has(id));const go=()=>{out.forEach(id=>delete m.att[id]);m.sids=m.sids.filter(id=>al.has(id));m.classId=nc;commit()};if(out.length){render();askRun("보강 클래스를 바꿀까요?",`<div>${esc((cls(nc)||{}).name)} 수강생이 아닌 <b>${out.length}명</b>은 이 보강에서 빠져요.</div><div class="hint">${out.map(id=>esc(nmStu(id))).join(" · ")}</div>`,"바꾸기",go);return}go();return}m.classId=nc;commit()}}});
   if(!off)bindMkPicker(p,mw,()=>{if(mw.sids.join()===m.sids.join())return;lBase(mk);m.sids.filter(x=>!mw.sids.includes(x)).forEach(x=>delete m.att[x]);m.sids=mw.sids.slice();commit()});
   const me=p.querySelector("#mkEdit");if(me)me.onclick=()=>{st.mkEd={id:m.id,d:m.d,start:m.start,end:m.end,classId:m.classId,sids:m.sids.slice()};render()};
   p.querySelector("#mLock").onclick=()=>{ml?LUN.add(mk):LUN.delete(mk);render()};
@@ -936,7 +936,7 @@ const MKPER=[["4w","최근 4주",28],["3m","최근 3개월",91],["sea","이번 �
 function mkwRow(st,w){const m=absMk(w.k);const W2=DB.mkw[w.k]||{};const ago=dAgo(w.d)?dAgo(w.d)+"일 전":"오늘";
   const tail=w.st==="pend"?`<span class="mwst pend">보강 잡힘 · ${mdw(m.d)}</span>`:w.st==="done"?`<span class="mwst done">보강 완료${m?` · ${md(m.d)}`:""}</span>`
     :`<span class="mwseg"><button type="button" data-mwd="need" class="${(w.st==="need"||w.st==="re")&&st.mkwWhy!==w.k?"on":""}">필요</button><button type="button" data-mwd="none" class="${w.st==="none"||st.mkwWhy===w.k?"on":""}">없음</button></span>`;
-  return `<div class="mwa st-${w.st}" data-mw="${w.k}"><span class="dotc" style="background:${classBar(cls(w.classId))}"></span><span class="mwt"><span class="r">${esc(cls(w.classId).name)} ${md(w.d)} 결석</span><span class="age">${ago}${w.st==="pre"?" · 판단 전":w.st==="re"?` · 보강도 결석(${md(m.d)})`:w.st==="none"?` · 보강 없음${W2.why?` · ${esc(W2.why)}`:""}`:""}</span></span>${tail}
+  return `<div class="mwa st-${w.st}" data-mw="${w.k}"><span class="dotc" style="background:${classBar(cls(w.classId))}"></span><span class="mwt"><span class="r">${esc((cls(w.classId)||{}).name)} ${md(w.d)} 결석</span><span class="age">${ago}${w.st==="pre"?" · 판단 전":w.st==="re"?` · 보강도 결석(${md(m.d)})`:w.st==="none"?` · 보강 없음${W2.why?` · ${esc(W2.why)}`:""}`:""}</span></span>${tail}
     ${st.mkwWhy===w.k?`<span class="why"><input class="inp" id="mwWhy" placeholder="사유(이월·환불 등)" autocomplete="off" value="${esc(W2.why||"")}"><button type="button" class="btn" id="mwOk">${IC("save","s")}사유 저장</button></span>`:""}</div>`}
 function mkwHtml(st,W){const open=st.mkwOpen||(st.mkwOpen={});const per=st.mkwPer||(st.mkwPer={});
   const G=new Map();W.forEach(w=>{if(!G.has(w.sid))G.set(w.sid,[]);G.get(w.sid).push(w)});
@@ -956,7 +956,7 @@ function mkwHtml(st,W){const open=st.mkwOpen||(st.mkwOpen={});const per=st.mkwPe
 function ltRefresh(p){const n=mkCardN();const tb=p&&p.querySelector('[data-lt="mk"] .tn');if(tb){tb.textContent=n;tb.classList.toggle("w",!!n)}const pb=document.querySelector("#panelT .pbadge");if(pb){const un=+(p.querySelector('[data-lt="un"] .tn')||{}).textContent||0,ms=+(p.querySelector('[data-lt="ms"] .tn')||{}).textContent||0;pb.textContent=un+ms+n}renderSide()}
 function mkwMount(p,st){const host=p.querySelector("#hpWait");if(!host)return;seedOffOnce();seedMkw();mkLink();
   const G=new Map();absAll(seaStart()).forEach(a=>{const k2=a.sid+"|"+a.classId;if(!G.has(k2))G.set(k2,{sid:a.sid,cid:a.classId,abs:[]});const s2=absState(a.k);const m=absMk(a.k);G.get(k2).abs.push({id:a.k,d:a.d,st:s2,mk:s2==="pend"&&m?`${md(m.d).slice(5)}(${DAYS[dow(m.d)]})`:"",why:(DB.mkw[a.k]||{}).why||""})});
-  const items=[...G.values()].filter(g=>stu(g.sid)&&cls(g.cid)).map(g=>({sid:g.sid,cls:cls(g.cid).name,cid:g.cid,color:classBar(cls(g.cid)),abs:g.abs}));
+  const items=[...G.values()].filter(g=>stu(g.sid)&&cls(g.cid)).map(g=>({sid:g.sid,cls:(cls(g.cid)||{}).name,cid:g.cid,color:classBar(cls(g.cid)),abs:g.abs}));
   HP.today=TODAY;HP.wait(host,{students:hpStudents(),items,tab:st.mkwTab||"wait",open:st.mkwOpen2||[],
     onDecide:(k,v)=>{const n=Object.assign({},DB.mkw[k]);n.dec=v==="none"?"none":"need";DB.mkw[k]=n;ltRefresh(p)}, // 163판: 보강 필요로 돌려도 사유는 남겨 둠(다시 보강 없음이면 그대로 보임) · 숫자 바로 고침
     onWhy:(k,why)=>{DB.mkw[k]=Object.assign({},DB.mkw[k],{dec:"none",why});toast(`보강 없음 사유를 저장했어요${why?` — ${why}`:""} (시제품: 노션에 쓰지 않음)`)},
@@ -977,7 +977,7 @@ const stuLine=x=>`<div class="ck2 ro"><span class="ckx"></span><span class="nm">
 function panelLesson(p,t,items){const st=t.state;if(st.mkNew)return panelMakeup(p,t);if(st.lsel&&st.lsel.startsWith("mk:"))return panelMk(p,t,st.lsel.slice(3));const it=items.find(x=>lkey(x.b,x.d)===st.lsel);
   if(it&&st.lsStu&&st.lsStu.startsWith(st.lsel+"|")){const sid0=st.lsStu.slice(st.lsel.length+1);if(stu(sid0)){const ss0=lessonRoster(it.b,it.d);return panelAttend(p,t,st.lsel,sid0,{nav:ss0.map(z=>z.id),cur:sid0,pick:id=>{st.lsStu=st.lsel+"|"+id;render()},onBack:()=>{st.lsStu=null;render()},backLabel:"수업",offLesson:!!lessonEff(it.b,it.d).off})}}/* 261119 대표: 수업 창에서 학생을 누르면 학생 창(출석 페이지)으로 들어가고 [‹ 수업]으로 돌아옴 */
   if(!it){const wkI=items;const un=wkI.filter(x=>lessonMade(x.b,x.d)&&x.d<=TODAY&&attSum(x.b,x.d).미입력>0),ms=wkI.filter(x=>!lessonMade(x.b,x.d));const act=st.ltodo||"un";const W=mkWait();
-    const card=x=>`<div class="dcard" data-lgo="${lkey(x.b,x.d)}"><span class="dotc" style="background:${classBar(cls(x.b.classId))}"></span>${esc(cls(x.b.classId).name)}<span class="dcls">${mdw(x.d)} ${fmt(lessonEff(x.b,x.d).start)/* 523판: 달력 카드와 같은 시각(실제 자료 모드 = 노션 수업 시각) */}${act==="un"?` · 미입력 ${attSum(x.b,x.d).미입력}`:""}</span></div>`;
+    const card=x=>`<div class="dcard" data-lgo="${lkey(x.b,x.d)}"><span class="dotc" style="background:${classBar(cls(x.b.classId))}"></span>${esc((cls(x.b.classId)||{}).name)}<span class="dcls">${mdw(x.d)} ${fmt(lessonEff(x.b,x.d).start)/* 523판: 달력 카드와 같은 시각(실제 자료 모드 = 노션 수업 시각) */}${act==="un"?` · 미입력 ${attSum(x.b,x.d).미입력}`:""}</span></div>`;
     const list=act==="un"?un:ms;
     /* 261120: 선택 전 공용 창 = [현황] [할 일] 2탭(PANEL.todo와 같은 틀) — 현황 = 건수 요약 + 범례, 할 일 = 묶음 칩 + 줄 */
     const vw=st.ltv==="todo"?"todo":"sta";const lg=`<div class="lgbox"><div class="lgrow"><b>출석</b><span><i class="ok"></i>출석</span><span><i class="mk"></i>보강</span><span><i class="ab"></i>결석</span><span><i class="no"></i>미입력</span></div><div class="lgrow"><b>과제</b><span><i class="hs"></i>완료</span><span><i class="hp"></i>일부 완료</span><span><i class="hn"></i>미제출</span></div></div>`;
@@ -988,7 +988,7 @@ function panelLesson(p,t,items){const st=t.state;if(st.mkNew)return panelMakeup(
     bindPhead(p,t);if(vw==="todo"&&act==="mk")mkwMount(p,st);p.querySelectorAll("[data-ltv]").forEach(b=>b.onclick=()=>{st.ltv=b.dataset.ltv;render()});p.querySelectorAll("[data-lt]").forEach(b=>b.onclick=()=>{st.ltodo=b.dataset.lt;render()});p.querySelectorAll("[data-lgo]").forEach(x=>x.onclick=()=>lpOpen(st,x.dataset.lgo)/* 261118: 할 일 카드도 하루 수업 페이지로 */);
     const ma=p.querySelector("#mkAll");if(ma)ma.onclick=()=>makeWeekDialog(ms,weekOf(st));return}
   const {b,d}=it;const c=cls(b.classId);const made=lessonMade(b,d);const studs=lessonRoster(b,d);
-  if(!made){/* 261119 대표: 수업이 없으면 탭은 모두 흐림, [수업 추가]만 누를 수 있음 */p.innerHTML=`${PANEL.head({dot:classBar(c),name:c.name,state:{t:"수업 없음",tone:"yellow"},belong:`${mdw(d)} ${fmt(b.start)}–${fmt(b.end)}`,info:[tch(c.teacherId).name,`${studs.length}명`]})}
+  if(!made){/* 261119 대표: 수업이 없으면 탭은 모두 흐림, [수업 추가]만 누를 수 있음 */p.innerHTML=`${PANEL.head({dot:classBar(c),name:c.name,state:{t:"수업 없음",tone:"yellow"},belong:`${mdw(d)} ${fmt(b.start)}–${fmt(b.end)}`,info:[((tch(c.teacherId)||{}).name||"—"),`${studs.length}명`]})}
     <div class="lpnotabs">${PANEL.tabs([{id:"info",label:"정보"},{id:"att",label:"출결"},{id:"rt",label:"루틴"},{id:"log",label:"학습"}],"","lt0")}</div>
     <div class="box"><div class="lnone">이 날 수업이 아직 없어요 — 시간표로 수업을 생성하면 정보 · 출결 · 루틴 · 학습을 쓸 수 있어요.</div><button type="button" class="btn pri lpgo2" id="mk1">${IC("plus","s")}수업 추가</button></div>`;bindPhead(p,t);
     p.querySelector("#mk1").onclick=()=>{if(typeof ttLessonAddOn==="function")return ttLessonAddOn(b,d);makeLessons([[b,d]]);toast(`${mdw(d)} ${c.name} 수업을 생성했어요`)};return}
@@ -1019,7 +1019,7 @@ function panelLesson(p,t,items){const st=t.state;if(st.mkNew)return panelMakeup(
       <div class="actions"><span class="sp"></span><button class="btn" id="cfC">취소</button><button class="btn pri" id="cfO">넣기</button></div>`,(md3,close)=>{md3.querySelector("#cfC").onclick=close;md3.querySelector("#cfO").onclick=()=>{close();doAdd()}})};
     const doAdd=()=>{let made2=0;w.sids.forEach(id=>{let en=DB.enrolls.find(x=>x.classId===b.classId&&!x.ended&&x.studentId===id);if(!en){en={id:uid("e"),studentId:id,classId:b.classId,start:w.from,discount:0};DB.enrolls.push(en);made2++}if(!b.regs.includes(en.id))b.regs.push(en.id)});
       const n=w.sids.length;st.addStu=null;st.addW=null;commit();toast(`${n}명을 시간표에 넣었어요 — ${md(w.from)} 수업부터${made2?` · 수강 등록 ${made2}건`:""} (시제품: 노션에 쓰지 않음)`)};return}
-  p.innerHTML=`${PANEL.head({dot:classBar(c),name:c.name,chipsHtml:`${kindPill(e.off?"휴강":"정규",e.moved)}${draftPill(k)}`,lock:lockBtn/* 261119 대표: 머리의 [수업 화면]은 없앰 → 정보 탭 맨 위 [수업 화면으로 이동] */,belong:`${mdw(d)} ${fmt(e.moved?b.start:e.start)}–${fmt(e.moved?b.end:e.end)}`/* 실제 자료 모드: 노션 수업의 시각(lessonEff) */,info:[tch(c.teacherId).name,`출석 ${sm.출석}/${sm.출석+sm.결석+sm.보강+sm.미입력}`],notion:'data-nl="lesson" data-nlname="수업"'})}
+  p.innerHTML=`${PANEL.head({dot:classBar(c),name:c.name,chipsHtml:`${kindPill(e.off?"휴강":"정규",e.moved)}${draftPill(k)}`,lock:lockBtn/* 261119 대표: 머리의 [수업 화면]은 없앰 → 정보 탭 맨 위 [수업 화면으로 이동] */,belong:`${mdw(d)} ${fmt(e.moved?b.start:e.start)}–${fmt(e.moved?b.end:e.end)}`/* 실제 자료 모드: 노션 수업의 시각(lessonEff) */,info:[((tch(c.teacherId)||{}).name||"—"),`출석 ${sm.출석}/${sm.출석+sm.결석+sm.보강+sm.미입력}`],notion:'data-nl="lesson" data-nlname="수업"'})}
   ${PANEL.tabs([["info","정보",e.moved?"옮김":e.off?"휴강":""],["att","출결",e.off?"":`${sm.출석+sm.보강}/${studs.length}`],["rt","루틴",(()=>{const n=b?rtOf(b.classId).filter(r=>!r.rest).length:0;return n?String(n):""})()],["log","학습",nLog?String(nLog):""]]/* 261119 대표: 탭 순서 정보 · 출결 · 루틴 · 학습 */.map(([k2,n2,sub])=>({id:k2,label:n2,n:sub,dot:lTabDirty(typeof mk==="string"?mk:k,k2)?'<i class="tdot"></i>':""})),lt,"lt2")}
   <section class="ptab ${lt==="att"?"on":""}">
   ${e.off?`<div class="offbox">휴강한 수업이에요. 출결은 받지 않아요.<br>되돌리려면 [정보] 탭의 [정규].</div>`:(()=>{const n=studs.length,hw=hwSum(b,d),ev=evalAvg(b,d);const hwT=hw?hw["완료"]+hw["일부 완료"]+hw["미제출"]:0;
@@ -1045,7 +1045,7 @@ function panelLesson(p,t,items){const st=t.state;if(st.mkNew)return panelMakeup(
   /* 261119 대표: 수업 창 결석 줄 [보강 잡기] → 보강 메뉴(보강 대기)로, 그 결석(학생 · 클래스)이 미리 골라짐 — 보강 생성은 보강 메뉴 한 곳 */
   p.querySelectorAll("[data-mkin]").forEach(bt=>bt.onclick=()=>mkPickModal(bt.dataset.mkin));
   if(lt==="rt")rtLessonBind(p,k,b,d,studs,LIVE_ON()&&typeof LIVE_LS!=="undefined"?LIVE_LS[k]:null);
-  {const hc=p.querySelector("#lCls"),ht=p.querySelector("#lTch");if(hc&&window.HF){HF.text(hc,{label:"클래스",icon:"layers",value:c.name||"",disabled:true});hfDot(hc,classBar(c));HF.text(ht,{label:"담당강사",icon:"users",value:tch(c.teacherId).name||"",disabled:true})}}
+  {const hc=p.querySelector("#lCls"),ht=p.querySelector("#lTch");if(hc&&window.HF){HF.text(hc,{label:"클래스",icon:"layers",value:c.name||"",disabled:true});hfDot(hc,classBar(c));HF.text(ht,{label:"담당강사",icon:"users",value:(tch(c.teacherId)||{}).name||"",disabled:true})}}
   /* 261119 대표: 출결 = 작은 나눔 단추 바로 누름 — 고른 쪽 다시 누르면 비움, 확정은 아래 [수업 저장] */
   p.querySelectorAll("[data-asm]").forEach(bt=>bt.onclick=()=>{const sid=bt.dataset.asm,v=bt.dataset.v,cur=attOf(b,d,sid);lBase(k);DB.att[k+"|"+sid]=cur===v?null:v;commit()});
   const setOv=o=>{lBase(k);DB.lov[k]=Object.assign({d:e.d,start:e.start,end:e.end},DB.lov[k]||{},o);const n=DB.lov[k];if(n.d===d&&n.start===b.start&&n.end===b.end&&!n.off)delete DB.lov[k];commit()};
@@ -1080,9 +1080,9 @@ function studentClassIds(sid){return [...new Set(DB.enrolls.filter(e=>e.studentI
 function startStudentDrag(e,sid){const sids=Array.isArray(sid)?sid:[sid];if(sids.length>1)return startStudentsDrag(e,sids);sid=sids[0];const hc=document.getElementById("hc");if(hc)hc.hidden=true;dragStu=sid;e.dataTransfer.setData("text/student",sid);e.dataTransfer.effectAllowed="copy";
   const cids=studentClassIds(sid);document.body.classList.add("dragging-stu");
   document.querySelectorAll("#grid .blk").forEach(el=>{const b=byId(DB.blocks,el.dataset.id);const ok=(!cids.length||cids.includes(b.classId))&&!b.regs.some(r=>{const e=enr(r);return e&&e.studentId===sid})&&!studentBusyAt(sid,b.seasonId,b.day,b.start,b.end,b.id);el.classList.toggle("drop-ok",ok);el.classList.toggle("drop-no",!ok)});
-  toast(cids.length?`${studentLabel(stu(sid))} — 다니는 클래스 ${cids.map(c=>cls(c).name).join(", ")}의 시간표에만 놓을 수 있어요`:`${studentLabel(stu(sid))} — 클래스가 없어 어느 클래스에든 놓을 수 있어요(놓으면 그 클래스 수강이 생겨요)`)}
+  toast(cids.length?`${studentLabel(stu(sid))} — 다니는 클래스 ${cids.map(c=>(cls(c)||{}).name).join(", ")}의 시간표에만 놓을 수 있어요`:`${studentLabel(stu(sid))} — 클래스가 없어 어느 클래스에든 놓을 수 있어요(놓으면 그 클래스 수강이 생겨요)`)}
 function startStudentsDrag(e,sids){const hc=document.getElementById("hc");if(hc)hc.hidden=true;dragStu=sids[0];e.dataTransfer.setData("text/student",sids.join(","));e.dataTransfer.effectAllowed="copy";document.body.classList.add("dragging-stu");
-  const g=document.createElement("div");g.className="dragcnt2";g.innerHTML=`${IC("grip")}<b>${esc(stu(sids[0]).name)}</b> 외<span class="n">${sids.length}명</span>`;document.body.appendChild(g);try{e.dataTransfer.setDragImage(g,12,14)}catch(_){}setTimeout(()=>g.remove(),0);
+  const g=document.createElement("div");g.className="dragcnt2";g.innerHTML=`${IC("grip")}<b>${esc((stu(sids[0])||{}).name)}</b> 외<span class="n">${sids.length}명</span>`;document.body.appendChild(g);try{e.dataTransfer.setDragImage(g,12,14)}catch(_){}setTimeout(()=>g.remove(),0);
   const cs=sids.map(studentClassIds);
   document.querySelectorAll("#grid .blk").forEach(el=>{const b=byId(DB.blocks,el.dataset.id);const okCls=cs.every(c=>!c.length||c.includes(b.classId));const some=sids.some(id=>!b.regs.some(r=>{const x=enr(r);return x&&x.studentId===id})&&!studentBusyAt(id,b.seasonId,b.day,b.start,b.end,b.id));const ok=okCls&&some;el.classList.toggle("drop-ok",ok);el.classList.toggle("drop-no",!ok)});
   toast(`학생 ${sids.length}명 — 함께 넣을 수 있는 시간표에만 놓을 수 있어요`)}
@@ -1091,9 +1091,9 @@ document.addEventListener("dragend",()=>{dragStu=null;document.body.classList.re
 function ttStuDrop(grid){
   grid.querySelectorAll(".blk").forEach(el=>{el.addEventListener("dragover",e=>{if(el.classList.contains("drop-no"))return;e.preventDefault();el.classList.add("drop")});el.addEventListener("dragleave",()=>el.classList.remove("drop"));
     el.addEventListener("drop",e=>{e.preventDefault();el.classList.remove("drop");const raw=e.dataTransfer.getData("text/student");if(!raw)return;const b=byId(DB.blocks,el.dataset.id);const sids=raw.split(",");
-      if(sids.length===1){const sid=sids[0];const bz=studentBusyAt(sid,b.seasonId,b.day,b.start,b.end,b.id);if(bz){flashBlock(bz.id);return toast(`${studentLabel(stu(sid))}: 이 시간에 ${busyLabel(bz)} 수업이 있어요`)}addStudentToBlock(b,sid);commit();return toast(`${studentLabel(stu(sid))} → ${cls(b.classId).name} ${DAYS[b.day]} ${fmt(b.start)} 시간표에만 넣었어요(작성 중)`)}
-      const add=[],skip=[];sids.forEach(id=>{if(b.regs.some(r=>{const x=enr(r);return x&&x.studentId===id}))return skip.push(`${stu(id).name} 이미 있음`);const bz=studentBusyAt(id,b.seasonId,b.day,b.start,b.end,b.id);if(bz)return skip.push(`${stu(id).name} ${busyLabel(bz)} 수업`);addStudentToBlock(b,id);add.push(stu(id).name)});
-      if(add.length){activeTab.state.tpick=null;commit()}toast(`${add.length?`${add.join("·")} → ${cls(b.classId).name} ${DAYS[b.day]} ${fmt(b.start)} 시간표에 넣었어요(작성 중)`:"넣을 학생이 없어요"}${skip.length?` · 못 넣음: ${skip.join(", ")}`:""}`)})});
+      if(sids.length===1){const sid=sids[0];const bz=studentBusyAt(sid,b.seasonId,b.day,b.start,b.end,b.id);if(bz){flashBlock(bz.id);return toast(`${studentLabel(stu(sid))}: 이 시간에 ${busyLabel(bz)} 수업이 있어요`)}addStudentToBlock(b,sid);commit();return toast(`${studentLabel(stu(sid))} → ${(cls(b.classId)||{}).name} ${DAYS[b.day]} ${fmt(b.start)} 시간표에만 넣었어요(작성 중)`)}
+      const add=[],skip=[];sids.forEach(id=>{if(b.regs.some(r=>{const x=enr(r);return x&&x.studentId===id}))return skip.push(`${(stu(id)||{}).name} 이미 있음`);const bz=studentBusyAt(id,b.seasonId,b.day,b.start,b.end,b.id);if(bz)return skip.push(`${(stu(id)||{}).name} ${busyLabel(bz)} 수업`);addStudentToBlock(b,id);add.push((stu(id)||{}).name)});
+      if(add.length){activeTab.state.tpick=null;commit()}toast(`${add.length?`${add.join("·")} → ${(cls(b.classId)||{}).name} ${DAYS[b.day]} ${fmt(b.start)} 시간표에 넣었어요(작성 중)`:"넣을 학생이 없어요"}${skip.length?` · 못 넣음: ${skip.join(", ")}`:""}`)})});
 }
 
 /* 178판: 끄는 동안 칸 배치 미리 보기 — 놓을 자리 잔상은 실제로 들어갈 자리처럼 겹치면 좁아지고, 그 칸 기존 블록도 같이 좁아짐(놓으면 render로 실제 배치). CALW 생성하던 것 끌기(landAt)가 씀 */
@@ -1122,7 +1122,7 @@ const HEAD_DEF={/* 창 머리 재료(기준 4장 "창 머리 화면별 재료"):
   schools:r=>({belong:r.kind,info:[r.addr,r.sync?"학사일정 "+D10(r.sync):""]}),
   exams:r=>({belong:[r.school,r.grade].filter(Boolean).join(" "),info:[r.date?D10(r.date):"",r.units]}),
   seasons:r=>({info:[r.start?D10(r.start)+" - "+D10(r.end):"","시간표 "+DB.blocks.filter(b=>!b.del&&b.seasonId===r.id).length+"개"],state:hst({run:"운영 중",prep:"예정",end:"종료"}[seaState(r)])}),
-  classes:r=>({dot:clsHex(r),belong:r.course||r.subject,info:[tch(r.teacherId).name,"학생 "+DB.enrolls.filter(e=>!e.del&&!e.ended&&e.classId===r.id).length+"명",r.fee?WON(r.fee):""],state:r.kind==="특강"?hst("특강"):null}),
+  classes:r=>({dot:clsHex(r),belong:r.course||r.subject,info:[((tch(r.teacherId)||{}).name||"—"),"학생 "+DB.enrolls.filter(e=>!e.del&&!e.ended&&e.classId===r.id).length+"명",r.fee?WON(r.fee):""],state:r.kind==="특강"?hst("특강"):null}),
   subjects:r=>({belong:r.area,info:[(r.grades||[]).join(" · "),"교재 "+DB.books.filter(b=>!b.del&&b.subjectId===r.id).length+"권"]}),
   progress:r=>({name:(byId(DB.books,r.bookId)||{}).name||"",belong:(r.mode==="개별"&&r.studentId?nmStu(r.studentId)+" · ":"")+nmCls(r.classId),info:[r.mode==="개별"?"개별":"그룹",pgRange(r),pgPct(r)!==""?pgPct(r)+"%":""]/* 창 위 줄 = 진도 상자와 같은 계산 값 */,state:hst(r.stat||"다음 교재")}),
   bookfees:r=>({name:nmStu(r.studentId),belong:nmCls(r.classId),info:[r.month,r.items,WON(r.total)],state:hst((+r.total||0)-(+r.paid||0)>0?"미납":"완료")}),
@@ -1132,7 +1132,7 @@ const HEAD_DEF={/* 창 머리 재료(기준 4장 "창 머리 화면별 재료"):
   files:r=>({belong:r.kind,info:[(r.files||[]).length?"첨부 "+r.files.length+"개":"첨부 없음",(r.tags||[]).join(", ")]}),
   charges:r=>({name:nmStu(r.studentId),belong:nmCls(r.classId),info:[r.month,WON(r.amount)]}),
   costs:r=>({belong:r.kind,info:[r.date?D10(r.date):"",WON(r.amount)]}),
-  enrolls:r=>{const c_=cls(r.classId)||{},k_=enStat(r);return {icon:IC("usercheck"),name:(byId(DB.students,r.studentId)||{}).name||"새 등록",chipsHtml:r.studentId&&r.classId?enPill(k_):"",belong:c_.name||(r._pickStu?"학생과 클래스를 골라요":""),info:[(tch(c_.teacherId)||{}).name,k_==="pre"&&!r.end?`${D10(r.start)} (등원 예정)`:`${D10(r.start)} - ${r.end?D10(r.end):"현재"}`]}}};
+  enrolls:r=>{const c_=cls(r.classId)||{},k_=enStat(r);return {icon:IC("usercheck"),name:(byId(DB.students,r.studentId)||{}).name||"새 등록",chipsHtml:r.studentId&&r.classId?enPill(k_):"",belong:c_.name||(r._pickStu?"학생과 클래스를 골라요":""),info:[((tch(c_.teacherId)||{}).name||"—"),k_==="pre"&&!r.end?`${D10(r.start)} (등원 예정)`:`${D10(r.start)} - ${r.end?D10(r.end):"현재"}`]}}};
 /* 표 화면 창의 머리 하나: 재료(목록의 headDef 또는 HEAD_DEF)만 모아 창 모듈에 넘긴다 */
 function listHead(L,r,draft){const d=(L.headDef?L.headDef(r):HEAD_DEF[L.coll]?HEAD_DEF[L.coll](r):{})||{};const scr=activeTab.screen,nk=L.coll==="enrolls"?"enrolls":scr;
   return PANEL.head({icon:d.dot?"":d.icon||panelIcon(),dot:d.dot,nameHtml:d.name!=null?esc(d.name):L.head?L.head(r):esc(L.cols[0][1](r)),draft,chipsHtml:d.chipsHtml,state:d.state,lock:d.lock||"",help:d.help,belong:d.belong,info:d.info,notion:NOTION[nk]?`data-notion="${nk}"`:""})}
@@ -1167,7 +1167,7 @@ document.addEventListener("pointerup",()=>{if(!downOut)return;downOut=false;setT
 
 /* 학생 시간 겹침(대표 261112): 같은 시즌·같은 요일·겹치는 시간의 다른 블록에 이미 있으면 그 블록을 돌려준다 */
 function studentBusyAt(sid,seasonId,day,start,end,selfId,per){return DB.blocks.find(b=>b.id!==selfId&&!b.ended&&(b.seasonId===seasonId||(()=>{const a=seasonOf(seasonId),o=seasonOf(b.seasonId);return a&&o&&a.start<=o.end&&o.start<=a.end})())&&b.day===day&&b.start<end&&start<b.end&&(!per||perOverlap(effPeriod(b),per))&&b.regs.some(r=>{const e=enr(r);return e&&e.studentId===sid}))||null}
-function busyLabel(b){return `${DAYS[b.day]} ${fmt(b.start)} ${cls(b.classId).name}`}
+function busyLabel(b){return `${DAYS[b.day]} ${fmt(b.start)} ${(cls(b.classId)||{}).name}`}
 function flashBlock(id){const el=document.querySelector(`#grid .blk[data-id="${id}"]`);if(!el)return;el.scrollIntoView({block:"center",behavior:"smooth"});el.classList.add("flash");setTimeout(()=>el.classList.remove("flash"),1800)}
 function renderPanel(p,t,all){
   const st=t.state;const s=seasonOf(st.season);
@@ -1258,7 +1258,7 @@ function panelBlock(p,t,all,o,isNew){
   const chk=isNew?new Set((o.checked||[]).filter(sid=>!busyOf(sid))):inNow;
   const eligible=roster.filter(sid=>!busyOf(sid)||(chk&&chk.has(sid)));const busyN=roster.length-eligible.length;const allOn=eligible.length&&eligible.every(sid=>chk.has(sid));
   const sq=st.nsq||"";const rows=roster.map(stu).filter(x=>x&&(!sq||x.name.includes(sq)));
-  const clsRow=(x,dis,i)=>`<div class="pr ${o.classId===x.id?"on":""} ${dis?"dis":""} ${isUpcoming(x)?"soon":""} ${!dis&&!c&&i===st.nhi?"hi":""}" ${dis?'title="이 클래스는 이 요일 이 시간에 이미 시간표가 있어요"':`data-c="${x.id}"`}><span class="dotc" style="${isUpcoming(x)?`border:2px solid ${classBar(x)}`:`background:${classBar(x)}`}"></span>${esc(x.name)}${x.kind==="특강"?'<span class="tag b">특강</span>':""}${isUpcoming(x)?`<span class="tag">${md(x.open)} 개강</span>`:""}${x.close?`<span class="tag w">${md(x.close)} 종료</span>`:""}${!dis&&recent.indexOf(x.id)>-1&&recent.indexOf(x.id)<3?'<span class="tag">최근</span>':""}${dis?'<span class="tag r">이 시간 겹침</span>':""}<span class="m">${esc(tch(x.teacherId).name)} · ${DB.enrolls.filter(e=>e.classId===x.id&&!e.ended).length}명</span></div>`;
+  const clsRow=(x,dis,i)=>`<div class="pr ${o.classId===x.id?"on":""} ${dis?"dis":""} ${isUpcoming(x)?"soon":""} ${!dis&&!c&&i===st.nhi?"hi":""}" ${dis?'title="이 클래스는 이 요일 이 시간에 이미 시간표가 있어요"':`data-c="${x.id}"`}><span class="dotc" style="${isUpcoming(x)?`border:2px solid ${classBar(x)}`:`background:${classBar(x)}`}"></span>${esc(x.name)}${x.kind==="특강"?'<span class="tag b">특강</span>':""}${isUpcoming(x)?`<span class="tag">${md(x.open)} 개강</span>`:""}${x.close?`<span class="tag w">${md(x.close)} 종료</span>`:""}${!dis&&recent.indexOf(x.id)>-1&&recent.indexOf(x.id)<3?'<span class="tag">최근</span>':""}${dis?'<span class="tag r">이 시간 겹침</span>':""}<span class="m">${esc(((tch(x.teacherId)||{}).name||"—"))} · ${DB.enrolls.filter(e=>e.classId===x.id&&!e.ended).length}명</span></div>`;
   const status=!isNew&&o.state==="draft"?`<span class="pill w">작성 중</span>`:"";
   const lockBtn=isNew?"":ss==="end"?`<span class="sstag end" title="끝난 시즌의 시간표예요 — 고칠 수 없어요">종료</span>`:ss==="prep"?`<span class="sstag prep" title="아직 시작 전인 시즌이에요 — 언제든 옮기고 삭제할 수 있어요">예정</span>`:hasL?`<button class="lockbtn ${locked?"":"open"}" id="pLock" title="${locked?"잠금 해제 — 요일·시간·기간을 바꿀 수 있어요":"다시 잠그기"}">${IC(locked?"lock":"unlock")}</button>`:"";
   const dis=locked?"disabled":"";
@@ -1270,7 +1270,7 @@ function panelBlock(p,t,all,o,isNew){
   const sea=seasonOf(o.seasonId)||{};
   /* 261118 대표: 최근 수업 칸 버림 · 담당강사는 정보 탭 클래스 아래(클래스 색 자리). 처리 상태(blocks.busy) · 마지막 오류(blocks.error) = 있을 때만(노션 자동화 칸, 보기만) */
   const v2ro=!isNew&&(o.busy||o.error)?`<div class="box">${o.busy?`<div class="hint">처리 상태 · ${esc(o.busy)}</div>`:""}${o.error?`<div class="warnbox" style="margin-top:8px">마지막 오류 · ${esc(o.error)}</div>`:""}</div>`:"";
-  p.innerHTML=`${!isNew&&st.backName&&st.backSel===o.id?`<button type="button" class="spback" data-goback title="${esc(st.backName)} 학생으로 돌아가기 (Alt+←)">${IC("left")}학생 ${esc(st.backName)}</button>`:""}${PANEL.head({dot:c?classBar(c):"",name:isNew?"새 시간표":c?c.name:"시간표",chipsHtml:status,lock:lockBtn,belong:`${DAYS[o.day]} ${fmt(o.start)}–${fmt(o.end)}`,info:c?[tch(c.teacherId).name||"강사 없음",chk.size+"명",o.mode==="individual"?"개별":"그룹"]:[],notion:isNew?"":'data-nl="tt" data-nlname="시간표"'/* 261118 대표: [수업 추가]는 머리에서 [수업] 탭으로 옮김 */})}
+  p.innerHTML=`${!isNew&&st.backName&&st.backSel===o.id?`<button type="button" class="spback" data-goback title="${esc(st.backName)} 학생으로 돌아가기 (Alt+←)">${IC("left")}학생 ${esc(st.backName)}</button>`:""}${PANEL.head({dot:c?classBar(c):"",name:isNew?"새 시간표":c?c.name:"시간표",chipsHtml:status,lock:lockBtn,belong:`${DAYS[o.day]} ${fmt(o.start)}–${fmt(o.end)}`,info:c?[(tch(c.teacherId)||{}).name||"강사 없음",chk.size+"명",o.mode==="individual"?"개별":"그룹"]:[],notion:isNew?"":'data-nl="tt" data-nlname="시간표"'/* 261118 대표: [수업 추가]는 머리에서 [수업] 탭으로 옮김 */})}
   ${PANEL.tabs([["sch","정보",""],["stu","학생",c?`${chk.size}/${eligible.length}`:""],...(isNew?[]:[["ls","수업",""]])].map(([k,n,sub])=>({id:k,label:n,n:sub,disabled:k==="stu"&&!c,mark:(k==="stu"&&busyN?'<i class="pdot" title="이 시간에 다른 수업이 있는 학생이 있어요"></i>':"")+(k==="sch"&&!c?'<i class="pdot w"></i>':"")})),pt,"pt")}
   <section class="ptab ${pt==="sch"?"on":""}" data-sec="sch">
   <div class="box"><h3>기본${HELP(locked?"운영 중이라 잠겨 있어요. 위 자물쇠를 풀면 바꿀 수 있어요.":hasL?"요일·시간·기간을 바꾸면 \"언제부터\" 물어보고, 그날부터 새 시간으로 적용해요. 지난 수업은 그대로 남아요.":"클래스를 고르고, 칸을 눌러 날짜·요일·시간을 골라요.")}</h3>
@@ -1303,7 +1303,7 @@ function panelBlock(p,t,all,o,isNew){
       if(fs&&isNew)HF.select(fs,{label:"시즌",icon:iconRule("시즌","")||"cal",clear:false,value:o.seasonId,items:DB.seasons.filter(z=>!z.del&&(seaState(z)!=="end"||z.id===o.seasonId)).sort((a,b)=>String(a.start).localeCompare(String(b.start))).map(z=>({v:z.id,t:z.name+(seaState(z)==="prep"?" (예정)":"")})),help:"새 시간표가 들어갈 시즌 — 생성한 뒤에는 바꿀 수 없어요",
         onChange:id=>{if(!id||id===o.seasonId)return;o.seasonId=id;delete o.from;delete o.to;st.season=id;st.week=null;render()}});
       else if(fs)HF.text(fs,{label:"시즌",value:sea.name||"",disabled:true,icon:iconRule("시즌","")||"cal",help:"시간표가 속한 시즌 — 바꾸려면 새 시즌에 다시 생성해요"});
-      calcField(p.querySelector("#fTchH"),{label:"담당강사",icon:iconRule("담당강사","")||"users",why:"클래스 담당 강사(노션 롤업) — 클래스에서 정해요",html:c&&tch(c.teacherId)?esc(tch(c.teacherId).name):""})}
+      calcField(p.querySelector("#fTchH"),{label:"담당강사",icon:iconRule("담당강사","")||"users",why:"클래스 담당 강사(노션 롤업) — 클래스에서 정해요",html:c&&tch(c.teacherId)?esc(((tch(c.teacherId)||{}).name||"—")):""})}
     {const la=p.querySelector("#pLsAdd");if(la)la.onclick=()=>ttLessonAddOn(o,la.dataset.d||lsD)}{const lc=p.querySelector("[data-ttlesson]");if(lc)lc.onclick=()=>ttGoLesson(lc.dataset.ttlesson)}/* 261118 대표: [수업] 탭 — 그 날 수업 추가 · 카드 = 하루 수업 페이지 *//* 261118 대표: [수업 추가] = 머리 오른쪽 위 · [클래스 정보 입력]은 버림 — 클래스를 고르면 그 클래스 학생이 모두 들어가고(새 시간표 · 클래스 바꾸기), 학생 탭에서 빼고 넣음 */}
   bindPhead(p,t);
   p.querySelectorAll(".ptb").forEach(bt=>bt.onclick=()=>{st.ptab=bt.dataset.pt;p.querySelectorAll(".ptb").forEach(x=>x.classList.toggle("on",x===bt));p.querySelectorAll(".ptab").forEach(x=>x.classList.toggle("on",x.dataset.sec===bt.dataset.pt))});
@@ -1342,7 +1342,7 @@ function panelBlock(p,t,all,o,isNew){
   }
   // 클래스 고르기
   const pickClass=id=>{st.fo=null;if(o.classId===id)return render();if(isNew){o.classId=id;o.checked=null;o.extra=[];st.nsq="";return render()}
-    o.classId=id;const ce=DB.enrolls.filter(e=>e.classId===id&&!e.ended);o.regs=ce.filter(e=>!studentBusyAt(e.studentId,o.seasonId,o.day,o.start,o.end,o.id,effPeriod(o))).map(e=>e.id);o.mode="group";o.state="draft";commit();toast(`클래스를 ${cls(id).name}(으)로 바꿨어요 — 학생도 그 클래스 학생으로`)};
+    o.classId=id;const ce=DB.enrolls.filter(e=>e.classId===id&&!e.ended);o.regs=ce.filter(e=>!studentBusyAt(e.studentId,o.seasonId,o.day,o.start,o.end,o.id,effPeriod(o))).map(e=>e.id);o.mode="group";o.state="draft";commit();toast(`클래스를 ${(cls(id)||{}).name}(으)로 바꿨어요 — 학생도 그 클래스 학생으로`)};
   // 클래스 칸(HP.cls): 그 요일·시간에 이미 시간표가 있는 클래스·시즌 밖(종료 아닌) 클래스는 목록에서 뺌, 종료된 클래스는 글자를 넣으면 나옴
   if(canPickClass)hpCls(p.querySelector("#hpTC"),{value:o.classId,list:DB.classes.filter(x=>!clash(x)&&(!isHidden(x)||(x.close&&x.close<TODAY))),
     onChange:id=>{if(!id){if(isNew){o.classId=null;o.checked=null;o.extra=[]}return render()}pickClass(id)}});
@@ -1366,7 +1366,7 @@ function panelBlock(p,t,all,o,isNew){
   p.querySelectorAll("[data-nl]").forEach(x=>x.onclick=()=>toast(`노션 ${x.dataset.nlname||x.textContent.trim()} 페이지를 새 탭으로 열어요 (시제품)`));
   if(!isNew&&c){
     p.querySelectorAll("[data-ds]").forEach(x=>x.ondragstart=e=>startStudentDrag(e,x.dataset.ds));
-    p.querySelectorAll("[data-tg]").forEach(td=>td.onclick=()=>{const [bid,eid]=td.dataset.tg.split("|");const x=byId(DB.blocks,bid);if(!x.regs.includes(eid)){const sid=enr(eid).studentId;const bz=studentBusyAt(sid,x.seasonId,x.day,x.start,x.end,x.id,effPeriod(x));if(bz){flashBlock(bz.id);return toast(`${studentLabel(stu(sid))}: 이 시간에 ${busyLabel(bz)} 수업이 있어요`)}}x.regs=x.regs.includes(eid)?x.regs.filter(r=>r!==eid):[...x.regs,eid];x.state="draft";commit()});
+    p.querySelectorAll("[data-tg]").forEach(td=>td.onclick=()=>{const [bid,eid]=td.dataset.tg.split("|");const x=byId(DB.blocks,bid);if(!x.regs.includes(eid)){const sid=(enr(eid)||{}).studentId;const bz=studentBusyAt(sid,x.seasonId,x.day,x.start,x.end,x.id,effPeriod(x));if(bz){flashBlock(bz.id);return toast(`${studentLabel(stu(sid))}: 이 시간에 ${busyLabel(bz)} 수업이 있어요`)}}x.regs=x.regs.includes(eid)?x.regs.filter(r=>r!==eid):[...x.regs,eid];x.state="draft";commit()});
     const pca=p.querySelector("#pClsAdd");if(pca)pca.onclick=()=>stuModal({title:`클래스에 학생 추가 — ${c.name} 시간표 모두`,help:"이 클래스 시간표 모두에 들어가요(작성 중). 저장하면 수강이 생겨요.",group:"다른 학생 <small>넣으면 수강이 생겨요</small>",exclude:new Set(classEnrolls.map(e=>e.studentId)),
       done:ids=>{ids.forEach(sid=>addEnroll(sid,c.id,true,"draft"));cblocks.forEach(y=>y.state="draft");commit();toast(`${ids.length}명을 ${c.name} 시간표 모두에 넣었어요(작성 중) — 저장하면 수강이 생겨요`)}})}
   // 동작 줄
@@ -1389,12 +1389,12 @@ function panelBlock(p,t,all,o,isNew){
    예시 자료 = 시제품 수업(makeLessons — 노션에 쓰지 않음). 저장 전 · 예정 시즌 · 생성할 수업 없음이면 단추가 꺼지고 이유를 알림(지어낸 성공 없음) */
 function ttNextLesson(b){const s=seasonOf(b.seasonId);if(!s)return "";const per=effPeriod(b);for(let i=0;i<120;i++){const d=dPlus(TODAY,i);if(d>per.to||d>s.end)break;if(d<per.from||d<s.start||dow(d)!==b.day||closedOn(b,d))continue;if(!lessonMade(b,d))return d}return ""}
 function ttLessonAddWhy(b){const s=seasonOf(b.seasonId)||{};if(b.state==="draft"||b.del)return "먼저 [저장]해요 — 저장 전인 시간표는 수업을 생성할 수 없어요";if(s.state!=="확정")return "예정 시즌이에요 — 시즌 시작일이 되면 수업을 생성해요";if(LIVE_ON())return "";if(window.LIVE)return "노션 자료를 다 받은 뒤에 눌러요";if(!ttNextLesson(b))return "이 시간표로 생성할 다음 수업이 없어요(기간 끝 · 이미 생성)";return ""}
-function ttLessonAdd(b){const why=ttLessonAddWhy(b);if(why)return toast(why);if(LIVE_ON())return typeof liveRunClasses==="function"?liveRunClasses([b.id]):undefined;const d=ttNextLesson(b);makeLessons([[b,d]]);toast(`${mdw(d)} ${cls(b.classId).name} 수업을 생성했어요 (시제품: 노션에 쓰지 않음)`)}
+function ttLessonAdd(b){const why=ttLessonAddWhy(b);if(why)return toast(why);if(LIVE_ON())return typeof liveRunClasses==="function"?liveRunClasses([b.id]):undefined;const d=ttNextLesson(b);makeLessons([[b,d]]);toast(`${mdw(d)} ${(cls(b.classId)||{}).name} 수업을 생성했어요 (시제품: 노션에 쓰지 않음)`)}
 /* ═════ 261118 대표: 시간표 창 [수업] 탭 = 그 날짜 수업 하나 — 주간에서 누른 블록은 그 주 그 요일, 표에서 고른 줄은 오늘부터 가장 가까운 그 요일.
    있으면 수업 카드(날짜 · 시간 · 출결) → 누르면 하루 수업 페이지, 없으면 이유 + [수업 추가](그 날짜 수업 하나). 주간 블록 빗금 = 그 날 수업 없음 · 색 = 있음 */
 function ttDayOf(st,b){if(st.tv==="c")return dPlus(weekOf(st).from,b.day);const per=effPeriod(b);for(let i=0;i<140;i++){const d=dPlus(TODAY,i);if(per.to&&d>per.to)break;if((!per.from||d>=per.from)&&dow(d)===b.day)return d}return dPlus(weekOf({}).from,b.day)}
 function ttDayWhy(b,d){const s=seasonOf(b.seasonId)||{};const per=effPeriod(b);if(b.state==="draft"||b.del)return "먼저 [저장]해요 — 저장 전인 시간표는 수업을 생성할 수 없어요";if((per.from&&d<per.from)||(per.to&&d>per.to))return `이 날은 시간표 기간(${md(per.from)} - ${md(per.to)}) 밖이에요`;if(closedOn(b,d))return "이 날은 학원 휴원이에요 — 수업을 생성하지 않아요";if(s.state!=="확정")return "예정 시즌이에요 — 시즌 시작일이 되면 수업을 생성해요";if(lessonMade(b,d))return "이미 생성한 수업이에요";if(LIVE_ON()&&d!==ttNextLesson(b))return "실제 자료에서는 다음 수업 하나만 생성해요(노션 [수업 추가]와 같음)";if(!LIVE_ON()&&window.LIVE)return "노션 자료를 다 받은 뒤에 눌러요";return ""}
-function ttLessonAddOn(b,d){const why=ttDayWhy(b,d);if(why)return toast(why);if(LIVE_ON())return typeof liveRunClasses==="function"?liveRunClasses([b.id]):undefined;makeLessons([[b,d]]);toast(`${mdw(d)} ${cls(b.classId).name} 수업을 생성했어요 (시제품: 노션에 쓰지 않음)`)}
+function ttLessonAddOn(b,d){const why=ttDayWhy(b,d);if(why)return toast(why);if(LIVE_ON())return typeof liveRunClasses==="function"?liveRunClasses([b.id]):undefined;makeLessons([[b,d]]);toast(`${mdw(d)} ${(cls(b.classId)||{}).name} 수업을 생성했어요 (시제품: 노션에 쓰지 않음)`)}
 function ttLessonTab(b,d){const made=lessonMade(b,d),studs=studentsOfBlock(b);
   if(!made){const why=ttDayWhy(b,d);return `<div class="box ttls none"><h3>${mdw(d)} 수업${HELP("이 시간표로 그 날 생성한 수업이에요. 주간 달력에서 빗금 블록 = 그 날 수업 없음, 색 블록 = 있음.")}</h3><div class="ttls-empty">${IC("info","s")}<span>${esc(why&&why!=="이미 생성한 수업이에요"?why:"이 날 수업이 아직 없어요")}</span></div><button type="button" class="pgaddc ttls-add" id="pLsAdd" data-d="${d}" ${why?`disabled title="${esc(why)}"`:`title="${mdw(d)} 이 시간표 수업 하나를 생성해요(노션 [수업 추가]와 같은 수업)"`}>${IC("plus","s")}수업 추가</button></div>`/* 261118 대표: [수업 추가] = 카드 잔상 모양(교재 추가 · 등록 추가와 같은 .pgaddc) */}
   /* 261118 대표: 수업 하나만 보이니 자세히 — 카드(정규 · 휴강, 옮긴 수업 · 시간 · 강사) + 숫자 줄(출결 · 과제 · 평가, 지난 수업만) + 학생 목록(출결 아이콘 · 학교 · 학년). 재료는 수업 달력과 같은 곳(lessonRoster · attSum · hwSum · evalAvg) */
@@ -1454,7 +1454,7 @@ function endDialog(o,t,all){const c=cls(o.classId);const s=seasonOf(o.seasonId);
         legend:LG("plan","종료 전 수업")+LG("rm","지우는 수업"),
         onChange:p=>{picked=p;side(p)}})};
     const side=p=>{const rows=[];let nL=0,nA=0,kept=0;for(let d=dPlus(p,1);d<=mt;d=dPlus(d,1))bl().forEach(b=>{if(!isL(b,d)||!lessonMade(b,d))return;const st=studentsOfBlock(b);const k=st.filter(x=>attOf(b,d,x.id)).length;nL++;nA+=st.length-k;kept+=k;
-        rows.push(`<div class="fs-r"><b>${mdw(d)}</b> ${esc(cls(b.classId).name)} ${DAYS[b.day]} ${fmt(b.start)} <span class="rmn">— 수업 1개 · 출석 ${st.length-k}개</span></div>`)});
+        rows.push(`<div class="fs-r"><b>${mdw(d)}</b> ${esc((cls(b.classId)||{}).name)} ${DAYS[b.day]} ${fmt(b.start)} <span class="rmn">— 수업 1개 · 출석 ${st.length-k}개</span></div>`)});
       const allEnd=others.length===sel.size-1;
       m.querySelector("#enS").innerHTML=sideHtml(`<b>${mdw(p)}까지</b> 하고 종료해요.`,`이미 생성한 수업 ${nL}개 · 출석 ${nA}개를 삭제해요.${kept?` ${kept}건은 기록이 있어 남겨요.`:""}`,rows,"그 뒤 이미 생성한 수업은 없어요. 앞으로 이 시간표로 수업을 생성하지 않아요.");
       const n=DB.enrolls.filter(e=>e.classId===c.id&&!e.ended).length;
@@ -1470,7 +1470,7 @@ function endDialog(o,t,all){const c=cls(o.classId);const s=seasonOf(o.seasonId);
       const cl=m.querySelector("#enClose");if(cl&&cl.checked){c.close=p;c.state="draft"}
       close();commit();toast(`${md(p)}까지 하고 종료해요 — 시간표 ${list.length}개${cl&&cl.checked?" · 클래스 종강":""} (작성 중, 저장할 때 반영)`)}})}
 function askFrom(b,nv,t,all){const per=effPeriod(b);let next=dPlus(TODAY,1);while(dow(next)!==b.day)next=dPlus(next,1);if(next>per.to)next=dPlus(TODAY,1);
-  modal(`<h2>언제부터 바꿀까요?${HELP("지난 수업·출석·학습기록은 예전 시간표에 그대로 남아요. 예전 시간표는 그 전날까지로 끝나요.")}</h2><div class="hint" style="margin-bottom:12px">${esc(cls(b.classId).name)} · ${DAYS[b.day]} ${fmt(b.start)}–${fmt(b.end)} → <b>${DAYS[nv.day]} ${fmt(nv.start)}–${fmt(nv.end)}</b></div>
+  modal(`<h2>언제부터 바꿀까요?${HELP("지난 수업·출석·학습기록은 예전 시간표에 그대로 남아요. 예전 시간표는 그 전날까지로 끝나요.")}</h2><div class="hint" style="margin-bottom:12px">${esc((cls(b.classId)||{}).name)} · ${DAYS[b.day]} ${fmt(b.start)}–${fmt(b.end)} → <b>${DAYS[nv.day]} ${fmt(nv.start)}–${fmt(nv.end)}</b></div>
     <div class="fc-wrap"><div class="fc-main"><div class="fcal" id="afCal"></div><div class="fc-res" id="afM"></div></div><aside class="fc-side" id="afS"></aside></div>
     <div class="actions"><span class="sp"></span><button class="btn" id="afC">취소</button><button class="btn pri big" id="afO">적용</button></div>`,(m,close)=>{
     const od=b.day,nd=nv.day,mt=MADE_TO(),L=!!b.lessons;const isOld=d=>dow(d)===od&&inPer(per,d),isNew=d=>dow(d)===nd&&inPer(per,d);
@@ -1509,7 +1509,7 @@ const stuCls=id=>{const n=DB.enrolls.filter(e=>e.studentId===id&&!e.ended).map(e
 /* 닫힌 칸(261113 대표): 클래스·학생 칸은 처음엔 닫혀 있고, 누르면 칸 바로 아래로 목록이 열림(한 번에 하나).
    클래스는 고르면 칸에 들어가며 닫히고, 학생은 고른 학생이 칸 아래에 쌓임(체크를 풀면 빠짐) — 등록 카드 [클래스 선택]·[형제·자매 선택]과 같은 모양 */
 function fldWrap(id,label,inner,o={}){const st=activeTab.state;const open=st.fo===id;return `<div class="fwrap ${open?"open":""}" data-fw="${id}"><button type="button" class="inp pdd fbtn ${open?"on":""}" data-fo="${id}" ${o.dis?"disabled":""}>${label}</button>${open?`<div class="fpop">${inner}</div>`:""}</div>`}
-const clsLabel=(cid,none)=>{const c=cid?cls(cid):null;return c?`<span class="dotc" style="background:${classBar(c)}"></span><b>${esc(c.name)}</b><span class="m">${esc(tch(c.teacherId).name)} · ${DB.enrolls.filter(e=>e.classId===c.id&&!e.ended).length}명</span>`:none?`<span class="dotc" style="background:#C9BCAB"></span><b>클래스 없음</b><span class="m">여러 클래스 학생</span>`:`<span class="ph">클래스 선택</span>`};
+const clsLabel=(cid,none)=>{const c=cid?cls(cid):null;return c?`<span class="dotc" style="background:${classBar(c)}"></span><b>${esc(c.name)}</b><span class="m">${esc(((tch(c.teacherId)||{}).name||"—"))} · ${DB.enrolls.filter(e=>e.classId===c.id&&!e.ended).length}명</span>`:none?`<span class="dotc" style="background:#C9BCAB"></span><b>클래스 없음</b><span class="m">여러 클래스 학생</span>`:`<span class="ph">클래스 선택</span>`};
 const stuLabel=(n,ph)=>`<span class="ph">${n?`학생 ${n}명 · 더 고르기`:ph||"학생 선택"}</span>`;
 const fldShut=()=>{document.querySelectorAll(".fwrap.open").forEach(w=>{w.classList.remove("open");const pp=w.querySelector(".fpop");if(pp)pp.remove();const b=w.querySelector(".fbtn");if(b)b.classList.remove("on")})};
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-fo]");if(!b||!activeTab)return;const st=activeTab.state;const id=b.dataset.fo;st.fo=st.fo===id?null:id;render();if(st.fo)setTimeout(()=>{const i=document.querySelector(`[data-fw="${id}"] .fpop input.inp`);if(i)i.focus({preventScroll:true})},0)});
@@ -1517,7 +1517,7 @@ document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest
 document.addEventListener("pointerdown",e=>{if(!activeTab||!activeTab.state.fo)return;const t=e.target;if(t.closest&&t.closest(".fwrap,.modal,#modalRoot,.ddpop,.dpop,.toast,.spick,.hp-pop,.hp-dim,.hf-pop"))return;activeTab.state.fo=null;fldShut()},true);
 document.addEventListener("keydown",e=>{if(e.key!=="Escape"||!activeTab||!activeTab.state.fo)return;const t=e.target;if(t&&t.closest&&t.closest(".fwrap")&&!(t.value)){e.preventDefault();e.stopPropagation();const id=activeTab.state.fo;activeTab.state.fo=null;render();const b=document.querySelector(`[data-fo="${id}"]`);if(b)b.focus({preventScroll:true})}},true);
 /* 고르기 모듈(pick.js · pick.css, 261113 대표): 클래스·학생 칸은 모두 HP.cls · HP.stu — 화면은 자리(.hpm)만 그리고, 그린 뒤 붙임 */
-const hpC=c=>({id:c.id,name:c.name,color:clsHex(c),teacher:tch(c.teacherId).name,count:DB.enrolls.filter(e=>e.classId===c.id&&!e.ended).length,open:c.open||"",close:c.close||"",kind:c.kind||""});
+const hpC=c=>({id:c.id,name:c.name,color:clsHex(c),teacher:((tch(c.teacherId)||{}).name||"—"),count:DB.enrolls.filter(e=>e.classId===c.id&&!e.ended).length,open:c.open||"",close:c.close||"",kind:c.kind||""});
 const hpS=x=>({id:x.id,name:x.name,school:x.school||"",grade:x.grade||"",cls:DB.enrolls.filter(e=>e.studentId===x.id&&!e.ended).map(e=>cls(e.classId)).filter(Boolean).map(c=>c.name).join(" · ")});
 const hpStudents=()=>DB.students.filter(x=>!x.del).map(hpS);
 function hpCls(host,o){if(!host)return null;HP.today=TODAY;const cur=o.value||null;
@@ -1539,7 +1539,7 @@ const PK={
     q.oninput=f;q.addEventListener("keydown",e=>{if(e.key==="Escape"&&q.value){e.stopPropagation();q.value="";f()}});f();return q}};
 const CPST={};
 const CP={html:(id,sel,o={})=>{const end=!!CPST[id];const recent=LS.get("recentCls",[]);const list=DB.classes.filter(x=>end?(x.close&&x.close<TODAY):(!x.close||x.close>=TODAY));const soon=x=>x.open&&x.open>TODAY;
-    const row=x=>`<div class="pr ${sel===x.id?"on":""} ${soon(x)?"soon":""}" data-cp="${x.id}" data-q="${esc(x.name.toLowerCase())}"><span class="dotc" style="${soon(x)||end?`border:2px solid ${classBar(x)}`:`background:${classBar(x)}`}"></span>${esc(x.name)}${x.kind==="특강"?'<span class="tag b">특강</span>':""}${soon(x)?`<span class="tag">${md(x.open)} 개강</span>`:""}${x.close?`<span class="tag w">${x.close<TODAY?x.close.slice(2,4)+".":""}${md(x.close)} 종료</span>`:""}${!end&&recent.indexOf(x.id)>-1&&recent.indexOf(x.id)<3?'<span class="tag">최근</span>':""}<span class="m">${esc(tch(x.teacherId).name)} · ${DB.enrolls.filter(e=>e.classId===x.id&&!e.ended).length}명</span></div>`;
+    const row=x=>`<div class="pr ${sel===x.id?"on":""} ${soon(x)?"soon":""}" data-cp="${x.id}" data-q="${esc(x.name.toLowerCase())}"><span class="dotc" style="${soon(x)||end?`border:2px solid ${classBar(x)}`:`background:${classBar(x)}`}"></span>${esc(x.name)}${x.kind==="특강"?'<span class="tag b">특강</span>':""}${soon(x)?`<span class="tag">${md(x.open)} 개강</span>`:""}${x.close?`<span class="tag w">${x.close<TODAY?x.close.slice(2,4)+".":""}${md(x.close)} 종료</span>`:""}${!end&&recent.indexOf(x.id)>-1&&recent.indexOf(x.id)<3?'<span class="tag">최근</span>':""}<span class="m">${esc(((tch(x.teacherId)||{}).name||"—"))} · ${DB.enrolls.filter(e=>e.classId===x.id&&!e.ended).length}명</span></div>`;
     const run=list.filter(x=>!soon(x)),up=list.filter(soon);if(end)return `<span class="searchbox wide">${IC("search")}<input class="inp" id="${id}Q" placeholder="종료된 클래스에서 검색" autocomplete="off"></span>
     <div class="picklist cplist" id="${id}L"><div class="grph">종료된 클래스 <small>누르면 다시 열어서 써요</small></div>${list.map(row).join("")}<div class="empty" id="${id}None" hidden>맞는 클래스가 없어요</div></div>
     <div class="row hint pkfoot"><span class="link sub2" id="${id}Back">${IC("left","s")}돌아가기</span><span class="sp"></span><span class="link" id="${id}New">${IC("plus","s")}새 클래스</span></div>`;
@@ -1559,16 +1559,16 @@ const CP={html:(id,sel,o={})=>{const end=!!CPST[id];const recent=LS.get("recentC
 function clsEndModal(opt){const st={q:"",t:""};const L0=opt.list.slice().sort((a,b)=>(b.close||b.open||"").localeCompare(a.close||a.open||""));
   const tchs=[...new Set(L0.map(x=>x.teacherId))].filter(Boolean);
   const tag=opt.tag||(x=>`<span class="tag w">${x.close.slice(2,4)}.${md(x.close)} 종료</span>`);
-  const rows=()=>{const q=st.q.trim().toLowerCase();const L=L0.filter(x=>(!q||(x.name+" "+tch(x.teacherId).name).toLowerCase().includes(q))&&(!st.t||x.teacherId===st.t));
-    return L.length?PK.head(`${opt.group||"종료된 클래스"} <span class="pkn">${L.length}</span>`)+L.map(x=>`<div class="pr" data-ce="${x.id}"><span class="dotc" style="border:2px solid ${classBar(x)}"></span>${esc(x.name)}${tag(x)}<span class="m">${esc(tch(x.teacherId).name)} · ${DB.enrolls.filter(e=>e.classId===x.id).length}명</span></div>`).join(""):'<div class="empty">맞는 클래스가 없어요</div>'};
+  const rows=()=>{const q=st.q.trim().toLowerCase();const L=L0.filter(x=>(!q||(x.name+" "+((tch(x.teacherId)||{}).name||"—")).toLowerCase().includes(q))&&(!st.t||x.teacherId===st.t));
+    return L.length?PK.head(`${opt.group||"종료된 클래스"} <span class="pkn">${L.length}</span>`)+L.map(x=>`<div class="pr" data-ce="${x.id}"><span class="dotc" style="border:2px solid ${classBar(x)}"></span>${esc(x.name)}${tag(x)}<span class="m">${esc(((tch(x.teacherId)||{}).name||"—"))} · ${DB.enrolls.filter(e=>e.classId===x.id).length}명</span></div>`).join(""):'<div class="empty">맞는 클래스가 없어요</div>'};
   modal(`<h2>${esc(opt.title||"종료된 클래스 검색")}${HELP(opt.help||"끝난 클래스를 찾아 다시 열어 써요. 고르면 종강일을 비우고 다시 열지 물어요.")}</h2>
-  <div class="smbar"><span class="searchbox">${IC("search")}<input class="inp" id="ceQ" placeholder="클래스·강사 검색" autocomplete="off"></span>${tchs.length>1?combo("ceT",[{v:"",label:"강사 전체"},...tchs.map(t=>({v:t,label:tch(t).name}))],"","강사 전체","user",true):""}</div>
+  <div class="smbar"><span class="searchbox">${IC("search")}<input class="inp" id="ceQ" placeholder="클래스·강사 검색" autocomplete="off"></span>${tchs.length>1?combo("ceT",[{v:"",label:"강사 전체"},...tchs.map(t=>({v:t,label:((tch(t)||{}).name||"—")}))],"","강사 전체","user",true):""}</div>
   <div class="picklist cplist smlist" id="ceL">${rows()}</div>
   <div class="actions"><span class="hint">누르면 그 칸에 들어가요</span><span class="sp"></span><button class="btn" id="ceC">닫기</button></div>`,(m,close)=>{
     const bind=()=>m.querySelectorAll("[data-ce]").forEach(r=>r.onclick=()=>{close();opt.onPick(r.dataset.ce)});
     const draw=()=>{const __ks=scrollSnap(m);try{m.querySelector("#ceL").innerHTML=rows();bind()}finally{__ks()}};
     const q=m.querySelector("#ceQ");q.focus();q.oninput=()=>{st.q=q.value;draw()};
-    if(m.querySelector("#ceT"))bindCombo(m,"ceT",v=>{st.t=v;m.querySelector("#ceT .cv").textContent=v?tch(v).name:"강사 전체";m.querySelector("#ceT").classList.toggle("on",!!v);draw()});
+    if(m.querySelector("#ceT"))bindCombo(m,"ceT",v=>{st.t=v;m.querySelector("#ceT .cv").textContent=v?((tch(v)||{}).name||"—"):"강사 전체";m.querySelector("#ceT").classList.toggle("on",!!v);draw()});
     m.querySelector("#ceC").onclick=close;bind()})}
 function stuModal(opt){const st={q:"",grade:"",scope:"all",free:!!opt.busy,picked:new Set(opt.picked||[]),from:opt.from||""};
   const c=opt.classId?cls(opt.classId):null;const inCls=sid=>!!c&&DB.enrolls.some(e=>e.studentId===sid&&e.classId===c.id&&!e.ended);
@@ -1595,7 +1595,7 @@ function stuModal(opt){const st={q:"",grade:"",scope:"all",free:!!opt.busy,picke
     const fr=m.querySelector("#smFree");if(fr){const cb=fr.querySelector("input");cb.onchange=()=>{st.free=cb.checked;fr.classList.toggle("on",cb.checked);draw()}}
     const fd=m.querySelector("#smFrom");if(fd)fd.addEventListener("change",()=>{st.from=fd.value||st.from});
     bindRows();cnt();m.querySelector("#smC").onclick=close;m.querySelector("#smO").onclick=()=>{const ids=[...st.picked];close();opt.done(ids,st.from)}})}
-function newClassDialog(done){const subs=["국어","영어","수학","과학","사회"];let sub="수학",tid=(DB.teachers[0]||{}).id,nm="";
+function newClassDialog(done){const subs=["국어","영어","수학","과학","사회"];let sub="수학",tid="",nm="";/* 261119 대표: 강사는 나중에 정해도 돼요 — 첫 강사를 자동으로 넣지 않음 */
   /* 175판: 입력칸 모듈(다른 창과 같은 모양 — 이름 칸 전체 폭, 고르기 목록은 모듈이 자리 잡음) */
   modal(`<h2>새 클래스${HELP("이름·과목·담당 강사만 넣고 생성해요. 수강료·개강일·색은 클래스 화면에서.")}</h2>
   <div class="hfgrid nc"><div class="hfh" id="ncNh"></div><div class="hfh" id="ncSh"></div><div class="hfh" id="ncTh"></div></div>
@@ -1603,7 +1603,7 @@ function newClassDialog(done){const subs=["국어","영어","수학","과학","�
     const o=m.querySelector("#ncO");
     const n=HF.text(m.querySelector("#ncNh"),{label:"클래스 이름",placeholder:"예: 중2 수학B",onChange:v=>{nm=v.trim();o.disabled=!nm}});
     HF.select(m.querySelector("#ncSh"),{label:"과목",value:sub,clear:false,items:subs,onChange:v=>{if(v)sub=v}});
-    HF.select(m.querySelector("#ncTh"),{icon:"search",label:"담당 강사",value:tid,clear:false,items:DB.teachers.map(x=>({v:x.id,t:x.name,sub:x.role})),onChange:v=>{if(v)tid=v}});
+    HF.select(m.querySelector("#ncTh"),{icon:"search",label:"담당 강사",value:tid||null,placeholder:"나중에 정해도 돼요",items:DB.teachers.map(x=>({v:x.id,t:x.name,sub:x.role})),onChange:v=>{tid=v||""}});
     setTimeout(()=>n.el.focus(),0);n.el.addEventListener("keydown",e=>{if(e.key==="Enter"&&nm){e.preventDefault();o.click()}});
     m.querySelector("#ncC").onclick=close;o.onclick=()=>{if(!nm)return;const nc={id:uid("c"),name:nm,short:"",subject:sub,teacherId:tid,fee:0,qty:"",unit:"횟수",kind:"정규",open:"",close:"",state:"draft"};nc.hex=freeClsHex(nc.id);DB.classes.push(nc);close();done(nc)}})}
 function pickStudents(title,classId,block,done){
@@ -1628,7 +1628,7 @@ function saveDialog(only){if(DB.enrolls.some(e=>e.state==="draft"&&!e.del&&(!e.s
   const s=seasonOf(curSeason());const moved=blocks.filter(b=>b.moveN);const moveN=moved.reduce((a,b)=>a+b.moveN,0);
   const rc=blocks.filter(b=>(b.regs0||TSAVED.has(b.id))&&b.lessons&&s.state==="확정").map(b=>{const r0=savedRegs(b);return {b,add:b.regs.filter(r=>!r0.includes(r)),rm:r0.filter(r=>!b.regs.includes(r))}}).filter(x=>x.add.length||x.rm.length);
   const tc=blocks.filter(b=>b.t0&&b.lessons&&s.state==="확정");
-  const sidsOf=k=>[...new Set(rc.flatMap(x=>x[k].map(r=>enr(r)&&enr(r).studentId)).filter(Boolean))];const addS=sidsOf("add"),rmS=sidsOf("rm");
+  const sidsOf=k=>[...new Set(rc.flatMap(x=>x[k].map(r=>enr(r)&&(enr(r)||{}).studentId)).filter(Boolean))];const addS=sidsOf("add"),rmS=sidsOf("rm");
   const lastOut=[...new Set(rc.flatMap(x=>x.rm).filter(r=>!DB.blocks.some(b=>b.seasonId===curSeason()&&b.regs.includes(r))))].map(r=>enr(r)).filter(Boolean);
   const nextMon=dPlus(weekOf({}).from,7);
   const cnt=from=>{let a=0,d=0;rc.forEach(x=>{x.add.forEach(r=>{const e=enr(r);a+=madeFrom(x.b,e&&e.start>from?e.start:from)});d+=x.rm.length*madeFrom(x.b,from)});return{a,d}};
@@ -1636,11 +1636,11 @@ function saveDialog(only){if(DB.enrolls.some(e=>e.state==="draft"&&!e.del&&(!e.s
   <div class="box"><div>${only?`시간표 ${blocks.length}개`:[blocks.length?`시간표 ${blocks.length}개`:"",LDIRTY.size?`수업 ${LDIRTY.size}개`:"",others.length?`${blocks.length||LDIRTY.size?"그 밖에 ":""}작성 중 ${others.length}개`:""].filter(Boolean).join(" · ")||"저장할 것이 없어요"}</div>${others.length?`<div class="svl">${others.slice(0,10).map(({k,x})=>`<div><b>${COLLNAME[k]||k}</b> ${rowName(k,x)}${x.del?' <span class="bad">삭제</span>':""}</div>`).join("")}${others.length>10?`<div class="hint">외 ${others.length-10}건</div>`:""}</div>`:""}
     ${!only&&LDIRTY.size?`<ul class="savelist">${[...LDIRTY.keys()].map(k=>{const nm=lName(k),c=lChanges(k);return nm&&c?`<li><span class="dotc" style="background:${nm.bar}"></span>${esc(nm.name)} ${mdw(nm.d)} <span class="sl-t">${[c.att.length?`출결 ${c.att.length}명`:"",...c.other].filter(Boolean).join(" · ")}</span></li>`:""}).join("")}</ul>
     ${noticeAsk(lNotices([...LDIRTY.keys()]))}`:""}
-    <ul class="savelist">${blocks.slice().sort((a,b)=>cls(a.classId).name.localeCompare(cls(b.classId).name)||a.day-b.day||a.start-b.start).map(b=>`<li><span class="dotc" style="background:${classBar(cls(b.classId))}"></span>${esc(cls(b.classId).name)} <span class="sl-t">(${DAYS[b.day]} ${fmt(b.start)}–${fmt(b.end)})</span>${b.del?' <span class="tag r">삭제</span>':b.ending?` <span class="tag w">${md(b.to)} 종료</span>`:""}</li>`).join("")}</ul>${deps.size?`<div class="warnbox">함께 저장(이 시간표가 기대는 작성 중): ${[...deps].map(esc).join(", ")}</div>`:""}
+    <ul class="savelist">${blocks.slice().sort((a,b)=>(cls(a.classId)||{}).name.localeCompare((cls(b.classId)||{}).name)||a.day-b.day||a.start-b.start).map(b=>`<li><span class="dotc" style="background:${classBar(cls(b.classId))}"></span>${esc((cls(b.classId)||{}).name)} <span class="sl-t">(${DAYS[b.day]} ${fmt(b.start)}–${fmt(b.end)})</span>${b.del?' <span class="tag r">삭제</span>':b.ending?` <span class="tag w">${md(b.to)} 종료</span>`:""}</li>`).join("")}</ul>${deps.size?`<div class="warnbox">함께 저장(이 시간표가 기대는 작성 중): ${[...deps].map(esc).join(", ")}</div>`:""}
   ${rc.length||tc.length?`<div class="rosterq"><div class="rq-h">${tc.length&&rc.length?"언제부터 바뀌나요?":tc.length?"시간은 언제부터 바뀌나요?":"학생은 언제부터 바뀌나요?"}${HELP(tc.length?"고른 날 전 수업은 예전 시간 그대로, 고른 날부터 새 시간이에요. 이미 생성한 수업은 새 시간으로 옮기고(출석 날짜도 함께), 예전 시간표는 그 전날까지로 끝나요. 학생을 넣거나 빼면 그날부터 출석이 생기거나 삭제돼요(기록 있는 출석은 남김).":"넣는 학생은 그날부터 이미 생성한 수업에 출석이 생겨요(등록일이 더 늦으면 등록일부터). 빼는 학생은 그날 전 출석은 그대로, 그날부터 이미 생성한 수업의 출석은 휴지통으로 가요(되살릴 수 있음). 출석 체크·학습기록이 있는 출석은 남기고 알려 드려요. 그 뒤 새로 생성하는 수업은 바뀐 명단으로 생성해요.")}</div>
-    <div class="rq-who">${tc.map(b=>`<span class="tchg">${esc(cls(b.classId).name)} ${DAYS[b.t0.day]} ${fmt(b.t0.start)} → <b>${DAYS[b.day]} ${fmt(b.start)}</b></span>`).join("")}${tc.length&&(addS.length||rmS.length)?"<br>":""}${addS.length?`<span class="tag b">넣기 ${addS.length}명</span> ${addS.map(id=>esc(stu(id).name)).join(", ")}`:""}${addS.length&&rmS.length?"<br>":""}${rmS.length?`<span class="tag w">빼기 ${rmS.length}명</span> ${rmS.map(id=>esc(stu(id).name)).join(", ")}`:""}</div>
+    <div class="rq-who">${tc.map(b=>`<span class="tchg">${esc((cls(b.classId)||{}).name)} ${DAYS[b.t0.day]} ${fmt(b.t0.start)} → <b>${DAYS[b.day]} ${fmt(b.start)}</b></span>`).join("")}${tc.length&&(addS.length||rmS.length)?"<br>":""}${addS.length?`<span class="tag b">넣기 ${addS.length}명</span> ${addS.map(id=>esc((stu(id)||{}).name)).join(", ")}`:""}${addS.length&&rmS.length?"<br>":""}${rmS.length?`<span class="tag w">빼기 ${rmS.length}명</span> ${rmS.map(id=>esc((stu(id)||{}).name)).join(", ")}`:""}</div>
     <div class="fc-wrap"><div class="fc-main"><div class="fcal" id="rqCal"></div><div class="fc-res" id="rqM"></div></div><aside class="fc-side" id="rqS"></aside></div>
-    ${lastOut.length?`<div class="warnbox">${lastOut.map(e=>esc(stu(e.studentId).name)+" · "+esc((cls(e.classId)||{name:""}).name)).join(", ")} — 이 시즌 시간표가 하나도 안 남아요. 클래스를 그만두는 거면 <span class="link" id="rqEnd">[수강 종료]</span></div>`:""}</div>`:""}
+    ${lastOut.length?`<div class="warnbox">${lastOut.map(e=>esc((stu(e.studentId)||{}).name)+" · "+esc((cls(e.classId)||{name:""}).name)).join(", ")} — 이 시즌 시간표가 하나도 안 남아요. 클래스를 그만두는 거면 <span class="link" id="rqEnd">[수강 종료]</span></div>`:""}</div>`:""}
   ${tc.length?`<div class="warnbox">학부모 안내는 자동으로 나가지 않아요 — 저장 뒤 [시간표 변경 안내]를 눌러 주세요.</div>`:""}
   ${moved.length?`<div class="warnbox">이미 생성한 수업 ${moveN}개를 새 시간으로 옮겨요(출석 날짜도 함께). 학부모 안내는 자동으로 나가지 않아요 — 저장 뒤 [시간표 변경 안내]를 눌러 주세요.</div>`:""}</div>
   <div class="actions">${only?"":`<button class="btn rvtxt" id="sRv" title="저장하지 않은 것을 모두 마지막 저장 상태로">${IC("undo","s")}모두 되돌리기</button>`}<span class="sp"></span><button class="btn" id="sc">취소</button><button class="btn pri" id="so">${IC("save","s")}${window.LIVE?"노션에 저장":"저장"/* 261119 앱서버 결함 9: 출결 · 휴강만 저장해도 '시간표 저장'이던 것 */}</button></div>`,(m,close)=>{m.querySelector("#sc").onclick=close;{const r=m.querySelector("#sRv");if(r)r.onclick=()=>{close();revertAllAsk()}}
@@ -1659,9 +1659,9 @@ function saveDialog(only){if(DB.enrolls.some(e=>e.state==="draft"&&!e.del&&(!e.s
       rqCal=fromCal(m.querySelector("#rqCal"),{start:first,pickable:d=>d>TODAY&&any(d),cell:cellOf,
         legend:(tc.length?LG("plan","예전 시간")+LG("new","새 시간")+LG("rm","빠지는 수업")+LG("add","생기는 수업"):(kind!=="rm"?LG("add","출석 생성"):"")+(kind!=="add"?LG("rm","출석 지움"):"")+LG("plan","앞으로 수업")),
         onChange:p=>{const {a,d}=cnt(p);let mv=0;const trows=[];
-          tc.forEach(b=>{for(let x=p;x<=mt;x=dPlus(x,1))if(tOld(b,x)){mv++;trows.push(b.t0.day===b.day?`<div class="fs-r">${mdw(x)} <span class="rm">${fmt(b.t0.start)}</span> → <span class="ad">${fmt(b.start)}</span>${tc.length>1?` <span class="fs-c">${esc(cls(b.classId).name)}</span>`:""}</div>`:`<div class="fs-r"><span class="rm">${mdw(x)}</span> → <span class="ad">${mdw(dPlus(x,b.day-b.t0.day))}</span> ${fmt(b.start)}</div>`)}});
-          const rows=[];for(let x=p;x<=mt;x=dPlus(x,1))rc.forEach(c=>{if(dow(x)!==c.b.day||!inPer(effPeriod(c.b),x))return;const ad=c.add.map(enr).filter(e=>e&&!(e.start>x)).map(e=>stu(e.studentId).name),rm=c.rm.map(enr).filter(Boolean).map(e=>stu(e.studentId).name);if(!ad.length&&!rm.length)return;
-            rows.push(`<div class="fs-r"><b>${mdw(x)}</b>${rc.length>1?` <span class="fs-c">${esc(cls(c.b.classId).name)}</span>`:""} ${ad.length?`<span class="ad">+ ${ad.map(esc).join(", ")}</span>`:""}${ad.length&&rm.length?" ":""}${rm.length?`<span class="rmn">− ${rm.map(esc).join(", ")}</span>`:""}</div>`)});
+          tc.forEach(b=>{for(let x=p;x<=mt;x=dPlus(x,1))if(tOld(b,x)){mv++;trows.push(b.t0.day===b.day?`<div class="fs-r">${mdw(x)} <span class="rm">${fmt(b.t0.start)}</span> → <span class="ad">${fmt(b.start)}</span>${tc.length>1?` <span class="fs-c">${esc((cls(b.classId)||{}).name)}</span>`:""}</div>`:`<div class="fs-r"><span class="rm">${mdw(x)}</span> → <span class="ad">${mdw(dPlus(x,b.day-b.t0.day))}</span> ${fmt(b.start)}</div>`)}});
+          const rows=[];for(let x=p;x<=mt;x=dPlus(x,1))rc.forEach(c=>{if(dow(x)!==c.b.day||!inPer(effPeriod(c.b),x))return;const ad=c.add.map(enr).filter(e=>e&&!(e.start>x)).map(e=>(stu(e.studentId)||{}).name),rm=c.rm.map(enr).filter(Boolean).map(e=>(stu(e.studentId)||{}).name);if(!ad.length&&!rm.length)return;
+            rows.push(`<div class="fs-r"><b>${mdw(x)}</b>${rc.length>1?` <span class="fs-c">${esc((cls(c.b.classId)||{}).name)}</span>`:""} ${ad.length?`<span class="ad">+ ${ad.map(esc).join(", ")}</span>`:""}${ad.length&&rm.length?" ":""}${rm.length?`<span class="rmn">− ${rm.map(esc).join(", ")}</span>`:""}</div>`)});
           const ps=[mv?[`수업 ${mv}개를 새 시간으로 옮기고`,`수업 ${mv}개를 새 시간으로 옮겨요`]:null,a?[`출석 ${a}개를 생성하고`,`출석 ${a}개를 생성해요`]:null,d?[`출석 ${d}개를 삭제하고`,`출석 ${d}개를 삭제해요`]:null].filter(Boolean);
           const parts=ps.map((x,i)=>i===ps.length-1?x[1]:x[0]).join(" ");
           const sd=m.querySelector("#rqS");if(sd)sd.innerHTML=sideHtml(`<b>${mdw(p)}부터</b> ${tc.length?tc.map(b=>`${DAYS[b.day]} ${fmt(b.start)}–${fmt(b.end)}`).join(" · ")+"으로":"학생이"} 바뀌어요.`,`이미 생성한 수업에서 ${parts}.`,trows.concat(rows),"이미 생성한 수업은 없어요. 다음에 생성하는 수업부터 바뀌어요.")}})}
@@ -1741,10 +1741,10 @@ const LISTS={
   blank:()=>({id:uid("st"),name:"새 학생",school:"",grade:"",pre:"어머니",hold:false,memo:"",mom:"",dad:"",inq:nowStamp()}),
   extra:s=>{const es=DB.enrolls.filter(e=>e.studentId===s.id&&!e.ended);return `<div class="box"><h3>수강·시간표</h3>${es.length?es.map(e=>{const bl=DB.blocks.filter(b=>b.regs.includes(e.id)&&b.seasonId===seaToday());return `<div class="row">${esc((cls(e.classId)||{name:""}).name)} <span class="hint">${bl.map(b=>DAYS[b.day]+" "+fmt(b.start)).join(", ")||"시간표 없음"}</span></div>`}).join(""):'<div class="hint">아직 클래스가 없어요</div>'}<div class="row"><button class="btn sm" data-act="tt">이 학생 주간 시간표${IC("right","s")}</button><button class="btn sm" data-act="assign">시간표 입히기${IC("right","s")}</button></div></div>`}},
  classes:{title:"클래스",coll:"classes",help:"클래스 목록이에요(노션 클래스 메뉴 · 클래스(학원) DB). 줄을 누르면 오른쪽 창에서 수강료 · 담당강사 · 시간표 · 기타경비를 고쳐요.",unit:"개",req:["name","fee"],infoX:c=>clsEtcBox(c),secs:[{title:"수강료",keys:["fee","qty","unit"]}],pairs:[["qty","unit",""]],cntUnit:r=>clsQU(r),onSet:(r,k)=>{if(k==="unit")setTimeout(render,0)},
-  cols:[["클래스",c=>c.name,"name"],["약칭",c=>c.short||"—","short"],["영역",c=>c.subject||"—","subject"],["강사",c=>tch(c.teacherId).name,"teacherId"],["개강일",c=>c.open?D10(c.open):"—","open"],["종강일",c=>c.close?D10(c.close):"—","close"],["학생",c=>DB.enrolls.filter(e=>e.classId===c.id&&!e.ended).length],["주 횟수",c=>{const n=DB.blocks.filter(b=>b.classId===c.id&&b.seasonId===seaToday()&&b.mode==="group").length;return n?`주 ${n}회`:(DB.blocks.some(b=>b.classId===c.id)?"개별":"!시간표 없음")}],["수강료",c=>c.fee.toLocaleString(),"fee"],["한 달 수업량",c=>(c.qty||DB.blocks.filter(b=>b.classId===c.id&&b.seasonId===seaToday()&&b.mode==="group").length*4)+clsQU(c)]],
+  cols:[["클래스",c=>c.name,"name"],["약칭",c=>c.short||"—","short"],["영역",c=>c.subject||"—","subject"],["강사",c=>((tch(c.teacherId)||{}).name||"—"),"teacherId"],["개강일",c=>c.open?D10(c.open):"—","open"],["종강일",c=>c.close?D10(c.close):"—","close"],["학생",c=>DB.enrolls.filter(e=>e.classId===c.id&&!e.ended).length],["주 횟수",c=>{const n=DB.blocks.filter(b=>b.classId===c.id&&b.seasonId===seaToday()&&b.mode==="group").length;return n?`주 ${n}회`:(DB.blocks.some(b=>b.classId===c.id)?"개별":"!시간표 없음")}],["수강료",c=>c.fee.toLocaleString(),"fee"],["한 달 수업량",c=>(c.qty||DB.blocks.filter(b=>b.classId===c.id&&b.seasonId===seaToday()&&b.mode==="group").length*4)+clsQU(c)]],
   filters:[["이 시즌과 겹치는 클래스",c=>classInSeason(c,seasonOf(seaToday())),true],["특강",c=>c.kind==="특강"],["종료 예정",c=>!!c.close]],
   fields:[["name","클래스 이름"],["short","약칭",null,"text","좁은 시간표 칸에 보여요 · 4-6자"],["subject","영역",()=>optItems("area"),"opt","과목 화면 [영역] 탭의 목록과 같아요"],["course","신고 교습과정명",null,"text","교육청에 신고한 교습과정 이름 그대로 — 법정 서류(출석부·수강생 대장·교습비 목록·영수증 원부)에 클래스 이름 대신 나가요"],["teacherId","담당 강사","teachers"],["arts","클래스 구분",["교과","예체능"],"seg","예체능이면 보고서가 활동 보고서로, 수료는 프로그램 수료 보고서로 나가요 — 노션 클래스 구분"],["kind","클래스 유형",["정규","특강"],"seg","정규 반인지 방학·시험 대비 특강인지 — 노션 클래스 유형"],["hex","색",null,"clscolor","시간표 블록 색 · 노션 [색] 10색 또는 직접 고른 색 · 운영 중인 다른 클래스 색은 고를 수 없어요"],["open","개강일",null,"date","이 날 앞에는 수업을 생성하지 않아요 · 비우면 처음부터"],["close","종강일",null,"date","이 날 뒤에는 수업을 생성하지 않고 종료로 바뀌어요 · 비우면 계속"],["fee","월 수강료",null,"won"],["qty","한 달 수업량",null,"cnt","노션 월간 수업 총량 — 비우면 이 클래스는 월 수강료를 생성하지 않아요(노션과 같음)"],["unit","단위",null,"qunit"],],
-  blank:()=>({id:uid("c"),name:"새 클래스",subject:"수학",teacherId:"t1",fee:0,qty:"",unit:"횟수",kind:"정규",arts:"교과",open:"",close:"",color:DB.classes.length%8+1}),
+  blank:()=>({id:uid("c"),name:"새 클래스",subject:"수학",teacherId:"",fee:0,qty:"",unit:"횟수",kind:"정규",arts:"교과",open:"",close:"",color:DB.classes.length%8+1}),
   extra:c=>`<div class="box"><h3>시간표·학생</h3><div class="row">${DB.blocks.filter(b=>b.classId===c.id&&b.seasonId===seaToday()).map(b=>DAYS[b.day]+" "+fmt(b.start)).join(", ")||"시간표 없음"}</div><div class="row"><button class="btn sm" data-act="cal">캘린더에서 보기${IC("right","s")}</button></div></div>`},
  enrolls:{title:"등록",coll:"enrolls",unit:"건",ph:"학생·클래스 검색",help:"등록 = 학생 한 명 + 클래스 하나예요. 수업·출결·학습기록·교재·수강료가 모두 등록에 매달려요. 새 등록은 위 [+] 또는 학생 창 [등록] 탭에서 생성해요.",
   head:e=>{const s=stu(e.studentId)||{};return `${esc(s.name||"")}${stuTag(s)} <span class="hint">· <i class="cdot" style="background:${clsHex(cls(e.classId)||{})}"></i>${esc((cls(e.classId)||{name:""}).name)}</span>`},
@@ -1764,7 +1764,7 @@ const LISTS={
     else HF.text(H("stu"),{label:"학생 이름",value:s?s.name:"",disabled:true});
     if(pick&&s&&s._newHere){const v=H("stu").querySelector(".hf-val");if(v)v.insertAdjacentHTML("beforeend",' <span class="spill nc-yellow">새 학생</span>')}
     const edS=!!(pick&&s&&s._newHere);[["school","sch"],["grade","gr"]].forEach(([k,id])=>hfField(H(id),LISTS.students,s||{},SF(k),(kk,v)=>{if(!s)return;LISTS.students.beforeSet(s);s[kk]=v;s.state="draft";commit()},{disabled:!edS,placeholder:""}));
-    HF.select(H("cls"),{label:"클래스",value:e.classId||null,icon:e._new?"search":undefined,placeholder:e._new?"클래스 선택":"",disabled:!e._new,clear:false,items:DB.classes.filter(x=>!x.del).map(x=>({v:x.id,t:x.name})),onChange:v=>{if(v&&e._new&&e.studentId&&DB.enrolls.some(z=>z!==e&&!z.del&&z.studentId===e.studentId&&z.classId===v&&enStat(z)!=="end")){toast(`${cls(v).name}은(는) 이미 등록돼 있어요`);return render()}/* 같은 학생·같은 클래스 두 번 등록 막기(옛 학생 창 규칙 — 등록 창 공용) */enSetCls(e,v||"");done()}});
+    HF.select(H("cls"),{label:"클래스",value:e.classId||null,icon:e._new?"search":undefined,placeholder:e._new?"클래스 선택":"",disabled:!e._new,clear:false,items:DB.classes.filter(x=>!x.del).map(x=>({v:x.id,t:x.name})),onChange:v=>{if(v&&e._new&&e.studentId&&DB.enrolls.some(z=>z!==e&&!z.del&&z.studentId===e.studentId&&z.classId===v&&enStat(z)!=="end")){toast(`${(cls(v)||{}).name}은(는) 이미 등록돼 있어요`);return render()}/* 같은 학생·같은 클래스 두 번 등록 막기(옛 학생 창 규칙 — 등록 창 공용) */enSetCls(e,v||"");done()}});
     HF.text(H("tch"),{label:"담당 강사",value:c?(tch(c.teacherId)||{}).name||"":"",disabled:true,icon:"user",placeholder:""});
     calcField(H("stat"),enStatCalc(e))},
   /* 줄 동작 = [카드]만(삭제 대신 창 [종료 처리] — 매뉴얼: 등록은 지우지 않고 종료) */opOf:()=>({ops:cardBtn}),
@@ -1773,7 +1773,7 @@ const LISTS={
     bk:{ph:"교재 찾기",off:e=>e.ended||enStat(e)==="end",items:e=>enBkList(e).map(g=>({id:g.id,t:(byId(DB.books,g.bookId)||{}).name||"교재",trail:modePill(g.mode==="개별"),on:enPgOn(e,g)})),toggle:(e,id)=>enBkToggle(e,(DB.progress||[]).find(z=>z.id===id)),empty:"이 클래스 진도교재가 없어요"}},
   proxy:(e,k)=>{const s=stu(e.studentId);if(!s||!k.startsWith("s_"))return null;const key=k.slice(2);const spec=key==="name"?["name","학생 이름"]:key==="school"?["school","학교",()=>DB.schools.filter(x=>!x.del).map(x=>({v:x.name,t:x.name,sub:x.kind})),"opt"]:["grade","학년",r=>gradesOn(r.grade).map(g=>({v:g,t:g}))];return {obj:s,key,L2:LISTS.students,spec}},
   extra:e=>{const bl=DB.blocks.filter(b=>b.classId===e.classId&&b.seasonId===seaToday());return `<div class="box"><h3>시간표${bl.some(b=>b.mode==="group"&&!b.regs.includes(e.id))?`<span class="sp"></span><button class="lnk" data-act="allgroup" title="이 클래스 시간표에 모두 넣어요(등록 [시간표 설정]과 같음)">모두 넣기</button>`:""}</h3>${PANEL.rows(bl.map(b=>({check:{attr:`data-tb="${b.id}"`,on:b.regs.includes(e.id)},t:`${DAYS[b.day]} ${fmt(b.start)}–${fmt(b.end)}`,tag:b.mode==="group"?"클래스":"개별"})),"이 클래스에 시간표가 없어요")}</div>`}},
- teachers:{title:"직원",coll:"teachers",unit:"명",help:"학원 선생님 목록이에요(노션 직원관리 · 강사(학원) DB). 출근 요일과 맡은 클래스의 수업 요일이 다르면 경고가 떠요. 줄을 누르면 오른쪽 창에서 고쳐요.",cols:[["이름",x=>x.name,"name"],["직책",x=>x.role,"role"],["연락처",x=>x.phone,"phone"],["출근 요일",x=>{const d=daysArr(x.days);const miss=[...new Set(DB.blocks.filter(b=>b.seasonId===curSeason()&&(b.teacherId||cls(b.classId).teacherId)===x.id&&!d.includes(DAYS[b.day])).map(b=>DAYS[b.day]))];return miss.length?"!"+(d.join("·")||"출근 요일 없음")+(d.length?" 출근":"")+" · "+miss.join("·")+" 수업 있음":(d.join("·")||"—")},"days"],["맡은 클래스",x=>DB.classes.filter(c=>c.teacherId===x.id&&classInSeason(c,seasonOf(curSeason()))).map(c=>c.name).join(", ")||"—"]],filters:[["출근 요일 확인",x=>{const d=daysArr(x.days);return DB.blocks.some(b=>b.seasonId===curSeason()&&(b.teacherId||cls(b.classId).teacherId)===x.id&&!d.includes(DAYS[b.day]))}]],
+ teachers:{title:"직원",coll:"teachers",unit:"명",help:"학원 선생님 목록이에요(노션 직원관리 · 강사(학원) DB). 출근 요일과 맡은 클래스의 수업 요일이 다르면 경고가 떠요. 줄을 누르면 오른쪽 창에서 고쳐요.",cols:[["이름",x=>x.name,"name"],["직책",x=>x.role,"role"],["연락처",x=>x.phone,"phone"],["출근 요일",x=>{const d=daysArr(x.days);const miss=[...new Set(DB.blocks.filter(b=>b.seasonId===curSeason()&&(b.teacherId||(cls(b.classId)||{}).teacherId)===x.id&&!d.includes(DAYS[b.day])).map(b=>DAYS[b.day]))];return miss.length?"!"+(d.join("·")||"출근 요일 없음")+(d.length?" 출근":"")+" · "+miss.join("·")+" 수업 있음":(d.join("·")||"—")},"days"],["맡은 클래스",x=>DB.classes.filter(c=>c.teacherId===x.id&&classInSeason(c,seasonOf(curSeason()))).map(c=>c.name).join(", ")||"—"]],filters:[["출근 요일 확인",x=>{const d=daysArr(x.days);return DB.blocks.some(b=>b.seasonId===curSeason()&&(b.teacherId||(cls(b.classId)||{}).teacherId)===x.id&&!d.includes(DAYS[b.day]))}]],
   fields:[["name","이름"],["role","직책",()=>optItems("role")],["phone","연락처",null,"tel"],["days","출근 요일",null,"days"]],blank:()=>({id:uid("t"),name:"새 선생님",role:"강사",phone:"",days:""}),
   extra:x=>`<div class="row"><button class="btn sm" data-act="ttT">이 선생님 주간 시간표${IC("right","s")}</button></div>`},
  subjects:{title:"과목",coll:"subjects",unit:"개",subs:[["s","과목"],["a","영역"]],ph:"과목 검색",help:"노션 과목(학원) DB와 같은 칸이에요. 교재(라이브러리)는 과목에 붙고, 학년은 리포트·교재 고르기에서 써요.",
@@ -1969,7 +1969,7 @@ function stuCard(x){const k=stuStat(x);const es=DB.enrolls.filter(e=>e.studentId
    <section><h4>${IC("phone","s")}연락처</h4>${tel("학생","sp")}${tel("어머니","mom")}${tel("아버지","dad")}${tel("기타 보호자","gp")}${R("학생과 관계",v(x.gprel))}</section>
    <section><h4>${IC("calendar","s")}문의</h4>${R("문의일시",v(inqS(x.inq)))}${R("문의 경로",v(x.route))}${R("희망 시작일",v(x.hope&&D10(x.hope)))}${R("등록 보류",x.hold?"보류 중":"보류 안 함")}${R("개인정보 동의",x.consent?"동의함":"동의 전")}${R("접수 안내",x.rcpt?"전송 완료 "+inqS(x.rcpt):"전송 전")}</section>
   </div>
-  <section class="sc-w"><h4>${IC("usercheck","s")}등록 <small>${es.length}</small></h4>${es.length?`<table class="sc-t"><tr><th>클래스</th><th>강사</th><th>시간표</th><th>기간</th><th>상태</th></tr>${es.map(e=>{const c=cls(e.classId);return `<tr><td>${esc(c.name)}</td><td>${esc(tch(c.teacherId).name||"—")}</td><td>${enStat(e)==="end"?"—":bl(e)||"없음"}</td><td>${D10(e.start)} - ${e.end?D10(e.end):""}</td><td>${enPill(enStat(e))}</td></tr>`}).join("")}</table>`:'<div class="sc-no">등록 없음</div>'}</section>
+  <section class="sc-w"><h4>${IC("usercheck","s")}등록 <small>${es.length}</small></h4>${es.length?`<table class="sc-t"><tr><th>클래스</th><th>강사</th><th>시간표</th><th>기간</th><th>상태</th></tr>${es.map(e=>{const c=cls(e.classId);return `<tr><td>${esc(c.name)}</td><td>${esc((tch(c.teacherId)||{}).name||"—")}</td><td>${enStat(e)==="end"?"—":bl(e)||"없음"}</td><td>${D10(e.start)} - ${e.end?D10(e.end):""}</td><td>${enPill(enStat(e))}</td></tr>`}).join("")}</table>`:'<div class="sc-no">등록 없음</div>'}</section>
   ${gs.length?`<section class="sc-w"><h4>${IC("award","s")}최근 성적</h4><table class="sc-t"><tr><th>시험</th><th>날짜</th><th>점수</th><th>등수</th></tr>${gs.map(({g,e})=>`<tr><td>${esc(e.name)} · ${esc(exSubj(e))}</td><td>${D10(e.date)}</td><td>${g.score!==""&&g.score!=null?g.score+"점":"—"}</td><td>${g.rank?g.rank+"등":"—"}</td></tr>`).join("")}</table></section>`:""}
   <section class="sc-w"><h4>${IC("lock","s")}메모(내부용)</h4><div class="sc-memo">${x.memo?esc(x.memo).replace(/\n/g,"<br>"):""}</div></section></div>`}
 /* 줄 카드(기준 3장 "카드 인쇄"): 창 머리 재료 + 창 칸 묶음 + 표에만 있는 값. 학생은 L.card(학생 카드) */
@@ -1993,7 +1993,7 @@ function listCols(L){if(L._gc)return L._gc;const ft=k=>(L.fields||[]).find(f=>f[
 /* 열 = 창의 칸(기준 3장): 표 열 정의에 없는 창의 칸은 숨긴 열로 스스로 생김 — [열 정리]에서 켬. 한 열로 합쳐 보이는 칸은 COL_COVER */
 const COL_COVER={seasons:["start","end"],events:["start","end"],reports:["from","to"]};
 function fieldTxt(f,r){const v=r[f[0]];if(v==null||v===""||(Array.isArray(v)&&!v.length))return "—";
-  if(f[2]==="teachers")return tch(v).name||"—";
+  if(f[2]==="teachers")return (tch(v)||{}).name||"—";
   if(typeof f[2]==="function"){let it=[];try{it=f[2](r)||[]}catch(e){}const one=x=>{const m=it.find(z=>(z&&typeof z==="object"?z.v:z)===x);return m&&typeof m==="object"?(m.t||m.v):x};return Array.isArray(v)?"@c:"+v.map(one).join("|"):String(one(v))}
   if(f[3]==="bool"||f[3]==="sw")return (Array.isArray(f[2])&&f[2][v?0:1])||(v?"예":"아니오");
   if(f[3]==="date")return D10(v);
@@ -2089,7 +2089,7 @@ Object.assign(LISTS,{
   fields:[["bookId","교재",oBook,"req","라이브러리에서 사용 중인 교재"],["classId","클래스",oCls,"req"],["mode","진도방식",["그룹","개별"],"seg"],["studentId","학생(개별일 때)",oStu],["stat","진행상태",()=>["다음 교재","진행 중","완료","미사용"].map(v=>({v,t:v,cls:PG_ST[v]})),"req"],["topic","주제",null,"text","같은 교재를 다시 할 때 회차 이름 — 리포트·수료 보고서 제목 앞에 붙어요"],["done","수료일",null,"date","[수료]를 누르면 오늘로 들어가요"]],
   blank:()=>({id:uid("pg"),bookId:(DB.books[0]||{}).id,classId:(DB.classes[0]||{}).id,mode:"그룹",studentId:"",stat:"다음 교재",range:"",pct:"",done:""})},
  events:{title:"일정",coll:"events",unit:"건",ph:"일정 검색",help:"구분은 할일 · 학원 일정 · 학사 일정 세 갈래, 그 안에서 세부 구분을 골라요(학원 = 학원 행사 · 상담 · 테스트 · 학원 휴원 · 직원 회의, 학사 = 학교 행사 · 시험 · 방학 · 학교 휴업). 학원 휴원은 수업 생성에서 그날을 건너뛰고, 상담만 상담 일정 안내 알림톡을 보내요. [공개]를 켠 일정만 리포트 · 가정통신문에 나가요. 나이스에서 온 학사 일정은 숨김으로 들어와요 — 위 줄 눈 단추로 쓸 것만 보이게 해요.",
-  cols:[["일정",x=>x.name,"name"],["구분",x=>evTopOf(x),"top"],["세부 구분",x=>evSubOf(x),"sub"],["날짜",x=>x.end&&x.end!==x.start?D10(x.start)+" - "+D10(x.end):D10(x.start)],["담당자",x=>x.who?tch(x.who).name:"—","who"],["진행상태",x=>x.stat,"stat"],["학부모 공개",x=>x.pub?"공개":"—","pub"]],
+  cols:[["일정",x=>x.name,"name"],["구분",x=>evTopOf(x),"top"],["세부 구분",x=>evSubOf(x),"sub"],["날짜",x=>x.end&&x.end!==x.start?D10(x.start)+" - "+D10(x.end):D10(x.start)],["담당자",x=>x.who?((tch(x.who)||{}).name||"—"):"—","who"],["진행상태",x=>x.stat,"stat"],["학부모 공개",x=>x.pub?"공개":"—","pub"]],
   filters:[["다가오는 일정",x=>(x.end||x.start)>=TODAY,true],["휴원",x=>evSubOf(x)==="학원 휴원"],["상담",x=>x.guide==="상담"],["학부모 공개",x=>x.pub]],
   fields:[["name","일정 이름"],["kind","구분",r=>evKindOpts(r),"req"],["classIds","클래스",()=>DB.classes.filter(x=>!x.del).map(x=>x.id),"multi","휴원이면 고른 클래스만 쉬어요(그 클래스 그 기간 수업은 생기지 않음) · 공개면 그 클래스 학생 리포트에 보여요",x=>(cls(x)||{}).name||x],["guide","안내 구분",()=>EV_GUIDE.map(v=>({v,t:v})),"opt","학부모 안내에 쓰는 갈래(상담 · 테스트 · 휴강 · 휴원). 비워 둬도 돼요"],["start","시작일",null,"date"],["end","종료일",null,"date","하루면 비워 두세요"],["who","담당자",oTch],["stat","진행상태",["예정","진행 중","완료"]],["pub","학부모 공개",["공개","비공개"],"bool"],["students","학생",()=>DB.students.filter(x=>!x.del).map(x=>x.id),"multi","",x=>nmStu(x)],["schools","학교",()=>DB.schools.filter(x=>!x.del).map(x=>x.id),"multi","",x=>(byId(DB.schools,x)||{}).name||x],["grades","학년",()=>ALL_GRADES.slice(),"multi"],["memo","일정 안내 메모",null,"memo"]],
   blank:()=>({id:uid("ev"),name:"새 일정",kind:"학원 일정",sub:evSubVal("학원 행사"),start:TODAY,end:"",who:"",stat:"예정",pub:false,memo:""})},
@@ -2281,7 +2281,7 @@ function todayTodoBox(){/* 363판(어사이드 "오늘 할 일 목록이 없어�
   return `<section class="cbox todobox"><h3>${IC("check","l")}입력 점검 <span class="hint">${rows.reduce((a,r)=>a+r[4],0)}</span>${HELP("왼쪽 메뉴 숫자와 같은 입력 점검이에요 — 빠진 값 · 이어지지 않은 줄을 모아 보여요. 줄을 누르면 그 화면으로 가요.")}</h3>${rows.length?rows.map(([scr,t,icn,tip,n])=>`<div class="crow tdl" data-todogo="${scr}" title="${esc(t)} 화면에서 열기"><span class="cl">${IC(icn,"s")} ${esc(t)}</span><span class="cv">${esc(tip)}</span><span class="ca"><b class="todo">${n}</b>${IC("right","s")}</span></div>`).join(""):'<div class="hint">오늘 손볼 일이 없어요</div>'}</section>`}
 /* 480판: 보강 메뉴 = [결석 달력 | 보강 대기]. 결석·보강 상태는 수업 화면과 같은 곳(absAll · absState · mkWait)에서. 보강 생성는 수업 화면 보강 모드(학생 미리 고름) */
 const MK_ST={need:["보강 필요","red"],pre:["판단 전","yellow"],re:["보강도 결석","red"],pend:["보강 잡힘","gray"],done:["보강 끝","gray"],none:["보강 없음","gray"]};
-function mkGo(k){const a=absInfo(k);const nm=stu(a.sid)?stu(a.sid).name:"학생";openScreen("timetable",false,{view:"lesson",lv:"week"/* 261118: 보강 잡기는 주간 보기에서 */});const st=activeTab.state;st.lmode="mk";st.mkPre={classId:a.classId,sids:[a.sid]};st.mkFrom=[k];st.lsel=null;toast(`${nm} 학생을 미리 골라 뒀어요 — 빈 칸을 끌어 보강 시간을 정해 주세요`);render()}
+function mkGo(k){const a=absInfo(k);const nm=stu(a.sid)?(stu(a.sid)||{}).name:"학생";openScreen("timetable",false,{view:"lesson",lv:"week"/* 261118: 보강 잡기는 주간 보기에서 */});const st=activeTab.state;st.lmode="mk";st.mkPre={classId:a.classId,sids:[a.sid]};st.mkFrom=[k];st.lsel=null;toast(`${nm} 학생을 미리 골라 뒀어요 — 빈 칸을 끌어 보강 시간을 정해 주세요`);render()}
 /* ===== 달력 틀(CALF, 기준 "달력 틀") — 시간표 · 수업 · 보강 · 시즌 · 창 작은 주간이 같은 부품. 화면은 재료만 넘긴다 =====
    제목 줄 title{scr,title,seg,cnt,help,notion,right} · 위 줄 bar{left,right} · 기간 이동 nav{label,prev,next,now,isNow} · 요일 머리 head(n)
    월간 month{ym,cell(d,out)} = 왼쪽 축 "M월 N주"(그 주 목요일이 든 달) · 칸 선 · 오늘 칸 · 달 밖 칸 · 블록 blk{col,t,m,attr,cls} = 시간표 수업 블록과 같은 모양 */
@@ -2327,7 +2327,7 @@ const CALF={
 };
 const mkSelK=()=>activeTab&&activeTab.state.mkSel||null;
 /* 보강 넣기 · 새 보강(보강 화면 · 수업 화면 같은 규칙: 같은 클래스 보강에만, 결석과 보강을 이어 둠) */
-function mkPut(k,m){const a=absInfo(k);if(!a||!m)return;if(m.classId&&a.classId&&m.classId!==a.classId)return toast(`${esc(cls(m.classId).name)} 보강이에요 — 같은 클래스 보강에 넣어요`);
+function mkPut(k,m){const a=absInfo(k);if(!a||!m)return;if(m.classId&&a.classId&&m.classId!==a.classId)return toast(`${esc((cls(m.classId)||{}).name)} 보강이에요 — 같은 클래스 보강에 넣어요`);
   if(!m.sids.includes(a.sid))m.sids.push(a.sid);/* 261119 대표: 보강 클래스는 자동으로 정하지 않음 — 여러 클래스 학생이 함께 */DB.mkw[k]=Object.assign({},DB.mkw[k],{dec:"need",mk:m.id});activeTab.state.mkSel=null;commit();toast(`${esc(nmStu(a.sid))} 학생을 ${mdw(m.d)} ${fmt(m.start)} 보강에 넣었어요`)}
 function mkNew(k,d,s0,e0){const a=k?absInfo(k):null;const id=uid("mk");const m={id,classId:a?a.classId:null,d,start:s0,end:e0,sids:a?[a.sid]:[],att:{}};DB.mk.push(m);if(a)DB.mkw[k]=Object.assign({},DB.mkw[k],{dec:"need",mk:id});LUN.add("mk:"+id);activeTab.state.mkSel=null;commit();toast(`${mdw(d)} ${fmt(s0)}–${fmt(e0)} 보강을 생성했어요${a?` — ${esc(nmStu(a.sid))}`:""} · 시간은 수업 화면에서 끌어 고쳐요`)}
 /* 261119 대표: 수업 창 결석 줄 [보강 잡기] → 다가오는 보강 수업 목록에서 골라 그 보강에 넣음(없으면 보강 메뉴에서 새로 잡기). 보강 생성은 여전히 보강 메뉴 한 곳 */
@@ -2357,12 +2357,12 @@ function mkDayCell(d,st){const sh=mkShowOf(st);const ms=sh.mk?(DB.mk||[]).filter
   /* 261119 대표: 일정 달력처럼 — 위 줄 [+]로 추가 모드를 켰을 때만 날짜 칸 아래 잔상(점선 +). 잔상을 누르면 그 날 보강 수업이 바로 생기고 오른쪽 창에서 이어서 정함. 평소엔 날짜 칸에 [+보강] 없음 */
   const ghost=st.mkAdd?`<button type="button" class="evaddg mkaddg" data-mkday="${d}" title="${mdw(d)} 보강 수업 생성" aria-label="${mdw(d)} 보강 수업 생성">${IC("plus","s")}</button>`:"";
   return ms.map(m=>{const c=m.classId?cls(m.classId):null;return CALF.blk({col:c?Object.assign(classColor(c),{bar:classBar(c)}):{bg:"var(--canvas)",bar:"var(--line2)"},cls:"mkblk",attr:`data-mkb="${m.id}" title="${esc(mkName(m))} — 학생을 끌어 놓거나, 고른 학생을 누르면 넣어요 · 두 번 누르면 수업 화면"`,t:`${fmt(m.start)} ${esc(c?c.name:"보강")}`,m:`보강 · ${m.sids.length}명`})}).join("")+
-    ab.map(a=>{const op=absOpen(a.k),mk=a.st==="pend"?absMk(a.k):null;const c=cls(a.classId);return `<button type="button" class="mkab s-${a.st} ${op?"open":""} ${mkSelK()===a.k?"sel":""}" data-mksel="${a.k}" title="${esc(c?c.name:"")} 결석 · ${esc(MK_ST[a.st][0])}${op?" — 눌러서 고르고 날짜나 보강 블록을 누르면 보강":""}"><b>${esc(stu(a.sid)?stu(a.sid).name:"")}</b> <small>${esc(c?c.name:"")}</small>${mk?` <small>→ ${md(mk.d).slice(5)}</small>`:""}</button>`}).join("")+ghost}
+    ab.map(a=>{const op=absOpen(a.k),mk=a.st==="pend"?absMk(a.k):null;const c=cls(a.classId);return `<button type="button" class="mkab s-${a.st} ${op?"open":""} ${mkSelK()===a.k?"sel":""}" data-mksel="${a.k}" title="${esc(c?c.name:"")} 결석 · ${esc(MK_ST[a.st][0])}${op?" — 눌러서 고르고 날짜나 보강 블록을 누르면 보강":""}"><b>${esc(stu(a.sid)?(stu(a.sid)||{}).name:"")}</b> <small>${esc(c?c.name:"")}</small>${mk?` <small>→ ${md(mk.d).slice(5)}</small>`:""}</button>`}).join("")+ghost}
 /* 오른쪽 창 = 수업 화면 할 일 [보강]과 같은 학생 카드(HP.wait) */
 function mkSidePanel(st){const vw=st.mtv==="todo"?"todo":"sta";/* 261120: 선택 전 공용 창 = [현황] [할 일] 2탭 */return `<div class="panel" id="panel">${PANEL.head({icon:panelIcon(),name:"보강",belong:"",info:[" "],help:("등록(학생+클래스)마다 카드예요. 숫자 = 보강해야 할 횟수. 카드를 누르면 결석이 열리고 보강 필요 ↔ 보강 없음을 정해요. 카드를 끌어 달력 날짜에 놓으면 그 결석 수업 시간으로 새 보강이 생기고, 보강 블록에 놓으면 그 보강에 들어가요(같은 클래스만).")})}${PANEL.tabs([{id:"sta",label:"현황"},{id:"todo",label:"할 일"}],vw,"mtv")}${vw==="sta"?`<div class="pbody"><div class="tdp"><div class="tdsum"><div class="tdsr"><span>보강 대기 학생</span><b>${mkCardN()}명</b></div><div class="tdsr"><span>다가오는 보강 수업</span><b>${(DB.mk||[]).filter(m=>!m.del&&m.d>=TODAY).length}개</b></div></div></div></div>`:`<div class="box"><div class="hpm" id="hpWait"></div></div>`}${PANEL.foot({hint:HELPTX.mkFoot})}</div>`}
 function mkSideMount(v,st){v.querySelectorAll("[data-mtv]").forEach(b=>b.onclick=()=>{st.mtv=b.dataset.mtv;render()});const host=v.querySelector("#hpWait");if(!host)return;seedOffOnce();seedMkw();mkLink();
   const G=new Map();absAll(seaStart()).forEach(a=>{const k2=a.sid+"|"+a.classId;if(!G.has(k2))G.set(k2,{sid:a.sid,cid:a.classId,abs:[]});const s2=absState(a.k);const m=absMk(a.k);G.get(k2).abs.push({id:a.k,d:a.d,st:s2,mk:s2==="pend"&&m?`${md(m.d).slice(5)}(${DAYS[dow(m.d)]})`:"",why:(DB.mkw[a.k]||{}).why||""})});
-  const items=[...G.values()].filter(g=>stu(g.sid)&&cls(g.cid)).map(g=>({sid:g.sid,cls:cls(g.cid).name,cid:g.cid,color:classBar(cls(g.cid)),abs:g.abs}));
+  const items=[...G.values()].filter(g=>stu(g.sid)&&cls(g.cid)).map(g=>({sid:g.sid,cls:(cls(g.cid)||{}).name,cid:g.cid,color:classBar(cls(g.cid)),abs:g.abs}));
   HP.today=TODAY;HP.wait(host,{students:hpStudents(),items,tab:st.mkwTab||"wait",open:st.mkwOpen2||[],
     onDecide:(k,val)=>{const n=Object.assign({},DB.mkw[k]);n.dec=val==="none"?"none":"need";DB.mkw[k]=n;render()},
     onWhy:(k,why)=>{DB.mkw[k]=Object.assign({},DB.mkw[k],{dec:"none",why});toast(`보강 없음 사유를 저장했어요${why?` — ${why}`:""}`);render()},
@@ -2373,7 +2373,7 @@ function mkDayDialog(d){const W=mkWait().filter(a=>absOpen(a.k)).sort((a,b)=>a.d
   const pre=mkSelK()&&W.some(a=>a.k===mkSelK())?mkSelK():W[0].k;const F={k:pre,s:"",e:""};const setT=()=>{const [a,b]=mkTimeOf(F.k);F.s=fmt(a);F.e=fmt(b)};setT();
   modal(`<h2>${mdw(d)} 보강 생성</h2><div class="box"><div class="hfgrid"><div class="hfh" data-mkd="s"></div><div class="hfh" data-mkd="t"></div></div></div><div class="actions"><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">${IC("plus","s")}보강 생성</button></div>`,(m,close)=>{
     const ht=m.querySelector('[data-mkd="t"]');const drawT=()=>HF.timeRange(ht,{label:"시작 시간 - 종료 시간",value:[F.s,F.e],help:"기본 = 그 학생이 빠진 수업 시간",onChange:v=>{const [a,b]=v||[];F.s=a||"";F.e=b||""}});
-    HF.select(m.querySelector('[data-mkd="s"]'),{icon:"user",label:"학생",value:F.k,clear:false,help:"보강을 기다리는 결석 — 오래된 순",items:W.map(a=>({v:a.k,t:`${nmStu(a.sid)} · ${cls(a.classId)?cls(a.classId).name:""}`,sub:`${md(a.d).slice(5)}(${DAYS[dow(a.d)]}) 결석`})),onChange:v=>{if(!v)return;F.k=v;setT();drawT()}});drawT();
+    HF.select(m.querySelector('[data-mkd="s"]'),{icon:"user",label:"학생",value:F.k,clear:false,help:"보강을 기다리는 결석 — 오래된 순",items:W.map(a=>({v:a.k,t:`${nmStu(a.sid)} · ${cls(a.classId)?(cls(a.classId)||{}).name:""}`,sub:`${md(a.d).slice(5)}(${DAYS[dow(a.d)]}) 결석`})),onChange:v=>{if(!v)return;F.k=v;setT();drawT()}});drawT();
     m.querySelector("#cc").onclick=close;
     m.querySelector("#co").onclick=()=>{const s0=t2m(F.s),e0=t2m(F.e);if(s0==null||e0==null||e0<=s0)return toast("시작 - 끝 시간을 넣어 주세요");close();mkNew(F.k,d,s0,e0)}})}
 /* 잔상을 누르면: 고른(없으면 가장 오래된) 보강 대기 결석을 넣어 그 날 보강 수업을 바로 생성하고 오른쪽 창으로 열어 이어서 정함(대기 결석이 없으면 학생 없는 빈 보강) */
@@ -2431,7 +2431,7 @@ function renderToday(v,t){const st=t.state,d=st.day||TODAY;const its=dayItems(d)
   const evs=DB.events.filter(e=>!e.del&&e.start<=d&&(e.end||e.start)>=d),exs=DB.exams.filter(e=>!e.del&&e.date===d),closed=evs.some(e=>evSubOf(e)==="학원 휴원");
   const row=(cl,cv,ca)=>`<div class="crow"><span class="cl">${cl}</span><span class="cv">${cv}</span><span class="ca">${ca||""}</span></div>`;
   const lrow=x=>{const c=cls(x.b.classId),a=attSum(x.b,x.d0),n=lessonRoster(x.b,x.d0).length,h=hwSum(x.b,x.d0),ev=evalAvg(x.b,x.d0),lr=recsOf(x.k).find(r=>r.kind==="학습");
-    return `<div class="crow tdl" data-tgo="${x.k}" title="수업 화면에서 열기"><span class="cl">${fmt(x.e.start)}–${fmt(x.e.end)}</span><span class="cv"><span class="dotc" style="background:${classBar(c)}"></span><b>${esc(c.name)}</b> <span class="hint">${esc(tch(c.teacherId).name)}</span>${x.e.off?' <span class="rpill ex">휴강</span>':`<span class="tdm">${[`출석 ${a.출석+a.보강}/${n}`+(a.결석?` · 결석 ${a.결석}`:"")+(a.미입력?` · 미입력 ${a.미입력}`:""),h?`과제 제출 ${h["완료"]}/${h["완료"]+h["일부 완료"]+h["미제출"]}`:"",ev!=null?`평가 평균 ${ev}점`:"",lr&&lr.range?`학습 ${esc(lr.range)}`:""].filter(Boolean).join(" · ")}</span>`}</span><span class="ca">${IC("right","s")}</span></div>`};
+    return `<div class="crow tdl" data-tgo="${x.k}" title="수업 화면에서 열기"><span class="cl">${fmt(x.e.start)}–${fmt(x.e.end)}</span><span class="cv"><span class="dotc" style="background:${classBar(c)}"></span><b>${esc(c.name)}</b> <span class="hint">${esc(((tch(c.teacherId)||{}).name||"—"))}</span>${x.e.off?' <span class="rpill ex">휴강</span>':`<span class="tdm">${[`출석 ${a.출석+a.보강}/${n}`+(a.결석?` · 결석 ${a.결석}`:"")+(a.미입력?` · 미입력 ${a.미입력}`:""),h?`과제 제출 ${h["완료"]}/${h["완료"]+h["일부 완료"]+h["미제출"]}`:"",ev!=null?`평가 평균 ${ev}점`:"",lr&&lr.range?`학습 ${esc(lr.range)}`:""].filter(Boolean).join(" · ")}</span>`}</span><span class="ca">${IC("right","s")}</span></div>`};
   const mrow=m=>{const pres=m.sids.filter(x=>m.att[x]==="출석").length;return `<div class="crow tdl" data-tgo="mk:${m.id}" title="수업 화면에서 열기"><span class="cl">${fmt(m.start)}–${fmt(m.end)}</span><span class="cv"><b>${esc(mkName(m))}</b> <span class="rpill">보강</span>${m.off?' <span class="rpill ex">휴강</span>':`<span class="tdm">출석 ${pres}/${m.sids.length}</span>`}</span><span class="ca">${IC("right","s")}</span></div>`};
   v.innerHTML=`<div class="top pg-ttl ttl"><h1>${pgIc("today")}홈</h1>${HELP("하루를 한 장으로 봐요(노션 대시보드). 그날 수업의 출석·과제 검사·평가·학습 범위와 일정·시험이 모여요. 여기서는 보기만 하고, 줄을 누르면 수업·일정 화면에서 고쳐요.")}${notionBtn("today")}${/* 261118: 기간 이동은 제목 줄(두 줄 나누기) — 홈은 둘째 줄에 다른 것이 없어 둘째 줄을 두지 않음 */CALF.nav({label:`${D10(d)} (${DAYS[dow(d)]})`,prev:"앞 날",next:"다음 날",now:"오늘",isNow:d===TODAY,attr:"data-dn"})}</div><div class="body"><div class="list cards">
   ${d===TODAY?todayTodoBox():""}<section class="cbox"><h3>${IC("activity","l")}하루 요약${closed?' <span class="rpill ex">휴원일</span>':""}</h3>${row("수업",`${on.length}개${its.length-on.length?` · 휴강 ${its.length-on.length}`:""}${mks.length?` · 보강 ${mks.length}`:""}`)}${row("출석",T?`${P}/${T}명 · 출석률 ${Math.round(P/T*100)}%${A?` · 결석 ${A}명`:""}${N?` · 미입력 ${N}명`:""}`:"—")}${row("과제 검사",hwN?`제출 ${hw["완료"]} · 일부 ${hw["일부 완료"]} · 미제출 ${hw["미제출"]}`:"—")}${row("일일 보고서",rc?`전송 완료 ${rs}/${rc}명`:"—")}</section>
@@ -3057,7 +3057,7 @@ const CALW={
     const nowIn=o.nowM!=null&&o.nowM>=H0*60&&o.nowM<=H1*60,nowT=nowIn?`${pad2(Math.floor(o.nowM/60))}:${pad2(o.nowM%60)}`:"";
     return {H0,H1,y,gh,labels,lines,nowIn,nowT,nowLine:lb=>nowIn?`<i class="ldnow" style="top:${y(o.nowM)}px">${lb?`<span>${nowT}</span>`:""}</i>`:"",nowLabel:()=>nowIn?`<span class="nowlb" style="top:${y(o.nowM)}px">${nowT}</span>`:""}},
   /* 위 줄 부품 — 찾기(클래스·강사·학생) · 확대 · 5/7 (수업 화면 문구 그대로) */
-  find:st=>{const f=st.filter;return combo("cbFind",[...DB.classes.map(c=>({v:"cls:"+c.id,label:c.name,sub:"클래스 · "+tch(c.teacherId).name})),...DB.teachers.map(c=>({v:"tch:"+c.id,label:c.name,sub:"강사"})),...DB.students.map(c=>({v:"stu:"+c.id,label:c.name,sub:"학생 · "+[c.school,c.grade].filter(Boolean).join(" ")}))],f.cls?"cls:"+f.cls:f.tch?"tch:"+f.tch:f.stu?"stu:"+f.stu:"","클래스·강사·학생","search")},
+  find:st=>{const f=st.filter;return combo("cbFind",[...DB.classes.map(c=>({v:"cls:"+c.id,label:c.name,sub:"클래스 · "+((tch(c.teacherId)||{}).name||"—")})),...DB.teachers.map(c=>({v:"tch:"+c.id,label:c.name,sub:"강사"})),...DB.students.map(c=>({v:"stu:"+c.id,label:c.name,sub:"학생 · "+[c.school,c.grade].filter(Boolean).join(" ")}))],f.cls?"cls:"+f.cls:f.tch?"tch:"+f.tch:f.stu?"stu:"+f.stu:"","클래스·강사·학생","search")},
   zoom:st=>{const sn=ZOOM[st.zoom][1];return `<span class="tb-grp zoomgrp"><button class="btn icon tb-ic" id="zOut" title="보기 크기 작게 (−)" ${st.zoom<=0?"disabled":""}>${IC("zoomout")}</button><span class="zoomlbl" title="보기 크기 — 한 칸 ${sn===60?"1시간":sn+"분"}(시간표와 같이 바뀌어요)">${sn===60?"1시간":sn+"분"}</span><button class="btn icon tb-ic" id="zIn" title="보기 크기 크게 (+)" ${st.zoom>=ZOOM.length-1?"disabled":""}>${IC("zoomin")}</button></span>`},
   /* hid = 5일 보기에서 숨은 주말 블록 수(시간표 — 옛 배지 그대로, 없으면 안 보임) */
   wkd:(st,hid)=>`<span class="vseg wkd no-print" id="wkB" title="보는 요일"><button data-wkd="5" class="${st.weekend?"":"on"}" title="평일만 (월–금)">5</button><button data-wkd="7" class="${st.weekend?"on":""}" title="주말 포함 (월–일)${!st.weekend&&hid?` — 주말 시간표 ${hid}개 숨김`:""}">7${!st.weekend&&hid?`<b class="pbadge k">${hid}</b>`:""}</button></span>`,
@@ -3412,7 +3412,7 @@ function panelAttend(p,t,k,sid,o){o=o||{};const st=t.state;const isMk=k.startsWi
     if(ab&&!isMk){const w=DB.mkw[ak]||{},stt=absState(ak),mkm=absMk(ak);
       const cands=(DB.mk||[]).filter(z=>!z.del&&!z.off&&z.d>=TODAY&&!z.sids.includes(sid)&&(!z.classId||z.classId===b.classId)).sort((p1,p2)=>p1.d.localeCompare(p2.d)||p1.start-p2.start);
       mkSec=`<div class="box"><h3>${IC("repeat","s")}보강${HELP("결석마다 보강이 필요한지 정해요. 보강 필요면 보강 대기에 남고, 다가오는 보강 수업을 고르면 그 보강에 들어가요. 보강 없음(이월 · 환불 등)이면 사유를 메모에 남겨요.")}<span class="sp"></span>${pill(MKST[stt],stt==="done"?"green":stt==="pend"?"blue":stt==="none"?"gray":"yellow")}</h3><div class="hfh" id="asMkDec"></div>
-        ${stt==="none"?`<div class="hfh" id="asMkWhy"></div>`:(stt==="pend"||stt==="done")&&mkm?`<div class="asr"><span class="t"><b>${mdw(mkm.d)}</b> ${fmt(mkm.start)}–${fmt(mkm.end)}<small>${esc(mkm.classId&&cls(mkm.classId)?cls(mkm.classId).name:"클래스 미정")}</small></span></div>`
+        ${stt==="none"?`<div class="hfh" id="asMkWhy"></div>`:(stt==="pend"||stt==="done")&&mkm?`<div class="asr"><span class="t"><b>${mdw(mkm.d)}</b> ${fmt(mkm.start)}–${fmt(mkm.end)}<small>${esc(mkm.classId&&cls(mkm.classId)?(cls(mkm.classId)||{}).name:"클래스 미정")}</small></span></div>`
         :`<div class="mkpl asc">${cands.map(z=>{const cz=z.classId?cls(z.classId):null;return `<button type="button" class="mkpr" data-ascand="${z.id}"><span class="dotc" style="background:${cz?classBar(cz):"var(--line2)"}"></span><b>${mdw(z.d)} ${fmt(z.start)}–${fmt(z.end)}</b><span class="mkpc">${cz?esc(cz.name):"클래스 미정"}</span><small>${z.sids.length}명</small></button>`}).join("")||'<div class="lnone">다가오는 보강 수업이 없어요</div>'}</div>${activeTab.screen==="makeup"?"":`<div class="row"><button type="button" class="btn sm" id="asMkNew">${IC("repeat","s")}보강 메뉴로 이동</button></div>`}`}</div>`}
     body=`<div class="box"><h3>출결</h3>${o.offLesson?'<div class="offbox">휴강한 수업이라 출결은 받지 않아요.</div>':`<div class="hfh" id="asAtt"></div>`}</div>${mkSec}
       <div class="box"><h3>등원 · 하원${HELP("키오스크에 찍힌 시각이에요(24시간). 평소엔 고칠 수 없고, [수정]을 눌러야 고칠 수 있어요.")}<span class="sp"></span><button type="button" class="btn icon sm ${st.asStEd?"pri":""}" id="asStEd" ${live?"disabled":""} title="${st.asStEd?"수정 끝":"수정 — 눌러야 고칠 수 있어요"}">${IC(st.asStEd?"check":"edit2","s")}</button></h3><div class="asstamp"><div class="hfh" id="asIn"></div><div class="hfh" id="asOut"></div></div>${tm&&(tm.in||tm.out)?"":'<div class="hint">키오스크 기록이 없어요</div>'}</div>
@@ -3459,9 +3459,9 @@ function panelAttend(p,t,k,sid,o){o=o||{};const st=t.state;const isMk=k.startsWi
 function renderLessonsToday(v,t){const st=t.state;if(!seasonOf(st.season))st.season=seaToday();const s=seasonOf(st.season);st.week=dPlus(TODAY,-dow(TODAY));
   const live=LIVE_ON(),loading=live&&typeof LIVE_LD!=="undefined"&&LIVE_LD[TODAY]!=="ok"&&LIVE_LD[TODAY]!=="fail";
   const its=dayItems(TODAY),mks=(DB.mk||[]).filter(m=>m.d===TODAY&&!m.del);
-  const tidOf=x=>{const L=live&&typeof LIVE_L!=="undefined"?LIVE_L[x.k]:null;return (L&&Array.isArray(L.teacherIds)&&L.teacherIds[0])||cls(x.b.classId).teacherId||""};
+  const tidOf=x=>{const L=live&&typeof LIVE_L!=="undefined"?LIVE_L[x.k]:null;return (L&&Array.isArray(L.teacherIds)&&L.teacherIds[0])||(cls(x.b.classId)||{}).teacherId||""};
   const G=new Map();const put=(tid,row)=>{if(!G.has(tid))G.set(tid,[]);G.get(tid).push(row)};
-  its.forEach(x=>put(tidOf(x),{start:x.e.start,x}));mks.forEach(m=>put(m.classId?cls(m.classId).teacherId:"",{start:m.start,m}));
+  its.forEach(x=>put(tidOf(x),{start:x.e.start,x}));mks.forEach(m=>put(m.classId?(cls(m.classId)||{}).teacherId:"",{start:m.start,m}));
   const groups=[...G.entries()].map(([tid,rows])=>({name:(byId(DB.teachers,tid)||{}).name||"강사 없음",rows:rows.sort((a,c)=>a.start-c.start)})).sort((a,c)=>a.rows[0].start-c.rows[0].start);
   const modeT=b=>b.mode==="individual"?"개별 수업":b.mode==="group"?"그룹 수업":"";
   const lrow=x=>{const c=cls(x.b.classId),a=attSum(x.b,x.d0),n=lessonRoster(x.b,x.d0).length,mt=modeT(x.b);const L=live&&typeof LIVE_L!=="undefined"?LIVE_L[x.k]:null;const kd=L&&L.kind?String(L.kind).replace(/^[^가-힣A-Za-z]+/,"").trim():"";const off=x.e.off||kd==="휴강";
@@ -3499,7 +3499,7 @@ const LD_RK={no:0,ab:1,mk:2,in:3,out:4,wait:5,off:6};
 const LK={cls:k=>k==="mk"?"kd-mk":k==="off"?"kd-off":k==="mv"?"kd-mv":k==="none"?"kd-none":"",chip:k=>k==="mk"?'<span class="kchip mk">보강</span>':k==="off"?'<span class="kchip off">휴강</span>':k==="mv"?'<span class="kchip mv">시간 바뀜</span>':"",
   /* 보강 = 어느 결석을 메우는지('11.12 결석분', 여러 날이면 '11.12 결석분 외 n') */src:m=>{if(!m||!m.sids)return "";const ds=[...new Set(m.sids.map(s=>{const a=mkSrc(m,s);return a&&a.d}).filter(Boolean))].sort();return ds.length?`${md(ds[0]).slice(5)} 결석분${ds.length>1?` 외 ${ds.length-1}`:""}`:""}};
 /* 휴원(하루) — 일정 '학원 휴원'이 그날을 덮으면 {name, n(클래스 수), all(모든 클래스)} */
-function ldClosed(d){const xs=DB.events.filter(e=>!e.del&&evSubOf(e)==="학원 휴원"&&e.start&&e.start<=d&&(e.end||e.start)>=d);if(!xs.length)return null;const ids=[...new Set(xs.flatMap(e=>e.classIds||[]))].filter(id=>cls(id)&&!cls(id).del);const all=!ids.length||ids.length>=DB.classes.filter(c=>!c.del).length;return {name:xs.map(e=>e.name||e.title||"휴원").filter(Boolean)[0]||"휴원",n:ids.length,all}}
+function ldClosed(d){const xs=DB.events.filter(e=>!e.del&&evSubOf(e)==="학원 휴원"&&e.start&&e.start<=d&&(e.end||e.start)>=d);if(!xs.length)return null;const ids=[...new Set(xs.flatMap(e=>e.classIds||[]))].filter(id=>cls(id)&&!(cls(id)||{}).del);const all=!ids.length||ids.length>=DB.classes.filter(c=>!c.del).length;return {name:xs.map(e=>e.name||e.title||"휴원").filter(Boolean)[0]||"휴원",n:ids.length,all}}
 function ldClosedBand(d){const c=ldClosed(d);return c?`<div class="ldclosed">${IC("calendar","s")}<b>휴원</b> — ${c.all?"수업 없음":`클래스 ${c.n}개 수업 없음`}${c.name&&c.name!=="휴원"?` (${esc(c.name)})`:""}</div>`:""}
 /* ═════ 261119 대표 "공용표와 똑같이": 수업 · 보강 출결 목록 = 평소엔 값만(못 고침), [편집](연필)을 누르면 '편집 중' + 출결 칸을 눌러 고르기(표 머리 메뉴와 같은 떠 있는 목록).
    정규 = 출석 · 결석, 보강 = 보강 · 결석(저장 값은 '출석'), 맨 아래 '비우기' = 미입력. 하루 수업 본문 · 주간 창 · 보강 창이 같은 부품 */
@@ -3546,7 +3546,7 @@ function ldCam(v,st){const sc=v.querySelector("#ldsc"),w=v.querySelector("#ldw")
   if(!window._ldRz){window._ldRz=1;window.addEventListener("resize",()=>{const s2=document.querySelector("#ldsc.cam");if(s2)render()})}}
 function ldData(d){const live=LIVE_ON();const its=dayItems(d),mks=(DB.mk||[]).filter(m=>m.d===d&&!m.del);
   const nowM=d===TODAY?(()=>{const n=new Date();return n.getHours()*60+n.getMinutes()})():d<TODAY?99999:-1;
-  const tidOf=x=>{const L=live&&typeof LIVE_L!=="undefined"?LIVE_L[x.k]:null;return (L&&Array.isArray(L.teacherIds)&&L.teacherIds[0])||cls(x.b.classId).teacherId||""};
+  const tidOf=x=>{const L=live&&typeof LIVE_L!=="undefined"?LIVE_L[x.k]:null;return (L&&Array.isArray(L.teacherIds)&&L.teacherIds[0])||(cls(x.b.classId)||{}).teacherId||""};
   const L=[];its.forEach(x=>{const c=cls(x.b.classId)||{};const ro=lessonRoster(x.b,x.d0);const a=attSum(x.b,x.d0);L.push({k:x.k,b:x.b,d0:x.d0,e:x.e,c,tid:tidOf(x),start:x.e.start,end:x.e.end,off:!!x.e.off,ro,a,made:live?true:lessonMade(x.b,x.d0)/* 261119: 아직 생성 안 한 수업 = 비활성 */})});
   mks.forEach(m=>{const c=m.classId?cls(m.classId):null;L.push({k:"mk:"+m.id,m,c,tid:c?c.teacherId:"",start:m.start,end:m.end,off:!!m.off,ro:m.sids.map(stu).filter(Boolean),a:null})});
   /* 261119 대표: 아직 생성 안 한 수업도 흐린 블록으로(누르면 창의 [수업 추가]) — 오늘 등원 학생에는 안 넣음 */if(!live)DB.blocks.filter(b=>!b.del&&b.day===dow(d)).forEach(b=>{const se=seasonOf(b.seasonId);if(!se||se.state!=="확정"||!inPer(effPeriod(b),d)||closedOn(b,d)||lessonMade(b,d))return;const c=cls(b.classId)||{};L.push({k:lkey(b,d),b,d0:d,e:lessonEff(b,d),c,tid:c.teacherId||"",start:b.start,end:b.end,off:false,ro:lessonRoster(b,d),a:null,made:false})});
@@ -3627,7 +3627,7 @@ function renderLessonsDay(v,t,mode){const st=t.state;if(!seasonOf(st.season))st.
   /* 처음 열면 지금(없으면 첫 수업) 조금 위로 스크롤 */{const sc=v.querySelector("#ldsc");const key=d+mode;if(sc){if(st.ldScrolled!==key){/* 261119 대표: 처음 여는 자리 = 그날 첫 수업(조금 위) — 오늘이고 지금이 수업 시간대(첫 수업 한 시간 앞 - 끝 수업)일 때만 지금 근처. 날짜마다 다시 계산 */const f0=L.length?Math.min(...L.map(l=>l.start)):15*60,l0=L.length?Math.max(...L.map(l=>l.end)):21*60;const m=d===TODAY&&nowM>=f0-60&&nowM<=l0?nowM-90:f0-30;sc.scrollTop=Math.max(0,top(m));st.ldScrolled=key;st.ldSc=sc.scrollTop;st.ldScL=0}else{sc.scrollTop=st.ldSc||0;sc.scrollLeft=st.ldScL||0/* 강사가 많아 옆으로 넘긴 자리도 다시 그려도 그대로 */}sc.onscroll=()=>{st.ldSc=sc.scrollTop;st.ldScL=sc.scrollLeft}}}}
 function renderLessonsW(v,t){const st=t.state;if(!seasonOf(st.season))st.season=seaToday();const s=seasonOf(st.season);const all=seasonBlocks(t);const wk=weekOf(st);
   if(st.weekend==null)st.weekend=all.some(b=>b.day>=5)&&innerWidth>=1024;const NDAYS=st.weekend?7:5;const [pph,snapM]=ZOOM[st.zoom];
-  const f=st.filter;const match=b=>{if(f.cls&&b.classId!==f.cls)return false;if(f.tch&&cls(b.classId).teacherId!==f.tch)return false;if(f.stu&&!studentsOfBlock(b).some(x=>x.id===f.stu))return false;return true};const anyFilter=f.cls||f.tch||f.stu;
+  const f=st.filter;const match=b=>{if(f.cls&&b.classId!==f.cls)return false;if(f.tch&&(cls(b.classId)||{}).teacherId!==f.tch)return false;if(f.stu&&!studentsOfBlock(b).some(x=>x.id===f.stu))return false;return true};const anyFilter=f.cls||f.tch||f.stu;
   const items=all.filter(b=>b.day<NDAYS).map(b=>({b,d:lessonDate(b,wk)})).filter(x=>inPer(effPeriod(x.b),x.d)&&!closedOn(x.b,x.d));
   lPrune();seedOffOnce();
   const missing=items.filter(x=>!lessonMade(x.b,x.d)&&!(typeof liveGenSkip==="function"&&liveGenSkip(x.b,x.d)));const unchecked=items.filter(x=>lessonMade(x.b,x.d)&&x.d<=TODAY&&attSum(x.b,x.d).미입력>0);
@@ -3650,7 +3650,7 @@ function renderLessonsW(v,t){const st=t.state;if(!seasonOf(st.season))st.season=
     const e=cell.e;const made=lessonMade(b,ld);const n=lessonRoster(b,ld).length;const sm=made?attSum(b,ld):null;
     const past=made&&ld<=TODAY&&n&&!e.off;const hw=past?hwSum(b,ld):null;const ev=past?evalAvg(b,ld):null;
     const rows=e.off?`<div class="l">휴강</div>`:past?`<div class="mr att"><b>출석</b>${segBar([["ok",sm.출석],["mk",sm.보강],["ab",sm.결석],["no",sm.미입력]])}<span class="n">${sm.출석+sm.보강}/${n}</span></div>${hw?`<div class="mr hw"><b>과제</b>${segBar([["hs",hw["완료"]],["hp",hw["일부 완료"]],["hn",hw["미제출"]]])}<span class="n">${hw["완료"]}/${n}</span></div>`:""}${ev!=null?`<div class="mr ev"><b>평가</b><span class="evl">평균</span><span class="sc">${ev}점</span></div>`:""}`
-      :`${!made&&ruleOnly?'<div class="l rulet">아직 생성 안 한 수업</div>':""}<div class="l tch">${esc(tch(c.teacherId).name)}</div><div class="l">${n}명</div>`;
+      :`${!made&&ruleOnly?'<div class="l rulet">아직 생성 안 한 수업</div>':""}<div class="l tch">${esc(((tch(c.teacherId)||{}).name||"—"))}</div><div class="l">${n}명</div>`;
     return Object.assign(base,{cls:`lc ${LDIRTY.has(k)&&lCount(k)?"ldr":""} ${made?"":"none"} ${!made&&ruleOnly?"rulel":""} ${e.off?"offl":""} ${e.moved?"movedl":""} ${LK.cls(!made?"none":e.off?"off":e.moved?"mv":"")} ${LUN.has(k)?"unl":""} ${st.lsel===k?"sel":""} ${anyFilter&&!match(b)?"dim":""}`,style:`background:${col.bg};--bar:${classBar(c)}`,attr:`data-short="${esc(c.short||"")}"`,
       html:`${LUN.has(k)?`<span class="blk-ul">${IC("unlock")}</span>`:""}<div class="t">${LK.chip(e.off?"off":e.moved?"mv":"")}${esc(c.name)}</div><div class="l tm">${fmt(e.start)}–${fmt(e.end)}</div>${e.moved&&!e.off?`<div class="l mvtag">${md(ld)}에서 옮김</div>`:""}${rows}${LUN.has(k)&&!e.off?'<i class="rz rt" title="끌어서 시작 시간"></i><i class="rz rb" title="끌어서 끝 시간"></i>':""}`})});
   const ti=dayN(wk.from,TODAY);
@@ -3680,10 +3680,10 @@ function renderLessonsW(v,t){const st=t.state;if(!seasonOf(st.season))st.season=
     const it=items.find(x=>lkey(x.b,x.d)===k);const eff=it&&lessonEff(it.b,it.d);if(it&&LUN.has(k)&&!eff.off)return null;return eff&&eff.off?"휴강 수업은 옮길 수 없어요":"잠겨 있어요 — 자물쇠를 풀면 이 주 이 수업만 옮길 수 있어요"};
   /* 놓은 뒤 = renderLessons와 같은 쓰기: 보강은 그 칸, 수업은 DB.lov(이 주 한 번) — 원래대로면 lov 지움, 학생 겹침 알림 */
   const onDrop=(k,day,start,end)=>{const tgt={d:dPlus(wk.from,day),start,end};lBase(k);
-    if(k.startsWith("mk:")){const m=DB.mk.find(x=>"mk:"+x.id===k);if(!m)return render();Object.assign(m,tgt);st.lsel=k;commit();return clashToast(tgt.d,tgt.start,tgt.end,m.sids,m.classId?cls(m.classId).teacherId:null,k,`보강을 ${mdw(tgt.d)} ${fmt(tgt.start)}–${fmt(tgt.end)}로 바꿨어요`)}
+    if(k.startsWith("mk:")){const m=DB.mk.find(x=>"mk:"+x.id===k);if(!m)return render();Object.assign(m,tgt);st.lsel=k;commit();return clashToast(tgt.d,tgt.start,tgt.end,m.sids,m.classId?(cls(m.classId)||{}).teacherId:null,k,`보강을 ${mdw(tgt.d)} ${fmt(tgt.start)}–${fmt(tgt.end)}로 바꿨어요`)}
     const it=items.find(x=>lkey(x.b,x.d)===k);if(!it)return render();
     DB.lov[k]=Object.assign({},DB.lov[k]||{},tgt);const e2=lessonEff(it.b,it.d);if(!e2.moved)delete DB.lov[k];st.lsel=k;commit();
-    if(!e2.moved)return toast("원래 시간으로 돌아왔어요");clashToast(tgt.d,tgt.start,tgt.end,studentsOfBlock(it.b).map(x=>x.id),cls(it.b.classId).teacherId,k,`이 주 한 번만 ${mdw(tgt.d)} ${fmt(tgt.start)}–${fmt(tgt.end)}로 바꿨어요 — 시간표는 그대로`)};
+    if(!e2.moved)return toast("원래 시간으로 돌아왔어요");clashToast(tgt.d,tgt.start,tgt.end,studentsOfBlock(it.b).map(x=>x.id),(cls(it.b.classId)||{}).teacherId,k,`이 주 한 번만 ${mdw(tgt.d)} ${fmt(tgt.start)}–${fmt(tgt.end)}로 바꿨어요 — 시간표는 그대로`)};
   /* 보강 모드 빈 칸 끌기 → 보강 초안(st.mkNew, 앞 초안·보강 대기에서 미리 고른 클래스·학생 이어 받음) → 오른쪽 창 */
   const make={can:()=>st.lmode==="mk",cls:"mkdraft",label:mkLbl,onMake:(day,lo,hi)=>{const dt=dPlus(wk.from,day);const pv=st.mkNew,pr=st.mkPre;st.mkNew={d:dt,start:lo,end:hi,classId:pv?pv.classId:pr?pr.classId:(st.mkCls||null),sids:pv?pv.sids:pr?pr.sids.slice():null};st.mkPre=null;st.lsel=null;panelOpen=true;render()}};
   const onDraft=tgt=>{if(tgt&&st.mkNew)Object.assign(st.mkNew,{d:dPlus(wk.from,tgt.day),start:tgt.start,end:tgt.end});render()};
@@ -3691,13 +3691,13 @@ function renderLessonsW(v,t){const st=t.state;if(!seasonOf(st.season))st.season=
   /* 보강 대기 학생 끌어 놓기(HTML5 text/mks) — 생성된 보강 블록에만(261112 대표). 정규 수업·휴강 보강·빈 칸은 안 받음. renderLessons와 같은 규칙 */
   v.querySelectorAll("#grid .blk.lc").forEach(el=>{const isMk=el.classList.contains("mkb")&&!el.classList.contains("offl");
     el.addEventListener("dragover",e=>{if(!e.dataTransfer.types.includes("text/mks")||!isMk)return;e.preventDefault();el.classList.add("drop")});el.addEventListener("dragleave",()=>el.classList.remove("drop"));
-    el.addEventListener("drop",e=>{const sid=e.dataTransfer.getData("text/mks");if(!sid||!isMk)return;e.preventDefault();el.classList.remove("drop");const m=DB.mk.find(x=>"mk:"+x.id===el.dataset.l);if(!m)return;const nm=stu(sid).name;const kc=e.dataTransfer.getData("text/mkc")||"";
-      if(kc&&m.classId&&kc!==m.classId)return toast(`${nm} ${cls(kc).name} 보강 대기 — ${cls(m.classId).name} 보강에는 넣지 않았어요(그 클래스 보강·클래스 없음 보강에만)`);
+    el.addEventListener("drop",e=>{const sid=e.dataTransfer.getData("text/mks");if(!sid||!isMk)return;e.preventDefault();el.classList.remove("drop");const m=DB.mk.find(x=>"mk:"+x.id===el.dataset.l);if(!m)return;const nm=(stu(sid)||{}).name;const kc=e.dataTransfer.getData("text/mkc")||"";
+      if(kc&&m.classId&&kc!==m.classId)return toast(`${nm} ${(cls(kc)||{}).name} 보강 대기 — ${(cls(m.classId)||{}).name} 보강에는 넣지 않았어요(그 클래스 보강·클래스 없음 보강에만)`);
       if(m.sids.includes(sid))return toast(`${nm} — 이미 이 보강에 있어요`);
-      if(m.classId&&!DB.enrolls.some(e2=>e2.classId===m.classId&&!e2.ended&&e2.studentId===sid))return toast(`${nm} — ${cls(m.classId).name} 학생이 아니라 넣지 않았어요`);
+      if(m.classId&&!DB.enrolls.some(e2=>e2.classId===m.classId&&!e2.ended&&e2.studentId===sid))return toast(`${nm} — ${(cls(m.classId)||{}).name} 학생이 아니라 넣지 않았어요`);
       const c=absPick(sid,m,kc);if(!c){const pre=absAll().some(a=>a.sid===sid&&absFits(a,m)&&absState(a.k)==="pre");return toast(pre?`${nm} — 보강 필요로 고른 결석이 없어요. 결석마다 필요·없음을 먼저 골라 주세요`:`${nm} — 이 보강 날 전에 보강할 결석이 없어요`)}
       const bz=busyAt(m.d,m.start,m.end,"mk:"+m.id).st;lBase("mk:"+m.id);m.sids.push(sid);DB.mkw[c.k]=Object.assign({},DB.mkw[c.k],{dec:"need",mk:m.id});commit();
-      toast(`${nm} → ${m.classId?`${mkName(m)} ${mdw(m.d)}`:mkName(m)}에 넣었어요 — ${cls(c.classId).name} ${md(c.d)} 결석과 연결(작성 중)${bz.has(sid)?` · 같은 시간 수업: ${bz.get(sid)}`:""}`)})});
+      toast(`${nm} → ${m.classId?`${mkName(m)} ${mdw(m.d)}`:mkName(m)}에 넣었어요 — ${(cls(c.classId)||{}).name} ${md(c.d)} 결석과 연결(작성 중)${bz.has(sid)?` · 같은 시간 수업: ${bz.get(sid)}`:""}`)})});
   bindLessonHover(grid,items);/* 261118: 시간표는 정보 카드를 없앴지만 수업은 남김 — "이 주만 잠금 해제"(LUN)가 이 카드에만 있음. 대표 확인 필요 */
   const p=v.querySelector("#panel");if(p){panelLesson(p,t,items);addResizer(p)}}
 /* 보강 결석 달력 = 표준 월간 끌기의 두 번째 사용처: 보강 블록을 끌어 다른 날로(시간은 그대로). 지난 보강은 잠김(출결이 붙을 수 있어서) */
@@ -4045,7 +4045,7 @@ const LTABS={
     ["rt","루틴",rtOf(c.id).filter(r=>!r.rest).length||"",rtBox(c)]/* 261119 대표: 클래스 [루틴] 탭 */]},
   enrolls:e=>{const bl=DB.blocks.filter(b=>b.classId===e.classId&&b.seasonId===seaToday());return [["sum","현황","",enSumBox(e)],["tt","시간표",ttBl(e.classId).filter(b=>b.regs.includes(e.id)).length+"/"+ttBl(e.classId).length,ttPanel(e.classId,e)+ttNoticeBox(e)],["bk","진도",enPg(e).length,enPgBox(e)],["fee","수강료",DB.tuition.filter(x=>x.studentId===e.studentId&&x.classId===e.classId&&!x.del).length||"",enFeeBox(e)],["rp","보고서",rpOfEn(e).length||"",rpListBox(rpOfEn(e),"이 등록으로 받은 보고서가 없어요")]]},
   teachers:x=>{const cs=DB.classes.filter(c=>c.teacherId===x.id&&DB.blocks.some(b=>b.classId===c.id&&b.seasonId===seaToday()));return [["cls","클래스",cs.length,`<div class="box"><h3>이 시즌 맡은 클래스 <span class="hint">${cs.length}개</span><span class="sp"></span><button class="lnk" data-act="ttT">주간 시간표${IC("right","s")}</button></h3>${PANEL.rows(cs.map(c=>{const bl=DB.blocks.filter(b=>b.classId===c.id&&b.seasonId===seaToday());return {attr:`data-gocls="${c.id}"`,title:"클래스 화면에서 열기",t:c.name,sub:bl.map(b=>DAYS[b.day]+" "+fmt(b.start)).join(" · ")}}),"이 시즌에 맡은 클래스가 없어요")}</div>`]]},
-  seasons:x=>{const bl=DB.blocks.filter(b=>b.seasonId===x.id);const byC=[...new Set(bl.map(b=>b.classId))];const sv=LS.get("panelTtView","l");return [["tt","시간표",bl.length,`<div class="box"><h3>클래스별 시간표 <span class="hint">${byC.length}개 클래스 · ${bl.length}개</span><span class="sp"></span><button class="lnk" data-act="ttS">시간표 열기${IC("right","s")}</button></h3><div class="ptool"></div>${"w"==="x"?"":PANEL.rows(byC.map(c=>{const b2=bl.filter(b=>b.classId===c);return {attr:`data-gocls="${c}"`,title:"클래스 화면에서 열기",t:cls(c).name,sub:b2.map(b=>DAYS[b.day]+" "+fmt(b.start)).join(" · ")}}),"이 시즌에 아직 시간표가 없어요")}</div>`]]},
+  seasons:x=>{const bl=DB.blocks.filter(b=>b.seasonId===x.id);const byC=[...new Set(bl.map(b=>b.classId))];const sv=LS.get("panelTtView","l");return [["tt","시간표",bl.length,`<div class="box"><h3>클래스별 시간표 <span class="hint">${byC.length}개 클래스 · ${bl.length}개</span><span class="sp"></span><button class="lnk" data-act="ttS">시간표 열기${IC("right","s")}</button></h3><div class="ptool"></div>${"w"==="x"?"":PANEL.rows(byC.map(c=>{const b2=bl.filter(b=>b.classId===c);return {attr:`data-gocls="${c}"`,title:"클래스 화면에서 열기",t:(cls(c)||{}).name,sub:b2.map(b=>DAYS[b.day]+" "+fmt(b.start)).join(" · ")}}),"이 시즌에 아직 시간표가 없어요")}</div>`]]},
   subjects:x=>[["bk","교재",DB.books.filter(b=>b.subjectId===x.id).length,LISTS.subjects.extra(x)]],
   books:b=>[["use","진도관리",bookPg(b).length,LISTS.books.extra(b)],["unit","단원",(b.units||[]).length||"",bookUnitBox(b)]],
   exams:x=>[["gr","성적",exGr(x).length,exBox(x)]],
@@ -4193,7 +4193,7 @@ function hfField(h,L,r,spec,set,extra){const [k,label,opts,type,help]=spec;if(!h
   if(type==="tel")return HF.tel(h,Object.assign(o,{value:r[k]||""}));
   if(type==="memo")return HF.memo(h,Object.assign(o,{value:r[k]||""}));
   if(type==="days")return HF.days(h,Object.assign(o,{value:daysArr(r[k]),onChange:v=>{const nv=DAYS7.split("").filter(d=>(v||[]).includes(d));set(k,nv.join(","));
-      if(L.coll==="teachers"){const miss=DB.blocks.filter(b=>b.seasonId===curSeason()&&(b.teacherId||cls(b.classId).teacherId)===r.id&&!nv.includes(DAYS[b.day]));if(miss.length)toast(`${[...new Set(miss.map(b=>DAYS[b.day]))].join("·")}요일에 이 선생님 수업이 있어요 — ${miss.slice(0,2).map(b=>cls(b.classId).name+" "+DAYS[b.day]+" "+fmt(b.start)).join(", ")}${miss.length>2?` 외 ${miss.length-2}개`:""}`)}}}));
+      if(L.coll==="teachers"){const miss=DB.blocks.filter(b=>b.seasonId===curSeason()&&(b.teacherId||(cls(b.classId)||{}).teacherId)===r.id&&!nv.includes(DAYS[b.day]));if(miss.length)toast(`${[...new Set(miss.map(b=>DAYS[b.day]))].join("·")}요일에 이 선생님 수업이 있어요 — ${miss.slice(0,2).map(b=>(cls(b.classId)||{}).name+" "+DAYS[b.day]+" "+fmt(b.start)).join(", ")}${miss.length>2?` 외 ${miss.length-2}개`:""}`)}}}));
   return HF.text(h,Object.assign(o,{value:r[k]||""}))}
 const lFields=(L,r)=>L.fieldsOf?L.fieldsOf(r):(L.fields||[]);
 function mountDetail(p,L,r){const set=(k,val)=>{if(r[k]===val)return;if(L.beforeSet)L.beforeSet(r,k);r[k]=val;if(L.onSet)L.onSet(r,k);markDirty(L,r);commitQuiet();refreshListQuiet(p,L,r);chgMark(p,L,r)};
@@ -4539,7 +4539,7 @@ document.addEventListener("keydown",e=>{const tag=(e.target.tagName||"").toLower
     if(e.key==="Delete"&&st.lsel)return toast("수업은 지우지 않아요 — [정보] 탭의 [휴강]으로");
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="c"&&lm){mkClip=JSON.parse(JSON.stringify(lm));return toast("보강 복사 — 다른 요일 칸 위에서 Ctrl+V")}
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="c"&&st.lsel)return toast("수업은 복사하지 않아요 — 보강만 복사돼요");
-    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="v"&&mkClip&&hoverDay>=0){const d=dPlus(weekOf(st).from,hoverDay);const id=uid("mk");const nm=Object.assign(JSON.parse(JSON.stringify(mkClip)),{id,d,att:{}});DB.mk.push(nm);LUN.add("mk:"+id);st.lsel="mk:"+id;commit();clashToast(d,nm.start,nm.end,nm.sids,nm.classId?cls(nm.classId).teacherId:null,"mk:"+id,`${mdw(d)}에 보강 붙여넣음`)}
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="v"&&mkClip&&hoverDay>=0){const d=dPlus(weekOf(st).from,hoverDay);const id=uid("mk");const nm=Object.assign(JSON.parse(JSON.stringify(mkClip)),{id,d,att:{}});DB.mk.push(nm);LUN.add("mk:"+id);st.lsel="mk:"+id;commit();clashToast(d,nm.start,nm.end,nm.sids,nm.classId?(cls(nm.classId)||{}).teacherId:null,"mk:"+id,`${mdw(d)}에 보강 붙여넣음`)}
     return}
   if((e.key==="Delete"||e.key==="Backspace")&&b){if(b.lessons)return toast("수업이 있는 시간표는 오른쪽 창의 [종료]로");DB.blocks.splice(DB.blocks.indexOf(b),1);st.sel=null;commit()}
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="c"&&b){clip=b;toast("시간표 복사 — 다른 요일 칸 위에서 Ctrl+V")}
@@ -4576,7 +4576,7 @@ LISTS.blocks={title:"시간표",coll:"blocks",unit:"개",ph:"클래스·강사·
   merge:["클래스"],mergeBy:b=>b.classId,pin:["클래스"],panelName:"시간표",
   qx:b=>{const c=cls(b.classId)||{};return [(tch(c.teacherId)||{}).name||"",studentsOfBlock(b).map(x=>x.name).join(" ")].join(" ")},
   /* 열(대표 261118): 클래스(줄 이름) · 요일 · 등원시간 · 하원시간 · 담당강사 · 시즌 — 노션 "이름"(제목 수식) · "실시간 처리 상태"는 표에서 뺌(처리 상태 · 마지막 오류는 창에만) */
-  cols:[["클래스",b=>nmCls(b.classId),"classId"],["요일",b=>DAYS[b.day]||"—","day"],["등원시간",b=>fmt(b.start),"start"],["하원시간",b=>fmt(b.end),"end"],["담당강사",b=>{const c=cls(b.classId);return c&&tch(c.teacherId)?tch(c.teacherId).name:"—"},"tch"],["시즌",b=>(seasonOf(b.seasonId)||{}).name||"—","season"],
+  cols:[["클래스",b=>nmCls(b.classId),"classId"],["요일",b=>DAYS[b.day]||"—","day"],["등원시간",b=>fmt(b.start),"start"],["하원시간",b=>fmt(b.end),"end"],["담당강사",b=>{const c=cls(b.classId);return c&&tch(c.teacherId)?((tch(c.teacherId)||{}).name||"—"):"—"},"tch"],["시즌",b=>(seasonOf(b.seasonId)||{}).name||"—","season"],
     ["수업 방식",b=>b.mode==="individual"?"개별 수업":"그룹 수업","mode",{hid:true}],["시작일",b=>b.from?D10(b.from):"","from",{hid:true}],["종료일",b=>b.to?D10(b.to):"","to",{hid:true}]/* 261118 대표: 적용 기간 → 시작일 · 종료일(비면 시즌 기간을 따라감) */,["학생",b=>studentsOfBlock(b).length+"명","n",{hid:true}]],
   filters:[],fields:[],
   vtabs:ttVtabs,addLabel:"시간표 추가",add:()=>ttAdd(),pane:(p,t,sel)=>ttPane(p,t,sel)};
@@ -4614,7 +4614,7 @@ function ttCal(v,t){const st=t.state;
   const f=st.filter;const sel=st.sel?byId(DB.blocks,st.sel):null;const q=(st.q||"").trim();
   /* 찾기 = 표와 같은 글 찾기(열 글 + 강사 · 학생 이름, LISTS.blocks) + 다른 화면에서 들고 온 찾기(st.filter 클래스 · 강사 · 학생) */
   const qHit=b=>!q||LISTS.blocks.cols.some(([,fn])=>String(fn(b)).includes(q))||String(LISTS.blocks.qx(b)).includes(q);
-  const match=b=>{if(f.cls&&b.classId!==f.cls)return false;if(f.tch&&cls(b.classId).teacherId!==f.tch)return false;if(f.stu&&!studentsOfBlock(b).some(x=>x.id===f.stu))return false;return qHit(b)};const anyFilter=f.cls||f.tch||f.stu||q;
+  const match=b=>{if(f.cls&&b.classId!==f.cls)return false;if(f.tch&&(cls(b.classId)||{}).teacherId!==f.tch)return false;if(f.stu&&!studentsOfBlock(b).some(x=>x.id===f.stu))return false;return qHit(b)};const anyFilter=f.cls||f.tch||f.stu||q;
   /* 재료: 시즌 블록 → CALW 블록(클래스 · 속성 · 내용은 옛 renderTimetable 그대로) */
   const items=all.map(b=>{const c=cls(b.classId),col=classColor(c);const studs=studentsOfBlock(b);
     const who=b.mode==="individual"?esc(studs.map(x=>x.name).join(", ")||"학생 없음"):studs.length+"명";
@@ -4622,8 +4622,8 @@ function ttCal(v,t){const st=t.state;
     const pb=bp.from>wk.to?`${md(bp.from)}부터`:bp.to<wk.from?`${md(bp.to)} 종료`:(isCustom(b)&&bp.to<bs.end?(b.ending?`${md(bp.to)} 종료`:`${md(bp.to)}까지`):"");
     const cl=[b.del?"willdel":"",b.state==="draft"?"draft":"",sel&&sel.id===b.id?"sel":"",sel&&sel.id!==b.id&&sel.classId===b.classId?"same":"",anyFilter&&!match(b)?"dim":"",blockConflicts(b,sameSea(b))?"conflict":"",off?"offweek":"",hasL?"haslesson":"",hasL&&UNLOCKED.has(b.id)?"unlocked":""].filter(Boolean).join(" ");
     return {id:b.id,day:b.day,start:b.start,end:b.end,cls:cl,style:`background:${col.bg};color:${col.fg};--bar:${classBar(c)}`,
-      attr:`data-hc="${esc(c.name)}|${fmt(b.start)}–${fmt(b.end)} · ${DAYS[b.day]}|${esc(tch(c.teacherId).name)} · ${b.mode==="individual"?"골라 넣은 학생":"클래스 학생 전체"}|${esc(studs.map(x=>x.name).join(", ")||"학생 없음")}|${hasL?"수업이 생성된 시간표 — 옮기면 다음 수업부터 바뀜":b.state==="draft"?"작성 중(저장 전)":"저장됨"}" data-short="${esc(c.short||"")}"`,
-      html:`${hasL&&UNLOCKED.has(b.id)?`<span class="blk-ul" title="잠금 풀림 — 끌어서 옮기거나 시간을 바꿀 수 있어요">${IC("unlock")}</span>`:hasL?`<span class="blk-lk" aria-hidden="true">${IC("lock")}</span>`/* 261118 대표: 잠긴 시간표 = 마우스를 올리면 자물쇠(일정과 같게) — 보이기만, 풀기는 오른쪽 창 자물쇠 */:""}<div class="t">${esc(c.name)}</div>${pb?`<div class="l pb">${pb}</div>`:""}<div class="l tm">${fmt(b.start)}-<wbr>${fmt(b.end)}</div><div class="l one">${esc(tch(c.teacherId).name)}</div><div class="l one">${who}</div><div class="rz rt" title="끌어서 시작 시간"></div><div class="rz rb" title="끌어서 끝 시간"></div>`}});
+      attr:`data-hc="${esc(c.name)}|${fmt(b.start)}–${fmt(b.end)} · ${DAYS[b.day]}|${esc(((tch(c.teacherId)||{}).name||"—"))} · ${b.mode==="individual"?"골라 넣은 학생":"클래스 학생 전체"}|${esc(studs.map(x=>x.name).join(", ")||"학생 없음")}|${hasL?"수업이 생성된 시간표 — 옮기면 다음 수업부터 바뀜":b.state==="draft"?"작성 중(저장 전)":"저장됨"}" data-short="${esc(c.short||"")}"`,
+      html:`${hasL&&UNLOCKED.has(b.id)?`<span class="blk-ul" title="잠금 풀림 — 끌어서 옮기거나 시간을 바꿀 수 있어요">${IC("unlock")}</span>`:hasL?`<span class="blk-lk" aria-hidden="true">${IC("lock")}</span>`/* 261118 대표: 잠긴 시간표 = 마우스를 올리면 자물쇠(일정과 같게) — 보이기만, 풀기는 오른쪽 창 자물쇠 */:""}<div class="t">${esc(c.name)}</div>${pb?`<div class="l pb">${pb}</div>`:""}<div class="l tm">${fmt(b.start)}-<wbr>${fmt(b.end)}</div><div class="l one">${esc(((tch(c.teacherId)||{}).name||"—"))}</div><div class="l one">${who}</div><div class="rz rt" title="끌어서 시작 시간"></div><div class="rz rb" title="끌어서 끝 시간"></div>`}});
   let ti=-1;for(let d=0;d<NDAYS;d++)if(dPlus(wk.from,d)===TODAY)ti=d;
   /* 새 블록(끌어 생성한 저장 전 자리) = CALW draft — 옛 .pending 모양 · 문구 그대로 */
   const pd=st.pending;const pc=pd&&pd.classId?cls(pd.classId):null;const pcol=pc?classColor(pc):null;const pLbl=(a,b)=>`${fmt(a)}–${fmt(b)}`;
@@ -4761,7 +4761,7 @@ LISTS.letters.todoSum=st=>{const L=DB.letters.filter(x=>!x.del&&x.month===tMon(s
 LISTS.teachers.todo=()=>{const L=DB.teachers.filter(x=>!x.del);return [
   {k:"cls",name:"맡은 클래스 없음",why:"이번 시즌에 맡은 클래스가 없는 선생님이에요.",rows:L.filter(t=>!DB.classes.some(c=>!c.del&&liveCls(c)&&c.teacherId===t.id)),lab:nm1},
   {k:"tel",name:"연락처 빈칸",rows:L.filter(t=>!t.phone),lab:nm1},
-  {k:"days",name:"출근 요일 확인",why:"맡은 수업이 출근 요일이 아닌 날에 있어요.",rows:L.filter(t=>{const d=daysArr(t.days);return DB.blocks.some(b=>b.seasonId===curSeason()&&(b.teacherId||cls(b.classId).teacherId)===t.id&&!d.includes(DAYS[b.day]))}),lab:nm1}]};
+  {k:"days",name:"출근 요일 확인",why:"맡은 수업이 출근 요일이 아닌 날에 있어요.",rows:L.filter(t=>{const d=daysArr(t.days);return DB.blocks.some(b=>b.seasonId===curSeason()&&(b.teacherId||(cls(b.classId)||{}).teacherId)===t.id&&!d.includes(DAYS[b.day]))}),lab:nm1}]};
 LISTS.teachers.todoSum=()=>[["선생님",DB.teachers.filter(x=>!x.del).length+"명"]];
 [LISTS.reports,LISTS.completion].forEach(RL=>{RL.todo=()=>{const L=RL.rows();return [
   {k:"send",name:"전송 전",why:"아직 보내지 않은 학생이 있는 보고서 묶음이에요.",rows:L.filter(x=>rpLeft(x)),lab:x=>`<i class="cdot" style="background:${clsHex(cls(x.classId)||{})}"></i>${esc(nmCls(x.classId))} <small class="hint">${esc(x.kind||"")} · ${x.left?x.left+"명 남음":"전송 전"}</small>`}]};
@@ -4894,6 +4894,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del).slice().sort(
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="appdata.js?v=700"></script><script src="appsave.js?v=700"></script><script src="appview.js?v=700"></script><script src="livelesson.js?v=700"></script><script src="live.js?v=700"></script>
+<script src="appdata.js?v=701"></script><script src="appsave.js?v=701"></script><script src="appview.js?v=701"></script><script src="livelesson.js?v=701"></script><script src="live.js?v=701"></script>
 </body>
 </html>
