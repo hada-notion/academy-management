@@ -265,9 +265,20 @@ function liveLessonPlan(k) {
 }
 /* 루틴 체크를 눌러 바뀐 수업(칸 P3b, 261119 원본검수): 수업 창 루틴 탭의 클릭은 S.routines.checks[].done만 바꾸고 작성 중 표시(LDIRTY)를 안 만들어, 위 [저장] 수에 안 잡히고 save-routines가 안 나갔다.
    받은 값(S._rt0)과 달라진 체크가 있는 수업 열쇠를 돌려준다 — 저장 수(dirtyCount)와 저장 대상(liveSave)이 함께 쓴다 */
+function liveRoutineChangedN(k) {
+  const S = typeof LIVE_LS !== "undefined" ? LIVE_LS[k] : null;
+  if (!window.LIVE_RECW || !S || S.state !== "ok" || !S.routines || !S._rt0) return 0;
+  return (S.routines.checks || []).filter((c) => c.checkId in S._rt0 && !!c.done !== S._rt0[c.checkId]).length;
+}
 function liveRoutineDirtyKeys() {
   if (!window.LIVE_RECW || typeof LIVE_LS === "undefined") return [];
-  return Object.keys(LIVE_LS).filter((k) => { const S = LIVE_LS[k]; return S && S.state === "ok" && S.routines && S._rt0 && (S.routines.checks || []).some((c) => c.checkId in S._rt0 && !!c.done !== S._rt0[c.checkId]); });
+  return Object.keys(LIVE_LS).filter((k) => liveRoutineChangedN(k) > 0);
+}
+/* 수업 창 [되돌리기]: 눌러 바꾼 루틴 체크도 받은 값으로 */
+function liveRoutineRevert(k) {
+  const S = typeof LIVE_LS !== "undefined" ? LIVE_LS[k] : null;
+  if (!window.LIVE_RECW || !S || !S.routines || !S._rt0) return;
+  (S.routines.checks || []).forEach((c) => { if (c.checkId in S._rt0) c.done = S._rt0[c.checkId]; });
 }
 async function liveLessonSave(k) {
   if (!(window.LIVE && window.LIVE.loaded && (window.LIVE_ATTW || window.LIVE_RECW))) { toast("이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요"); return false; }
