@@ -376,7 +376,7 @@ function liveBookRegisterOpen(kind0) {
       msg.textContent = ""; ok.disabled = true; ok.textContent = "등록 중…";
       try {
         const units = (typeof unitParse === "function" ? unitParse(F.units, F.pages) : []).map((u) => ({ name: u.name, page: u.from == null ? 0 : u.from }));
-        const body = { action: "register-custom", title: F.title.trim(), units };
+        const body = { action: "register-custom", title: F.title.trim(), units, kind: F.kind }; /* kind: 서버 #530 이후 교재|프로그램(생략=교재) — 그 전 서버는 모르는 칸을 무시 */
         if (F.isbn.trim()) body.isbn13 = F.isbn.trim();
         if (F.price) body.price = +F.price;
         if (F.pages) body.pages = +F.pages;
