@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리 앱 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3C%2Fsvg%3E">
-<link rel="stylesheet" href="hada-tokens.css?v=699">
-<link rel="stylesheet" href="app.css?v=699">
-<link rel="stylesheet" href="pick.css?v=699">
-<link rel="stylesheet" href="field.css?v=699">
+<link rel="stylesheet" href="hada-tokens.css?v=700">
+<link rel="stylesheet" href="app.css?v=700">
+<link rel="stylesheet" href="pick.css?v=700">
+<link rel="stylesheet" href="field.css?v=700">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -20,7 +20,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=699"><script src="hada-rules.js?v=699"></script><script src="help.js?v=699"></script><script src="alim-preview.js?v=699"></script><script src="pick.js?v=699"></script><script src="field.js?v=699"></script><script src="panel.js?v=699"></script>
+<link rel="stylesheet" href="alim.css?v=700"><script src="hada-rules.js?v=700"></script><script src="help.js?v=700"></script><script src="alim-preview.js?v=700"></script><script src="pick.js?v=700"></script><script src="field.js?v=700"></script><script src="panel.js?v=700"></script>
 <script>
 "use strict";
 
@@ -4016,9 +4016,9 @@ function rtBox(c){const L=rtOf(c.id),on=L.filter(r=>!r.rest).length,ED=activeTab
     :`<div class="ttrow rtv ${r.rest?"rest":""} ${r.state==="draft"?"draft":""}" data-rt="${r.id}" data-rted="${r.id}" draggable="true" title="누르면 편집 · 끌어서 순서 바꾸기"><span class="rtgrip" aria-hidden="true">${IC("grip","s")||"⋮⋮"}</span><span class="t">${esc(r.name||"이름 없음")}</span><span class="hint">${esc(r.desc||"")}</span>${r.rest?'<span class="tag">쉬는 중</span>':""}<span class="unx"><button type="button" class="anb" data-rted="${r.id}" title="이 루틴 편집">${IC("pen","s")}</button><button type="button" class="anb" data-rtrest="${r.id}" title="${r.rest?"다시 쓰기":"잠시 안 쓰기(쉬기)"}">${IC(r.rest?"play":"pause","s")||(r.rest?"▶":"⏸")}</button>${nb(r)}</span></div>`;
   const row=(r,i)=>ED===r.id?`<div class="unrow ed rted ${r.state==="draft"?"draft":""}" data-rt="${r.id}"><span class="rtno">${i+1}</span><div class="rtin"><input class="inp" data-rtf="name" data-rid="${r.id}" value="${esc(r.name||"")}" placeholder="루틴 이름 (예: 단어 시험)" maxlength="30" autocomplete="off" aria-label="루틴 이름"><input class="inp" data-rtf="desc" data-rid="${r.id}" value="${esc(r.desc||"")}" placeholder="설명 — 무엇을 체크하나요 (예: 지난 수업 단어 20개)" maxlength="60" autocomplete="off" aria-label="루틴 설명"></div><button type="button" class="anb" data-rtok="${r.id}" title="입력 마치기 (Enter)">${IC("check","s")}</button></div>`
     :`<div class="unrow rtv ${r.rest?"rest":""} ${r.state==="draft"?"draft":""}" data-rt="${r.id}" data-rted="${r.id}" title="누르면 편집"><span class="rtno">${i+1}</span><span class="unt">${esc(r.name||"이름 없음")}${r.desc?`<small>${esc(r.desc)}</small>`:""}</span><span class="unv">${r.rest?'<span class="tag">쉬는 중</span>':""}</span><span class="unx"><button type="button" class="anb" data-rtmv="${r.id}|-1" ${i?"":"disabled"} title="위로">${IC("up","s")}</button><button type="button" class="anb" data-rtmv="${r.id}|1" ${i<L.length-1?"":"disabled"} title="아래로">${IC("down","s")}</button><button type="button" class="anb" data-rted="${r.id}" title="이 루틴 편집">${IC("pen","s")}</button><button type="button" class="anb" data-rtrest="${r.id}" title="${r.rest?"다시 쓰기":"잠시 안 쓰기(쉬기)"}">${IC(r.rest?"play":"pause","s")||(r.rest?"▶":"⏸")}</button>${/* 261119 담당 · 앱서버: 루틴 삭제는 앱에서 하지 않음(루틴 체크가 있는 루틴을 지우면 리포트 루틴 칸이 깨짐) — 안 쓰면 [쉬기], 삭제는 그 루틴 노션 페이지 [삭제]. 아직 저장 전 새 줄만 x = 추가 취소 */r._new?`<button type="button" class="anb" data-rtdel="${r.id}" title="추가 취소 — 아직 저장 전인 새 루틴">${IC("x","s")}</button>`:/^[0-9a-f-]{32,36}$/i.test(String(r.id))?`<a class="anb" href="https://www.notion.so/${String(r.id).replace(/-/g,"")}" target="_blank" rel="noopener" title="노션 루틴 페이지 열기 — 삭제는 거기서 [삭제](안 쓰면 [쉬기])">${IC("notion","s")||"N"}</a>`:`<button type="button" class="anb" data-rtdel="${r.id}" title="삭제는 노션 루틴 페이지에서 — 안 쓰면 [쉬기]">${IC("notion","s")||"N"}</button>`}</span></div>`;
-  return `<div class="box rtbox"><h3>루틴 <span class="hint">쓰는 ${on} · 쉬기 ${L.length-on}</span>${HELP("수업마다 학생별로 체크할 이 클래스의 루틴이에요(노션 루틴 DB). 위에서부터 순서대로 체크해요 — 줄을 끌어 놓으면 순서가 바뀌어요. 줄을 누르면 그 줄만 입력칸이 열려요(Enter = 마침). 마우스를 올리면 뒤에 편집 · 쉬기(잠시 안 씀 = 루틴 체크가 생기지 않음) · 노션 페이지 열기가 나와요. 삭제는 노션 루틴 페이지 [삭제]에서 해요(루틴 체크가 있는 루틴을 지우면 리포트 루틴 칸이 깨져서 앱에서는 [쉬기]로 꺼요). 루틴 체크는 수업 창 [루틴] 탭 · 노션 [루틴 체크 생성]에서 생성해요.")}</h3>
+  return `<div class="box rtset"><h3>루틴 <span class="hint">쓰는 ${on} · 쉬기 ${L.length-on}</span>${HELP("수업마다 학생별로 체크할 이 클래스의 루틴이에요(노션 루틴 DB). 위에서부터 순서대로 체크해요 — 줄을 끌어 놓으면 순서가 바뀌어요. 줄을 누르면 그 줄만 입력칸이 열려요(Enter = 마침). 마우스를 올리면 뒤에 편집 · 쉬기(잠시 안 씀 = 루틴 체크가 생기지 않음) · 노션 페이지 열기가 나와요. 삭제는 노션 루틴 페이지 [삭제]에서 해요(루틴 체크가 있는 루틴을 지우면 리포트 루틴 칸이 깨져서 앱에서는 [쉬기]로 꺼요). 루틴 체크는 수업 창 [루틴] 탭 · 노션 [루틴 체크 생성]에서 생성해요.")}</h3>
     ${L.length?`<div class="ttrows rtrows2" data-rtlist="${c.id}">${L.map(row2).join("")}</div>`:'<div class="hint">아직 루틴이 없어요 — [루틴 추가]로 한 줄씩 넣어요</div>'}
-    <button type="button" class="pgaddc ln" data-rtadd="${c.id}">${IC("plus","s")}루틴 추가</button>${L.length?`<div class="hint rtnote">${IC("notion","s")||""} 삭제는 노션 루틴 페이지 [삭제]에서 해요 — <b>루틴 체크가 있으면 지우지 말고 [쉬기]로</b> 꺼 주세요(지우면 리포트 루틴 칸이 깨져요).</div>`:""}</div>`}
+    <button type="button" class="pgaddc ln" data-rtadd="${c.id}">${IC("plus","s")}루틴 추가</button>${L.length?`<div class="hint rtnote">${IC("notion","s")||""}<span>삭제는 노션 루틴 페이지 [삭제]에서 해요 — <b>루틴 체크가 있으면 지우지 말고 [쉬기]로</b> 꺼 주세요(지우면 리포트 루틴 칸이 깨져요).</span></div>`:""}</div>`}
 function rtDirty(r,redraw){r.state="draft"/* 루틴 줄이 작성 중 → 위 [저장] 수에 셈(XCOL routines) */;redraw?commit():commitQuiet()}
 /* 261119 대표: 루틴 순서 = 줄 끌어 놓기 — 놓은 자리 기준으로 순서(ord) 1부터 다시 매기고 바뀐 줄만 작성 중(↑↓와 같은 저장 길) */
 let RTDRAG=null;
@@ -4894,6 +4894,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del).slice().sort(
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="appdata.js?v=699"></script><script src="appsave.js?v=699"></script><script src="appview.js?v=699"></script><script src="livelesson.js?v=699"></script><script src="live.js?v=699"></script>
+<script src="appdata.js?v=700"></script><script src="appsave.js?v=700"></script><script src="appview.js?v=700"></script><script src="livelesson.js?v=700"></script><script src="live.js?v=700"></script>
 </body>
 </html>
