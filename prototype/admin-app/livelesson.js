@@ -6,6 +6,11 @@ const LIVE_L = {}; /* 수업 열쇠 → { id(수업 id), sum(출석현황 글자
 const LIVE_LD = {}; /* 날짜 → "loading" | "ok" | "fail" */
 const LIVE_LS = {}; /* 수업 열쇠 → { state, roster[학생 id], att{학생 id: 출석 id} } — 창을 연 수업 */
 const LIVE_LX = {}; /* 날짜 → 시간표와 맞지 않아 그리지 못한 수업 수(보강 수업 포함) */
+/* 방금 저장한 값(261119 원본검수: 저장 뒤 값을 이전 값으로 되돌리면 앱이 '변경 없음'으로 봄). 수업 관리 서버는 저장 뒤 사본에서 다시 읽는데 사본이 잠깐 늦으면 옛 값이 와서
+   그 값이 새 기준이 된다 → 저장 성공한 값을 60초 동안 다시 받은 값 위에 덮어 기준으로 삼는다. 수업 열쇠 → { at, rec: { 기록 id: { range, content, bookId } }, att: { 출석 id: 상태 글 }, rt: { 체크 id: done }, notice } */
+const LIVE_SAVED = {};
+const LIVE_SAVED_TTL = 60000;
+const liveSavedOf = (k) => { const V = LIVE_SAVED[k]; if (!V) return null; if (Date.now() - V.at > LIVE_SAVED_TTL) { delete LIVE_SAVED[k]; return null; } return V; };
 /* 보강(261119 담당 (가) — 서버 PR #474 v2.8 모델: 결석 → [보강 배정] → 기존 결석). 읽기는 칸 P3b(보강 화면), 쓰기는 칸 P3m(window.LIVE_MKW)
    LIVE_MW = 보강 대기(class-room makeup-waiting): list[{k, sid, classId, d}] · byK[k] = { absId(결석 출석 id), sessionId(고른 보강 수업), decision }
    LIVE_MKD = 날짜 → 그날 보강 수업 · LIVE_MKS = 보강 수업 id → { state, sids(서버 명단), attIds{학생: 보강 출석 id} } */
@@ -151,6 +156,13 @@ function liveLessonOpen(k, lite) {
     });
     DB.recs = DB.recs.filter((r) => r.key !== k);
     (res.records || []).forEach((r) => { S.recIds.add(r.id); DB.recs.push({ id: r.id, key: k, classId: b ? b.classId : "", d, kind: r.kind || "학습", bookId: r.bookId || "", range: r.range || "", content: r.content || "", acts: {}, state: "saved", _title: r.title || "", _hw: r.homework || null, _score: r.score || null, _act: {} }); });
+    /* 방금 저장한 값이 있으면 사본이 늦어 옛 값이 와도 저장한 값을 기준으로 삼는다(LIVE_SAVED) */
+    { const V = liveSavedOf(k);
+      if (V) {
+        DB.recs.forEach((r) => { const s = V.rec && V.rec[r.id]; if (s) { r.range = s.range; r.content = s.content; r.bookId = s.bookId || ""; } });
+        Object.keys(S.att).forEach((sid) => { const a = V.att && V.att[S.att[sid]]; if (a !== undefined) DB.att[k + "|" + sid] = LIVE_ATT[a] || null; });
+        if (V.notice != null && S.info) { S.info.notice = V.notice; S._notice0 = V.notice; }
+      } }
     S._times0 = JSON.stringify(S.times);
     if (!lite) { liveLessonActs(k); /* 과제 · 평가 기록의 학생별 결과(학습활동)는 따로 받는다 */
       liveLessonRoutines(k); }
@@ -190,6 +202,7 @@ function liveLessonRoutines(k) {
   return liveLessonApi({ action: "routines", sessionId: L.id }).then((res) => {
     if (LIVE_LS[k] !== S) return;
     (res.checks || []).forEach((c) => { const e = enr(c.registrationId); c.sid = e ? e.studentId : ""; });
+    { const V = liveSavedOf(k); if (V && V.rt) (res.checks || []).forEach((c) => { if (c.checkId in V.rt) c.done = V.rt[c.checkId]; }); } /* 방금 저장한 체크는 저장한 값 기준 */
     /* 화면이 check.done을 바꾸면 [저장] 때 바뀐 것만 save-routines로(칸 P3b) — 받은 값은 S._rt0 */
     S.routines = res; S._rt0 = Object.fromEntries((res.checks || []).map((c) => [c.checkId, !!c.done])); render();
   }, () => { if (LIVE_LS[k] === S) S.routines = { available: false, status: "", checks: [], failed: true }; });
@@ -292,11 +305,12 @@ async function liveLessonSave(k) {
   window._liveLessonSaving = true;
   toast("노션에 저장하는 중이에요");
   const done = [], fail = [];
-  const step = async (what, fn) => { try { await fn(); done.push(what); } catch (e) { fail.push(what + " — " + e.message); } };
+  const step = async (what, fn) => { try { await fn(); done.push(what); return true; } catch (e) { fail.push(what + " — " + e.message); return false; } };
+  const V = { at: Date.now(), rec: {}, att: {}, rt: {}, notice: null }; /* 저장 성공한 것만 모은다(LIVE_SAVED) */
   try {
-    if (P.att.length) await step(`출결 ${P.att.length}명`, async () => { for (let i = 0; i < P.att.length; i += 60) await liveLessonApi({ action: "save-attendance", items: P.att.slice(i, i + 60) }); });
-    if (P.notice !== null) await step("수업 안내 메모", () => liveLessonApi({ action: "update-session", sessionId: L.id, notice: P.notice }));
-    for (const u of P.recUpd) await step("학습기록", () => liveLessonApi({ action: "update-record", ...u }));
+    if (P.att.length) { if (await step(`출결 ${P.att.length}명`, async () => { for (let i = 0; i < P.att.length; i += 60) await liveLessonApi({ action: "save-attendance", items: P.att.slice(i, i + 60) }); })) P.att.forEach((a) => { if (a.status !== undefined) V.att[a.attendanceId] = a.status; }); }
+    if (P.notice !== null) { if (await step("수업 안내 메모", () => liveLessonApi({ action: "update-session", sessionId: L.id, notice: P.notice }))) V.notice = P.notice; }
+    for (const u of P.recUpd) { if (await step("학습기록", () => liveLessonApi({ action: "update-record", ...u }))) V.rec[u.recordId] = { range: u.range, content: u.content, bookId: u.bookId }; }
     for (const x of P.recNew) await step(`새 ${x.rec.kind} 기록`, async () => {
       const res = await liveLessonApi({ action: "create-records", ...x.body });
       const made = (res.records || res.results || []).find((r) => r.created !== false) || (res.records || res.results || [])[0];
@@ -304,7 +318,8 @@ async function liveLessonSave(k) {
       if (made && made.id && (x.rec.kind === "과제" || x.rec.kind === "평가")) await liveLessonApi({ action: "create-activities", recordId: made.id });
     });
     if (P.acts.length) await step(`학생별 결과 ${P.acts.length}건`, async () => { for (let i = 0; i < P.acts.length; i += 60) await liveLessonApi({ action: "save-activities", items: P.acts.slice(i, i + 60) }); });
-    if (P.routines.length) await step(`루틴 체크 ${P.routines.length}건`, async () => { for (let i = 0; i < P.routines.length; i += 60) await liveLessonApi({ action: "save-routines", items: P.routines.slice(i, i + 60) }); });
+    if (P.routines.length) { if (await step(`루틴 체크 ${P.routines.length}건`, async () => { for (let i = 0; i < P.routines.length; i += 60) await liveLessonApi({ action: "save-routines", items: P.routines.slice(i, i + 60) }); })) P.routines.forEach((c) => { V.rt[c.checkId] = !!c.done; }); }
+    LIVE_SAVED[k] = V; /* 다시 받을 때 이 값을 기준으로(60초) */
     if (!fail.length) LDIRTY.delete(k);
     delete LIVE_LS[k]; delete LIVE_LN[k]; delete LIVE_LD[k.split("|")[1]]; /* 그 수업 · 그날을 노션 값으로 다시 받는다 */
     if (window.liveRoReset) window.liveRoReset();
