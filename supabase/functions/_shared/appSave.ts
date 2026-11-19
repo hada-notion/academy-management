@@ -6,14 +6,14 @@
 // - 앱은 읽을 때와 같은 평평한 값(appCopy.flattenProps 모양)으로 보낸다. 서버가 그 DB의 Notion 칸 형식을 읽어 속성 값으로 바꾼다
 //   (toNotionProps). 칸 이름이 없거나, 수식 · 롤업 · 버튼처럼 쓸 수 없는 칸이거나, 고르기 값이 Notion 선택지에 없으면 그 줄을 쓰지 않고
 //   이유를 돌려준다(오타로 새 선택지가 생기지 않게).
-// - 동작은 만들기(create) · 고치기(update)뿐이다. 지우기는 하지 않는다(지우기 대신 끝내기 — 등록 종료 등은 칸 값으로).
+// - 동작은 만들기(create) · 고치기(update) · 지우기(delete, 항목 104)다. 지우기는 DELETE_BLOCKERS의 DB만, 연결된 기록이 있으면 거절, 노션 휴지통(복구 가능) + 복사본 줄 즉시 삭제.
 // - 고치기는 그 페이지가 복사본(app_rows)에서 같은 DB 줄인지 먼저 본다(다른 DB · 아무 페이지나 고치지 못하게). edited를 주면
 //   그 사이 Notion에서 바뀌었는지(last_edited_time) 보고, 바뀌었으면 쓰지 않고 "충돌"로 돌려준다.
 // - 한 번에 여러 줄: 앞 줄에서 만든 페이지를 뒤 줄 관계에 "tmp:이름"으로 쓸 수 있다(학생 → 등록 → 진도처럼 순서대로 보낸다).
 // - 쓴 결과(Notion 응답)는 바로 app_rows에 반영한다. Notion 자동화(이름 자동화 등)가 뒤에 바꾸는 값은 다음 동기화가 맞춘다.
 
 import { NOTION_API } from "./constants.ts"
-import { createPage, fetchWithRetry, notionHeaders, updatePageProperties, getPage, mapWithConcurrency } from "./notionClient.ts"
+import { archivePage, createPage, fetchWithRetry, notionHeaders, updatePageProperties, getPage, mapWithConcurrency } from "./notionClient.ts"
 import { fetchSupabaseWithRetry } from "./reportCacheShared.ts"
 import { appSources, pageRow, sourceProblem, SKIP_PROPS, type AppDb } from "./appCopy.ts"
 import { enqueueSync, wakeSyncQueueWorker } from "./syncQueue.ts"
@@ -191,15 +191,59 @@ async function upsertCopy(db: WriteDb, page: Record<string, any>): Promise<Recor
 }
 
 // ---------- 저장 ----------
-export type Change = { op: "create" | "update"; db: string; id?: string; tmp?: string; edited?: string; props: Record<string, unknown> }
-export type ChangeResult = { i: number; ok: boolean; id?: string; tmp?: string; row?: Record<string, unknown>; error?: string; conflict?: boolean }
+export type Change = { op: "create" | "update" | "delete"; db: string; id?: string; tmp?: string; edited?: string; props?: Record<string, unknown> }
+export type ChangeResult = { i: number; ok: boolean; id?: string; tmp?: string; row?: Record<string, unknown>; error?: string; conflict?: boolean; deleted?: boolean; blocked?: Record<string, number> }
+
+// ---------- 지우기(op "delete") ----------
+// 노션 페이지를 휴지통으로 보내고(복구 가능) 복사본(app_rows) 줄도 같은 요청에서 바로 뺀다. 앱 화면이 [삭제]를 내는 DB만 열고,
+// 아래 "막는 관계"에 연결된 기록이 하나라도 있으면 지우지 않고 이유를 돌려준다(학생 · 등록 정보를 바로 지우지 않는 규칙 — 노션에서 정리).
+export const DELETE_BLOCKERS: Record<string, string[]> = {
+	"학생(학원) DB": ["등록", "성적", "응시 등록"],
+	"등록(학원) DB": ["교재비", "루틴 체크", "보고서", "수업", "월별 수강료", "진도교재", "출석", "학습기록", "학습활동"],
+	"클래스(학원) DB": ["등록", "수업", "학습기록", "시간표", "진도교재"],
+	"강사(학원) DB": ["수업", "출석", "클래스", "근무일정"],
+	"시간표(학원) DB": ["수업"],
+	"시즌(학원) DB": ["시간표"],
+	"과목(학원) DB": ["라이브러리", "시험정보", "영역", "학년"],
+	"영역(학원) DB": ["클래스"],
+	"진도관리(학원) DB": ["학습기록", "개별교재"],
+}
+export const isDeleteDb = (v: unknown): v is keyof typeof DELETE_BLOCKERS => typeof v === "string" && Object.prototype.hasOwnProperty.call(DELETE_BLOCKERS, v)
+async function removeCopy(id: string): Promise<void> {
+	const res = await fetchSupabaseWithRetry(`${SB_URL()}/rest/v1/app_rows?id=eq.${encodeURIComponent(id)}`, { method: "DELETE", headers: sbHeaders({ Prefer: "return=minimal" }) })
+	if (!res.ok) throw new Error(`app_rows 지우기 실패: ${res.status} ${await res.text()}`)
+}
+async function deleteOne(i: number, c: Change): Promise<ChangeResult> {
+	if (!isDeleteDb(c.db)) throw new SaveError(400, `${c.db}의 줄은 앱에서 지우지 않습니다. 노션에서 지우세요.`)
+	const id = c.id!
+	const page = await getPage(id)
+	if (page.archived === true || page.in_trash === true) { await removeCopy(id); return { i, ok: true, id, deleted: true } } // 이미 지워졌으면 복사본만 맞춤
+	if ((await copyDbOf(id)) !== c.db) throw new SaveError(400, "이 DB의 줄이 아닙니다.")
+	if (c.edited && Date.parse(page.last_edited_time) > Date.parse(c.edited) + 1000) {
+		return { i, ok: false, id, conflict: true, error: "그사이 Notion에서 바뀌었습니다. 다시 불러온 뒤 지우세요." }
+	}
+	const blocked: Record<string, number> = {}
+	for (const name of DELETE_BLOCKERS[c.db]) { const n = (page.properties?.[name]?.relation ?? []).length; if (n) blocked[name] = n }
+	if (Object.keys(blocked).length) {
+		const list = Object.entries(blocked).map(([k, n]) => `${k} ${n}${n >= 25 ? "건 이상" : "건"}`).join(", ")
+		return { i, ok: false, id, blocked, error: `연결된 기록이 있어 지우지 않았어요(${list}). 노션에서 먼저 정리하세요.` }
+	}
+	await archivePage(id)
+	await removeCopy(id)
+	return { i, ok: true, id, deleted: true }
+}
 
 export function checkChanges(changes: unknown): Change[] {
 	if (!Array.isArray(changes) || !changes.length) throw new SaveError(400, "저장할 줄이 없습니다.")
 	if (changes.length > MAX_CHANGES) throw new SaveError(400, `한 번에 ${MAX_CHANGES}줄까지 저장합니다.`)
 	return changes.map((c: any, i) => {
-		if (!c || (c.op !== "create" && c.op !== "update")) throw new SaveError(400, `${i + 1}번째: op는 create 또는 update`)
+		if (!c || (c.op !== "create" && c.op !== "update" && c.op !== "delete")) throw new SaveError(400, `${i + 1}번째: op는 create · update · delete`)
 		if (!isWriteDb(c.db)) throw new SaveError(400, `${i + 1}번째: 앱에서 쓸 수 없는 DB(${c.db})`)
+		if (c.op === "delete") {
+			if (!isId(c.id)) throw new SaveError(400, `${i + 1}번째: 지울 페이지 id가 없습니다.`)
+			if (!isDeleteDb(c.db)) throw new SaveError(400, `${i + 1}번째: ${c.db}의 줄은 앱에서 지우지 않습니다.`)
+			return c as Change
+		}
 		if (c.op === "update" && !isId(c.id)) throw new SaveError(400, `${i + 1}번째: 고칠 페이지 id가 없습니다.`)
 		if (c.op === "create" && c.tmp !== undefined && !/^tmp:[\w-]{1,40}$/.test(String(c.tmp))) throw new SaveError(400, `${i + 1}번째: tmp 형식`)
 		if (!c.props || typeof c.props !== "object" || Array.isArray(c.props)) throw new SaveError(400, `${i + 1}번째: props가 없습니다.`)
@@ -230,10 +274,12 @@ export async function saveChanges(changes: Change[]): Promise<ChangeResult[]> {
 			if (problem) throw new SaveError(409, `${c.db}: ${problem}`)
 			const ds = (sources.get(c.db as AppDb) ?? [])[0]
 			if (!ds) throw new SaveError(404, `Notion에서 ${c.db}를 찾지 못했습니다.`)
-			checkAllowedProps(c.db as WriteDb, c.props)
+			if (c.op === "delete") { out.push(await timed("지우기", () => deleteOne(i, c))); console.log(`[appSave] ${c.db} delete ${Date.now() - t0}ms (${steps.join(" ")})`); continue }
+			const cprops = c.props ?? {}
+			checkAllowedProps(c.db as WriteDb, cprops)
 			// 새 교재는 단원목록까지 만들어야 하므로 textbook-api(register-custom)로만 만든다 — 이 길로는 만들지 않는다.
 			if (c.db === LIBRARY_DB && c.op === "create") throw new SaveError(400, "교재 추가는 라이브러리 등록(textbook-api register-custom)으로 하세요. 단원목록까지 함께 만들어요.")
-			const props = toNotionProps(c.props, await timed("칸형식", () => dataSourceSchema(ds)), resolve)
+			const props = toNotionProps(cprops, await timed("칸형식", () => dataSourceSchema(ds)), resolve)
 			let page: Record<string, any>
 			if (c.op === "create") {
 				page = await timed("노션쓰기", () => createPage(ds, props))
@@ -251,7 +297,7 @@ export async function saveChanges(changes: Change[]): Promise<ChangeResult[]> {
 			}
 			// 앱(서버 봇)이 고친 일정은 리포트 반영 웹훅이 "서버가 고친 비공개 나이스 일정"으로 건너뛸 수 있으므로
 			// (scheduleVisibility.noticeReportSyncNotNeeded) 여기서 직접 리포트를 맞춘다(학부모 공개를 끈 것도 빠지게).
-			if (eventAffectsReport(c.db as WriteDb, c.props)) saveDeps.refreshReport(page.id)
+			if (eventAffectsReport(c.db as WriteDb, cprops)) saveDeps.refreshReport(page.id)
 			if (c.db === LIBRARY_DB) saveDeps.syncLibraryBook(page.id)
 			const row = await timed("복사본반영", () => upsertCopy(c.db as WriteDb, page))
 			out.push({ i, ok: true, id: page.id, tmp: c.tmp, row })
