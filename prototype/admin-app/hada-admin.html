@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리 앱 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3C%2Fsvg%3E">
-<link rel="stylesheet" href="hada-tokens.css?v=708">
-<link rel="stylesheet" href="app.css?v=708">
-<link rel="stylesheet" href="pick.css?v=708">
-<link rel="stylesheet" href="field.css?v=708">
+<link rel="stylesheet" href="hada-tokens.css?v=709">
+<link rel="stylesheet" href="app.css?v=709">
+<link rel="stylesheet" href="pick.css?v=709">
+<link rel="stylesheet" href="field.css?v=709">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -20,7 +20,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=708"><script src="hada-rules.js?v=708"></script><script src="help.js?v=708"></script><script src="alim-preview.js?v=708"></script><script src="pick.js?v=708"></script><script src="field.js?v=708"></script><script src="panel.js?v=708"></script>
+<link rel="stylesheet" href="alim.css?v=709"><script src="hada-rules.js?v=709"></script><script src="help.js?v=709"></script><script src="alim-preview.js?v=709"></script><script src="pick.js?v=709"></script><script src="field.js?v=709"></script><script src="panel.js?v=709"></script>
 <script>
 "use strict";
 
@@ -2166,7 +2166,8 @@ function seedX(){const live=DB.enrolls.filter(e=>!e.ended);const m=TODAY.slice(0
   [["일일 학습 보고서","daily_report",1,1,"우선 연락처"],["주간·월간 학습 보고서","period_report",1,1,"우선 연락처"],["수료 보고서","complete_report",1,1,"우선 연락처"],["수강료 청구 안내","tuition",1,1,"우선 연락처"],["교재비 청구 안내","textbook",1,0,"우선 연락처"],["재료비 청구 안내","material",0,0,"우선 연락처"],["상담 신청 접수 안내","inquiry",1,1,"우선 연락처"],["등원 알림","checkin",1,1,"어머니"],["하원 알림","checkout",0,1,"어머니"],["수업 일정 안내","lesson",1,1,"우선 연락처"],["보강 안내","makeup",1,1,"우선 연락처"],["휴강 안내","cancel",1,1,"우선 연락처"],["상담 일정 안내","consult",0,0,"우선 연락처"],["월간 일정 안내","monthly",1,1,"우선 연락처"],["시간표 변경 안내","timetable",1,1,"우선 연락처"],["등록 안내","registration",1,1,"우선 연락처"],["클래스 변경 안내","class_change",1,1,"우선 연락처"]].forEach(([n,c,on,tpl,tg])=>DB.alims.push({id:uid("al"),name:n,code:c,on:!!on,tpl:!!tpl,from:"031-000-0000",target:tg,ment:"",state:"saved"}))}
 /* 노션 페이지로 가기(화면 ↔ 노션 메뉴 페이지 1:1). 시제품에는 주소가 없어 알림만, 원본에서는 페이지 ID로 엶 */
 LISTS.tuition.head=x=>`${esc(nmStu(x.studentId))} <small class="hsub">${esc(nmCls(x.classId))} · ${x.month} · ${WON(tuAmt(x))}</small>`;LISTS.bookfees.head=x=>`${esc(nmStu(x.studentId))} <small class="hsub">${esc(x.items)}</small>`;LISTS.reports.head=x=>`${esc(nmCls(x.classId))} <small class="hsub">${x.kind} 보고서 · ${D10(x.from)} - ${D10(x.to)}</small>`;LISTS.letters.head=x=>`${esc(nmCls(x.classId))} <small class="hsub">${x.month} 가정통신문</small>`;LISTS.progress.head=x=>`${esc(nmBook(x.bookId))} <small class="hsub">${esc(nmCls(x.classId))} · ${x.mode==="개별"?esc(nmStu(x.studentId)):"클래스 전체"}</small>`;
-const NOTION={today:"홈",bill:"청구서",makeup:"보강",records:"학습기록",files:"자료실",completion:"수료 보고서",etcs:"기타경비",students:"학생 목록",enrolls:"등록학생",classes:"클래스",timetable:"시간표",lesson:"수업",teachers:"직원관리",subjects:"과목",books:"라이브러리",progress:"진도관리",events:"일정",reports:"학습 보고서",tuition:"수강료",letters:"가정통신문",schools:"학교",glevels:"학년",areas:"영역",exams:"시험",costs:"비용",alims:"알림톡 설정"};
+/* 261119: 값 = 노션 메뉴(학원) DB 줄 이름(원본 27개 대조: 홈·일정·직원·수업·보강·학습기록·학생·학교·시험·클래스·등록·시간표·과목·라이브러리·진도·정기 보고서·수료 보고서·가정통신문·수강료·청구서·손익 분석·자료실·알림톡 설정·메뉴관리·매뉴얼·공개 DB·비공개 DB). 메뉴가 아닌 하위 화면(기타경비 · 학년 · 영역 · 비용)은 그 화면이 속한 메뉴 이름 */
+const NOTION={today:"홈",bill:"청구서",makeup:"보강",records:"학습기록",files:"자료실",completion:"수료 보고서",etcs:"청구서",students:"학생",enrolls:"등록",classes:"클래스",timetable:"시간표",lesson:"수업",teachers:"직원",subjects:"과목",books:"라이브러리",progress:"진도",events:"일정",reports:"정기 보고서",tuition:"수강료",letters:"가정통신문",schools:"학교",glevels:"학교",areas:"과목",exams:"시험",costs:"손익 분석",profit:"손익 분석",alims:"알림톡 설정"};
 function notionBtn(scr){const n=NOTION[scr];if(!n)return "";const miss=window.LIVE&&window.LIVE.loaded&&_menuPages&&!_menuPages[n];/* 261119: 메뉴 주소를 받았는데 그 이름의 줄이 없으면 흐리게 + 이유 */return `<button type="button" class="nlink" aria-label="노션에서 열기" data-notion="${scr}" ${miss?`data-nmiss="1" style="opacity:.4" title="노션 ‘${n}’ 페이지 주소를 찾지 못했어요 — 노션 메뉴 DB에 그 이름의 줄이 있는지 봐요"`:`title="노션 ‘${n}’ 페이지를 새 탭으로 열어요"`}>${IC("notion","s")}</button>`}
 document.addEventListener("click",ev=>{const b=ev.target.closest&&ev.target.closest("[data-engd2]");if(!b)return;const e2=byId(DB.enrolls,b.dataset.engd2);if(e2)enGuideRun(e2)});/* 327판: 등록 화면 창 [등록 안내 전송] */
 /* 261119 대표: 실제 자료 모드의 [N] — 줄 창 = 그 줄의 노션 페이지(data-nurl), 화면 제목 옆 = 그 메뉴의 노션 페이지(서버 사본의 메뉴(학원) DB 줄 주소를 이름으로 찾음). 예시 모드는 아래 알림 그대로 */
@@ -4924,6 +4925,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del&&!z._virtual).
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="appdata.js?v=708"></script><script src="appsave.js?v=708"></script><script src="appview.js?v=708"></script><script src="livelesson.js?v=708"></script><script src="live.js?v=708"></script>
+<script src="appdata.js?v=709"></script><script src="appsave.js?v=709"></script><script src="appview.js?v=709"></script><script src="livelesson.js?v=709"></script><script src="live.js?v=709"></script>
 </body>
 </html>
