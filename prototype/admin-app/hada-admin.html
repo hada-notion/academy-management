@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>하다 관리 앱 시제품</title>
-<link rel="stylesheet" href="hada-tokens.css?v=680">
-<link rel="stylesheet" href="app.css?v=680">
-<link rel="stylesheet" href="pick.css?v=680">
-<link rel="stylesheet" href="field.css?v=680">
+<link rel="stylesheet" href="hada-tokens.css?v=691">
+<link rel="stylesheet" href="app.css?v=691">
+<link rel="stylesheet" href="pick.css?v=691">
+<link rel="stylesheet" href="field.css?v=691">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -19,7 +19,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=680"><script src="hada-rules.js?v=680"></script><script src="alim-preview.js?v=680"></script><script src="pick.js?v=680"></script><script src="field.js?v=680"></script><script src="panel.js?v=680"></script>
+<link rel="stylesheet" href="alim.css?v=691"><script src="hada-rules.js?v=691"></script><script src="help.js?v=691"></script><script src="alim-preview.js?v=691"></script><script src="pick.js?v=691"></script><script src="field.js?v=691"></script><script src="panel.js?v=691"></script>
 <script>
 "use strict";
 
@@ -978,11 +978,13 @@ function panelLesson(p,t,items){const st=t.state;if(st.mkNew)return panelMakeup(
   if(!it){const wkI=items;const un=wkI.filter(x=>lessonMade(x.b,x.d)&&x.d<=TODAY&&attSum(x.b,x.d).미입력>0),ms=wkI.filter(x=>!lessonMade(x.b,x.d));const act=st.ltodo||"un";const W=mkWait();
     const card=x=>`<div class="dcard" data-lgo="${lkey(x.b,x.d)}"><span class="dotc" style="background:${classBar(cls(x.b.classId))}"></span>${esc(cls(x.b.classId).name)}<span class="dcls">${mdw(x.d)} ${fmt(lessonEff(x.b,x.d).start)/* 523판: 달력 카드와 같은 시각(실제 자료 모드 = 노션 수업 시각) */}${act==="un"?` · 미입력 ${attSum(x.b,x.d).미입력}`:""}</span></div>`;
     const list=act==="un"?un:ms;
-    p.innerHTML=`${PANEL.head({icon:panelIcon(),name:"할 일",belong:TITLES[activeTab.screen]||"",info:[" "],help:("미입력 = 지난·오늘 수업 중 출결이 덜 들어간 수업. 수업 없음 = 이 주 시간표 중 수업 페이지가 아직 없는 것. 보강 = [보강 대기] 등록(학생+클래스)마다 카드, 숫자 = 보강해야 할 횟수. 카드를 누르면 결석이 열리고, 아이콘으로 보강 필요 ↔ 보강 없음(사유 입력). 카드를 끌어 그 클래스 보강 수업에 놓고, 보강에 출석하면 그 결석이 사라져요. [최근 결석]에서 실수로 보강 없음 한 결석을 되돌려요.")})}
-    ${PANEL.tabs([{id:"un",label:"미입력",n:un.length,todo:true},{id:"ms",label:"수업 없음",n:ms.length,todo:true},{id:"mk",label:"보강",n:mkCardN(),todo:true}],act,"lt")}
-    ${act==="mk"?`<div class="box"><div class="hpm" id="hpWait"></div></div>${PANEL.foot({hint:"카드를 끌어 그 클래스 보강 수업에 놓아요",go:{id:"mwAdd",icon:IC("plus","s"),label:"보강 추가",title:"새 보강 — 빈 칸을 끌어 시간을 정하고, 학생은 나중에 끌어 넣어요"}})}`:`<div class="box"><div class="dragcards">${list.map(card).join("")}</div>${list.length?"":`<div class="empty">${IC("check")} ${act==="un"?"출결이 다 들어갔어요":"이 주 수업이 다 있어요"}</div>`}${act==="ms"&&ms.length?`<div class="row"><button class="btn pri" id="mkAll">${IC("plus","s")}이 주 수업 모두 생성</button></div>`:""}</div>
-    <div class="lgbox"><div class="lgrow"><b>출석</b><span><i class="ok"></i>출석</span><span><i class="mk"></i>보강</span><span><i class="ab"></i>결석</span><span><i class="no"></i>미입력</span></div><div class="lgrow"><b>과제</b><span><i class="hs"></i>완료</span><span><i class="hp"></i>일부 완료</span><span><i class="hn"></i>미제출</span></div></div>`}`;
-    bindPhead(p,t);if(act==="mk")mkwMount(p,st);p.querySelectorAll("[data-lt]").forEach(b=>b.onclick=()=>{st.ltodo=b.dataset.lt;render()});p.querySelectorAll("[data-lgo]").forEach(x=>x.onclick=()=>lpOpen(st,x.dataset.lgo)/* 261118: 할 일 카드도 하루 수업 페이지로 */);
+    /* 261120: 선택 전 공용 창 = [현황] [할 일] 2탭(PANEL.todo와 같은 틀) — 현황 = 건수 요약 + 범례, 할 일 = 묶음 칩 + 줄 */
+    const vw=st.ltv==="todo"?"todo":"sta";const lg=`<div class="lgbox"><div class="lgrow"><b>출석</b><span><i class="ok"></i>출석</span><span><i class="mk"></i>보강</span><span><i class="ab"></i>결석</span><span><i class="no"></i>미입력</span></div><div class="lgrow"><b>과제</b><span><i class="hs"></i>완료</span><span><i class="hp"></i>일부 완료</span><span><i class="hn"></i>미제출</span></div></div>`;
+    p.innerHTML=`${PANEL.head({icon:panelIcon(),name:"수업",belong:"",info:[" "],help:("미입력 = 지난·오늘 수업 중 출결이 덜 들어간 수업. 수업 없음 = 이 주 시간표 중 수업 페이지가 아직 없는 것. 보강 = [보강 대기] 등록(학생+클래스)마다 카드, 숫자 = 보강해야 할 횟수. 카드를 누르면 결석이 열리고, 아이콘으로 보강 필요 ↔ 보강 없음(사유 입력). 카드를 끌어 그 클래스 보강 수업에 놓고, 보강에 출석하면 그 결석이 사라져요. [최근 결석]에서 실수로 보강 없음 한 결석을 되돌려요.")})}
+    ${PANEL.tabs([{id:"sta",label:"현황"},{id:"todo",label:"할 일"}],vw,"ltv")}
+    ${vw==="sta"?`<div class="pbody"><div class="tdp"><div class="tdsum"><div class="tdsr"><span>출결 미입력 수업</span><b>${un.length}건</b></div><div class="tdsr"><span>수업 없음</span><b>${ms.length}건</b></div><div class="tdsr"><span>보강 대기</span><b>${mkCardN()}건</b></div></div>${lg}</div></div>`:`<div class="tdsubs">${[["un","미입력",un.length],["ms","수업 없음",ms.length],["mk","보강",mkCardN()]].map(([id,nm,n])=>`<button type="button" class="tdsb ${act===id?"on":""}" data-lt="${id}">${nm} <small>${n}</small></button>`).join("")}</div>${act==="mk"?`<div class="box"><div class="hpm" id="hpWait"></div></div>${PANEL.foot({hint:"카드를 끌어 그 클래스 보강 수업에 놓아요",go:{id:"mwAdd",icon:IC("plus","s"),label:"보강 추가",title:"새 보강 — 빈 칸을 끌어 시간을 정하고, 학생은 나중에 끌어 넣어요"}})}`:`<div class="box"><div class="dragcards">${list.map(card).join("")}</div>${list.length?"":`<div class="empty">${IC("check")} ${act==="un"?"출결이 다 들어갔어요":"이 주 수업이 다 있어요"}</div>`}${act==="ms"&&ms.length?`<div class="row"><button class="btn pri" id="mkAll">${IC("plus","s")}이 주 수업 모두 생성</button></div>`:""}</div>
+    `}`}`;
+    bindPhead(p,t);if(vw==="todo"&&act==="mk")mkwMount(p,st);p.querySelectorAll("[data-ltv]").forEach(b=>b.onclick=()=>{st.ltv=b.dataset.ltv;render()});p.querySelectorAll("[data-lt]").forEach(b=>b.onclick=()=>{st.ltodo=b.dataset.lt;render()});p.querySelectorAll("[data-lgo]").forEach(x=>x.onclick=()=>lpOpen(st,x.dataset.lgo)/* 261118: 할 일 카드도 하루 수업 페이지로 */);
     const ma=p.querySelector("#mkAll");if(ma)ma.onclick=()=>makeWeekDialog(ms,weekOf(st));return}
   const {b,d}=it;const c=cls(b.classId);const made=lessonMade(b,d);const studs=lessonRoster(b,d);
   if(!made){/* 261119 대표: 수업이 없으면 탭은 모두 흐림, [수업 추가]만 누를 수 있음 */p.innerHTML=`${PANEL.head({dot:classBar(c),name:c.name,state:{t:"수업 없음",tone:"yellow"},belong:`${mdw(d)} ${fmt(b.start)}–${fmt(b.end)}`,info:[tch(c.teacherId).name,`${studs.length}명`]})}
@@ -1807,7 +1809,7 @@ function stuTodoL(){const L=DB.students.filter(x=>!x.del);const st0=x=>stuStat(x
   return {new:L.filter(x=>st0(x)==="new").sort((a,b)=>(a.inq||"").localeCompare(b.inq||"")),info:L.filter(x=>st0(x)!=="end"&&stuMiss(x).length),pre:L.filter(x=>st0(x)==="pre")}}
 const stuTodoN=()=>{const T=stuTodoL();return T.new.length+T.info.length+T.pre.length};
 /* 학생 할 일 줄 한 칸(갈래별) — 옛 학생 할 일 창과 학생1 공용 할 일 창이 같이 씀 */
-const STU_TODO_HELP={new:"등록이 아직 없는 학생이에요. 오래된 문의가 위, 14일 넘은 문의는 노란 글씨. 누르면 그 학생 창.",info:"이름·학년·학교·연락처 중 빈 것이 있는 학생이에요(연락처는 학생·어머니·아버지·기타가 하나도 없을 때, 종료 학생은 빼요). 누르면 빠진 첫 칸으로.",pre:"가장 최근 등록이 아직 시작 전인 학생이에요. 누르면 [등록] 탭."};
+const STU_TODO_HELP=HELPTX.stuTodo;/* 도움말 글은 help.js 한 곳 */
 function stuTodoRow(x,tab){const ago=d=>{const n=dAgo((d||"").slice(0,10));return n?`${n}일 전`:"오늘"};
   const nm=x=>`<span class="nm"><b>${x.name?esc(x.name):'<span class="nn">(이름 없음)</span>'}</b>${x.school?`<span class="sc">${esc(x.school)}</span>`:""}${x.grade?gchip(x.grade):""}</span>`;
   const firstEn=x=>DB.enrolls.filter(e=>e.studentId===x.id).sort((a,b)=>(b.start||"").localeCompare(a.start||""))[0];
@@ -2356,8 +2358,8 @@ function mkDayCell(d,st){const sh=mkShowOf(st);const ms=sh.mk?(DB.mk||[]).filter
   return ms.map(m=>{const c=m.classId?cls(m.classId):null;return CALF.blk({col:c?Object.assign(classColor(c),{bar:classBar(c)}):{bg:"var(--canvas)",bar:"var(--line2)"},cls:"mkblk",attr:`data-mkb="${m.id}" title="${esc(mkName(m))} — 학생을 끌어 놓거나, 고른 학생을 누르면 넣어요 · 두 번 누르면 수업 화면"`,t:`${fmt(m.start)} ${esc(c?c.name:"보강")}`,m:`보강 · ${m.sids.length}명`})}).join("")+
     ab.map(a=>{const op=absOpen(a.k),mk=a.st==="pend"?absMk(a.k):null;const c=cls(a.classId);return `<button type="button" class="mkab s-${a.st} ${op?"open":""} ${mkSelK()===a.k?"sel":""}" data-mksel="${a.k}" title="${esc(c?c.name:"")} 결석 · ${esc(MK_ST[a.st][0])}${op?" — 눌러서 고르고 날짜나 보강 블록을 누르면 보강":""}"><b>${esc(stu(a.sid)?stu(a.sid).name:"")}</b> <small>${esc(c?c.name:"")}</small>${mk?` <small>→ ${md(mk.d).slice(5)}</small>`:""}</button>`}).join("")+ghost}
 /* 오른쪽 창 = 수업 화면 할 일 [보강]과 같은 학생 카드(HP.wait) */
-function mkSidePanel(st){return `<div class="panel" id="panel">${PANEL.head({icon:panelIcon(),name:"할 일",belong:TITLES[activeTab.screen]||"보강",info:[" "],help:("등록(학생+클래스)마다 카드예요. 숫자 = 보강해야 할 횟수. 카드를 누르면 결석이 열리고 보강 필요 ↔ 보강 없음을 정해요. 카드를 끌어 달력 날짜에 놓으면 그 결석 수업 시간으로 새 보강이 생기고, 보강 블록에 놓으면 그 보강에 들어가요(같은 클래스만).")})}<div class="box"><div class="hpm" id="hpWait"></div></div>${PANEL.foot({hint:"카드를 끌어 날짜(새 보강)나 보강 블록에 놓아요"})}</div>`}
-function mkSideMount(v,st){const host=v.querySelector("#hpWait");if(!host)return;seedOffOnce();seedMkw();mkLink();
+function mkSidePanel(st){const vw=st.mtv==="todo"?"todo":"sta";/* 261120: 선택 전 공용 창 = [현황] [할 일] 2탭 */return `<div class="panel" id="panel">${PANEL.head({icon:panelIcon(),name:"보강",belong:"",info:[" "],help:("등록(학생+클래스)마다 카드예요. 숫자 = 보강해야 할 횟수. 카드를 누르면 결석이 열리고 보강 필요 ↔ 보강 없음을 정해요. 카드를 끌어 달력 날짜에 놓으면 그 결석 수업 시간으로 새 보강이 생기고, 보강 블록에 놓으면 그 보강에 들어가요(같은 클래스만).")})}${PANEL.tabs([{id:"sta",label:"현황"},{id:"todo",label:"할 일"}],vw,"mtv")}${vw==="sta"?`<div class="pbody"><div class="tdp"><div class="tdsum"><div class="tdsr"><span>보강 대기 학생</span><b>${mkCardN()}명</b></div><div class="tdsr"><span>다가오는 보강 수업</span><b>${(DB.mk||[]).filter(m=>!m.del&&m.d>=TODAY).length}개</b></div></div></div></div>`:`<div class="box"><div class="hpm" id="hpWait"></div></div>`}${PANEL.foot({hint:HELPTX.mkFoot})}</div>`}
+function mkSideMount(v,st){v.querySelectorAll("[data-mtv]").forEach(b=>b.onclick=()=>{st.mtv=b.dataset.mtv;render()});const host=v.querySelector("#hpWait");if(!host)return;seedOffOnce();seedMkw();mkLink();
   const G=new Map();absAll(seaStart()).forEach(a=>{const k2=a.sid+"|"+a.classId;if(!G.has(k2))G.set(k2,{sid:a.sid,cid:a.classId,abs:[]});const s2=absState(a.k);const m=absMk(a.k);G.get(k2).abs.push({id:a.k,d:a.d,st:s2,mk:s2==="pend"&&m?`${md(m.d).slice(5)}(${DAYS[dow(m.d)]})`:"",why:(DB.mkw[a.k]||{}).why||""})});
   const items=[...G.values()].filter(g=>stu(g.sid)&&cls(g.cid)).map(g=>({sid:g.sid,cls:cls(g.cid).name,cid:g.cid,color:classBar(cls(g.cid)),abs:g.abs}));
   HP.today=TODAY;HP.wait(host,{students:hpStudents(),items,tab:st.mkwTab||"wait",open:st.mkwOpen2||[],
@@ -3251,7 +3253,7 @@ function lpOpen(st,k){if(!k)return;if(k.startsWith("mk:"))return goLesson(st,k);
 /* 261119 대표: 목록 규칙(점 · 번호 앞 공백 2개, 노션과 같게)을 앱의 모든 긴 글 칸에 — 공용 memo는 field.js가, 나머지 textarea는 여기서 처음 누를 때 한 번 묶음 */
 document.addEventListener("focusin",e=>{const x=e.target;if(x&&x.tagName==="TEXTAREA"&&window.HFLIST)HFLIST.bind(x)});
 /* 261119 대표: 화면 설명은 도움말(?) 단추 안에 — 화면 위 설명 줄은 두지 않음 */
-const LVHELP={wk:"주간 수업 = 수업 일지예요. 클래스마다 한 줄, 요일마다 한 칸이고, 칸을 누르면 하루 수업 본문이 열려요. 블록: 흰 바탕 + 왼쪽 클래스 색 띠 = 정규 · 점선 테두리 = 보강 · 빗금 = 휴강 · 흐림 = 아직 생성 안 한 수업(위 [이 주 수업 생성]). 지난 수업 칸 = 노션 수업 수식과 같은 글 — 연필 학습 내용 · 클립 과제 안내, 막대 = 사람 체크 출석(초록 출석 · 파랑 보강 · 빨강 결석 · 빗금 미입력) · 체크 상자 과제 검사(초록 제출 · 노랑 일부 · 빨강 미제출) · 문서 평가 평균(0점 뺌). 막대에 마우스를 올리면 노션 글. 아직 할 수업 칸 = 체크 상자 검사할 과제(지난 수업 과제) · 사람들 학생 수. 오른쪽 위 [5|7] = 주말 넣기 · 빼기.",mon:"월간 수업 = 날짜마다 그날 수업이에요. 수업을 누르면 하루 수업 본문, 빈 곳이나 [+n개 더]를 누르면 그날 오늘 수업으로 가요. 날짜 오른쪽 위 % = 그날 출석률(출석 + 보강 ÷ 시작한 수업 학생, 빈 출결은 안 온 것으로 — 노션 출석률과 같음). 블록: 흰 바탕 + 클래스 색 띠 = 정규 · 점선 = 보강 · 빗금 = 휴강 · 흐림 = 아직 생성 안 한 수업. Ctrl + 휠 = 한 화면 주 수, [5|7] = 주말.",atm:"출결 현황 = 날짜마다 출석 · 결석 · 보강 · 미입력 수예요. 날짜를 누르면 그날 오늘 등원 학생으로 가요. 오른쪽 위 % = 그날 출석률(빈 출결은 안 온 것으로). Ctrl + 휠 = 한 화면 주 수, [5|7] = 주말."};
+const LVHELP=HELPTX.lv;/* 도움말 글은 help.js 한 곳 */
 function lvTop(st,lv,ph){return `<div class="top"><div class="zone">${ttogHtml(lv,st)}${LVHELP[lv]?HELP(LVHELP[lv]):""}</div><div class="zone end no-print"><span class="searchbox">${IC("search")}<input class="inp" id="lq" placeholder="${ph}" value="${esc(st.q||"")}"></span><span class="tb-grp"><button class="btn icon tb-ic" id="undoB" title="실행 취소 Ctrl+Z">${IC("cul")}</button><button class="btn icon tb-ic" id="redoB" title="다시 실행 Ctrl+Y">${IC("cur")}</button></span>${rvBtn()}<button class="btn pri tb-num" id="saveAll" ${dirtyCount()?"":"disabled"} title="${dirtyTitle()}">${IC("save","s")}저장 <span class="num">${dirtyCount()}</span></button></div></div>`}
 /* 261119 대표(시안 8): 수업 블록을 누르면 오른쪽 창 먼저(오늘 · 주간 · 월간 같은 창 = panelLesson / 보강 panelMk), 창의 [수업 화면]으로 하루 수업 화면 */
 function lvSelect(st,k){st.lsel=k;st.lsStu=null;st.ldStu=null;st.mkNew=null;if(st.ltab==="rep")st.ltab="att";if(!k.startsWith("mk:")&&(st.lv==="mon"||st.lv==="atm")){const d=k.split("|")[1];st.week=dPlus(d,-dow(d))}panelOpen=true;render()}
@@ -3598,18 +3600,18 @@ function renderLessonsDay(v,t,mode){const st=t.state;if(!seasonOf(st.season))st.
     const tot=S.filter(x=>x.s!=="off").length/* 휴강 학생은 셈에서 뺌 */,inN=S.filter(x=>x.s==="in"||x.s==="out"||x.s==="mk").length,outN=S.filter(x=>x.s==="out").length,ab=S.filter(x=>x.s==="ab"),no=S.filter(x=>x.s==="no");
     const done=L.filter(l=>d<TODAY||nowM>=l.end).length,run=L.filter(l=>d===TODAY&&nowM>=l.start&&nowM<l.end).length;
     const un=L.filter(l=>l.a&&l.a.미입력&&(d<TODAY||nowM>=l.start));const byL=xs=>{const m=new Map();xs.forEach(x=>{const n=(x.l.c||{}).name||mkName(x.l.m);m.set(n,[...(m.get(n)||[]),x.z.name])});return [...m.entries()]};
-    return `${PANEL.head({icon:IC("bookopen"),name:mode==="att"?"오늘 등원 현황":"오늘 현황",belong:`${D10(d)} (${DAYS[dow(d)]})${d===TODAY?` · ${pad2(Math.floor(nowM/60))}:${pad2(nowM%60)} 기준`:""}`,info:[]})}<div class="pbody">
-      <div class="box ldk"><div><span>수업</span><b>${L.length}</b><small>끝남 ${done} · 진행 중 ${run} · 남음 ${L.length-done-run}</small></div><div><span>등원 학생</span><b>${inN}<em>/${tot}</em></b><small>하원 ${outN} · 결석 ${ab.length}</small></div></div>
-      <div class="box"><h3>남은 일</h3>
+    const vw=st.ldv==="todo"?"todo":"sta";/* 261120: 선택 전 공용 창 = [현황] [할 일] 2탭 — 현황 = 요약 · 강사, 할 일 = 남은 일 */
+    return `${PANEL.head({icon:IC("bookopen"),name:mode==="att"?"오늘 등원 현황":"오늘 현황",belong:`${D10(d)} (${DAYS[dow(d)]})${d===TODAY?` · ${pad2(Math.floor(nowM/60))}:${pad2(nowM%60)} 기준`:""}`,info:[]})}${PANEL.tabs([{id:"sta",label:"현황"},{id:"todo",label:"할 일"}],vw,"ldv")}<div class="pbody">
+      ${vw==="sta"?`<div class="box ldk"><div><span>수업</span><b>${L.length}</b><small>끝남 ${done} · 진행 중 ${run} · 남음 ${L.length-done-run}</small></div><div><span>등원 학생</span><b>${inN}<em>/${tot}</em></b><small>하원 ${outN} · 결석 ${ab.length}</small></div></div>`:""}${vw==="todo"?`<div class="box"><h3>남은 일</h3>
         <div class="crow"><span class="cl">아직 안 온 학생</span><span class="cv">${no.length?byL(no).map(([n,xs])=>`${esc(n)} ${xs.map(esc).join(" · ")}`).join(" / "):"없음"}</span><span class="ca">${no.length?`<b class="todo">${no.length}</b>`:""}</span></div>
         <div class="crow"><span class="cl">출결 미입력 수업</span><span class="cv">${un.length?un.map(l=>`${esc(l.c.name)} ${l.a.미입력}`).join(" · "):"없음"}</span></div>
-        <div class="crow"><span class="cl">결석</span><span class="cv">${ab.length?byL(ab).map(([n,xs])=>`${esc(n)} ${xs.map(esc).join(" · ")}`).join(" / "):"없음"}</span></div></div>
-      <div class="box"><h3>강사</h3>${[...new Set(L.map(l=>l.tid))].map(tid=>{const ls=L.filter(l=>l.tid===tid);return `<div class="crow"><span class="cl">${esc((byId(DB.teachers,tid)||{}).name||"강사 없음")}</span><span class="cv">수업 ${ls.length} · ${hh(Math.min(...ls.map(l=>l.start)))}-${hh(Math.max(...ls.map(l=>l.end)))}</span></div>`}).join("")||'<div class="hint">이 날은 수업이 없어요</div>'}</div></div>`};
+        <div class="crow"><span class="cl">결석</span><span class="cv">${ab.length?byL(ab).map(([n,xs])=>`${esc(n)} ${xs.map(esc).join(" · ")}`).join(" / "):"없음"}</span></div></div>`:""}${vw==="sta"?`<div class="box"><h3>강사</h3>${[...new Set(L.map(l=>l.tid))].map(tid=>{const ls=L.filter(l=>l.tid===tid);return `<div class="crow"><span class="cl">${esc((byId(DB.teachers,tid)||{}).name||"강사 없음")}</span><span class="cv">수업 ${ls.length} · ${hh(Math.min(...ls.map(l=>l.start)))}-${hh(Math.max(...ls.map(l=>l.end)))}</span></div>`}).join("")||'<div class="hint">이 날은 수업이 없어요</div>'}</div>`:""}</div>`};
   const camBar=mode==="att"&&S.length?`<span class="ldcamb"><button type="button" class="btn sm" id="ldBack" title="30분 뒤로(지난 시간) — 휠 위로">‹ 뒤로</button><span class="ldcamt" id="ldCamT"></span><button type="button" class="btn sm" id="ldFwd" title="30분 앞으로(올 시간) — 휠 아래로">앞으로 ›</button><button type="button" class="btn sm" id="ldNow" title="${d===TODAY?"지금 시각으로 돌아가 같이 흐르기":"이 날 첫 수업으로"}">${d===TODAY?"지금":"처음"}</button></span>`:"";
   v.innerHTML=`${titleRow(st,s,true,nav,true)}<div class="top"><div class="zone">${ttogHtml(mode==="att"?"att":"today",st)}${camBar}</div>
     <div class="zone end no-print"><span class="searchbox">${IC("search")}<input class="inp" id="lq" placeholder="${mode==="att"?"학생 · 클래스 검색":"클래스 · 강사 검색"}" value="${esc(st.q||"")}"></span>${CALW.zoom(Object.assign({},st,{zoom:st[ZK]??2}))}<span class="tb-grp"><button class="btn icon tb-ic" id="undoB" title="실행 취소 Ctrl+Z">${IC("cul")}</button><button class="btn icon tb-ic" id="redoB" title="다시 실행 Ctrl+Y">${IC("cur")}</button></span>${rvBtn()}<button class="btn pri tb-num" id="saveAll" ${dirtyCount()?"":"disabled"} title="${dirtyTitle()}">${IC("save","s")}저장 <span class="num">${dirtyCount()}</span></button><span class="pgrp no-print"><button class="btn icon pbtn tb-ic" id="panelT" title="${pTT(showPanel)}">${IC("panel")}</button></span></div></div>
     ${ldClosedBand(d)/* 261119 대표: 휴원(하루) = 날짜 아래 띠 하나 */}<div class="body ldbody"><div class="ldscroll${mode==="att"?" cam":""}" id="ldsc">${loading?`<div class="hint" style="padding:20px">수업을 불러오는 중이에요…</div>`:body}</div>${showPanel?(mode!=="att"&&st.lsel?lvPanelHtml(st)/* 261119 대표(시안 8): 수업을 고르면 수업 창 */:(mode==="att"&&st.ldStu?`<div class="panel lvpanel" id="panelAs"></div>`/* 261119 대표: 학생을 고르면 학생 전용 창(panelAttend) */:`<div class="panel" id="panel">${pane()}</div>`)):""}</div>`;
   bindTitle(v,t);bindTtog(v,t);
+  v.querySelectorAll("[data-ldv]").forEach(b=>b.onclick=()=>{st.ldv=b.dataset.ldv;render()});
   v.querySelectorAll("[data-ldn]").forEach(b=>b.onclick=()=>{const k=+b.dataset.ldn;st.day=k?dPlus(d,k):TODAY;st.ldStu=null;st.ldScrolled=null;render()});
   {const qi=v.querySelector("#lq");if(qi){const go=()=>{st.q=qi.value;const p=qi.selectionStart;render();const n=document.querySelector("#lq");if(n){n.focus();n.setSelectionRange(p,p)}};bindSearch(qi,go)}}
   {const zo=v.querySelector("#zOut"),zi=v.querySelector("#zIn");if(zo)zo.onclick=()=>{st[ZK]=Math.max(0,(st[ZK]??2)-1);st.ldCam=null;render()};if(zi)zi.onclick=()=>{st[ZK]=Math.min(ZOOM.length-1,(st[ZK]??2)+1);st.ldCam=null;render()}
@@ -4554,7 +4556,7 @@ window.addEventListener("beforeunload",e=>{if(dirtyCount()){e.preventDefault();e
 const ttNextSea=()=>{const cur=seasonOf(seaToday());if(!cur)return null;const xs=DB.seasons.filter(z=>!z.del&&z.id!==cur.id&&(z.start||"")>(cur.start||"")).sort((a,b)=>String(a.start).localeCompare(String(b.start)));return xs[0]?xs[0].id:null};
 NCOL["blocks|day"]={"월":"yellow","화":"red","수":"blue","목":"green","금":"gray","토":"brown","일":"orange"};/* 노션 시간표 DB 요일 선택지 색 */
 const ttRowsOf=()=>{const st=activeTab&&activeTab.screen==="timetable"?activeTab.state:null;return DB.blocks.filter(b=>!st||ttSeaAll(st)||b.seasonId===st.season)};
-const TT_HELP="시즌마다 되풀이되는 주간 시간표예요(노션 시간표 메뉴 · 시간표(학원) DB). [표]는 노션 표 보기와 같은 열, [달력]은 빈 곳을 끌어 생성하고 블록을 끌어 옮겨요. 수업이 생성된 운영 중 시간표는 잠겨 있고, 자물쇠를 풀어 고치면 저장할 때 \"언제부터\" 물어요. [저장]해야 노션에 들어가요.";
+const TT_HELP=HELPTX.tt;/* 도움말 글은 help.js 한 곳 */
 /* 261118 대표: 시즌 = 필터 탭 대신 시즌 고르기 하나(클래스별 · 요일별 · 주간이 같이 씀). 목록 = 시즌마다 상태 알약 · 시간표 개수, 표에는 맨 위 "모든 시즌", 주간에는 맨 아래 "시즌 관리"(타임라인) */
 const ttSeaAll=st=>st.seaAll!==false;/* 261118 대표: 기본 = 모든 시즌(표 · 주간 모두), 시즌을 고르면 그 시즌만 */
 /* 261118 대표: 시즌 칩 = 시즌 아이콘 + 시즌명만(기간 · 상태 글 · 개수 뺌), 운영 중이면 초록 점 하나 — 기간 · 상태는 목록 · 마우스 글에 */
@@ -4894,6 +4896,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del).slice().sort(
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="appdata.js?v=680"></script><script src="appsave.js?v=680"></script><script src="appview.js?v=680"></script><script src="livelesson.js?v=680"></script><script src="live.js?v=680"></script>
+<script src="appdata.js?v=691"></script><script src="appsave.js?v=691"></script><script src="appview.js?v=691"></script><script src="livelesson.js?v=691"></script><script src="live.js?v=691"></script>
 </body>
 </html>

@@ -21,11 +21,20 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
+
+      # 관리 앱 js·css 를 바꾼 PR 은 hada-admin.html ?v= 번호도 올려야 한다(캐시된 옛 파일 방지).
+      - name: Admin app cache numbers go up with changed files
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: origin/${{ github.base_ref }}
+        run: node tests/admin-app-version.cjs
 
       - name: Design rules and shared-file versions
         run: node tests/design-lint.cjs

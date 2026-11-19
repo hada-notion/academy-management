@@ -13,7 +13,7 @@
 // - 쓴 결과(Notion 응답)는 바로 app_rows에 반영한다. Notion 자동화(이름 자동화 등)가 뒤에 바꾸는 값은 다음 동기화가 맞춘다.
 
 import { NOTION_API } from "./constants.ts"
-import { createPage, fetchWithRetry, notionHeaders, updatePageProperties, getPage } from "./notionClient.ts"
+import { createPage, fetchWithRetry, notionHeaders, updatePageProperties, getPage, mapWithConcurrency } from "./notionClient.ts"
 import { fetchSupabaseWithRetry } from "./reportCacheShared.ts"
 import { appSources, pageRow, sourceProblem, SKIP_PROPS, type AppDb } from "./appCopy.ts"
 import { enqueueSync, wakeSyncQueueWorker } from "./syncQueue.ts"
@@ -93,16 +93,19 @@ export async function dataSourceSchema(ds: string): Promise<Schema> {
 }
 // 앱이 고르기 칸을 Notion 선택지에서만 고르게 하는 목록: 쓸 수 있는 DB마다 { 칸 이름: [선택지 이름…] }(고르기 · 상태 · 여러 개 고르기).
 // 저장은 선택지에 없는 값을 거절하므로(새 선택지를 만들지 않음) 앱이 미리 이 목록으로 맞춘다. 못 찾은 · 모호한 DB는 빠진다.
+// (v2.8.0 항목 101) 쓰기 DB 약 20개의 칸 형식을 하나씩 읽던 것을 한 번에 5개까지 병렬로(Notion 한도를 더 부르지 않게 5 이하).
+// 캐시가 빈 첫 호출이 11초 걸리던 것(원본 261119 01:43Z)을 줄인다. 결과는 WRITE_DBS 순서 그대로.
+export const OPTIONS_CONCURRENCY = 5
 export async function writeOptions(): Promise<Record<string, Record<string, string[]>>> {
 	const sources = await appSources()
+	const targets = WRITE_DBS.flatMap((db) => { const ds = (sources.get(db as AppDb) ?? [])[0]; return ds ? [{ db, ds }] : [] })
+	const schemas = await mapWithConcurrency(targets, OPTIONS_CONCURRENCY, (t) => dataSourceSchema(t.ds))
 	const out: Record<string, Record<string, string[]>> = {}
-	for (const db of WRITE_DBS) {
-		const ds = (sources.get(db as AppDb) ?? [])[0]
-		if (!ds) continue
+	targets.forEach((t, i) => {
 		const props: Record<string, string[]> = {}
-		for (const [name, def] of Object.entries(await dataSourceSchema(ds))) if (def.options && !SKIP_PROPS.has(name)) props[name] = def.options
-		out[db] = props
-	}
+		for (const [name, def] of Object.entries(schemas[i])) if (def.options && !SKIP_PROPS.has(name)) props[name] = def.options
+		out[t.db] = props
+	})
 	return out
 }
 

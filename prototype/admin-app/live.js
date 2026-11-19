@@ -18,6 +18,9 @@
     if (!b) { b = document.createElement("div"); b.id = "liveBanner"; b.setAttribute("role", "status"); b.style.cssText = "position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:9999;padding:8px 14px;border-radius:10px;font-size:13px;box-shadow:0 2px 10px rgba(0,0,0,.12);max-width:90vw"; document.body.appendChild(b); }
     b.style.background = bad ? "#FDECEC" : "#FFF6DA"; b.style.color = "#3A3226"; b.textContent = msg;
   };
+  /* 노션이 바빠요(app-api 503 busy, 노션서버 항목 100): 데이터 층(appdata.js appPostJson)이 재시도를 기다리는 동안 안내 띠. 끝나면 있던 띠(예: 받는 중)로 되돌린다 */
+  let busyPrev = null;
+  window.liveBusy = (msg) => { if (msg) { if (busyPrev === null) { const b0 = document.getElementById("liveBanner"); busyPrev = b0 ? b0.textContent : ""; } banner(msg, false); } else if (busyPrev !== null) { banner(busyPrev); busyPrev = null; } };
   /* 칸 켜기(hada-rules.js GATES · GATES_ON): 꺼진 칸의 화면은 메뉴에서 빼고 열리지 않게 한다. 주소 &gates=P1,P2 = 검수용 */
   const gOn = new Set(((/[?&]gates=([\w,]+)/.exec(location.search) || [])[1] || GATES_ON.join(",")).split(",").filter(Boolean));
   window.gateOn = (s) => String(s).startsWith("ext:") || Object.entries(GATES).some(([g, list]) => gOn.has(g) && list.includes(s));
@@ -42,14 +45,14 @@
   /* 출결 쓰기(P3 걸음 2, 칸 P3w — 수업 칸 P3과 함께 켤 때만): 수업 창의 [출석][결석] · [모두 출석] · [되돌리기] · [수업 저장]만 풀고 나머지는 보기만 그대로 */
   const ATTW = gOn.has("P3") && gOn.has("P3w"); window.LIVE_ATTW = ATTW;
   const attw = () => ATTW && liveScr(typeof activeTab !== "undefined" ? activeTab : null) === "lesson";
-  const roPass = () => RO_PASS0 + (attw() ? ",.attseg,#allOk,#lsRev,#lsSave,#attEd,.attv.ed,.attpop .so" : "") + (recTab() ? "," + REC_AREA : "") + (window.LIVE_MKW && inLesson() ? ",[data-mkin]" : ""); /* 536판(대표 261119): 출결 = 값 칸 .attv + 머리 [편집] #attEd + 떠 있는 목록 .attpop .so(body). .attseg는 과제 단추 */
+  const roPass = () => RO_PASS0 + (attw() ? ",.attseg,#allOk,#lsRev,#lsSave,#attEd,.attv.ed,.attpop .so" : "") + (recTab() ? "," + REC_AREA : "") + (recw() ? ",#lsRev,#lsSave" : "") /* 학습기록 쓰기(P3b)만 켜도 수업 창 아래 [수업 저장] · [되돌리기]가 눌림(기록 · 루틴 체크 저장) */ + (window.LIVE_MKW && inLesson() ? ",[data-mkin]" : ""); /* 536판(대표 261119): 출결 = 값 칸 .attv + 머리 [편집] #attEd + 떠 있는 목록 .attpop .so(body). .attseg는 과제 단추 */
   /* 학습기록 쓰기(칸 P3b — 수업 칸 P3과 함께 켤 때만, 261119 원본검수 Z1): 하루 수업 페이지의 학습기록 · 과제검사 · 학습활동 · 진도 · 루틴 탭을 풀고, 저장은 livelesson.js(update-record · create-records · save-activities · save-routines) */
   const RECW = gOn.has("P3") && gOn.has("P3b"); window.LIVE_RECW = RECW;
   const REC_TABS = ["prog", "log", "hw", "act", "rt"];
   const inLesson = () => liveScr(typeof activeTab !== "undefined" ? activeTab : null) === "lesson";
   const recw = () => RECW && inLesson();
   /* 학습기록 쓰기가 켜지면 수업 창의 [학습] 탭 · 학생 창의 [학습] 탭 안을 잠그지 않는다(수업 전체 화면은 없어져 옛 #lpIn · .lpx · lptab은 더 쓰지 않음) */
-  const recTab = () => { if (!recw()) return false; const st = (activeTab && activeTab.state) || {}; return st.lsStu ? st.astab === "learn" : st.ltab === "log"; };
+  const recTab = () => { if (!recw()) return false; const st = (activeTab && activeTab.state) || {}; return st.lsStu ? st.astab === "learn" : (st.ltab === "log" || st.ltab === "rt"/* 루틴 탭: P3b의 루틴 체크 · [루틴 체크 생성] 쓰기도 같은 칸(원본검수 261119) */); };
   const REC_AREA = ".panel .ptab.on,.panel .pbody";
   /* 보기만 되돌리기에서 뺄 값: 출결 쓰기면 출결 · 한마디(anotes), 학습기록 쓰기면 기록 · 오늘 진도(lpToday) */
   const roKeepKeys = () => [...(attw() ? ["att", "anotes"] : []), ...(recw() ? ["recs", "lpToday"] : [])];
@@ -96,6 +99,11 @@
   };
   /* 보강 쓰기 칸: 저장 대기 수에 서버 보강 배정 · 빼기 · 지우기 수를 더한다(새 보강은 화면이 이미 셈) */
   if (MKW && typeof dirtyCount === "function") { const dc0 = dirtyCount; dirtyCount = function () { let n = dc0.apply(this, arguments); try { if (typeof liveMakeupPlan === "function") { const P = liveMakeupPlan(); n += P.assign.length + P.unlink.length + P.del.length + P.att.length; } } catch (_) {} return n; }; }
+  /* 학습기록 쓰기 칸: 루틴 체크를 눌러 바뀐 수업도 저장 대기 수에 더한다(이미 작성 중으로 센 수업은 빼서 두 번 세지 않음) */
+  if (RECW && typeof dirtyCount === "function") { const dc1 = dirtyCount; dirtyCount = function () { let n = dc1.apply(this, arguments); try { if (typeof liveRoutineDirtyKeys === "function") n += liveRoutineDirtyKeys().filter((k) => !LDIRTY.has(k)).length; } catch (_) {} return n; }; }
+  /* 수업 창 아래 [수업 저장 n] · [되돌리기]도 루틴 체크 변경을 센다(원본검수 261119: 체크를 눌러도 [수업 저장]이 비활성이던 것) */
+  if (RECW && typeof lCount === "function") { const lc0 = lCount; lCount = function (k) { let n = lc0.apply(this, arguments); try { if (typeof liveRoutineChangedN === "function") n += liveRoutineChangedN(k); } catch (_) {} return n; }; }
+  if (RECW && typeof lRevert === "function") { const lr0 = lRevert; lRevert = function (k) { const r = lr0.apply(this, arguments); try { if (typeof liveRoutineRevert === "function") liveRoutineRevert(k); } catch (_) {} return r; }; }
   const r0 = render;
   /* 수업 화면 = 시간표 화면의 [수업] 보기. 수업 칸(P3)이 꺼져 있으면 그 보기로 못 넘어가게 한다(단추도 숨김) */
   const lessonGate = () => {
@@ -154,7 +162,7 @@
   /* 허용 목록(보기 화면에서 눌러도 되는 것 = 값이 바뀌지 않는 것). 여기 없는 단추 · 고르기 · 입력은 보기 화면에서 꺼지고 막힌다.
      창: 링크 · 도움말 · 노션 · 줄 열기/이동 · 접기 · 탭 · 할 일 줄. 위 줄: 날짜 · 달 · 주 이동, 보기 탭, 찾기, 엑셀 · 인쇄, 크기, 창 고정,
      그리고 입력 칸(P1)에서 고친 것을 다루는 실행 취소 · 다시 실행 · 모두 되돌리기 · 저장. */
-  const RO_PASS0 = "a,[data-help],[data-notion],.hnot,[data-drill],[data-go],[data-gobook],[data-gochs],[data-gobill],[data-act^=go],[data-rpdo^=open],[data-rpdo^=notion],[data-pgfold],[data-entab],.ptabs,.ro-note,.tdr,.tdmore,.qhelp,summary,"
+  const RO_PASS0 = "a,[data-help],[data-notion],.hnot,[data-drill],[data-go],[data-gobook],[data-gochs],[data-gobill],[data-act^=go],[data-rpdo^=open],[data-rpdo^=notion],[data-pgfold],[data-entab],[data-ldn],[data-lmn],.ptabs,.ro-note,.tdr,.tdmore,.qhelp,summary,"
     + "[data-dn],[data-mn],[data-sub],[data-cfnav],[data-mtab],[data-view],[data-wkd],[data-evsel],.foldchip,#lq,.sbx,#xlB,#prB,#undoB,#redoB,#rvAll,#saveAll,#panelT,#mkPanelT,#seaChip,#wkP,#wkN,#wkT,#lmAtt,#cbFind,#zOut,#zIn,#makeWeek,#lGen"; /* #makeWeek · #lGen(수업 메뉴 v559의 생성 단추) = 수업 생성: 노션 버튼과 같은 서버 함수(generate-classes)를 부르는 run이라 보기 화면에서도 켠다(대표 261117 "수업 생성은 앱에서도") */
   const RO_HIT = "button,input,select,textarea,label,[role],[tabindex],[contenteditable],.btn,.lnk,.hf-box";
   const roBlock = (e) => {
@@ -239,12 +247,11 @@
 /* 실제 자료 모드의 [저장]: 작성 중인 줄(입력 범위 12개 묶음)을 app-api save로 노션에 쓴다. 저장 창의 [저장]이 부른다(LIVE일 때만).
    성공한 줄은 저장됨으로, 실패 · 충돌 줄은 작성 중으로 남기고 이유를 보여 준다. 지우기는 보내지 않는다(노션에서 직접). */
 async function liveApi(conn, body) {
-  const res = await fetch(String(conn.url).replace(/\/+$/, "") + "/functions/v1/app-api", {
+  const { res, body: out } = await appPostJson(String(conn.url).replace(/\/+$/, "") + "/functions/v1/app-api", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-admin-key": conn.session, Authorization: "Bearer " + conn.anonKey, apikey: conn.anonKey },
     body: JSON.stringify(body),
   });
-  const out = await res.json().catch(() => null);
   if (!res.ok || !out || !out.ok) throw new Error((out && out.error) || "요청 실패 (" + res.status + ")");
   return out;
 }
@@ -319,6 +326,7 @@ async function liveSave() {
       /* 작성 중인 수업 = 수업 창 표시(LDIRTY) + 학습기록 쓰기 칸이면 작성 중 기록이 있는 수업(Z1) — 실제 수업(LIVE_LS)만 */
       const ks = new Set([...LDIRTY.keys()].filter((k) => !k.startsWith("mk:")));
       if (window.LIVE_RECW) (DB.recs || []).forEach((r) => { if (r.state === "draft" && !r.del && r.key && typeof LIVE_LS !== "undefined" && LIVE_LS[r.key]) ks.add(r.key); });
+      if (window.LIVE_RECW && typeof liveRoutineDirtyKeys === "function") liveRoutineDirtyKeys().forEach((k) => ks.add(k)); /* 루틴 체크만 바뀐 수업 */
       for (const k of ks) { if (await liveLessonSave(k)) lessons++; }
     }
     /* 보강(칸 P3m): 만들기 · 배정 · 빼기 · 지우기를 서버 보강 동작으로 */

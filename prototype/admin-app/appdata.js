@@ -202,14 +202,27 @@ if (!APP_RT_ON) delete APPMAP.routines
 const APP_EMPTY = ["events", "reports", "tuition", "bookfees", "letters", "exams", "costs", "alims", "grades", "charges", "etcs", "files", "recs", "anotes", "series", "mk"]
 
 // ---------- 불러오기 ----------
+// app-api 호출 한 곳(261119, 노션서버 항목 100): Notion 한도(429)로 서버가 15초 넘게 기다릴 일이면 HTTP 503 { error, busy: true, retryAfterSec }로 끊는다.
+// 그 응답이면 안내 띠("노션이 바빠요 · n초 뒤 다시 받아요")를 띄우고 retryAfterSec(없으면 5초, 1~15초) 뒤 같은 요청을 한 번만 다시 보낸다 — 저장도 노션에 쓰기 전 단계에서 끊으니 중복 없음.
+// 두 번째도 바쁘면 그 응답을 그대로 돌려줘 호출한 쪽이 서버 메시지로 오류를 낸다. { res, body }(body는 JSON이 아니면 null).
+async function appPostJson(url, init) {
+	for (let n = 0; ; n++) {
+		const res = await fetch(url, init)
+		let body = null
+		try { body = await res.json() } catch (_) { /* 호출한 쪽이 던짐 */ }
+		const busy = res.status === 503 || !!(body && body.busy === true)
+		if (!busy || n >= 1) { if (n >= 1 && typeof window !== "undefined" && typeof window.liveBusy === "function") window.liveBusy(""); return { res, body } }
+		const sec = Math.min(15, Math.max(1, +(body && body.retryAfterSec) || 5))
+		if (typeof window !== "undefined" && typeof window.liveBusy === "function") window.liveBusy(`노션이 바빠요 · ${sec}초 뒤 다시 받아요`)
+		await new Promise((ok) => setTimeout(ok, sec * 1000))
+	}
+}
 async function appList({ url, anonKey, session }, db) {
-	const res = await fetch(String(url).replace(/\/+$/, "") + "/functions/v1/app-api", {
+	const { res, body } = await appPostJson(String(url).replace(/\/+$/, "") + "/functions/v1/app-api", {
 		method: "POST",
 		headers: { "Content-Type": "application/json", "x-admin-key": session, Authorization: "Bearer " + anonKey, apikey: anonKey },
 		body: JSON.stringify({ action: "list", db }),
 	})
-	let body = null
-	try { body = await res.json() } catch (_) { /* 아래에서 던짐 */ }
 	if (!res.ok || !body || !Array.isArray(body.rows)) throw new Error(`${db} 읽기 실패 (${res.status}${body && body.error ? " · " + body.error : ""})`)
 	return body.rows
 }
@@ -290,4 +303,4 @@ function appFixLinks(out) {
 	return out
 }
 
-if (typeof window === "undefined" && typeof module !== "undefined") module.exports = { APPMAP, APP_EMPTY, appLoad, appListMany, appApply, appX }
+if (typeof window === "undefined" && typeof module !== "undefined") module.exports = { APPMAP, APP_EMPTY, appLoad, appListMany, appPostJson, appApply, appX }

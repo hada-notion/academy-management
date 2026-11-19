@@ -18,6 +18,7 @@
 import { NOTION_API } from "./constants.ts"
 import { fetchWithRetry, notionHeaders, queryAllPages } from "./notionClient.ts"
 import { fetchSupabaseWithRetry } from "./reportCacheShared.ts"
+import { runInBackground } from "./backgroundTask.ts"
 
 type Page = Record<string, any>
 type Row = { db: string; id: string; props: Record<string, unknown>; notion_created_at: string | null; notion_edited_at: string; url: string; icon: string }
@@ -121,13 +122,25 @@ export function pickSources(found: Map<string, string[]>): Map<AppDb, string[]> 
 	}
 	return out
 }
+// (v2.8.0 항목 100) Notion이 한도(429)로 오래 기다리라고 하면 앱 요청을 몇 십 초 붙잡지 않고 "잠시 뒤 다시"로 돌려준다.
+// DB 찾기(`status`·`list` 데우기·저장 앞 찾기)에만 쓴다 — 저장 본 경로와 다른 큐 작업의 429 처리는 그대로.
+export const NOTION_BUSY_WAIT_MS = 15_000
+export const NOTION_BUSY_RETRY_SEC = 10
+export class NotionBusyError extends Error {
+	constructor(public retryAfterSec = NOTION_BUSY_RETRY_SEC) { super("Notion이 바빠 잠시 뒤 다시 시도해야 합니다.") }
+}
+const findFetch = async (url: string, init: RequestInit): Promise<Response> => {
+	const res = await fetchWithRetry(url, init, 5, { maxWaitMs: NOTION_BUSY_WAIT_MS })
+	if (res.status === 429) throw new NotionBusyError()
+	return res
+}
 async function searchSources(): Promise<Map<string, string[]>> {
 	const out = new Map<string, string[]>()
 	let cursor: string | undefined
 	do {
 		const body: Record<string, unknown> = { filter: { property: "object", value: "data_source" }, page_size: 100 }
 		if (cursor) body.start_cursor = cursor
-		const res = await fetchWithRetry(`${NOTION_API}/search`, { method: "POST", headers: notionHeaders(), body: JSON.stringify(body) })
+		const res = await findFetch(`${NOTION_API}/search`, { method: "POST", headers: notionHeaders(), body: JSON.stringify(body) })
 		if (!res.ok) throw new Error(`Notion 검색 실패: ${res.status} ${await res.text()}`)
 		const data = await res.json()
 		for (const r of data.results ?? []) {
@@ -172,7 +185,7 @@ async function notionAncestors(dataSourceId: string): Promise<Set<string>> {
 	const out = new Set<string>()
 	let kind = "data_sources", id = dataSourceId
 	for (let i = 0; i < 12; i++) {
-		const res = await fetchWithRetry(`${NOTION_API}/${kind}/${id}`, { headers: notionHeaders() })
+		const res = await findFetch(`${NOTION_API}/${kind}/${id}`, { headers: notionHeaders() })
 		if (!res.ok) break
 		const parent = (await res.json())?.parent
 		if (!parent) break
@@ -313,6 +326,13 @@ export async function reconcileNext(): Promise<AppSyncResult> {
 
 // ---------- 읽기(app-api) ----------
 // since가 있으면 그 뒤에 동기화된 줄만(앱이 화면을 열어 둔 채 바뀐 것만 다시 받을 때).
+// (v2.8.0 항목 99) 앱 첫 로드가 곧 데우기: 목록 응답을 만든 뒤 뒤에서 Notion DB 찾기(sourcePick, 10분 캐시)를 채워 둔다.
+// 저장 첫 호출이 DB 29개를 찾느라 6~7초 걸리던 것(원본 261119)을 줄인다. 응답은 기다리지 않고, 실패해도 저장·목록에 영향 없음.
+export function warmSources(): void {
+	if (sourceCache && Date.now() - sourceCache.at < 10 * 60 * 1000) return
+	runInBackground(async () => { await sourcePick() })
+}
+
 export async function listApp(db: AppDb, since?: string | null): Promise<Record<string, unknown>[]> {
 	const rows: Record<string, unknown>[] = []
 	const cond = since ? `&synced_at=gt.${encodeURIComponent(since)}` : ""
