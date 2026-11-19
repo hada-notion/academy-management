@@ -337,7 +337,8 @@ function liveHooks() {
     bookFindOpen = () => liveBookRegisterOpen("교재");
     LISTS.books_b.add = LISTS.books.add = () => liveBookRegisterOpen("교재"); /* 261120 대표: [교재] 탭 [+] = 구분 교재로 채워 열림(창 첫 칸에서 바꿀 수 있음). [프로그램] 탭 [+]은 서버가 프로그램 등록 동작을 알려 주면 liveBookRegisterOpen("프로그램")으로 연결 */
     LISTS.books_b.addLabel = "교재 등록";
-    LISTS.books_p.add = null; LISTS.books_p.blank = null; LISTS.books_p.noAddWhy = "프로그램은 노션 라이브러리에서 추가해요";
+    LISTS.books_p.add = () => liveBookRegisterOpen("프로그램"); /* 261120 서버 #530: register-custom kind:"프로그램"(ISBN · 단원 없이 가능, 가격 = 재료비, 분량 = 총 차시) */
+    LISTS.books_p.addLabel = "프로그램 등록"; LISTS.books_p.blank = null;
   } catch (_) {}
 }
 /* 새 교재 등록 창(실제 자료 모드): 교재명 · 출판사 · 시리즈 · 가격 · 전체 분량 · ISBN13 · 단원 목록(한 줄에 하나 "이름 쪽"). 과목 · 구분 등은 등록 뒤 줄 창에서.
@@ -354,47 +355,45 @@ async function liveBookApi(body) {
   if (!res.ok || !out || out.error) { const e = new Error((out && out.error) || "요청 실패 (" + res.status + ")"); e.status = res.status; throw e; }
   return out;
 }
-function liveBookRegisterOpen(kind0) {
-  const F = { kind: kind0 === "프로그램" ? "프로그램" : "교재", title: "", publisher: "", series: "", price: "", pages: "", isbn: "", units: "" };
+function liveBookRegisterOpen(kind0, keep) {
+  const pg = kind0 === "프로그램"; /* 프로그램 = 이름 · 시리즈 · 출판사 · 재료비 · 총 차시 · 차시 목록(ISBN 없음). 서버가 구분을 프로그램으로 넣는다(#530) */
+  const F = Object.assign({ title: "", publisher: "", series: "", price: "", pages: "", isbn: "", units: "" }, keep || {}, { kind: pg ? "프로그램" : "교재" });
+  const nm = pg ? "프로그램" : "교재";
   const opts = (k) => (DB.opts && Array.isArray(DB.opts[k]) ? DB.opts[k] : []).map((v) => ({ v, t: v }));
-  modal(`<h2>교재 등록${HELP("노션 라이브러리에 교재 1권과 단원 목록을 만들어요. 과목 · 구분 등은 등록한 뒤 줄 창에서 넣어요. 같은 ISBN의 교재가 이미 있으면 등록되지 않아요. 출판사 · 시리즈는 노션 선택지에 있는 값만 고를 수 있어요.")}</h2>
-    <div class="hfh" id="brK"></div><div class="hfgrid nc"><div class="hfh" id="brT"></div><div class="hfh" id="brP"></div><div class="hfh" id="brS"></div><div class="hfh" id="brPr"></div><div class="hfh" id="brPg"></div><div class="hfh" id="brI"></div></div>
+  modal(`<h2>${nm} 등록${HELP(pg ? "노션 라이브러리에 프로그램 1개를 만들어요(구분 = 프로그램). 재료비 · 총 차시와 차시 목록은 비워 둬도 돼요. 과목 등은 등록한 뒤 줄 창에서 넣어요. 출판사 · 시리즈는 노션 선택지에 있는 값만 고를 수 있어요." : "노션 라이브러리에 교재 1권과 단원 목록을 만들어요. 과목 등은 등록한 뒤 줄 창에서 넣어요. 같은 ISBN의 교재가 이미 있으면 등록되지 않아요. 출판사 · 시리즈는 노션 선택지에 있는 값만 고를 수 있어요.")}</h2>
+    <div class="hfh" id="brK"></div><div class="hfgrid nc"><div class="hfh" id="brT"></div><div class="hfh" id="brP"></div><div class="hfh" id="brS"></div><div class="hfh" id="brPr"></div><div class="hfh" id="brPg"></div>${pg ? "" : '<div class="hfh" id="brI"></div>'}</div>
     <div class="hfh" id="brU"></div><div class="hint" id="brM"></div>
-    <div class="actions"><span class="sp"></span><button class="btn" id="brC">취소</button><button class="btn pri" id="brO" disabled>교재 등록</button></div>`, (m, close) => {
+    <div class="actions"><span class="sp"></span><button class="btn" id="brC">취소</button><button class="btn pri" id="brO" disabled>${nm} 등록</button></div>`, (m, close) => {
     const ok = m.querySelector("#brO"), msg = m.querySelector("#brM");
     const upd = () => { ok.disabled = !F.title.trim(); };
-    HF.seg(m.querySelector("#brK"), { label: "구분", items: ["교재", "프로그램"], value: F.kind, onChange: (v) => { F.kind = v; } });
-    HF.text(m.querySelector("#brT"), { label: "교재명", placeholder: "예: 쎈 고등 수학(상)", max: 200, onChange: (v) => { F.title = v; upd(); } });
-    HF.select(m.querySelector("#brP"), { label: "출판사", value: null, clear: true, placeholder: "고르기", items: opts("pub"), onChange: (v) => { F.publisher = v || ""; } });
-    HF.select(m.querySelector("#brS"), { label: "시리즈", value: null, clear: true, placeholder: "고르기", items: opts("series"), onChange: (v) => { F.series = v || ""; } });
-    HF.num(m.querySelector("#brPr"), { label: "가격", unit: "원", onChange: (v) => { F.price = String(v || "").replace(/[^\d]/g, ""); } });
-    HF.num(m.querySelector("#brPg"), { label: "전체 분량", unit: "쪽", onChange: (v) => { F.pages = String(v || "").replace(/[^\d]/g, ""); } });
-    HF.text(m.querySelector("#brI"), { label: "ISBN13", placeholder: "978으로 시작하는 13자리", max: 17, onChange: (v) => { F.isbn = v; } });
-    HF.memo(m.querySelector("#brU"), { label: "단원 목록", placeholder: "한 줄에 하나씩 — 예) 1. 집합 8", rows: 5, onChange: (v) => { F.units = v; } });
+    HF.seg(m.querySelector("#brK"), { label: "구분", items: ["교재", "프로그램"], value: F.kind, onChange: (v) => { if (v === F.kind) return; close(); setTimeout(() => liveBookRegisterOpen(v, F), 0); } });
+    HF.text(m.querySelector("#brT"), { label: pg ? "프로그램 이름" : "교재명", placeholder: pg ? "예: 미술 기초반" : "예: 쎈 고등 수학(상)", max: 200, value: F.title, onChange: (v) => { F.title = v; upd(); } });
+    HF.select(m.querySelector("#brP"), { label: "출판사", value: F.publisher || null, clear: true, placeholder: "고르기", items: opts("pub"), onChange: (v) => { F.publisher = v || ""; } });
+    HF.select(m.querySelector("#brS"), { label: "시리즈", value: F.series || null, clear: true, placeholder: "고르기", items: opts("series"), onChange: (v) => { F.series = v || ""; } });
+    HF.num(m.querySelector("#brPr"), { label: pg ? "재료비" : "가격", unit: "원", value: F.price, onChange: (v) => { F.price = String(v || "").replace(/[^\d]/g, ""); } });
+    HF.num(m.querySelector("#brPg"), { label: pg ? "총 차시" : "전체 분량", unit: pg ? "차시" : "쪽", value: F.pages, onChange: (v) => { F.pages = String(v || "").replace(/[^\d]/g, ""); } });
+    if (!pg) HF.text(m.querySelector("#brI"), { label: "ISBN13", placeholder: "978으로 시작하는 13자리", max: 17, value: F.isbn, onChange: (v) => { F.isbn = v; } });
+    HF.memo(m.querySelector("#brU"), { label: pg ? "차시 목록" : "단원 목록", placeholder: pg ? "한 줄에 하나씩 — 예) 1차시 선 긋기" : "한 줄에 하나씩 — 예) 1. 집합 8", rows: 5, value: F.units, onChange: (v) => { F.units = v; } });
+    upd();
     m.querySelector("#brC").onclick = close;
     ok.onclick = async () => {
       msg.textContent = ""; ok.disabled = true; ok.textContent = "등록 중…";
       try {
-        const units = (typeof unitParse === "function" ? unitParse(F.units, F.pages) : []).map((u) => ({ name: u.name, page: u.from == null ? 0 : u.from }));
-        const body = { action: "register-custom", title: F.title.trim(), units, kind: F.kind }; /* kind: 서버 #530 이후 교재|프로그램(생략=교재) — 그 전 서버는 모르는 칸을 무시 */
-        if (F.isbn.trim()) body.isbn13 = F.isbn.trim();
+        const units = (typeof unitParse === "function" ? unitParse(F.units, F.pages) : []).map((u) => (pg ? { name: u.name } : { name: u.name, page: u.from == null ? 0 : u.from }));
+        const body = { action: "register-custom", title: F.title.trim(), units, kind: F.kind };
+        if (!pg && F.isbn.trim()) body.isbn13 = F.isbn.trim();
         if (F.price) body.price = +F.price;
         if (F.pages) body.pages = +F.pages;
         if (F.series) body.series = F.series;
         if (F.publisher) body.publisher = F.publisher;
-        const made = await liveBookApi(body);
+        await liveBookApi(body);
         close();
-        if (dirtyCount() === 0 && typeof window.liveReload === "function") {
-          await window.liveReload();
-          /* 서버 등록은 구분을 비워 두므로, 고른 구분은 새 줄에 넣어 보통 저장과 같은 길로 노션에 저장 */
-          try { const pid = String((made && made.pageId) || "").replace(/-/g, "").toLowerCase(); const nb = pid && (DB.books || []).find((x) => String(x.id).replace(/-/g, "").toLowerCase() === pid); if (nb && nb.kind !== F.kind) { nb.kind = F.kind; await liveSaveRow({ coll: "books" }, nb); } } catch (_) { toast("교재는 등록했지만 구분은 못 넣었어요 — 줄을 눌러 구분을 골라 저장해요"); return; }
-          toast("교재를 등록했어요 — 구분은 " + F.kind + "로 넣었어요. 과목은 줄을 눌러 넣어요");
-        }
-        else toast("교재를 등록했어요 — 저장하지 않은 변경이 있어서 목록은 저장하고 새로고침하면 보여요");
+        if (dirtyCount() === 0 && typeof window.liveReload === "function") { await window.liveReload(); toast(nm + (pg ? "을" : "를") + " 등록했어요 — 과목은 줄을 눌러 넣어요"); }
+        else toast(nm + (pg ? "을" : "를") + " 등록했어요 — 저장하지 않은 변경이 있어서 목록은 저장하고 새로고침하면 보여요");
       } catch (e) {
-        ok.textContent = "교재 등록"; upd();
+        ok.textContent = nm + " 등록"; upd();
         msg.className = "hint warn";
-        msg.textContent = e.status === 409 ? "이미 라이브러리에 있는 교재예요(ISBN이 같아요)" : e.status === 401 || e.status === 403 ? "관리자 로그인이 필요해요 — 새로고침해서 다시 로그인해요" : e.message || "등록하지 못했어요";
+        msg.textContent = e.status === 409 ? "이미 라이브러리에 있는 " + nm + "예요" + (pg ? "" : "(ISBN이 같아요)") : e.status === 401 || e.status === 403 ? "관리자 로그인이 필요해요 — 새로고침해서 다시 로그인해요" : e.message || "등록하지 못했어요";
       }
     };
     setTimeout(() => { const i = m.querySelector("#brT input"); if (i) i.focus(); }, 0);
