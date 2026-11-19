@@ -3,8 +3,18 @@
 Notion 기반 학원관리 시스템의 백엔드(Supabase Edge Functions)·마이그레이션·운영 웹앱(GitHub Pages) 저장소입니다.
 
 **운영 기준 문서는 이 README가 아니라 Notion "매뉴얼"입니다.** 실제 스키마, 버튼·자동화 연결, SOP는
-Notion 워크스페이스의 "📘 하다 학원관리 구조·실행 설명서"(메뉴 > 8. 설정 > 매뉴얼)를 항상 최신 기준으로 봅니다.
+Notion 워크스페이스의 "📘 하다 학원관리 구조·실행 설명서"(메뉴 > 9. 매뉴얼 · 데이터 > 매뉴얼)를 항상 최신 기준으로 봅니다.
 이 README는 저장소를 처음 여는 사람을 위한 최소한의 지도 역할만 합니다.
+
+## AI는 이 순서로 읽는다
+
+1. Notion "시스템 정보"(이 학원의 현재 버전)
+2. [`CHANGELOG.md`](CHANGELOG.md) 맨 위
+3. [`docs/updates/v2.8.0.md`](docs/updates/v2.8.0.md) 맨 위 "운영 적용 순서" 표
+4. [`docs/기준/적용-절차.md`](docs/기준/적용-절차.md)
+5. [`docs/새-학원-이식-체크리스트.md`](docs/새-학원-이식-체크리스트.md)
+
+관리 앱은 [`docs/관리-앱.md`](docs/관리-앱.md)부터 읽는다.
 
 ## 구성
 
@@ -43,6 +53,7 @@ GitHub Actions가 자동으로: 전체 함수 `deno check` → 회귀 가드 스
 | Notion 이름·레이아웃 원칙(버튼·상태 속성·자동화 이름, 예전 이름) | [`docs/이름-규칙.md`](docs/이름-규칙.md) |
 | 버튼·자동화가 부르는 서버 함수, 인증, Notion 자동화 원칙 | [`docs/버튼-웹훅-매핑.md`](docs/버튼-웹훅-매핑.md) |
 | 화면 디자인 | [`docs/DESIGN.md`](docs/DESIGN.md) |
+| 관리 앱(구조·모드·쓰기 스위치) | [`docs/관리-앱.md`](docs/관리-앱.md) |
 | 변경 이력과 버전별 지침 | [`CHANGELOG.md`](CHANGELOG.md), `docs/updates/` (양식 [`_TEMPLATE.md`](docs/updates/_TEMPLATE.md)) |
 | 원본 패치 작업 흐름 | [`docs/패치-이슈-관리.md`](docs/패치-이슈-관리.md) |
 | 새 학원 이식(Secrets·환경값) | [`docs/새-학원-이식-체크리스트.md`](docs/새-학원-이식-체크리스트.md) |
