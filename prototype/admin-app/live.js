@@ -43,19 +43,21 @@ window.liveModeFor = function (search, hostname, protocol) {
      고칠 것은 창 위 [노션에서 열기]로. (이 묶음들은 저장 층 대상이 아니라 노션에 갈 길도 없다) */
   /* 0단계(대표 261117): 입력 칸(P1) 안에서도 노션 버튼 · 서버 동작이 따로 있는 화면은 보기만 — 라이브러리(교재 등록 = 서버가 단원까지) · 학교(학교 검색 = 학교 코드까지) */
   /* 일정 쓰기(칸 P2e — 화면 묶음 없음, P2와 함께 켤 때만, 261119 원본검수 Z2): 켜면 일정 화면은 보기만에서 빠지고 저장 층(appsave events)으로 노션에 씀. 꺼져 있으면 보기만 */
-  const EVW = gOn.has("P2") && gOn.has("P2e"); window.LIVE_EVW = EVW;
+  /* 261119 밤 대표 결정: 웹앱 = 가독성 좋은 대시보드 + 서버 동기화 값 보기. 실제 자료 모드는 모든 화면이 보기 전용 — 쓰기 칸(P2e · P3m · P3w · P3b 쓰기)은 코드에 남기되 여기서 모두 끈다(다시 열 때 이 네 줄만) */
+  const EVW = false; window.LIVE_EVW = EVW;
   /* 보강 쓰기(칸 P3m — 화면 묶음 없음, 보강 화면 칸 P3b와 함께 켤 때만, 261119 담당 (가)): 켜면 보강 화면이 보기만에서 빠지고 [저장]이 서버 보강 동작(livelesson.js liveMakeupSave)으로 */
-  const MKW = gOn.has("P3b") && gOn.has("P3m"); window.LIVE_MKW = MKW;
-  const P2ON = gOn.has("P2"), RO = new Set([...GATES.P2, ...GATES.P3, ...GATES.P3b, "schools"].filter((s) => !(EVW && s === "events") && !(MKW && s === "makeup"))); /* P3 수업은 걸음 1 = 보기만 */
+  const MKW = false; window.LIVE_MKW = MKW;
+  /* 화면은 메뉴에서 빼지 않고(GATES_ON 그대로) 모두 보기만: 입력 칸(P1)까지 RO에 넣는다 */
+  const P2ON = gOn.has("P2"), RO = new Set([...GATES.P1, ...GATES.P2, ...GATES.P3, ...GATES.P3b, "schools", "books"]);
   window.liveRO = (s) => RO.has(s);
   window.liveScr = (t) => (t && t.screen === "timetable" && t.state && t.state.view === "lesson" ? "lesson" : t ? t.screen : "");
   let roBase = null, roScreen = null, roBusy = false;
   /* 출결 쓰기(P3 걸음 2, 칸 P3w — 수업 칸 P3과 함께 켤 때만): 수업 창의 [출석][결석] · [모두 출석] · [되돌리기] · [수업 저장]만 풀고 나머지는 보기만 그대로 */
-  const ATTW = gOn.has("P3") && gOn.has("P3w"); window.LIVE_ATTW = ATTW;
+  const ATTW = false; window.LIVE_ATTW = ATTW;
   const attw = () => ATTW && liveScr(typeof activeTab !== "undefined" ? activeTab : null) === "lesson";
   const roPass = () => RO_PASS0 + (attw() ? ",.attseg,#allOk,#lsRev,#lsSave,#attEd,.attv.ed,.attpop .so" : "") + (recTab() ? "," + REC_AREA : "") + (recw() ? ",#lsRev,#lsSave" : "") /* 학습기록 쓰기(P3b)만 켜도 수업 창 아래 [수업 저장] · [되돌리기]가 눌림(기록 · 루틴 체크 저장) */ + (window.LIVE_MKW && inLesson() ? ",[data-mkin]" : ""); /* 536판(대표 261119): 출결 = 값 칸 .attv + 머리 [편집] #attEd + 떠 있는 목록 .attpop .so(body). .attseg는 과제 단추 */
   /* 학습기록 쓰기(칸 P3b — 수업 칸 P3과 함께 켤 때만, 261119 원본검수 Z1): 하루 수업 페이지의 학습기록 · 과제검사 · 학습활동 · 진도 · 루틴 탭을 풀고, 저장은 livelesson.js(update-record · create-records · save-activities · save-routines) */
-  const RECW = gOn.has("P3") && gOn.has("P3b"); window.LIVE_RECW = RECW;
+  const RECW = false; window.LIVE_RECW = RECW;
   const REC_TABS = ["prog", "log", "hw", "act", "rt"];
   const inLesson = () => liveScr(typeof activeTab !== "undefined" ? activeTab : null) === "lesson";
   const recw = () => RECW && inLesson();
@@ -67,12 +69,12 @@ window.liveModeFor = function (search, hostname, protocol) {
   const snapRo = () => { const ks = roKeepKeys(); if (!ks.length) return snapshot(); const keep = {}; ks.forEach((k) => { keep[k] = DB[k]; DB[k] = Array.isArray(keep[k]) ? [] : {}; }); try { return snapshot(); } finally { Object.assign(DB, keep); } };
   window.liveRoReset = () => { roBase = null; };
   const roCss = document.createElement("style");
-  roCss.textContent = ".live-ro #view [data-gdel]{display:none!important}.ro-note{margin:0 0 10px;padding:8px 10px;border-radius:8px;background:#FFF6DA;color:#3A3226;font-size:13px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ro-note a{color:inherit;font-weight:600;text-decoration:underline}.ro-line{margin:-2px 0 8px;padding:0 4px;font-size:12px;color:#8A8378}";
+  roCss.textContent = ".live-ro #view [data-gdel]{display:none!important}.ro-note{margin:0 0 10px;padding:8px 10px;border-radius:8px;background:#FFF6DA;color:#3A3226;font-size:13px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ro-note a{color:inherit;font-weight:600;text-decoration:underline}.ro-line{margin:-2px 0 8px;padding:0 4px;font-size:12px;color:#8A8378}.ro-line .lnk{margin-left:8px;font-size:12px}.side-note{margin:12px 12px 16px;padding:8px 10px;border-radius:8px;background:#FFF6DA;color:#3A3226;font-size:12px;line-height:1.5}";
   document.head.appendChild(roCss);
   /* 보기 전용 화면 안내(261119 대표 "보기 중심인 화면에만 안내, 나머지는 다 사용 가능"): 시험 · 수강료 · 청구서 · 손익 분석 · 법정 서류만 제목 줄 아래 작은 회색 한 줄(토스트 아님 · 닫기 없음).
      어느 화면인지는 이 목록 한 곳이 기준 — 목록에 없는 화면(수업 · 일정 · 학생 · 클래스 · 등록 …)에는 보기만 칸이어도 안 뜬다 */
   const RO_NOTE_SCREENS = new Set(["exams", "tuition", "bill", "bookfees", "charges", "etcs", "profit", "costs", "legal", "schools", "records", "reports", "completion", "letters", "files", "alims"]);
-  const RO_NOTE_TEXT = "이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요";
+  const RO_NOTE_TEXT = "보기만 하는 화면이에요 — 고치기는 노션에서 해요";
   /* 261119 대표("라이브러리 [+] · [연필]이 막혀 있다"): [+] · [연필]이 꺼진 화면은 이유를 한 줄로 — 라이브러리 · 학교는 노션 버튼이 서버 동작(교재 단원 · 학교 코드)까지 해서 앱에서 직접 추가하지 않음 */
   const RO_NOTE_BY = { schools: "학교는 보기만 해요 — 학교 추가는 노션 학교 페이지의 [학교 검색]에서 해요(학교 코드까지 가져와요)" };
   const roNote = (show, scr) => {
@@ -81,8 +83,9 @@ window.liveModeFor = function (search, hostname, protocol) {
     if (!show) { if (n) n.remove(); return; }
     const top = v.querySelector(":scope > .top"); if (!top) return;
     const txt = RO_NOTE_BY[scr] || RO_NOTE_TEXT;
-    if (n && n.textContent !== txt) n.textContent = txt;
-    if (!n) { n = document.createElement("div"); n.className = "ro-line"; n.textContent = txt; }
+    const html = `<span>${txt}</span>${typeof NOTION !== "undefined" && NOTION[scr] ? ` <button type="button" class="lnk" data-notion="${scr}">노션 열기</button>` : ""}`;
+    if (n && n.dataset.k !== scr) { n.innerHTML = html; n.dataset.k = scr; }
+    if (!n) { n = document.createElement("div"); n.className = "ro-line"; n.dataset.k = scr; n.innerHTML = html; }
     if (top.nextElementSibling !== n) top.after(n);
   };
   const roDress = () => {
@@ -104,7 +107,7 @@ window.liveModeFor = function (search, hostname, protocol) {
   const roLock = () => {
     const t = typeof activeTab !== "undefined" ? activeTab : null, scr = liveScr(t), on = !!(t && window.LIVE && window.LIVE.loaded && RO.has(scr));
     document.body.classList.toggle("live-ro", on);
-    roNote(on && RO_NOTE_SCREENS.has(scr), scr);
+    roNote(on, scr); /* 261119 밤: 모든 보기 전용 화면에 한 줄 안내 + [노션 열기] */
     if (!on) { roBase = null; roScreen = null; return; }
     const now = snapRo();
     if (roBase === null || roScreen !== scr) { roBase = now; roScreen = scr; }
@@ -186,7 +189,7 @@ window.liveModeFor = function (search, hostname, protocol) {
   /* 허용 목록(보기 화면에서 눌러도 되는 것 = 값이 바뀌지 않는 것). 여기 없는 단추 · 고르기 · 입력은 보기 화면에서 꺼지고 막힌다.
      창: 링크 · 도움말 · 노션 · 줄 열기/이동 · 접기 · 탭 · 할 일 줄. 위 줄: 날짜 · 달 · 주 이동, 보기 탭, 찾기, 엑셀 · 인쇄, 크기, 창 고정,
      그리고 입력 칸(P1)에서 고친 것을 다루는 실행 취소 · 다시 실행 · 모두 되돌리기 · 저장. */
-  const RO_PASS0 = "a,[data-help],[data-notion],.hnot,[data-drill],[data-go],[data-gobook],[data-gochs],[data-gobill],[data-act^=go],[data-rpdo^=open],[data-rpdo^=notion],[data-pgfold],[data-entab],[data-ldn],[data-lmn],.ptabs,.ro-note,.tdr,.tdmore,.qhelp,summary,"
+  const RO_PASS0 = "a,#syncBtn,.sync-at,[data-help],[data-notion],.hnot,[data-drill],[data-go],[data-gobook],[data-gochs],[data-gobill],[data-act^=go],[data-rpdo^=open],[data-rpdo^=notion],[data-pgfold],[data-entab],[data-ldn],[data-lmn],.ptabs,.ro-note,.tdr,.tdmore,.qhelp,summary,"
     + "[data-dn],[data-mn],[data-sub],[data-cfnav],[data-mtab],[data-view],[data-wkd],[data-evsel],.foldchip,#lq,.sbx,#xlB,#prB,#undoB,#redoB,#rvAll,#saveAll,#panelT,#mkPanelT,#seaChip,#wkP,#wkN,#wkT,#lmAtt,#cbFind,#zOut,#zIn,#makeWeek,#lGen"; /* #makeWeek · #lGen(수업 메뉴 v559의 생성 단추) = 수업 생성: 노션 버튼과 같은 서버 함수(generate-classes)를 부르는 run이라 보기 화면에서도 켠다(대표 261117 "수업 생성은 앱에서도") */
   const RO_HIT = "button,input,select,textarea,label,[role],[tabindex],[contenteditable],.btn,.lnk,.hf-box";
   const roBlock = (e) => {
@@ -422,7 +425,16 @@ const LIVE_SYNC_DBS = {
 };
 function liveSyncDbs() { const s = window.liveScr ? window.liveScr(activeTab) : (activeTab && activeTab.screen) || ""; return LIVE_SYNC_DBS[s] || ["시간표(학원) DB", "등록(학원) DB"]; }
 function liveSyncTime(iso) { try { return new Date(iso).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Seoul" }); } catch (_) { return ""; } }
+/* 261119 밤 대표 결정: 사이드바 아래에 작은 안내 한 줄(기존 안내 줄 색 재사용) */
+function liveNoteMount() {
+  const side = document.getElementById("side"), on = !!(window.LIVE && window.LIVE.loaded);
+  let n = document.getElementById("sideNote");
+  if (!side || !on) { if (n) n.remove(); return; }
+  if (!n) { n = document.createElement("div"); n.id = "sideNote"; n.className = "side-note"; n.textContent = "관리 앱은 준비 중인 기능이에요 — 지금은 노션 데이터를 보기 좋게 보여 주는 화면이고, 고치기는 노션에서 해요"; }
+  if (n.parentElement !== side || side.lastElementChild !== n) side.appendChild(n);
+}
 function liveSyncMount() {
+  try { liveNoteMount(); } catch (_) {}
   const sa = document.getElementById("saveAll");
   const on = !!(window.LIVE && window.LIVE.loaded);
   let b = document.getElementById("syncBtn"), t = document.getElementById("syncAt");
