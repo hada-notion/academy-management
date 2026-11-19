@@ -293,7 +293,7 @@ function APPV_rpWait(p) { return !!(p || {})["일괄전송 선택"] && !APPV_don
 function appViewApply(raw, out) {
 	const X = appX(raw, out)
 	X.coll = (name) => out[name] || []
-	const stamp = (m, r) => Object.assign(m.row({ ...r, props: r.props || {} }, X), { _edited: r.notion_edited_at || "" })
+	const stamp = (m, r) => Object.assign(m.row({ ...r, props: r.props || {} }, X), { _edited: r.notion_edited_at || "", _url: r.url || "" })
 	const info = { hiddenEvents: 0 }
 	for (const [coll, m] of Object.entries(APPVIEW)) {
 		const all = raw[m.db] ? [...raw[m.db].values()] : []
