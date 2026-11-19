@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리 앱 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3C%2Fsvg%3E">
-<link rel="stylesheet" href="hada-tokens.css?v=714">
-<link rel="stylesheet" href="app.css?v=714">
-<link rel="stylesheet" href="pick.css?v=714">
-<link rel="stylesheet" href="field.css?v=714">
+<link rel="stylesheet" href="hada-tokens.css?v=715">
+<link rel="stylesheet" href="app.css?v=715">
+<link rel="stylesheet" href="pick.css?v=715">
+<link rel="stylesheet" href="field.css?v=715">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -20,7 +20,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=714"><script src="hada-rules.js?v=714"></script><script src="help.js?v=714"></script><script src="alim-preview.js?v=714"></script><script src="pick.js?v=714"></script><script src="field.js?v=714"></script><script src="panel.js?v=714"></script>
+<link rel="stylesheet" href="alim.css?v=715"><script src="hada-rules.js?v=715"></script><script src="help.js?v=715"></script><script src="alim-preview.js?v=715"></script><script src="pick.js?v=715"></script><script src="field.js?v=715"></script><script src="panel.js?v=715"></script>
 <script>
 "use strict";
 
@@ -333,7 +333,7 @@ function syncHead(){const sc=document.getElementById("scroll"),hd=document.query
 window.addEventListener("resize",()=>requestAnimationFrame(syncHead));
 // 화면 폭(261112 대표, 태블릿까지): 1280↑ PC / 1024~1279 메뉴 아이콘 띠·창 고정 없음 / 768~1023 메뉴 서랍·창은 아래 판
 function WMODE(){return innerWidth>=1280?"pc":innerWidth>=1024?"tab":"tabv"}var drawerOpen=false;
-const KEEP=["season","view","sf","q","week","zoom","weekend","mode","lmode","stab","filter","sel","ltodo"];
+const KEEP=["season","view","sf","q","week","zoom","weekend","wdays","wbase","mode","lmode","stab","filter","sel","ltodo"];
 function saveTabs(){try{LS.set("tabs2",{act:tabs.indexOf(activeTab),list:tabs.map(t=>{const o={};KEEP.forEach(k=>{if(t.state[k]!==undefined&&t.state[k]!==null&&(k!=="sel"||t.screen==="students"))o[k]=t.state[k]});return {screen:t.screen,state:o}})})}catch(e){}}
 let panelEnterKey=null;
 function panelSync(){const t=activeTab;if(!t)return;const st=t.state;const key=t.id+"|"+t.screen+"|"+(st.view||"");
@@ -491,7 +491,7 @@ function lessonDate(b,wk){return dPlus(wk.from,b.day)}
 /* 휴원 제외(F-035·137): 구분이 휴원이고 클래스·날짜가 있는 일정 — 그 클래스의 그 기간 수업은 없다 */
 function closedOn(b,d){return DB.events.some(e=>!e.del&&evSubOf(e)==="학원 휴원"&&e.start&&e.start<=d&&(e.end||e.start)>=d&&(e.classIds||[]).includes(b.classId))}
 /* 요일 머리 한 곳(수업 · 시간표 달력): 요일 · 날짜 · 오늘 · 시즌 밖 · 휴원 알약 */
-function dayHead(from,NDAYS,s){return `<div class="dayhead dated" style="grid-template-columns:var(--hours-w) repeat(${NDAYS},1fr)"><div></div>${DAYS.slice(0,NDAYS).map((d,i)=>{const dt=dPlus(from,i);const ids=[...new Set(DB.events.filter(e=>!e.del&&evSubOf(e)==="학원 휴원"&&e.start&&e.start<=dt&&(e.end||e.start)>=dt).flatMap(e=>e.classIds||[]))].filter(id=>cls(id)&&!(cls(id)||{}).del);const all=DB.classes.filter(c=>!c.del).length;const off=ids.length?`<span class="spill nc-gray dhoff" title="휴원 — ${esc(ids.map(id=>(cls(id)||{}).name).join(", "))}">휴원${ids.length<all?" "+ids.length:""}</span>`:"";return `<div class="${i===5?"sat":i===6?"sun":""} ${dt===TODAY?"today":""} ${s&&(dt<s.start||dt>s.end)?"outs":""} ${ids.length?"closed":""}"><span class="dw">${d}</span><span class="dt"><span class="yy">${md(dt).slice(0,5)}</span>${md(dt).slice(5)}</span>${off}</div>`}).join("")}</div>`}
+function dayHead(from,NDAYS,s,d0){d0=d0||0;return `<div class="dayhead dated" style="grid-template-columns:var(--hours-w) repeat(${NDAYS},1fr)"><div></div>${DAYS.slice(d0,d0+NDAYS).map((d,k)=>{const i=d0+k;const dt=dPlus(from,i);const ids=[...new Set(DB.events.filter(e=>!e.del&&evSubOf(e)==="학원 휴원"&&e.start&&e.start<=dt&&(e.end||e.start)>=dt).flatMap(e=>e.classIds||[]))].filter(id=>cls(id)&&!(cls(id)||{}).del);const all=DB.classes.filter(c=>!c.del).length;const off=ids.length?`<span class="spill nc-gray dhoff" title="휴원 — ${esc(ids.map(id=>(cls(id)||{}).name).join(", "))}">휴원${ids.length<all?" "+ids.length:""}</span>`:"";return `<div class="${i===5?"sat":i===6?"sun":""} ${dt===TODAY?"today":""} ${s&&(dt<s.start||dt>s.end)?"outs":""} ${ids.length?"closed":""}"><span class="dw">${d}</span><span class="dt"><span class="yy">${md(dt).slice(0,5)}</span>${md(dt).slice(5)}</span>${off}</div>`}).join("")}</div>`}
 function lessonMade(b,d){if(!inPer(effPeriod(b),d)||closedOn(b,d))return false;if(DB.made[lkey(b,d)])return true;return !!b.lessons&&seasonOf(b.seasonId).state==="확정"&&d<=MADE_TO()}
 function seedAtt(sid,d){let h=0;for(const ch of sid+d)h=(h*31+ch.charCodeAt(0))%997;if(d<TODAY)return h%11===0?"결석":"출석";if(d===TODAY)return h%3===0?null:(h%13===0?"결석":"출석");return null}
 // 수업 명단(261112 어사이드 검수): 시간표에서 저장 안 한 학생은 빼고(regs0 = 저장된 명단), 수강 시작 전·종료 뒤 수업에도 넣지 않음
@@ -770,7 +770,9 @@ const genFrom=(st,lv)=>lv==="wk"?weekOf(st).from:dPlus(weekOf({}).from,7);
 const genBtn=(st,lv)=>{if(!st||lv!=="mon")return ""/* 261119 대표: 오늘 수업 · 주간 수업엔 생성 단추 없음 — 월간 수업 [다음 주 수업 생성] + 수업 없음 블록의 [수업 추가] */;const f=genFrom(st,lv),gl=genMissing(f),n=gl.length;window._genList={f,ms:gl}/* 261120: 단추 숫자 = 확인 창 숫자 — 단추를 그릴 때 센 목록을 누를 때 그대로 씀 */;const nm=lv==="wk"?"이 주 수업 생성":"다음 주 수업 생성";return `<button class="btn tb-num act lgen ${n?"pri":""}" id="lGen" data-from="${f}" ${n?"":"disabled"} title="${n?`${nm} — ${mdS(f)}-${mdS(dPlus(f,6))} 시간표 중 아직 생성 안 한 ${n}개를 생성해요(노션 [다음주 수업 일괄 생성]과 같음)`:`${mdS(f)}-${mdS(dPlus(f,6))} 수업이 모두 생성돼 있어요`}">${IC("plussq","s")}${nm} <span class="num">${n}</span></button>`};
 const ttogHtml=(cur,st)=>{const c=cur===true?"week":cur===false?"tt":cur;const g=lvGrp(c);if(LV2[g].some(x=>x[0]===c))LV_LAST[g]=c;
   return `<span class="vseg no-print ttog lv1">${[["lesson","수업","수업 — 오늘 · 주간 · 월간"],["att","출석","출석 — 오늘 등원 학생 · 출결 현황"]].map(([k,n,tt])=>`<button data-view="today" data-lv="${LV_LAST[k]}" class="${g===k?"on":""}" title="${tt}">${n}</button>`).join("")}</span><span class="vseg subseg no-print ttog lv2">${LV2[g].map(([lv,n,tt])=>`<button data-view="today" data-lv="${lv}" class="${c===lv?"on":""}" title="${tt}">${n}</button>`).join("")}</span>${genBtn(st,c)}`};
-function weekNav(st){const wk=weekOf(st);return CALF.nav({label:`${D10(wk.from)} - ${D10(wk.to)}`,prev:"앞 주",next:"다음 주",now:"이번 주",isNow:wk.from===weekOf({}).from,ids:["wkP","wkN","wkT"]})}
+/* 261120 대표: 시간표 [주간]의 보이는 요일 수 1~7. 5·6·7 = 월요일 시작 주(5 월–금 · 6 월–토 · 7 월–일), 1~4 = 기준일(st.wbase, 기본 오늘)부터 n일(주 끝이면 그 주 마지막 n일). 블록의 요일(b.day)은 늘 그 주 기준이라 끌어 놓기 · 저장은 그대로 */
+function ttWin(st,wk){const n=st.wdays||(st.weekend?7:5);if(n>=5)return{n,d0:0};const k=st.wbase?dayN(wk.from,st.wbase):-1;const bd=k>=0&&k<=6?k:(TODAY>=wk.from&&TODAY<=wk.to?dayN(wk.from,TODAY):0);return{n,d0:Math.max(0,Math.min(bd,7-n))}}
+function weekNav(st){const wk=weekOf(st);const W=st.wdays&&st.wdays<5?ttWin(st,wk):null;const a=W?dPlus(wk.from,W.d0):wk.from,z=W?dPlus(wk.from,W.d0+W.n-1):wk.to;return CALF.nav({label:W&&W.n===1?D10(a):`${D10(a)} - ${D10(z)}`,prev:"앞 주",next:"다음 주",now:"이번 주",isNow:wk.from===weekOf({}).from,ids:["wkP","wkN","wkT"]})}
 function titleRow(st,s,lesson,navHtml,noSea/* 261119 대표: 수업 메뉴(오늘 · 주간 · 월간 · 등원 · 출결)엔 시즌 고르기 없음 */){const wk=weekOf(st);const isThis=wk.from===weekOf({}).from;const [y,m]=wk.from.split("-").map(Number);
   return `<div class="ttl"><h1 class="tth1">${pgIc("lesson")}수업</h1>${/* 261118: 메뉴 하나 — 제목은 늘 "수업", 보기는 둘째 줄 보기 탭 */HELP(lesson?"이 주 수업을 달력으로 봐요(노션 수업 메뉴). 수업을 누르면 하루 수업 페이지에서 출결 · 학습기록 · 보고서를 보고, [보강]으로 바꾸면 빈 칸을 끌어 보강을 생성해요. [⊞ n]은 이 주 시간표 중 아직 없는 수업을 생성해요.":"시즌의 주간 시간표예요(노션 시간표 메뉴). 빈 칸을 끌어 시간표를 생성하고, 블록을 눌러 클래스 · 학생을 고쳐요. [저장]해야 노션에 들어가요.")}${notionBtn(lesson?"lesson":"timetable")}${/* 261117 대표: 제목 줄 = 기간 이동(표 메뉴와 같은 자리) ··· 오른쪽 끝 범위(시즌) · 261118 오늘 보기는 날짜 글자만(navHtml) */navHtml||weekNav(st)}<span class="sp"></span>
   ${noSea?"":`<label class="sealbl" for="seaChip">시즌</label><button class="seachip ${st.seaOpen?"open":""}" id="seaChip" title="${esc(s.name)} · ${md(s.start)} - ${md(s.end)} · ${SEA_W[seaState(s)]} — 눌러서 타임라인 열기·닫기(이름·기간 편집, 새 시즌)">${IC(SEA_IC)}<b>${esc(s.name)}</b>${seaDot(s)/* 261118 대표: 시즌명 + 운영 중 초록 점만 */}${IC("down")}</button>`}</div>${!noSea&&st.seaOpen?seasonTimeline(st):""}`}
@@ -3095,6 +3097,16 @@ const CALW={
   find:st=>{const f=st.filter;return combo("cbFind",[...DB.classes.map(c=>({v:"cls:"+c.id,label:c.name,sub:"클래스 · "+((tch(c.teacherId)||{}).name||"—")})),...DB.teachers.map(c=>({v:"tch:"+c.id,label:c.name,sub:"강사"})),...DB.students.map(c=>({v:"stu:"+c.id,label:c.name,sub:"학생 · "+[c.school,c.grade].filter(Boolean).join(" ")}))],f.cls?"cls:"+f.cls:f.tch?"tch:"+f.tch:f.stu?"stu:"+f.stu:"","클래스·강사·학생","search")},
   zoom:st=>{const sn=ZOOM[st.zoom][1];return `<span class="tb-grp zoomgrp"><button class="btn icon tb-ic" id="zOut" title="보기 크기 작게 (−)" ${st.zoom<=0?"disabled":""}>${IC("zoomout")}</button><span class="zoomlbl" title="보기 크기 — 한 칸 ${sn===60?"1시간":sn+"분"}(시간표와 같이 바뀌어요)">${sn===60?"1시간":sn+"분"}</span><button class="btn icon tb-ic" id="zIn" title="보기 크기 크게 (+)" ${st.zoom>=ZOOM.length-1?"disabled":""}>${IC("zoomin")}</button></span>`},
   /* hid = 5일 보기에서 숨은 주말 블록 수(시간표 — 옛 배지 그대로, 없으면 안 보임) */
+  /* 261120 대표(시간표 [주간]): 보이는 요일 수 스테퍼 [‹ 5일 ›] — 화살표로 한 칸씩 1↔7, 가운데를 누르면 1~7 칩 팝업, 키보드 ←→. 값은 탭 상태(st.wdays)에 남아 이 컴퓨터에 기억 */
+  wdays:n=>`<span class="wdstep no-print" id="wdB" title="보이는 요일 수 — ← → 로 바꿔요"><button type="button" id="wdM" title="요일 한 칸 줄이기" ${n<=1?"disabled":""}>‹</button><button type="button" id="wdN" class="wdv" title="눌러서 1~7일 고르기">${n}일</button><button type="button" id="wdP" title="요일 한 칸 늘리기" ${n>=7?"disabled":""}>›</button></span>`,
+  bindDays:(v,t,o)=>{const st=t.state,wk=weekOf(st),n=o.win.n,d0=o.win.d0;
+    const set=k=>{k=Math.max(1,Math.min(7,k));if(k===n)return;st.wbase=k<5&&n<5?dPlus(wk.from,d0):null;st.wdays=k;st.weekend=k>5;render();setTimeout(()=>{const b=document.getElementById("wdN");if(b)b.focus({preventScroll:true})},0)};
+    const m=v.querySelector("#wdM"),p=v.querySelector("#wdP"),c=v.querySelector("#wdN"),box=v.querySelector("#wdB");if(!box)return;
+    m.onclick=()=>set(n-1);p.onclick=()=>set(n+1);
+    box.onkeydown=e=>{if(e.key==="ArrowLeft"){e.preventDefault();e.stopPropagation();set(n-1)}else if(e.key==="ArrowRight"){e.preventDefault();e.stopPropagation();set(n+1)}};
+    c.onclick=()=>{hideTip();if(ddPop){ddClose();return}const pop=document.createElement("div");pop.className="spick ddpop wdpop";pop.innerHTML=`<div class="wdchips">${[1,2,3,4,5,6,7].map(k=>`<button type="button" data-k="${k}" class="${k===n?"on":""}">${k}</button>`).join("")}</div>`;document.body.appendChild(pop);ddPop=pop;placePop(pop,c.getBoundingClientRect(),236);pop._place=()=>placePop(pop,c.getBoundingClientRect(),236);pop.querySelectorAll("[data-k]").forEach(b=>b.onmousedown=e=>{e.preventDefault();ddClose();set(+b.dataset.k)})};
+    if(n<5){const mv=dir=>{const nb=dPlus(dPlus(wk.from,d0),dir*n);st.week=dPlus(nb,-dow(nb));st.wbase=nb;render()};
+      v.querySelector("#wkP").onclick=()=>mv(-1);v.querySelector("#wkN").onclick=()=>mv(1);v.querySelector("#wkT").onclick=()=>{st.week=null;st.wbase=null;render()}}},
   wkd:(st,hid)=>`<span class="vseg wkd no-print" id="wkB" title="보는 요일"><button data-wkd="5" class="${st.weekend?"":"on"}" title="평일만 (월–금)">5</button><button data-wkd="7" class="${st.weekend?"on":""}" title="주말 포함 (월–일)${!st.weekend&&hid?` — 주말 시간표 ${hid}개 숨김`:""}">7${!st.weekend&&hid?`<b class="pbadge k">${hid}</b>`:""}</button></span>`,
   /* 261118: 인쇄(시간표와 같은 A4 가로 한 장 — prepPrint가 이 주 블록이 있는 시간만 잘라 맞춤, 창·위 줄은 숨김). id prB = 보기만 화면에서도 눌리는 단추 */
   print:()=>`<button class="btn tb-ic" id="prB" title="인쇄 — A4 가로 한 장">${IC("printer","s")}인쇄</button>`,
@@ -3105,12 +3117,12 @@ const CALW={
     let h='<div class="hours">';for(let i=TB.H0;i<TB.H1;i++)h+=`<div style="height:${pph}px"><span>${String(i).padStart(2,"0")}:00</span></div>`;h+="</div>";
     /* o.snap = 반 칸 줄(시간표 — 한 시간을 눈금으로 최대 4칸, 옛 시간표 칸 그대로). 없으면 한 시간 줄 */
     const per=o.snap?Math.min(60/o.snap,4):1;
-    for(let d=0;d<n;d++){h+=`<div class="col ${o.colCls?o.colCls(d):""}" data-day="${d}">${o.today===d?nowLine(pph,Y):""}`;for(let i=0;i<HN*per;i++)h+=per>1?`<div class="slot ${i%per!==per-1?"half":""}" style="height:${pph/per}px"></div>`:`<div class="slot" style="height:${pph}px"></div>`;
+    for(let d=o.d0||0;d<(o.d0||0)+n;d++){h+=`<div class="col ${o.colCls?o.colCls(d):""}" data-day="${d}">${o.today===d?nowLine(pph,Y):""}`;for(let i=0;i<HN*per;i++)h+=per>1?`<div class="slot ${i%per!==per-1?"half":""}" style="height:${pph/per}px"></div>`:`<div class="slot" style="height:${pph}px"></div>`;
       o.items.filter(x=>x.day===d).forEach(x=>{const L=x.full?{i:0,n:1}:lane.get(x.id)||{i:0,n:1};const pos=`left:calc(${100/L.n*L.i}% + 2px);width:calc(${100/L.n}% - 4px)`;
         h+=`<div class="blk ${x.cls||""}" ${x.ghost?"":`${o.keyAttr}="${x.id}"`} style="top:${Y(x.start)}px;height:${Math.max(18,Y(x.end)-Y(x.start)-2)}px;${pos};${x.style||""}" ${x.attr||""}>${x.html}</div>`});
       const dr=o.draft;if(dr&&dr.day===d)h+=`<div class="${dr.cls}" id="${dr.id}" data-cwdraft ${dr.attr||""} title="${dr.title||""}" style="top:${Y(dr.start)}px;height:${Math.max(18,Y(dr.end)-Y(dr.start)-2)}px;${dr.style||""}">${dr.html}</div>`;/* 261118: attr · style = 시간표 새 블록(.pending 클래스 색) */
       h+="</div>"}
-    return `<div class="body"><div class="cal">${dayHead(o.from,n,o.season)}
+    return `<div class="body"><div class="cal">${dayHead(o.from,n,o.season,o.d0)}
     <div class="scroll" id="scroll"><div class="grid" id="grid" style="height:${TB.gh}px;grid-template-columns:var(--hours-w) repeat(${n},1fr)">${h}</div></div></div>
     ${o.panel||""}</div>`},
   /* 폭 맞추기: 좁으면 w-s/w-xs, 제목 맞추기(fitTitle), 넘치면 아래 줄부터 뺌(drop = 뺄 순서) */
@@ -4645,7 +4657,7 @@ function ttCal(v,t){const st=t.state;
   /* 261118 대표: 시즌 기본 = 모든 시즌 — 그 주에 기간이 걸친 모든 시즌의 시간표(그 주와 상관없는 시즌은 안 보임), 시즌을 고르면 그 시즌만. 잠금 · 겹침 · 기간은 시간표마다 자기 시즌으로 */
   const all=ttSeaAll(st)?DB.blocks.filter(b=>{const z=seasonOf(b.seasonId);return z&&!z.del&&perOverlap({from:z.start,to:z.end||"9999-12-31"},wk)}):seasonBlocks(t);/* 그 주에 기간이 걸친 시즌의 시간표 — 시간표 자기 기간 밖이면 빗금(수업 없음)으로 보임 */
   const sOf=b=>seasonOf(b.seasonId)||s,sameSea=b=>DB.blocks.filter(x=>x.seasonId===b.seasonId);
-  if(st.weekend==null)st.weekend=all.some(b=>b.day>=5)&&innerWidth>=1024;const NDAYS=st.weekend?7:5;const [pph,snap]=ZOOM[st.zoom];
+  if(st.weekend==null)st.weekend=all.some(b=>b.day>=5)&&innerWidth>=1024;const {n:NDAYS,d0:D0}=ttWin(st,wk);st.wbase=NDAYS<5?dPlus(wk.from,D0):st.wbase;const [pph,snap]=ZOOM[st.zoom];
   const showPanel=panelOpen||!!st.pending||!!st.sel;st.tedit=false;
   /* 필터 탭 = 시즌: [전체]면 그대로(달력은 시즌 칩 시즌 · 표는 모두), 아니면 지금 시즌에 맞춤(시즌 칩 · 타임라인으로 바꿔도 표에 그대로) */
   const f=st.filter;const sel=st.sel?byId(DB.blocks,st.sel):null;const q=(st.q||"").trim();
@@ -4661,19 +4673,19 @@ function ttCal(v,t){const st=t.state;
     return {id:b.id,day:b.day,start:b.start,end:b.end,cls:cl,style:`background:${col.bg};color:${col.fg};--bar:${classBar(c)}`,
       attr:`data-hc="${esc(c.name)}|${fmt(b.start)}–${fmt(b.end)} · ${DAYS[b.day]}|${esc(((tch(c.teacherId)||{}).name||"—"))} · ${b.mode==="individual"?"골라 넣은 학생":"클래스 학생 전체"}|${esc(studs.map(x=>x.name).join(", ")||"학생 없음")}|${hasL?"수업이 생성된 시간표 — 옮기면 다음 수업부터 바뀜":b.state==="draft"?"작성 중(저장 전)":"저장됨"}" data-short="${esc(c.short||"")}"`,
       html:`${hasL&&UNLOCKED.has(b.id)?`<span class="blk-ul" title="잠금 풀림 — 끌어서 옮기거나 시간을 바꿀 수 있어요">${IC("unlock")}</span>`:hasL?`<span class="blk-lk" aria-hidden="true">${IC("lock")}</span>`/* 261118 대표: 잠긴 시간표 = 마우스를 올리면 자물쇠(일정과 같게) — 보이기만, 풀기는 오른쪽 창 자물쇠 */:""}<div class="t">${esc(c.name)}</div>${pb?`<div class="l pb">${pb}</div>`:""}<div class="l tm">${fmt(b.start)}-<wbr>${fmt(b.end)}</div><div class="l one">${esc(((tch(c.teacherId)||{}).name||"—"))}</div><div class="l one">${who}</div><div class="rz rt" title="끌어서 시작 시간"></div><div class="rz rb" title="끌어서 끝 시간"></div>`}});
-  let ti=-1;for(let d=0;d<NDAYS;d++)if(dPlus(wk.from,d)===TODAY)ti=d;
+  let ti=-1;for(let d=D0;d<D0+NDAYS;d++)if(dPlus(wk.from,d)===TODAY)ti=d;
   /* 새 블록(끌어 생성한 저장 전 자리) = CALW draft — 옛 .pending 모양 · 문구 그대로 */
   const pd=st.pending;const pc=pd&&pd.classId?cls(pd.classId):null;const pcol=pc?classColor(pc):null;const pLbl=(a,b)=>`${fmt(a)}–${fmt(b)}`;
-  const draft=pd&&pd.day<NDAYS?{day:pd.day,start:pd.start,end:pd.end,cls:"pending",id:"ttPend",attr:'data-pend="1"',title:"끌어서 옮기기 · 아래 끝을 끌어 늘리기",style:pcol?`background:${pcol.bg};color:${pcol.fg};border-color:${pcol.fg}`:"",label:pLbl,html:`${pc?esc(pc.name)+"<br>":"새 시간표<br>"}<span class="pt tm">${pLbl(pd.start,pd.end)}</span><div class="rz rt"></div><div class="rz rb"></div>`}:null;
+  const draft=pd&&pd.day>=D0&&pd.day<D0+NDAYS?{day:pd.day,start:pd.start,end:pd.end,cls:"pending",id:"ttPend",attr:'data-pend="1"',title:"끌어서 옮기기 · 아래 끝을 끌어 늘리기",style:pcol?`background:${pcol.bg};color:${pcol.fg};border-color:${pcol.fg}`:"",label:pLbl,html:`${pc?esc(pc.name)+"<br>":"새 시간표<br>"}<span class="pt tm">${pLbl(pd.start,pd.end)}</span><div class="rz rt"></div><div class="rz rb"></div>`}:null;
   const hidN=all.filter(b=>b.day>=5).length;const sid1=seaToday(),sid2=ttNextSea();const cnt=id=>DB.blocks.filter(b=>!b.del&&b.seasonId===id).length;
   v.innerHTML=`${st.banner?`<div class="banner">${IC("clock","s")}<b>시간표</b> 빈 곳을 끌어 생성하고, 클래스 없는 학생을 시간표에 끌어 놓아요.<span class="sp"></span><button class="btn icon" id="bnX" title="닫기">${IC("x")}</button></div>`:""}
   <div class="top pg-ttl ttl"><h1>${pgIc("timetable")}시간표</h1>${HELP(TT_HELP)}${notionBtn("timetable")}${weekNav(st)}<span class="sp"></span>
     </div>${st.seaOpen?seasonTimeline(st):""}
   <div class="pg-bar ttcal">${ttVtabs(st)}
-    <span class="sp"></span>${anyFilter&&(f.cls||f.tch||f.stu)?CALW.find(st)/* 다른 화면에서 들고 온 찾기(클래스 · 강사 · 학생) — 여기서 풀 수 있게 */:""}<span class="searchbox">${IC("search")}<input class="inp" id="lq" placeholder="${LISTS.blocks.ph}" value="${esc(st.q||"")}"></span>${CALW.zoom(st)}${CALW.wkd(st,hidN)}${tbSlots(st,{add:true,addTitle:"추가 — 누르면 빈 곳을 끌어 새 시간표(다시 누르면 끝)",up:false})}<span class="tb-grp"><button class="btn icon tb-ic" id="undoB" title="실행 취소 Ctrl+Z">${IC("cul")}</button><button class="btn icon tb-ic" id="redoB" title="다시 실행 Ctrl+Y">${IC("cur")}</button></span>${rvBtn()}<button class="btn pri tb-num" id="saveAll" ${dirtyCount()?"":"disabled"} title="${dirtyTitle()}">${IC("save","s")}저장 <span class="num">${dirtyCount()}</span></button><span class="pgrp no-print"><button class="btn icon pbtn tb-ic" id="panelT" title="${pTT(showPanel)}">${IC("panel")}</button></span></div>
-  ${CALW.body({from:wk.from,n:NDAYS,season:s,pph,snap,items,keyAttr:"data-id",today:ti,colCls:d=>`${st.mode==="add"?"addmode":"edit"} ${d===ti?"todaycol":""}`,draft,panel:showPanel?'<div class="panel" id="panel"></div>':""})}`;
+    <span class="sp"></span>${anyFilter&&(f.cls||f.tch||f.stu)?CALW.find(st)/* 다른 화면에서 들고 온 찾기(클래스 · 강사 · 학생) — 여기서 풀 수 있게 */:""}<span class="searchbox">${IC("search")}<input class="inp" id="lq" placeholder="${LISTS.blocks.ph}" value="${esc(st.q||"")}"></span>${CALW.zoom(st)}${CALW.wdays(NDAYS)}${tbSlots(st,{add:true,addTitle:"추가 — 누르면 빈 곳을 끌어 새 시간표(다시 누르면 끝)",up:false})}<span class="tb-grp"><button class="btn icon tb-ic" id="undoB" title="실행 취소 Ctrl+Z">${IC("cul")}</button><button class="btn icon tb-ic" id="redoB" title="다시 실행 Ctrl+Y">${IC("cur")}</button></span>${rvBtn()}<button class="btn pri tb-num" id="saveAll" ${dirtyCount()?"":"disabled"} title="${dirtyTitle()}">${IC("save","s")}저장 <span class="num">${dirtyCount()}</span></button><span class="pgrp no-print"><button class="btn icon pbtn tb-ic" id="panelT" title="${pTT(showPanel)}">${IC("panel")}</button></span></div>
+  ${CALW.body({from:wk.from,n:NDAYS,d0:D0,season:s,pph,snap,items,keyAttr:"data-id",today:ti,colCls:d=>`${st.mode==="add"?"addmode":"edit"} ${d===ti?"todaycol":""}`,draft,panel:showPanel?'<div class="panel" id="panel"></div>':""})}`;
   const grid=v.querySelector("#grid");fitBlocks(grid);
-  CALW.bindBar(v,t);bindTitle(v,t);ttBindView(v,t);
+  CALW.bindBar(v,t);CALW.bindDays(v,t,{win:{n:NDAYS,d0:D0}});bindTitle(v,t);ttBindView(v,t);
   const bn=v.querySelector("#bnX");if(bn)bn.onclick=()=>{st.banner=false;render()};
   /* 찾기 칸 = 표와 같은 st.q(글자 칠 때마다 다시 그림, 커서 그대로) */{const qi=v.querySelector("#lq");const qGo=()=>{st.q=qi.value;const pos=qi.selectionStart;render();const n=document.querySelector("#lq");if(n){n.focus();n.setSelectionRange(pos,pos)}};bindSearch(qi,qGo)}
   {const ar=v.querySelector("#addRow");if(ar){ar.classList.toggle("on",st.mode==="add");ar.title=st.mode==="add"?"추가 끝내기 — 다시 누르거나 Esc":"추가 — 누르면 빈 곳을 끌어 새 시간표(다시 누르면 끝)"}}/* 261118 대표: [편집|추가] 버튼 없이 [+]가 추가 모드 켜고 끔 */
@@ -4931,6 +4943,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del&&!z._virtual).
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="appdata.js?v=714"></script><script src="appsave.js?v=714"></script><script src="appview.js?v=714"></script><script src="livelesson.js?v=714"></script><script src="live.js?v=714"></script>
+<script src="appdata.js?v=715"></script><script src="appsave.js?v=715"></script><script src="appview.js?v=715"></script><script src="livelesson.js?v=715"></script><script src="live.js?v=715"></script>
 </body>
 </html>
