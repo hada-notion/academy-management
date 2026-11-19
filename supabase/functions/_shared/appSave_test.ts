@@ -178,3 +178,19 @@ Deno.test("일정(2.8 2단계): 세부 구분·기록(내부용) 받고 구분�
   assertThrows(() => checkAllowedProps(EV, { 구분: "📆 학원 일정" }), SaveError)
   assertEquals([eventAffectsReport(EV, { "기록(내부용)": "x" }), eventAffectsReport(EV, { "세부 구분": "상담" })], [false, true])
 })
+
+// ---------- 라이브러리(교재) 입력: 새 교재는 textbook-api, 고치기는 save + 라이브러리 복사본 맞추기 ----------
+Deno.test("라이브러리: 새 교재는 save로 만들지 않고, 고치면 라이브러리 복사본 맞추기를 부른다", async () => {
+  const LIB = "라이브러리(학원) DB"
+  const synced: string[] = []
+  const orig = saveDeps.syncLibraryBook
+  saveDeps.syncLibraryBook = (id: string) => { synced.push(id) }
+  try {
+    const calls = mockFetch({ copyDb: LIB })
+    let r = await saveChanges(checkChanges([{ op: "create", db: LIB, props: { 교재명: "예시 교재" } }]))
+    assertEquals([r[0].ok, String(r[0].error).includes("textbook-api")], [false, true])
+    assertEquals(calls.some((c) => c.method === "POST" && c.url.endsWith("/v1/pages")), false)
+    r = await saveChanges(checkChanges([{ op: "update", db: LIB, id: ID, props: { 교재명: "예시 교재 2" } }]))
+    assertEquals([r[0].ok, synced], [true, [ID]])
+  } finally { saveDeps.syncLibraryBook = orig }
+})
