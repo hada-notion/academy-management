@@ -203,6 +203,10 @@ async function notionAncestors(dataSourceId: string): Promise<Set<string>> {
 	return out
 }
 const envDataSourceIds = () => Object.entries(Deno.env.toObject()).filter(([k, v]) => k.startsWith("DATA_SOURCE_") && v).map(([, v]) => v)
+// 같은 이름 DB가 여럿 보일 때 이 학원 것 하나로 좁힌다(앱 읽기·쓰기와 같은 규칙: Secrets id → 기준 DB와 같은 최상위 페이지 → 모호하면 problems). 관리자 설정의 DB 링크도 쓴다.
+export async function narrowSameName(found: Map<string, string[]>, ancestorsOf: AncestorsOf = notionAncestors, envIds: string[] = envDataSourceIds(), anchorId: string | null = Deno.env.get("DATA_SOURCE_REGISTRATION_ID") || null): Promise<{ map: Map<string, string[]>; problems: Map<string, string> }> {
+	return await resolveSources(found as Map<AppDb, string[]>, envIds, anchorId, ancestorsOf) as unknown as { map: Map<string, string[]>; problems: Map<string, string> }
+}
 
 let sourceCache: { at: number; pick: SourcePick } | null = null
 async function sourcePick(): Promise<SourcePick> {
