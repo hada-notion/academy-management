@@ -75,13 +75,21 @@ const APPVIEW = {
 	},
 	events: {
 		db: APPV_DB.event,
-		// 숨김(나이스에서 온 일정 기본값)은 노션 운영 보기에서도 빠지므로 화면에서 뺀다(끊긴 줄 아님 — out._appv.hiddenEvents에 수만)
-		filter: (r) => !(r.props || {})["숨김"],
+		// 숨김 줄도 받아 hide로 넘긴다(화면이 달력에서 뺌 · 숨김 보기에서만 보임). 수는 out._appv.hiddenEvents
 		row: (r, X, p = r.props) => {
 			const start = X.d(p["날짜"]), end = X.dEnd(p["날짜"])
 			return {
-				id: r.id, name: X.str(p["이름"]), kind: APPV_strip(p["구분"]) || "학원 일정", guide: X.str(p["안내 구분"]),
-				start, end: end && end !== start ? end : "", who: X.id1(p["담당자"]),
+				// kind = 노션 `구분` 수식 값 그대로(261118부터 세부 구분에서 계산: 할일 · 학원 일정 · 학사 일정 — 읽기만, 앱은 쓰지 않음). 세부는 sub
+				// guide(안내 구분) 연결 없앰: 원본 일정 전부에 세부 구분이 채워짐(노션완성 261118, 242행). 화면 옛 코드가 읽어도 깨지지 않게 빈 값
+				id: r.id, name: X.str(p["이름"]), kind: X.str(p["구분"]) || "학원 일정", guide: "", _kind0: X.str(p["구분"]), // _kind0 = 노션에 저장된 구분(학사 일정 자동 잠금 판정 — 화면과 같은 기준)
+				// 세부 구분 · 기록(내부용)(2.8, 노션완성이 칸 넣는 중 — 없으면 "")
+				sub: X.str(p["세부 구분"]), rec: X.str(p["기록(내부용)"]),
+				hide: !!p["숨김"], neisKey: X.str(p["NEIS 동기화키"]),
+				// 공개 상태(노션 수식 글, 담당이 만들 예정) — 칸이 없으면 "" → 화면이 같은 규칙으로 계산
+				pubState: X.str(p["공개 상태"]),
+				schools: X.ids(p["학교"]), grades: X.ids(p["학년"]).map((id) => X.title("학년(학원) DB", id, "이름")).filter(Boolean), students: X.ids(p["학생"]),
+				// 날짜 시작~끝 = 노션 값 그대로(끝이 없으면 "")
+				start, end, who: X.id1(p["담당자"]),
 				stat: APPV_EV_STAT[p["진행상태"]] || X.str(p["진행상태"]) || "예정", pub: !!p["학부모 공개"], memo: X.str(p["일정 안내 메모"]),
 				classIds: X.ids(p["클래스"]), school: X.title("학교(학원) DB", X.id1(p["학교"]), "이름"), state: "saved",
 				_time: X.dt(p["날짜"]).length > 10 ? X.dt(p["날짜"]).slice(11) : "", _students: X.ids(p["학생"]), _neis: !!X.str(p["NEIS 동기화키"]),
@@ -93,8 +101,53 @@ const APPVIEW = {
 		db: APPV_DB.pay,
 		// 결제 DB에서 수강료에 이어지지 않은 줄만(지출 + 수강료 · 교재비가 아닌 매출). 수강료에 이어진 결제는 tuition의 결제 칸으로 간다
 		filter: (r, X) => !X.ids((r.props || {})["수강료"]).length && !(r.props || {})["수강료#more"],
-		row: (r, X, p = r.props) => ({ id: r.id, name: X.str(p["결제"]), kind: X.str(p["구분"]) || "지출", date: X.d(p["결제일"]), how: X.str(p["결제 수단"]), amount: APPV_n(p["결제 금액"]) || 0, memo: X.str(p["비고"]), state: "saved", _profit: APPV_n(p["손익"]) }),
+		row: (r, X, p = r.props) => ({ id: r.id, name: X.str(p["결제"]), kind: X.str(p["구분"]) || "지출", date: X.d(p["결제일"]), how: X.str(p["결제 수단"]), amount: APPV_n(p["결제 금액"]) || 0, memo: X.str(p["비고"]), etcAmt: APPV_n(p["기타경비"]) || 0, state: "saved", _profit: APPV_n(p["손익"]) }),
 		sort: (a, b) => String(b.date).localeCompare(String(a.date)),
+	},
+	// 결제 DB 전부(수강료에 이은 줄 포함) — 수강료 ⑥ [결제 기록]·손익 [결제 내역]이 노션처럼 이 줄을 다 본다(261118 재무 대조 6·7). 읽기만
+	// etcAmt = 결제 DB `기타경비`(결제 금액 중 기타경비 수납액), tuitionIds = 이은 수강료(비면 수강료와 무관한 결제)
+	pays: {
+		db: APPV_DB.pay,
+		row: (r, X, p = r.props) => {
+			const tIds = X.ids(p["수강료"]), t = X.raw(APPV_DB.tuition, tIds[0]), E = t ? APPV_en(X, X.id1((t.props || {})["등록"])) : null
+			return {
+				id: r.id, name: X.str(p["결제"]), kind: X.str(p["구분"]) || "지출", date: X.d(p["결제일"]), month: APPV_month(p["결제일"]), how: X.str(p["결제 수단"]),
+				amount: APPV_n(p["결제 금액"]) || 0, etcAmt: APPV_n(p["기타경비"]) || 0, memo: X.str(p["비고"]), tuitionIds: tIds, studentId: E ? E.studentId : "", classId: E ? E.classId : "",
+				state: "saved", _tuMore: !!p["수강료#more"], _profit: APPV_n(p["손익"]),
+			}
+		},
+		sort: (a, b) => String(b.date).localeCompare(String(a.date)),
+	},
+	// 청구 결제 DB 줄 목록 — 청구서 [결제] 탭(노션: 이름 · 결제상태 · 결제일 · 교재 · 결제 금액 · 결제 방법). 읽기만, 결제 넣기는 노션
+	billPays: {
+		db: APPV_DB.billPay,
+		row: (r, X, p = r.props) => {
+			const lineIds = X.ids(p["교재배부"]), lines = lineIds.map((id) => X.raw(APPV_DB.line, id)).filter(Boolean)
+			const billId = X.id1(p["교재비 안내"]) || (lines[0] ? X.id1((lines[0].props || {})["교재비"]) : "")
+			const bill = X.raw(APPV_DB.bill, billId), E = APPV_en(X, X.id1(((bill || lines[0] || {}).props || {})["등록"]))
+			// 교재: 롤업·글이면 그 값, 관계(id)면 이은 청구 항목 이름으로
+			const b = p["교재"], bookTxt = typeof b === "string" ? b : Array.isArray(b) && b.length && !X.raw(APPV_DB.lib, String(b[0])) && !X.raw(APPV_DB.line, String(b[0])) ? X.str(b) : ""
+			return {
+				id: r.id, name: X.str(p["이름"]), st: X.str(p["결제상태"]), date: X.d(p["결제일"]), month: APPV_month(p["결제일"]),
+				book: bookTxt || lines.map((l) => APPV_line(X, l).name).filter(Boolean).join(", "), amount: APPV_n(p["결제 금액"]) || 0, how: X.str(p["결제 방법"]),
+				lineIds, billId, studentId: E.studentId, classId: E.classId, state: "saved", _err: X.str(p["마지막 오류"]),
+			}
+		},
+		sort: (a, b) => String(b.date).localeCompare(String(a.date)),
+	},
+	// 반 수강료 발송함(알림톡 발송함 DB, 구분 "수강료", 반 × 달) — 수강료 ② [수강료 발송함] 보기. 읽기만, [일괄 전송]은 노션
+	tuBoxes: {
+		db: APPV_DB.box,
+		filter: (r) => (r.props || {})["구분"] === "수강료",
+		row: (r, X, p = r.props) => {
+			const tIds = X.ids(p["수강료"]), n = APPV_n(p["수강료총건수(내부)"]) ?? tIds.length, wait = APPV_n(p["수강료대기건수(내부)"]) ?? 0
+			return {
+				id: r.id, name: X.str(p["이름"]), classId: X.id1(p["클래스"]), month: APPV_month(p["기간"]), from: X.d(p["기간"]), to: X.dEnd(p["기간"]) || X.d(p["기간"]),
+				n, wait, progress: X.str(p["진행 상황"]) || (n ? `${Math.max(0, n - wait)}/${n}` : ""), st: X.str(p["상태"]), tuitionIds: tIds,
+				state: "saved", _err: X.str(p["마지막 오류"]), _more: !!p["수강료#more"],
+			}
+		},
+		sort: (a, b) => String(b.month).localeCompare(String(a.month)),
 	},
 	alims: {
 		db: APPV_DB.alim,
@@ -139,7 +192,8 @@ const APPVIEW = {
 				qty, adj, why: X.str(p["청구금액 조정 사유"]), etcs, base, full,
 				sent: APPV_done(p["안내문 전송 상태"]) || APPV_true(p["같은 달 보냄"]),
 				pay: /과오납/.test(X.str(p["결제 관리"])) ? "과오납" : /완료/.test(X.str(p["결제 관리"])) ? "완료" : /미납/.test(X.str(p["결제 관리"])) ? "미납" : got <= 0 || got < total ? "미납" : got === total ? "완료" : "과오납", paidOn: last ? X.d(last.props["결제일"]) : "", how: last ? X.str(last.props["결제 수단"]) : "", got,
-				state: "saved", _enrollId: E.enrollId, _amt: F, _etc: En, _calc: F == null ? "app" : "notion", _diff: F != null && fee !== F, _etcDiff: etcDiff, _memo: X.str(p["메모(내부용)"]),
+				// _noTotal = 클래스 `월간 수업 총량`이 빔 → 노션 [월 수강료 생성]은 그 반을 ⚠️로 멈춤(앱도 계산으로 채우지 않음 — 재무 대조 C)
+				state: "saved", _noTotal: !(clsQty > 0), _enrollId: E.enrollId, _amt: F, _etc: En, _calc: F == null ? "app" : "notion", _diff: F != null && fee !== F, _etcDiff: etcDiff, _memo: X.str(p["메모(내부용)"]),
 			}
 		},
 	},
@@ -194,7 +248,7 @@ const APPVIEW = {
 				subjectIds: X.ids(p["과목"]), date: X.d(p["시험일"]),
 				// 시험 범위 = 단원목록 관계(단원목록 DB는 복사본에 없음) → 개수만
 				units: units || p["단원목록#more"] ? `단원 ${p["단원목록#more"] ? "25개 넘음" : units + "개"}` : "",
-				total: totals.length ? Math.max(...totals) : "", state: "saved", _examId: X.id1(p["시험"]), _title: X.str(p["이름"]), _status: X.str(p["응시학생 현황"]),
+				total: totals.length ? Math.max(...totals) : "", state: "saved", periodId: X.id1(p["시험일정"]), _examId: X.id1(p["시험"]), _title: X.str(p["이름"]), _status: X.str(p["응시학생 현황"]),
 			}
 		},
 		sort: (a, b) => String(a.date).localeCompare(String(b.date)),
@@ -244,7 +298,7 @@ function appViewApply(raw, out) {
 	for (const [coll, m] of Object.entries(APPVIEW)) {
 		const all = raw[m.db] ? [...raw[m.db].values()] : []
 		const rows = m.filter ? all.filter((r) => m.filter(r, X)) : all
-		if (coll === "events") info.hiddenEvents = all.length - rows.length
+		if (coll === "events") info.hiddenEvents = all.filter((r) => (r.props || {})["숨김"]).length
 		const list = rows.map((r) => stamp(m, r))
 		if (m.sort) list.sort(m.sort)
 		out[coll] = list
@@ -254,6 +308,17 @@ function appViewApply(raw, out) {
 		const p = r.props || {}, E = APPV_en(X, X.id1(p["등록"])), err = /오류/.test(X.str(p["보고서 전송 상태"]))
 		return { id: r.id, rpId: X.id1(p["알림톡 발송함"]), enId: E.enrollId, studentId: E.studentId, note: X.str(p["선생님 한마디"]), st: APPV_rpWait(p) ? "wait" : "ok", sentAt: "", state: "saved", _err: err ? X.str(p["마지막 오류"]) || "오류" : "", _log: X.str(p["전송 내역"]), _edited: r.notion_edited_at || "" }
 	})
+	// 손익 = 결제 DB만(노션 손익 분석과 같은 원천 — 청구 결제 · 청구 항목은 안 더함). 달마다 매출 · 지출 · 손익 · 그중 기타경비 · 수강료에 이은 매출
+	const pm = {}
+	;(out.pays || []).forEach((x) => {
+		if (!x.month) return
+		const z = pm[x.month] = pm[x.month] || { month: x.month, sales: 0, cost: 0, etc: 0, tuition: 0, n: 0 }
+		z.n++
+		if (x.kind === "매출") { z.sales += x.amount; z.etc += x.etcAmt; if (x.tuitionIds.length || x._tuMore) z.tuition += x.amount } else if (x.kind === "지출") z.cost += x.amount
+	})
+	info.profitByMonth = Object.values(pm).map((z) => ({ ...z, profit: z.sales - z.cost })).sort((a, b) => b.month.localeCompare(a.month))
+	// 월간 수업 총량이 빈 클래스(노션 [월 수강료 생성]이 ⚠️로 멈추는 반) — 화면 할 일 · 생성 안내가 읽음
+	info.noTotalClasses = (out.classes || []).filter((c) => !c.del && !(+c.qty > 0)).map((c) => c.id)
 	appViewFixLinks(out)
 	out._appv = info
 	return out
@@ -269,6 +334,8 @@ function appViewFixLinks(out) {
 	keep("charges", (c) => sIds.has(c.studentId), "등록 · 학생 연결 없음")
 	keep("reports", (x) => cIds.has(x.classId), "클래스 연결 없음")
 	keep("letters", (x) => cIds.has(x.classId), "클래스 연결 없음")
+	keep("tuBoxes", (x) => cIds.has(x.classId), "클래스 연결 없음")
+	;(out.pays || []).concat(out.billPays || []).forEach((x) => { if (!sIds.has(x.studentId)) x.studentId = ""; if (!cIds.has(x.classId)) x.classId = "" })
 	const exIds = has("exams")
 	keep("grades", (g) => sIds.has(g.sid) && exIds.has(g.examId), "학생 또는 시험정보 연결 없음")
 	const rpIds = has("reports")

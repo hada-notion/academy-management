@@ -6,6 +6,12 @@ const LIVE_L = {}; /* 수업 열쇠 → { id(수업 id), sum(출석현황 글자
 const LIVE_LD = {}; /* 날짜 → "loading" | "ok" | "fail" */
 const LIVE_LS = {}; /* 수업 열쇠 → { state, roster[학생 id], att{학생 id: 출석 id} } — 창을 연 수업 */
 const LIVE_LX = {}; /* 날짜 → 시간표와 맞지 않아 그리지 못한 수업 수(보강 수업 포함) */
+/* 보강(261119 담당 (가) — 서버 PR #474 v2.8 모델: 결석 → [보강 배정] → 기존 결석). 읽기는 칸 P3b(보강 화면), 쓰기는 칸 P3m(window.LIVE_MKW)
+   LIVE_MW = 보강 대기(class-room makeup-waiting): list[{k, sid, classId, d}] · byK[k] = { absId(결석 출석 id), sessionId(고른 보강 수업), decision }
+   LIVE_MKD = 날짜 → 그날 보강 수업 · LIVE_MKS = 보강 수업 id → { state, sids(서버 명단), attIds{학생: 보강 출석 id} } */
+const LIVE_MW = { state: "", byK: {}, list: [] };
+const LIVE_MKD = {};
+const LIVE_MKS = {};
 const LIVE_ATT = { "🟢 출석": "출석", "🔴 결석": "결석", "🔵 보강": "보강" };
 
 /* 서울 날짜 · 분(자정부터). 노션 원문 시각(…+09:00)이든 UTC든 서울 기준으로 바꾼다 */
@@ -34,11 +40,17 @@ function liveLessonInstall() {
   lessonMade = (b, d) => !!LIVE_L[lkey(b, d)];
   lessonRoster = (b, d) => { const s = LIVE_LS[lkey(b, d)]; return s && s.state === "ok" ? s.roster.map((id) => stu(id)).filter(Boolean) : roster0(b, d); };
   attSum = (b, d) => { const k = lkey(b, d), s = LIVE_LS[k], L = LIVE_L[k]; if (s && s.state === "ok") return sum0(b, d); return (L && liveSum(L.sum, L.n)) || sum0(b, d); };
+  /* 보강 대기(261119 (가)): 실제 자료에서는 열어 본 수업의 결석이 아니라 서버 보강 대기(노션 "보강 대기" 보기와 같은 결석)를 쓴다 */
+  /* 예시 모드의 "오래된 결석은 보강 끝" 꾸밈은 실제 자료에서 끈다(보강 여부를 잘못 비워 저장하지 않게) */
+  if (typeof seedMkw === "function") seedMkw = () => {};
+  if (typeof absAll === "function") { const abs0 = absAll; absAll = (from) => (LIVE_MW.state === "ok" ? LIVE_MW.list.map((a) => ({ ...a })) : LIVE_MW.state ? [] : abs0(from)); }
 }
 /* 받은 것을 모두 버린다(새로 받기 · 읽기 실패 · 로그인 전) */
 function liveLessonReset() {
-  [LIVE_L, LIVE_LD, LIVE_LS, LIVE_LX].forEach((o) => Object.keys(o).forEach((k) => delete o[k]));
+  [LIVE_L, LIVE_LD, LIVE_LS, LIVE_LX, LIVE_LN, LIVE_MKD, LIVE_MKS].forEach((o) => Object.keys(o).forEach((k) => delete o[k]));
   ["att", "made", "lov", "mkw", "lmsg", "lrep"].forEach((k) => { DB[k] = {}; });
+  LIVE_MW.state = ""; LIVE_MW.byK = {}; LIVE_MW.list = [];
+  if (Array.isArray(DB.mk)) DB.mk = DB.mk.filter((m) => !m._live);
 }
 async function liveLessonApi(body) {
   const c = window.LIVE;
@@ -60,7 +72,9 @@ function liveLessonDayApply(date, res) {
   const list = (res.sessions || []).map((s) => ({ s, at: liveSeoul(s.start), end: liveSeoul(s.end), cid: (s.classIds || [])[0] }));
   const put = (x, b) => { const k = lkey(b, x.at.d); used.add(k); const len = b.end > b.start ? b.end - b.start : 60;
     /* 시각은 시간표가 아니라 노션 수업의 시각 그대로(시간표를 고친 뒤에도 이미 만든 수업은 제 시각) */
-    LIVE_L[k] = { id: x.s.id, sum: x.s.attendanceSummary || "", n: x.s.students || 0, start: x.at.m, end: x.end && x.end.m != null ? x.end.m : x.at.m + len }; x.done = true; };
+    LIVE_L[k] = { id: x.s.id, sum: x.s.attendanceSummary || "", n: x.s.students || 0, start: x.at.m, end: x.end && x.end.m != null ? x.end.m : x.at.m + len,
+      /* 하루 수업 페이지 · [오늘] 보기(261118, 서버 PR #461): 강사 · 학습기록 수 · 수업 구분(정규/보강/휴강, 비면 "") · 학습 내용 · 처리 상태 · 마지막 오류 · 시간표 id */
+      teacherIds: x.s.teacherIds || [], records: x.s.records || 0, kind: x.s.kind || "", summary: x.s.summary || "", busy: x.s.busy || "", error: x.s.error || "", blockId: x.s.blockId || null }; x.done = true; };
   /* 525판(원본 검수 523 — 같은 반 · 같은 요일에 다른 시즌 시간표가 있으면 수업이 그쪽에 이어져 진짜 시간표가 "수업 없음"이 됐음):
      ⓪ 시간표의 [수업] 관계에 그 수업 id가 있으면 그 시간표(노션이 말하는 그대로) ① 시작 시각이 같은 시간표 ② 남은 시간표에 차례로.
      ① ②의 후보는 그 날짜가 적용 기간(시즌 기간 · 적용 기간) 안인 시간표만 — 다른 시즌 · 아직 시작 전인 시간표에는 잇지 않는다. */
@@ -72,6 +86,8 @@ function liveLessonDayApply(date, res) {
   list.forEach((x) => { if (x.skip || x.done) return; const b = cands(x)[0]; if (b) put(x, b); });
   list.forEach((x) => { if (x.skip || !x.done) miss++; });
   LIVE_LX[date] = miss;
+  /* 보강 수업(261119 (가)): 그날 보강 수업을 따로 모아 둔다 — 명단은 liveMakeupSessions가 받는다 */
+  LIVE_MKD[date] = list.filter((x) => x.s.makeup && x.at && x.at.m != null).map((x) => ({ id: x.s.id, d: x.at.d, start: x.at.m, end: x.end && x.end.m != null ? x.end.m : x.at.m + 60, teacherIds: x.s.teacherIds || [] }));
 }
 /* [수업 생성] 대상에서 뺄 시간표(원본 검수 H5 · H6, 담당 261117): 서버는 시간표마다 "마지막 수업 다음 차례"를 한 번 만든다. 그래서 보는 주의 빈 칸이
    서버가 만들 그 차례일 때만 대상이다 — 아니면 눌러도 그 칸은 안 채워지고 뒤 주 수업만 늘어난다. 빼는 것:
@@ -105,69 +121,316 @@ function liveLessonDays(dates) {
     try { lastSnap = snapshot(); } catch (_) {}
     if (need.some((d) => LIVE_LD[d] === "fail")) toast("수업을 불러오지 못한 날이 있어요 — 새로 고침 하면 다시 받아요");
     render();
+    liveMakeupSessions(need);
   });
 }
 /* 수업 창을 열 때 그 수업의 명단 · 출결 · 한마디 · 학습기록을 받는다 */
-function liveLessonOpen(k) {
+/* lite = 여러 수업을 미리 받을 때(주간 · 출결 현황 보기): 명단 · 출결 · 학습기록만 — 학습활동 · 루틴은 창을 열 때 */
+function liveLessonOpen(k, lite) {
   const L = LIVE_L[k];
   if (!L || LIVE_LS[k] || !(window.LIVE && window.LIVE.loaded)) return;
-  LIVE_LS[k] = { state: "loading", roster: [], att: {} };
+  /* times = 학생 id → { in, out }(등 · 하원 "HH:MM", 없으면 "" — 화면이 고치면 저장 때 바뀐 것만) · report = 학생 id → 일일 보고서 전송 상태(비면 "")
+     recIds = 노션에 있는 학습기록 id · info = 수업 머리 값(서버 session.session 그대로: kind · summary · busy · error · blockId · notice(수업 안내 메모 — 화면이 고치면 저장 때) · noticeStatus · noticePreview …)
+     routines = 서버 routines 결과({ available, status, checks[] }) — 받기 전 null */
+  LIVE_LS[k] = { state: "loading", roster: [], att: {}, times: {}, report: {}, recIds: new Set(), info: null, routines: null };
   liveLessonApi({ action: "session", sessionId: L.id }).then((res) => {
     if (!LIVE_LS[k] || LIVE_L[k] !== L) return;
     const [bid, d] = k.split("|"), b = byId(DB.blocks, bid), S = LIVE_LS[k];
+    const hm = (iso) => { const t = liveSeoul(iso); return t && t.m != null ? String(Math.floor(t.m / 60)).padStart(2, "0") + ":" + String(t.m % 60).padStart(2, "0") : ""; };
+    S.info = res.session || null; S._notice0 = S.info ? S.info.notice || "" : "";
     DB.anotes = DB.anotes.filter((n) => n.key !== k);
     Object.keys(DB.att).forEach((a) => { if (a.startsWith(k + "|")) delete DB.att[a]; });
     (res.students || []).forEach((x) => {
       const e = enr(x.registrationId); if (!e || !stu(e.studentId)) return;
       const sid = e.studentId; S.roster.push(sid); S.att[sid] = x.attendanceId;
+      S.times[sid] = { in: hm(x.arrivedAt), out: hm(x.leftAt) }; S.report[sid] = x.reportStatus || "";
       DB.att[k + "|" + sid] = LIVE_ATT[x.status] || null;
       if (x.comment || x.memo) DB.anotes.push({ id: x.attendanceId, key: k, sid, classId: b ? b.classId : "", d, say: x.comment || "", memo: x.memo || "", state: "saved" });
     });
     DB.recs = DB.recs.filter((r) => r.key !== k);
-    (res.records || []).forEach((r) => DB.recs.push({ id: r.id, key: k, classId: b ? b.classId : "", d, kind: r.kind || "학습", bookId: r.bookId || "", range: r.range || "", content: r.content || "", acts: {}, state: "saved", _title: r.title || "", _hw: r.homework || null, _score: r.score || null }));
+    (res.records || []).forEach((r) => { S.recIds.add(r.id); DB.recs.push({ id: r.id, key: k, classId: b ? b.classId : "", d, kind: r.kind || "학습", bookId: r.bookId || "", range: r.range || "", content: r.content || "", acts: {}, state: "saved", _title: r.title || "", _hw: r.homework || null, _score: r.score || null, _act: {} }); });
+    S._times0 = JSON.stringify(S.times);
+    if (!lite) { liveLessonActs(k); /* 과제 · 평가 기록의 학생별 결과(학습활동)는 따로 받는다 */
+      liveLessonRoutines(k); }
     S.state = "ok";
     if (window.liveRoReset) window.liveRoReset();
     try { lastSnap = snapshot(); } catch (_) {}
     render();
   }, (e) => { delete LIVE_LS[k]; toast("수업을 불러오지 못했어요 — " + e.message); });
 }
-/* 출결 쓰기(P3 걸음 2, 칸 P3w): 이 수업에서 바뀐 학생의 출석 상태만 수업 관리 서버(save-attendance)로 노션에 쓴다.
-   한마디 · 메모 · 학습기록 · 휴강 · 옮기기는 보내지 않는다(화면에서도 잠겨 있다). 저장 뒤 그 수업과 그날 수업을 다시 받는다. */
+/* 과제 · 평가 기록의 학생별 결과(학습활동, 서버 activities)를 받아 rec.acts에 넣는다 — 화면 모양 acts[학생 id] = { hw: 완료|일부 완료|미제출, ok: 맞힌 문항 }.
+   rec._act[학생 id] = 학습활동 id, rec._actBase = 받은 그대로(저장 때 바뀐 것만 보내려고) */
+const LIVE_HW_IN = { 제출: "완료", "일부 제출": "일부 완료", 미제출: "미제출" }, LIVE_HW_OUT = { 완료: "제출", "일부 완료": "일부 제출", 미제출: "미제출" };
+function liveLessonActs(k) {
+  const recs = (DB.recs || []).filter((r) => r.key === k && (r.kind === "과제" || r.kind === "평가") && LIVE_LS[k] && LIVE_LS[k].recIds.has(r.id));
+  recs.forEach((r) => liveLessonApi({ action: "activities", recordId: r.id }).then((res) => {
+    const acts = {}, ids = {};
+    (res.activities || []).forEach((a) => {
+      const e = enr(a.registrationId); if (!e) return;
+      const v = {}; if (r.kind === "과제" && LIVE_HW_IN[a.status]) v.hw = LIVE_HW_IN[a.status];
+      if (r.kind === "평가" && a.correct != null) v.ok = a.correct;
+      if (a.memo) v.memo = a.memo;
+      acts[e.studentId] = v; ids[e.studentId] = a.id;
+      if (r.kind === "평가" && a.total) r.total = a.total;
+    });
+    if (r.state === "draft") return; /* 받는 사이 사람이 고쳤으면 덮지 않는다 */
+    r.acts = acts; r._act = ids; r._actBase = JSON.stringify(acts);
+    if (window.liveRoReset) window.liveRoReset();
+    try { lastSnap = snapshot(); } catch (_) {}
+    render();
+  }, () => {}));
+}
+/* 루틴 체크(서버 routines): S.routines = { available, status, checks:[{ checkId, routineId, routineName, order, attendanceId, registrationId, done }] }.
+   check마다 sid(학생 id)를 붙인다(registrationId → 등록 → 학생) */
+function liveLessonRoutines(k) {
+  const L = LIVE_L[k], S = LIVE_LS[k];
+  if (!L || !S) return Promise.resolve();
+  return liveLessonApi({ action: "routines", sessionId: L.id }).then((res) => {
+    if (LIVE_LS[k] !== S) return;
+    (res.checks || []).forEach((c) => { const e = enr(c.registrationId); c.sid = e ? e.studentId : ""; });
+    /* 화면이 check.done을 바꾸면 [저장] 때 바뀐 것만 save-routines로(칸 P3b) — 받은 값은 S._rt0 */
+    S.routines = res; S._rt0 = Object.fromEntries((res.checks || []).map((c) => [c.checkId, !!c.done])); render();
+  }, () => { if (LIVE_LS[k] === S) S.routines = { available: false, status: "", checks: [], failed: true }; });
+}
+/* [루틴 체크 생성](칸 P3b — window.LIVE_RECW): 서버가 큐로 만든다 → 5 · 10 · 20 · 40초 뒤 다시 읽어 status가 ✅/⚠️면 멈춘다 */
+async function liveLessonRoutineCreate(k) {
+  const L = LIVE_L[k];
+  if (!(window.LIVE && window.LIVE.loaded && window.LIVE_RECW)) { toast("이 화면은 보기만 해요 — 루틴 체크는 노션 수업 [루틴 체크 생성]으로 만들어요"); return false; }
+  if (!L) return false;
+  try {
+    const res = await liveLessonApi({ action: "create-routine-checks", sessionId: L.id });
+    toast(res.queued ? "루틴 체크를 만드는 중이에요 — 잠시 뒤 채워져요" : "이미 만드는 중이에요 — 잠시 뒤 채워져요");
+    for (const s of [5, 10, 20, 40]) {
+      await new Promise((ok) => setTimeout(ok, s * 1000));
+      if (!LIVE_LS[k]) return true;
+      await liveLessonRoutines(k);
+      const st = String((LIVE_LS[k] && LIVE_LS[k].routines && LIVE_LS[k].routines.status) || "");
+      if (/✅|⚠️/.test(st)) { if (/⚠️/.test(st)) toast("루틴 체크를 만들지 못했어요 — 노션 수업의 마지막 오류를 봐요"); return /✅/.test(st); }
+    }
+    toast("루틴 체크가 아직 다 안 만들어졌어요 — 잠시 뒤 다시 열어요");
+    return true;
+  } catch (e) { toast("루틴 체크를 만들지 못했어요 — " + e.message); return false; }
+}
+/* 같은 반 앞뒤 수업(머리 ‹ ›, 서버 class-sessions) → LIVE_LN[수업 열쇠] = [{ id, date, time, total, present, absent, missing }] */
+const LIVE_LN = {};
+function liveLessonNeighbors(k) {
+  const L = LIVE_L[k];
+  if (!L || LIVE_LN[k] || !(window.LIVE && window.LIVE.loaded)) return;
+  LIVE_LN[k] = "loading";
+  liveLessonApi({ action: "class-sessions", sessionId: L.id, around: k.split("|")[1] }).then((res) => { LIVE_LN[k] = res.sessions || []; render(); }, () => { delete LIVE_LN[k]; });
+}
+
+/* 수업 저장(하루 수업 페이지 [저장]) — 수업 관리 서버(class-room)로 노션에 쓴다. 저장 뒤 그 수업과 그날 수업을 다시 받는다.
+   ① 출결 상태 · 한마디 · 메모(칸 P3w — window.LIVE_ATTW): save-attendance 한 줄에 함께
+   ② 학습기록(칸 P3b — window.LIVE_RECW, 화면이 켬): 있는 기록 = update-record(범위 · 내용 · 교재), 새 기록 = create-records,
+      학생별 결과 = save-activities(과제 상태 · 맞힌 문항 · 전체 문항 · 메모). 새 기록의 학생별 결과는 학습활동이 만들어진 뒤 다음 저장에.
+   휴강 · 이 주만 옮기기 · 보강은 보내지 않는다(화면에서도 잠겨 있다). */
 const LIVE_ATT_OUT = { 출석: "🟢 출석", 결석: "🔴 결석", 보강: "🔵 보강" };
-async function liveLessonSave(k) {
-  if (!(window.LIVE && window.LIVE.loaded && window.LIVE_ATTW)) { toast("이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요"); return false; }
-  const S = LIVE_LS[k], L = LIVE_L[k], c = lChanges(k);
-  if (!L || !S || S.state !== "ok") { toast("수업을 다 받은 뒤에 저장해요"); return false; }
-  if (!c || !c.att.length) { toast("저장할 출결이 없어요"); return false; }
-  const items = [];
-  for (const sid of c.att) {
-    const aid = S.att[sid];
-    if (!aid) { toast("출석 줄을 찾지 못한 학생이 있어 저장하지 않았어요 — 새로 고침 한 뒤 다시 해요"); return false; }
-    items.push({ attendanceId: aid, status: LIVE_ATT_OUT[DB.att[k + "|" + sid]] || "" });
+function liveLessonPlan(k) {
+  const S = LIVE_LS[k], c = lChanges(k) || { att: [] }, by = {}, miss = [], ATTW = !!window.LIVE_ATTW, RECW = !!window.LIVE_RECW;
+  const row = (sid) => { const aid = S.att[sid]; if (!aid) { miss.push(sid); return null; } return (by[aid] = by[aid] || { attendanceId: aid }); };
+  if (ATTW) {
+    c.att.forEach((sid) => { const r = row(sid); if (r) r.status = LIVE_ATT_OUT[DB.att[k + "|" + sid]] || ""; });
+    (DB.anotes || []).filter((n) => n.key === k && n.state === "draft").forEach((n) => { const r = row(n.sid); if (r) { r.comment = n.say || ""; r.memo = n.memo || ""; } });
+    /* 등 · 하원 시각: 화면이 S.times를 고치면 바뀐 것만 — "HH:MM" → 그 수업 날짜의 서울 시각(ISO), ""는 비우기 */
+    const t0 = S._times0 ? JSON.parse(S._times0) : {}, day = k.split("|")[1];
+    const iso = (hm) => (/^\d{1,2}:\d{2}$/.test(hm || "") ? `${day}T${hm.padStart(5, "0")}:00+09:00` : "");
+    Object.entries(S.times || {}).forEach(([sid, t]) => {
+      const o = t0[sid] || { in: "", out: "" };
+      if ((t.in || "") !== (o.in || "")) { const r = row(sid); if (r) r.arrivedAt = iso(t.in); }
+      if ((t.out || "") !== (o.out || "")) { const r = row(sid); if (r) r.leftAt = iso(t.out); }
+    });
   }
+  /* 수업 안내 메모(S.info.notice, 칸 P3w): 바뀌었으면 update-session — 보내기(✉)는 없음 */
+  const notice = ATTW && S.info && (S.info.notice || "") !== (S._notice0 || "") ? String(S.info.notice || "") : null;
+  const recUpd = [], recNew = [], acts = [];
+  if (RECW) (DB.recs || []).filter((r) => r.key === k && r.state === "draft" && !r.del).forEach((r) => {
+    if (!S.recIds.has(r.id)) { recNew.push({ rec: r, body: { sessionId: LIVE_L[k].id, kind: r.kind, bookIds: r.bookId ? [r.bookId] : [], range: r.range || "", content: r.content || "" } }); return; }
+    recUpd.push({ recordId: r.id, range: r.range || "", content: r.content || "", bookId: r.bookId || null });
+    const base = r._actBase ? JSON.parse(r._actBase) : {};
+    Object.entries(r.acts || {}).forEach(([sid, v]) => {
+      const id = (r._act || {})[sid]; if (!id || JSON.stringify(v) === JSON.stringify(base[sid] || {})) return;
+      const it = { activityId: id };
+      if (r.kind === "과제") it.status = LIVE_HW_OUT[v.hw] || "";
+      if (r.kind === "평가") { it.correct = v.ok == null || v.ok === "" ? null : +v.ok; if (r.total) it.total = +r.total; }
+      if (v.memo !== undefined) it.memo = String(v.memo || "");
+      acts.push(it);
+    });
+  });
+  /* 루틴 체크 했음(칸 P3b, 서버 PR #462 save-routines): 받은 값과 달라진 줄만 */
+  const routines = RECW && S.routines && S._rt0 ? (S.routines.checks || []).filter((c) => c.checkId in S._rt0 && !!c.done !== S._rt0[c.checkId]).map((c) => ({ checkId: c.checkId, done: !!c.done })) : [];
+  return { att: Object.values(by), miss, recUpd, recNew, acts, notice, routines };
+}
+async function liveLessonSave(k) {
+  if (!(window.LIVE && window.LIVE.loaded && (window.LIVE_ATTW || window.LIVE_RECW))) { toast("이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요"); return false; }
+  const S = LIVE_LS[k], L = LIVE_L[k];
+  if (!L || !S || S.state !== "ok") { toast("수업을 다 받은 뒤에 저장해요"); return false; }
+  const P = liveLessonPlan(k);
+  if (P.miss.length) { toast("출석 줄을 찾지 못한 학생이 있어 저장하지 않았어요 — 새로 고침 한 뒤 다시 해요"); return false; }
+  const n = P.att.length + P.recUpd.length + P.recNew.length + P.acts.length + P.routines.length + (P.notice !== null ? 1 : 0);
+  if (!n) { toast("저장할 것이 없어요"); return false; }
   if (window._liveLessonSaving) return false;
   window._liveLessonSaving = true;
   toast("노션에 저장하는 중이에요");
+  const done = [], fail = [];
+  const step = async (what, fn) => { try { await fn(); done.push(what); } catch (e) { fail.push(what + " — " + e.message); } };
   try {
-    let saved = 0;
-    for (let i = 0; i < items.length; i += 60) { const res = await liveLessonApi({ action: "save-attendance", items: items.slice(i, i + 60) }); saved += res.saved || 0; }
-    LDIRTY.delete(k);
-    delete LIVE_LS[k]; delete LIVE_LD[k.split("|")[1]]; /* 그 수업 · 그날을 노션 값으로 다시 받는다 */
+    if (P.att.length) await step(`출결 ${P.att.length}명`, async () => { for (let i = 0; i < P.att.length; i += 60) await liveLessonApi({ action: "save-attendance", items: P.att.slice(i, i + 60) }); });
+    if (P.notice !== null) await step("수업 안내 메모", () => liveLessonApi({ action: "update-session", sessionId: L.id, notice: P.notice }));
+    for (const u of P.recUpd) await step("학습기록", () => liveLessonApi({ action: "update-record", ...u }));
+    for (const x of P.recNew) await step(`새 ${x.rec.kind} 기록`, async () => {
+      const res = await liveLessonApi({ action: "create-records", ...x.body });
+      const made = (res.records || res.results || []).find((r) => r.created !== false) || (res.records || res.results || [])[0];
+      /* 과제 · 평가는 학생별 학습활동을 만들어 둔다(서버가 뒤에서 만든다 — 학생별 결과는 다음 저장에) */
+      if (made && made.id && (x.rec.kind === "과제" || x.rec.kind === "평가")) await liveLessonApi({ action: "create-activities", recordId: made.id });
+    });
+    if (P.acts.length) await step(`학생별 결과 ${P.acts.length}건`, async () => { for (let i = 0; i < P.acts.length; i += 60) await liveLessonApi({ action: "save-activities", items: P.acts.slice(i, i + 60) }); });
+    if (P.routines.length) await step(`루틴 체크 ${P.routines.length}건`, async () => { for (let i = 0; i < P.routines.length; i += 60) await liveLessonApi({ action: "save-routines", items: P.routines.slice(i, i + 60) }); });
+    if (!fail.length) LDIRTY.delete(k);
+    delete LIVE_LS[k]; delete LIVE_LN[k]; delete LIVE_LD[k.split("|")[1]]; /* 그 수업 · 그날을 노션 값으로 다시 받는다 */
     if (window.liveRoReset) window.liveRoReset();
     try { undoStack.length = 0; if (typeof redoStack !== "undefined") redoStack = []; lastSnap = snapshot(); } catch (_) {}
     render();
-    toast(saved === items.length ? `노션에 저장했어요 · 출결 ${saved}명` : `노션에 저장 ${saved}명 · 보낸 것 ${items.length}명 — 새로 고침 해서 확인해요`);
-    return true;
-  } catch (e) { toast("저장하지 못했어요 — " + e.message); return false; }
-  finally { window._liveLessonSaving = false; }
+    const newHw = P.recNew.some((x) => x.rec.kind !== "학습");
+    toast(fail.length ? `일부만 저장했어요 — ${fail.join(" · ")}` : `노션에 저장했어요 · ${done.join(" · ")}${newHw ? " — 학생별 결과는 잠시 뒤 다시 열어 적어요" : ""}`);
+    return !fail.length;
+  } finally { window._liveLessonSaving = false; }
 }
+/* ───── 보강(261119 (가)) ───── */
+const liveNorm = (v) => String(v || "").replace(/-/g, "").toLowerCase();
+/* 보강 여부(노션 고르기) → 앱 판단: 필요 = need, 없음 = none, 비면 판단 전 */
+const liveMkDec = (s) => (/없음/.test(s || "") ? "none" : /필요/.test(s || "") ? "need" : "");
+/* 보강 대기 받기: 결석 한 줄 = 앱 결석 열쇠 "<시간표 id>|<날짜>|<학생 id>"(그 반 · 그 요일 시간표, 없으면 "mw-<결석 id>") */
+function liveMakeupLoad() {
+  if (!(window.LIVE && window.LIVE.loaded) || LIVE_MW.state === "loading") return;
+  LIVE_MW.state = "loading";
+  liveLessonApi({ action: "makeup-waiting" }).then((res) => {
+    const list = [], byK = {};
+    (res.waiting || []).forEach((w) => {
+      const e = enr(w.registrationId); if (!e || !stu(e.studentId)) return;
+      const at = liveSeoul(w.start); if (!at) return;
+      const bs = DB.blocks.filter((b) => !b.del && b.classId === e.classId && b.day === dow(at.d));
+      const b = bs.find((x) => x.start === at.m) || bs[0];
+      const k = (b ? b.id : "mw-" + liveNorm(w.attendanceId)) + "|" + at.d + "|" + e.studentId;
+      list.push({ k, sid: e.studentId, classId: e.classId, d: at.d });
+      byK[k] = { absId: w.attendanceId, sessionId: w.sessionId || null, decision: w.decision || "" };
+      const dec = liveMkDec(w.decision), o = Object.assign({}, DB.mkw[k] || {});
+      if (dec) o.dec = dec; else delete o.dec;
+      delete o.mk; /* 고른 보강 수업만 있고 배정 전이면 앱은 아직 대기로 둔다(배정 = 저장 때 assign-makeup) */
+      DB.mkw[k] = o;
+    });
+    LIVE_MW.list = list; LIVE_MW.byK = byK; LIVE_MW.state = "ok";
+    if (window.liveRoReset) window.liveRoReset();
+    try { lastSnap = snapshot(); } catch (_) {}
+    render();
+  }, (e) => { LIVE_MW.state = "fail"; toast("보강 대기를 불러오지 못했어요 — " + e.message); render(); });
+}
+/* 그날들의 보강 수업 명단을 받아 앱 보강(DB.mk, _live)으로 둔다. 이미 배정된 학생은 "mkl-<수업>|<날짜>|<학생>" 표시로 묶어 앱이 다른 결석을 새로 잇지 않게 */
+function liveMakeupSessions(dates) {
+  if (!(window.LIVE && window.LIVE.loaded) || !Array.isArray(DB.mk)) return;
+  const todo = [];
+  (dates || []).forEach((d) => (LIVE_MKD[d] || []).forEach((s) => { if (!LIVE_MKS[s.id]) todo.push(s); }));
+  if (!todo.length) return;
+  todo.forEach((s) => { LIVE_MKS[s.id] = { state: "loading", sids: [], attIds: {} }; });
+  Promise.all(todo.map((s) => liveLessonApi({ action: "session", sessionId: s.id }).then((res) => {
+    const S = LIVE_MKS[s.id]; if (!S) return;
+    const att = {};
+    (res.students || []).forEach((x) => { const e = enr(x.registrationId); if (!e || !stu(e.studentId)) return; S.sids.push(e.studentId); S.attIds[e.studentId] = x.attendanceId; att[e.studentId] = LIVE_ATT[x.status] || ""; });
+    const c0 = S.sids.map((sid) => (DB.enrolls.find((e) => e.studentId === sid && S.attIds[sid]) || {}).classId).find(Boolean) || null;
+    DB.mk = DB.mk.filter((m) => m.id !== s.id);
+    DB.mk.push({ id: s.id, classId: c0, d: s.d, start: s.start, end: s.end, sids: S.sids.slice(), att, _live: true, _teacherIds: s.teacherIds || [] });
+    S.sids.forEach((sid) => { DB.mkw["mkl-" + liveNorm(s.id) + "|" + s.d + "|" + sid] = { dec: "need", mk: s.id }; });
+    S.att0 = Object.assign({}, att); /* 받은 출결(저장 때 바뀐 학생만 save-attendance) */
+    S.state = "ok";
+  }, () => { LIVE_MKS[s.id] = { state: "fail", sids: [], attIds: {} }; }))).then(() => {
+    if (window.liveRoReset) window.liveRoReset();
+    try { lastSnap = snapshot(); } catch (_) {}
+    render();
+  });
+}
+/* 저장할 것(칸 P3m): 새 보강 = create-makeup-session(이은 결석들), 서버 보강에 새로 이은 결석 = assign-makeup, 명단에서 뺀 학생 = unlink-makeup, 지운 서버 보강 = delete-makeup-session */
+function liveMakeupPlan() {
+  const out = { create: [], assign: [], unlink: [], del: [], att: [], skip: [] };
+  if (!window.LIVE_MKW || LIVE_MW.state !== "ok") return out;
+  /* 결석 보강 여부(서버 PR #476 save-attendance makeupDecision): 받은 값과 앱 판단이 달라진 결석만 — need = 보강 필요, none = 보강 없음, 판단 전 = 비우기 */
+  const DEC_OUT = { need: "보강 필요", none: "보강 없음" };
+  Object.entries(LIVE_MW.byK).forEach(([k, a]) => { const now = DEC_OUT[(DB.mkw[k] || {}).dec] || "", was = DEC_OUT[liveMkDec(a.decision)] || ""; if (now !== was) out.att.push({ attendanceId: a.absId, makeupDecision: now }); });
+  /* 보강 수업 출결(같은 save-attendance, 보강 출석 id): 받은 출결과 달라진 학생만 */
+  DB.mk.forEach((m) => { if (!m._live || m.off || m.del) return; const S = LIVE_MKS[m.id]; if (!S || S.state !== "ok" || !S.att0) return;
+    Object.entries(S.attIds).forEach(([sid, aid]) => { const now = (m.att || {})[sid] || "", was = S.att0[sid] || ""; if (now !== was && m.sids.includes(sid)) out.att.push({ attendanceId: aid, status: LIVE_ATT_OUT[now] || "" }); }); });
+  const linked = (mid) => Object.entries(DB.mkw).filter(([k, w]) => w && w.mk === mid && LIVE_MW.byK[k]).map(([k]) => k);
+  const hm = (m) => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+  const iso = (d, m) => `${d}T${hm(m)}:00+09:00`;
+  /* 지운 서버 보강: 받았던 보강 수업 id가 DB.mk에서 빠졌거나 꺼짐 */
+  Object.entries(LIVE_MKS).forEach(([id, S]) => { if (S.state !== "ok") return; const m = DB.mk.find((x) => x.id === id); if (!m || m.off || m.del) out.del.push({ sessionId: id }); });
+  DB.mk.forEach((m) => {
+    if (m.off || m.del) return;
+    if (!m._live) {
+      const ks = linked(m.id).filter((k) => m.sids.includes(k.split("|").pop()));
+      if (!ks.length) { out.skip.push(`${m.d} 보강 — 이은 결석이 없어 만들지 않음`); return; }
+      /* 담당강사: 화면이 고른 값(m.teacherId)이 먼저, 없으면 그 반 담당강사 */
+      const c = cls((absInfo(ks[0]) || {}).classId || m.classId) || {}, tid = m.teacherId || c.teacherId;
+      if (!tid) { out.skip.push(`${m.d} 보강 — 담당강사를 몰라 만들지 않음(클래스 담당강사)`); return; }
+      out.create.push({ mk: m, body: { teacherId: tid, start: iso(m.d, m.start), end: m.end > m.start ? iso(m.d, m.end) : undefined, absenceIds: ks.map((k) => LIVE_MW.byK[k].absId) } });
+      return;
+    }
+    const S = LIVE_MKS[m.id]; if (!S || S.state !== "ok") return;
+    linked(m.id).forEach((k) => { const sid = k.split("|").pop(); if (m.sids.includes(sid) && !S.sids.includes(sid)) out.assign.push({ absenceId: LIVE_MW.byK[k].absId, sessionId: m.id }); });
+    S.sids.forEach((sid) => { if (!m.sids.includes(sid) && S.attIds[sid]) out.unlink.push({ attendanceId: S.attIds[sid] }); });
+  });
+  return out;
+}
+async function liveMakeupSave() {
+  const P = liveMakeupPlan(), n = P.create.length + P.assign.length + P.unlink.length + P.del.length + P.att.length;
+  if (!n) { if (P.skip.length) toast(P.skip.join(" · ")); return 0; }
+  const done = [], fail = [], made = new Set();
+  const step = async (what, fn) => { try { await fn(); done.push(what); return true; } catch (e) { fail.push(what + " — " + e.message); return false; } };
+  if (P.att.length) await step(`보강 여부 · 보강 출결 ${P.att.length}건`, async () => { for (let i = 0; i < P.att.length; i += 60) await liveLessonApi({ action: "save-attendance", items: P.att.slice(i, i + 60) }); });
+  for (const x of P.create) if (await step("새 보강", () => liveLessonApi({ action: "create-makeup-session", ...x.body }))) made.add(x.mk.id);
+  for (const x of P.assign) await step("보강 배정", () => liveLessonApi({ action: "assign-makeup", ...x }));
+  for (const x of P.unlink) await step("보강에서 빼기", () => liveLessonApi({ action: "unlink-makeup", ...x }));
+  for (const x of P.del) await step("보강 지우기", () => liveLessonApi({ action: "delete-makeup-session", ...x }));
+  /* 다시 받기: 서버 보강은 다시 받고, 앱에만 있던 새 보강은 만든 것만 버림(못 만든 것은 남겨 다시 저장할 수 있게). 빼기 · 지우기는 노션 [삭제] 큐라 잠시 뒤 반영 */
+  DB.mk = DB.mk.filter((m) => !m._live && !made.has(m.id));
+  Object.keys(LIVE_MKS).forEach((k) => delete LIVE_MKS[k]);
+  Object.keys(DB.mkw).forEach((k) => { if (k.startsWith("mkl-")) delete DB.mkw[k]; });
+  try { [...LDIRTY.keys()].forEach((k) => { if (k.startsWith("mk:")) LDIRTY.delete(k); }); } catch (_) {}
+  LIVE_MW.state = ""; liveMakeupLoad();
+  Object.keys(LIVE_MKD).forEach((d) => { delete LIVE_LD[d]; delete LIVE_MKD[d]; });
+  toast(fail.length ? `보강 일부만 저장했어요 — ${fail.join(" · ")}` : `보강을 노션에 저장했어요 · ${done.join(" · ")}${P.unlink.length || P.del.length ? " — 빼기 · 지우기는 노션이 차례로 처리해요(잠시 뒤 반영)" : ""}`);
+  return done.length;
+}
+
 /* 그릴 때마다(live.js render 뒤): 지금 화면이 보는 날짜 · 열린 수업을 받게 한다 */
 function liveLessonNeed() {
   const t = typeof activeTab !== "undefined" ? activeTab : null;
   if (!t || !(window.LIVE && window.LIVE.loaded)) return;
   const st = t.state || {};
-  if (t.screen === "timetable" && st.view === "lesson") { const w = weekOf(st); liveLessonDays([0, 1, 2, 3, 4, 5, 6].map((i) => dPlus(w.from, i))); }
+  if (t.screen === "timetable" && st.view === "lesson") {
+    /* 수업 메뉴 보기(v559): 월간 수업(mon) · 출결 현황(atm) = st.lmon 달 달력(첫 월요일 ~ 마지막 일요일), 그 밖 = 그 주 7일 */
+    let dates;
+    if (st.lv === "mon" || st.lv === "atm") {
+      const ym = st.lmon || TODAY.slice(0, 7), first = ym + "-01", last = dPlus(dPlus((+ym.slice(5) === 12 ? (+ym.slice(0, 4) + 1) + "-01" : ym.slice(0, 5) + String(+ym.slice(5) + 1).padStart(2, "0")) + "-01", 0), -1);
+      const from = dPlus(first, -dow(first)), to = dPlus(last, 6 - dow(last)); /* dow: 0 = 월 */
+      dates = []; for (let d = from; d <= to; d = dPlus(d, 1)) dates.push(d);
+    } else { const w = weekOf(st); dates = [0, 1, 2, 3, 4, 5, 6].map((i) => dPlus(w.from, i)); }
+    liveLessonDays(dates);
+    /* 주간 수업 일지(wk) · 출결 현황(atm)은 학생별 출결 · 학습기록이 필요 → 그 범위의 만든 수업을 4개씩 차례로 미리 받음(가볍게) */
+    if (st.lv === "wk" || st.lv === "atm") {
+      const busy = Object.values(LIVE_LS).filter((s) => s.state === "loading").length;
+      const want = Object.keys(LIVE_L).filter((k) => { const d = k.split("|")[1]; return d >= dates[0] && d <= dates[dates.length - 1] && d <= TODAY && !LIVE_LS[k]; }).sort();
+      want.slice(0, Math.max(0, 4 - busy)).forEach((k) => liveLessonOpen(k, true));
+    }
+  }
   else if (t.screen === "today") liveLessonDays([st.day || TODAY]);
+  else if (t.screen === "makeup") {
+    /* 보강 화면: 보강 대기 + 그 달(달력 앞뒤 주 포함) 보강 수업 */
+    if (!LIVE_MW.state) liveMakeupLoad();
+    const ym = st.mym || TODAY.slice(0, 7), first = ym + "-01", from = dPlus(first, -dow(first)), dates = [];
+    for (let i = 0; i < 42; i++) dates.push(dPlus(from, i));
+    liveLessonDays(dates);
+    return;
+  }
   else return;
-  if (st.lsel && LIVE_L[st.lsel]) liveLessonOpen(st.lsel);
+  if (st.lsel && LIVE_L[st.lsel]) { liveLessonOpen(st.lsel); liveLessonNeighbors(st.lsel); }
 }

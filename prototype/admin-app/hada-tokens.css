@@ -7,7 +7,7 @@
 
  color-scheme:light;
  /* 색: 1부 3장 색상표 */
- --kakao:#FEE500;--kakao-hover:#F5DC00;--kakao-ink:#191919;/* 332판: 알림톡 전송 단추(카카오 노랑, 대표 결정) */
+ --kakao:#FBE792;--kakao-hover:#F6DB6E;--kakao-ink:#3D3300;/* 알림톡 전송 단추 — 마일드한 버터 노랑(261119 대표: 카카오 원색 #FEE500은 너무 튀어서 앱 전체 한 곳에서 바꿈) */
  --brand-primary:#E6D8C4;--brand-deep:#6B5D4D;--brand-mid:#D1BEA5;--brand-light:#F1E8DC;
  --brand-soft:#F5EFE7;--brand-tint:#FBF8F3;--brand-border:#DED1C0;--brand-on-primary:#3F372F;
  --canvas:#F7F8FA;--text-ink:#191F28;--text-muted:#4E5968;--text-subtle:#68727F;
@@ -74,4 +74,4 @@
 @media(max-width:700px){:root{--text-display:1.75rem;--logo-h:1.75rem}}
 
 /* 411판(대표): 색 알약 — 둥근 사각(6), 글자 한 색, 배경만 색(55%로 연하게) */
-:root{--pill-radius:6px;--pill-ink:#37352F;--pill-mix:55%;--pill-veil:rgba(255,255,255,.45)}
+:root{--pill-radius:6px;--pill-ink:#37352F;--pill-mix:78%;--pill-veil:rgba(255,255,255,.22)}/* 261118 대표: 알약 조금 더 진하게 — 모든 색 알약이 이 두 값(--pill-mix · --pill-veil) 하나로 */

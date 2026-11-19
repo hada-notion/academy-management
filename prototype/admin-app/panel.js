@@ -21,7 +21,7 @@
   const pill = s => `<span class="pill nc-${esc(s.tone || "gray")}">${esc(s.t)}</span>`;
 
   // 1. 머리 — 모든 창이 같은 틀(기준 4장 F1). 화면은 재료만 넘긴다.
-  //   앞: icon(HTML) 또는 dot(색) · 이름: name(글) 또는 nameHtml(입력칸 등) · 칩: draft(작성 중) · chipsHtml(화면이 만든 알약) · state{t,tone} · status[{t,tone}]
+  //   앞: icon(HTML) 또는 dot(색) · 이름: name(글) 또는 nameHtml(입력칸 등) · 칩: draft(작성 중) · chipsHtml(화면이 생성한 알약) · state{t,tone} · status[{t,tone}]
   //   자물쇠: lock(HTML) · help(글) · notion(단추에 붙일 속성 글자, 예: data-notion="students") · 2줄 belong(글) · 3줄 info[글…]
   function head(h) {
     h = h || {};
@@ -30,7 +30,8 @@
     const chips = (h.draft ? '<span class="pill w">작성 중</span>' : "") + (h.chipsHtml || "") + (h.state && h.state.t ? `<span class="spill nc-${esc(h.state.tone || "gray")} hstate">${esc(h.state.t)}</span>` : "") + (h.status || []).map(pill).join("") + (h.lock ? `<span class="hlock">${h.lock}</span>` : "") + help(h.help);
     const n = h.notion ? `<button type="button" class="hnot" ${h.notion} title="노션에서 열기" aria-label="노션에서 열기">${typeof IC === "function" ? IC("notion", "s") : "N"}</button>` : "";
     const info = (h.info || []).filter(t => t != null && t !== "").map((t, i) => `${i ? '<span class="phdot">·</span>' : ""}<small>${esc(t)}</small>`).join("");
-    return `<div class="phead${lead ? "" : " noic"}"><div class="pt"><h2>${lead}${nm}${chips ? `<span class="hchips">${chips}</span>` : ""}<span class="hsp"></span>${n}</h2><div class="pinfo">${h.belong ? esc(h.belong) : ""}</div><div class="sub">${info}</div></div></div>`;
+    // 261118: tools(HTML) = 머리 오른쪽 위 작은 단추(노션 단추 앞) — 그 창 하나에 하나뿐인 동작(시간표 [수업 추가] 등)
+    return `<div class="phead${lead ? "" : " noic"}"><div class="pt"><h2>${lead}${nm}${chips ? `<span class="hchips">${chips}</span>` : ""}<span class="hsp"></span>${h.tools || ""}${n}</h2><div class="pinfo">${h.belong ? esc(h.belong) : ""}</div><div class="sub">${info}</div></div></div>`;
   }
   // 1-1. 두 줄 이름은 가장 긴 줄만큼만 폭을 잡는다 — 칩이 이름 첫 줄 끝에서 늘 같은 간격에 오게(머리가 그려지거나 폭이 바뀔 때마다)
   function fitHeads() {
@@ -69,7 +70,7 @@
     const inSec = new Set(secs.flatMap(z => z.keys));
     const grid = ks => `<div class="hfgrid">${ks.map(k => `<div class="hfh" data-hf="${esc(k)}"></div>`).join("")}</div>`;
     const main = keys.filter(k => !inSec.has(k));
-    return (main.length ? box({ title: "기본", help: helpText, body: grid(main) }) : "") + secs.map(z => { const ks = z.keys.filter(k => keys.includes(k)); const pre = z.pre ? z.pre(row) : ""; return (ks.length || pre) && !z.hide ? box({ title: typeof z.title === "function" ? z.title(row) : z.title, right: z.right ? z.right(row) : "", body: pre + (ks.length ? grid(ks) : "") }) : ""; }).join("");
+    return (main.length ? box({ title: "기본", help: helpText, body: grid(main) }) : "") + secs.map(z => { const ks = z.keys.filter(k => keys.includes(k)); const pre = z.pre ? z.pre(row) : "", post = z.post ? z.post(row) : ""; /* post = 칸 뒤에 붙는 화면 재료(학생1 형제자매) */ return (ks.length || pre || post) && !z.hide ? box({ title: typeof z.title === "function" ? z.title(row) : z.title, help: z.help, right: z.right ? z.right(row) : "", body: pre + (ks.length ? grid(ks) : "") + post }) : ""; }).join("");
   }
   // 3-2. 한 줄에 두 칸(숫자 + 단위): pairs = [[앞 칸, 뒤 칸, 갈래]] — 갈래 "" = 뒤 칸 좁게([우선] 단추 비율), "half" = 반반
   function pairUp(root, pairs) {
@@ -116,12 +117,17 @@
     // 머리 3줄 = 요약 숫자(이름 값 · 이름 값). 요약이 없어도 줄은 비워 두어 탭 바가 기본 창과 같은 높이에서 시작한다
     const plain = v => String(v == null ? "" : v).replace(/<[^>]*>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").trim();
     const sumInfo = (t.summary || []).map(([n, v]) => `${n} ${plain(v)}`.trim()).filter(Boolean);
-    const top = (tabList, onId) => head({ icon: t.icon, name: "할 일", status: total ? [{ t: total + "건", tone: "yellow" }] : [], help: t.help, belong: t.belong || "", info: sumInfo.length ? sumInfo : [" "] }) + tabs(tabList, onId, ta);
-    const none = `<div class="tdnone">${ic("check")}${esc(t.empty || "지금 할 일이 없어요")}</div>`;
-    if ((!groups.length && t.empty) || (!has.length && !t.keepTabs)) return `${top([{ id: "_", label: "할 일" }], "_")}<div class="pbody"><div class="tdp">${none}${list}</div></div>${foot}`;
-    const shown = t.keepTabs ? groups : has; // 할 일이 있는 묶음만 탭으로(고정 탭 화면은 모두)
+    // 261119 대표: 선택 전 공용 창 = 탭 두 개 [현황] [할 일] — 현황 = 늘 있는 값(요약 · 다가오는 것), 할 일 = 마무리 안 된 것(건수는 머리 알약, 묶음은 안쪽 칩)
+    const vw = t.view === "todo" ? "todo" : "sta", vtabs = [{ id: "sta", label: "현황" }, { id: "todo", label: "할 일" }];
+    const bl = String(t.belong || ""), bi = bl.indexOf(" · "), top = () => head({ icon: t.icon, name: bi > 0 ? bl.slice(0, bi) : (bl || "현황"), status: total ? [{ t: total + "건", tone: "yellow" }] : [], help: t.help, belong: bi > 0 ? bl.slice(bi + 3) : "", info: sumInfo.length ? sumInfo : [" "] }) + tabs(vtabs, vw, "todov");
+    const none = txt => `<div class="tdnone">${ic("check")}${esc(txt)}</div>`;
+    const sumRows = (t.summary || []).filter(([n]) => n).map(([n, v, c]) => `<div class="tdsr ${c || ""}"><span>${esc(n)}</span><b>${v == null ? "" : v}</b></div>`).join("");
+    if (vw === "sta") return `${top()}<div class="pbody"><div class="tdp">${sumRows ? `<div class="tdsum">${sumRows}</div>` : ""}${list}${!sumRows && !list ? none(t.empty || "보여 줄 현황이 아직 없어요") : ""}</div></div>${foot}`;
+    if ((!groups.length && t.empty) || (!has.length && !t.keepTabs)) return `${top()}<div class="pbody"><div class="tdp">${none(t.empty || "지금 할 일이 없어요")}</div></div>${foot}`;
+    const shown = t.keepTabs ? groups : has; // 할 일이 있는 묶음만(고정 묶음 화면은 모두)
     const on = shown.find(g => g.k === t.on) || has[0] || shown[0], max = t.max || 60;
-    return `${top(shown.map(g => ({ id: g.k, label: g.name, n: g.rows.length, todo: true })), on.k)}<div class="pbody"><div class="tdp">${on.why ? `<div class="tdwhy">${esc(on.why)}</div>` : ""}<div class="tdl">${on.rows.slice(0, max).map(rowH).join("") || `<div class="tdnone">${ic("check")}할 일이 없어요</div>`}${on.rows.length > max ? `<div class="hint">외 ${on.rows.length - max}건 — 표의 필터 알약으로 모두 봐요</div>` : ""}</div>${list}</div></div>${foot}`;
+    const chips = shown.length > 1 ? `<div class="tdsubs">${shown.map(g => `<button type="button" class="tdsb ${g.k === on.k ? "on" : ""}" data-${ta}="${esc(g.k)}">${esc(g.name)} <small>${g.rows.length}</small></button>`).join("")}</div>` : "";
+    return `${top()}<div class="pbody"><div class="tdp">${chips}${on.why ? `<div class="tdwhy">${esc(on.why)}</div>` : ""}<div class="tdl">${on.rows.slice(0, max).map(rowH).join("") || none("할 일이 없어요")}${on.rows.length > max ? `<div class="hint">외 ${on.rows.length - max}건 — 표의 필터 알약으로 모두 봐요</div>` : ""}</div></div></div>${foot}`;
   }
   // 칸 붙이기(입력칸 모듈 field.js)
   function mountFields(root, boxes) {
