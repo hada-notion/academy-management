@@ -210,7 +210,7 @@ function liveLessonRoutines(k) {
 /* [루틴 체크 생성](칸 P3b — window.LIVE_RECW): 서버가 큐로 만든다 → 5 · 10 · 20 · 40초 뒤 다시 읽어 status가 ✅/⚠️면 멈춘다 */
 async function liveLessonRoutineCreate(k) {
   const L = LIVE_L[k];
-  if (!(window.LIVE && window.LIVE.loaded && window.LIVE_RECW)) { toast("이 화면은 보기만 해요 — 루틴 체크는 노션 수업 [루틴 체크 생성]으로 만들어요"); return false; }
+  if (!(window.LIVE && window.LIVE.loaded && window.LIVE_RECW)) { return false; }
   if (!L) return false;
   try {
     const res = await liveLessonApi({ action: "create-routine-checks", sessionId: L.id });
@@ -294,7 +294,7 @@ function liveRoutineRevert(k) {
   (S.routines.checks || []).forEach((c) => { if (c.checkId in S._rt0) c.done = S._rt0[c.checkId]; });
 }
 async function liveLessonSave(k) {
-  if (!(window.LIVE && window.LIVE.loaded && (window.LIVE_ATTW || window.LIVE_RECW))) { toast("이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요"); return false; }
+  if (!(window.LIVE && window.LIVE.loaded && (window.LIVE_ATTW || window.LIVE_RECW))) { return false; }
   const S = LIVE_LS[k], L = LIVE_L[k];
   if (!L || !S || S.state !== "ok") { toast("수업을 다 받은 뒤에 저장해요"); return false; }
   const P = liveLessonPlan(k);
