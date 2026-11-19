@@ -16,7 +16,7 @@
 //   관계 칸은 Notion 페이지 응답이 25개까지만 주므로(has_more) 많은 쪽은 반대편(예: 등록의 클래스)으로 이어 본다.
 
 import { NOTION_API } from "./constants.ts"
-import { fetchWithRetry, notionHeaders, queryAllPages } from "./notionClient.ts"
+import { fetchWithRetry, notionHeaders, queryAllPages, mapWithConcurrency } from "./notionClient.ts"
 import { fetchSupabaseWithRetry } from "./reportCacheShared.ts"
 import { runInBackground } from "./backgroundTask.ts"
 import { normalizeDbName } from "./dbNames.ts"
@@ -359,4 +359,34 @@ export async function statusApp(): Promise<{ db: AppDb; rows: number; cursor: st
 	const cur = await fetchSupabaseWithRetry(`${SB_URL()}/rest/v1/sync_cursors?source=like.app:*&select=source,last_synced_at`, { headers: sbHeaders() })
 	const cursors = new Map(cur.ok ? ((await cur.json()) as { source: string; last_synced_at: string }[]).map((r) => [r.source, r.last_synced_at]) : [])
 	return APP_DBS.map((db) => ({ db, rows: counts.get(db) ?? 0, cursor: cursors.get(cursorKey(db)) ?? null, ...(pick.problems.has(db) ? { problem: pick.problems.get(db) } : {}) }))
+}
+
+// ---------- 앱 [동기화] 버튼(app-api run "sync-copy") ----------
+// 누를 때만 노션 → 사본을 맞춘다: 기본은 바뀐 줄만(incremental, 처음 채우기가 끝난 DB만), full:true는 dbs를 준 DB를 통째로 대조(노션에서 지운 줄도 사본에서 빠짐).
+// 마지막 동기화 = DB마다 커서(sync_cursors) 중 가장 늦은 것(줄이 안 바뀌어도 동기화가 돌면 갱신).
+export const SYNC_COPY_MAX_FULL = 3
+export type SyncCopyResult = { changed: number; deleted: number; ms: number; syncedAt: string | null; notFilled: AppDb[]; problems: Record<string, string>; results: AppSyncResult[] }
+export async function lastSyncedAt(): Promise<string | null> {
+	const res = await fetchSupabaseWithRetry(`${SB_URL()}/rest/v1/sync_cursors?source=like.app:*&select=last_synced_at&order=last_synced_at.desc&limit=1`, { headers: sbHeaders() })
+	if (!res.ok) throw new Error(`sync_cursors 조회 실패: ${res.status}`)
+	return (await res.json())[0]?.last_synced_at ?? null
+}
+export async function syncCopy(dbs?: AppDb[], full = false): Promise<SyncCopyResult> {
+	const t0 = Date.now()
+	const targets = dbs?.length ? [...new Set(dbs)] : [...APP_DBS]
+	if (full && (!dbs?.length || targets.length > SYNC_COPY_MAX_FULL)) throw new Error(`full은 dbs ${SYNC_COPY_MAX_FULL}개 이하로만 씁니다.`)
+	const notFilled: AppDb[] = []
+	const out = await mapWithConcurrency(targets, 4, async (db) => {
+		if (full) return await reconcileApp(db)
+		const r = await incrementalApp(db)
+		if (!r) notFilled.push(db)
+		return r
+	})
+	const results = out.filter((r): r is AppSyncResult => !!r)
+	const problems: Record<string, string> = {}
+	for (const r of results) if (r.problem) problems[r.db] = r.problem
+	return {
+		changed: results.reduce((a, r) => a + r.upserted + r.deleted, 0), deleted: results.reduce((a, r) => a + r.deleted, 0),
+		ms: Date.now() - t0, syncedAt: await lastSyncedAt(), notFilled, problems, results,
+	}
 }
