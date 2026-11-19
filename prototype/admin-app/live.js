@@ -71,14 +71,18 @@ window.liveModeFor = function (search, hostname, protocol) {
   document.head.appendChild(roCss);
   /* 보기 전용 화면 안내(261119 대표 "보기 중심인 화면에만 안내, 나머지는 다 사용 가능"): 시험 · 수강료 · 청구서 · 손익 분석 · 법정 서류만 제목 줄 아래 작은 회색 한 줄(토스트 아님 · 닫기 없음).
      어느 화면인지는 이 목록 한 곳이 기준 — 목록에 없는 화면(수업 · 일정 · 학생 · 클래스 · 등록 …)에는 보기만 칸이어도 안 뜬다 */
-  const RO_NOTE_SCREENS = new Set(["exams", "tuition", "bill", "bookfees", "charges", "etcs", "profit", "costs", "legal"]);
+  const RO_NOTE_SCREENS = new Set(["exams", "tuition", "bill", "bookfees", "charges", "etcs", "profit", "costs", "legal", "books", "schools", "records", "reports", "completion", "letters", "files", "alims"]);
   const RO_NOTE_TEXT = "이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요";
-  const roNote = (show) => {
+  /* 261119 대표("라이브러리 [+] · [연필]이 막혀 있다"): [+] · [연필]이 꺼진 화면은 이유를 한 줄로 — 라이브러리 · 학교는 노션 버튼이 서버 동작(교재 단원 · 학교 코드)까지 해서 앱에서 직접 추가하지 않음 */
+  const RO_NOTE_BY = { books: "라이브러리는 보기만 해요 — 교재 추가 · 수정은 노션 라이브러리에서 해요(단원까지 만드는 노션 버튼이 필요해요)", schools: "학교는 보기만 해요 — 학교 추가는 노션 학교 페이지의 [학교 검색]에서 해요(학교 코드까지 가져와요)" };
+  const roNote = (show, scr) => {
     const v = document.getElementById("view"); if (!v) return;
     let n = v.querySelector(":scope > .ro-line");
     if (!show) { if (n) n.remove(); return; }
     const top = v.querySelector(":scope > .top"); if (!top) return;
-    if (!n) { n = document.createElement("div"); n.className = "ro-line"; n.textContent = RO_NOTE_TEXT; }
+    const txt = RO_NOTE_BY[scr] || RO_NOTE_TEXT;
+    if (n && n.textContent !== txt) n.textContent = txt;
+    if (!n) { n = document.createElement("div"); n.className = "ro-line"; n.textContent = txt; }
     if (top.nextElementSibling !== n) top.after(n);
   };
   const roDress = () => {
@@ -100,7 +104,7 @@ window.liveModeFor = function (search, hostname, protocol) {
   const roLock = () => {
     const t = typeof activeTab !== "undefined" ? activeTab : null, scr = liveScr(t), on = !!(t && window.LIVE && window.LIVE.loaded && RO.has(scr));
     document.body.classList.toggle("live-ro", on);
-    roNote(on && RO_NOTE_SCREENS.has(scr));
+    roNote(on && RO_NOTE_SCREENS.has(scr), scr);
     if (!on) { roBase = null; roScreen = null; return; }
     const now = snapRo();
     if (roBase === null || roScreen !== scr) { roBase = now; roScreen = scr; }
