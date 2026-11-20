@@ -33,6 +33,16 @@ export async function solapiAuthHeader(apiKey: string, apiSecret: string): Promi
 	return `HMAC-SHA256 apiKey=${apiKey}, date=${date}, salt=${salt}, signature=${await hmacHex(apiSecret, date + salt)}`
 }
 
+// 솔라피 REST는 변수 키를 "#{이름}" 꼴로 받는다(SDK를 거치지 않으므로 여기서 맞춘다). "학생이름"처럼 감싸지 않은 키는 "#{학생이름}"으로, 이미 감싼 키 · 값은 그대로.
+// (261120 키오스크 등원 알림톡이 키를 감싸지 않고 보내 1057 "치환되지 않은 변수"로 실패 — 어느 호출 경로에서도 같은 실수가 나지 않게 한 곳에서 막는다.)
+export const wrapVariableKey = (key: string): string => (/^#\{.*\}$/s.test(key) ? key : `#{${key}}`)
+export function withWrappedVariableKeys<T extends object>(m: T): T {
+	const o = (m as { kakaoOptions?: { variables?: Record<string, string> } }).kakaoOptions
+	const vars = o?.variables
+	if (!vars) return m
+	return { ...m, kakaoOptions: { ...o, variables: Object.fromEntries(Object.entries(vars).map(([k, v]) => [wrapVariableKey(k), v])) } }
+}
+
 export class SolapiNotReceivedError extends Error {
 	failedMessageList: Array<{ statusCode?: string; statusMessage?: string }>
 	constructor(failed: Array<{ statusCode?: string; statusMessage?: string }>) {
@@ -49,7 +59,8 @@ export async function createSolapiService(apiKey: string, apiSecret: string) {
 		async send(message: SolapiMessage | SolapiMessage[], config: { allowDuplicates?: boolean } = {}) {
 			const list = Array.isArray(message) ? message : [message]
 			const messages: SolapiMessage[] = []
-			for (const m of list) {
+			for (const m0 of list) {
+				const m = withWrappedVariableKeys(m0)
 				const k = m.kakaoOptions
 				if (k?.templateId && !k.title) {
 					const title = await emphasisTitleForTemplate(sdk, k.templateId, k.variables ?? {})

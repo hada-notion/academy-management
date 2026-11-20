@@ -9,7 +9,7 @@ async function assertRejects<E extends Error>(fn: () => Promise<unknown>, cls: n
 	}
 	throw new Error("expected rejection")
 }
-import { createSolapiService, solapiDeps, SolapiNotReceivedError } from "./solapiClient.ts"
+import { createSolapiService, solapiDeps, SolapiNotReceivedError, wrapVariableKey, withWrappedVariableKeys } from "./solapiClient.ts"
 import { clearTemplateFitCache, emphasisTitleForTemplate, templateEmphasisTitle } from "./templateFit.ts"
 
 const templates: Record<string, unknown> = {
@@ -58,6 +58,18 @@ Deno.test("강조표기형이 아니면 title 없이 보낸다", async () => {
 	const service = await createSolapiService("KEY", "SECRET")
 	await service.send(msg("PLAIN"))
 	assertEquals("title" in calls[0].body.messages[0].kakaoOptions, false)
+})
+
+Deno.test("변수 키는 #{…} 꼴로 맞춰 보낸다(감싸지 않은 키는 감싸고, 이미 감싼 키 · 값은 그대로, 강조 제목 변수도 맞음)", async () => {
+	const calls = stub({ body: ok })
+	const service = await createSolapiService("KEY", "SECRET")
+	await service.send({ to: "01000000000", from: "0200000000", kakaoOptions: { pfId: "PF", templateId: "VAR", variables: { "학생이름": "예시학생", "#{구분}": "등원", "일자": "11월 20일" }, disableSms: true } })
+	const k = calls[0].body.messages[0].kakaoOptions
+	assertEquals(k.variables, { "#{학생이름}": "예시학생", "#{구분}": "등원", "#{일자}": "11월 20일" })
+	assertEquals(k.title, "예시학생 보고서")
+	assertEquals(wrapVariableKey("#{시간}"), "#{시간}")
+	assertEquals(wrapVariableKey("시간"), "#{시간}")
+	assertEquals(withWrappedVariableKeys({ to: "x" }), { to: "x" })
 })
 
 Deno.test("전부 접수 실패면 failedMessageList를 단 오류를 던진다", async () => {
