@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리 앱 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3C%2Fsvg%3E">
-<link rel="stylesheet" href="hada-tokens.css?v=716">
-<link rel="stylesheet" href="app.css?v=716">
-<link rel="stylesheet" href="pick.css?v=716">
-<link rel="stylesheet" href="field.css?v=716">
+<link rel="stylesheet" href="hada-tokens.css?v=717">
+<link rel="stylesheet" href="app.css?v=717">
+<link rel="stylesheet" href="pick.css?v=717">
+<link rel="stylesheet" href="field.css?v=717">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -20,7 +20,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=716"><script src="hada-rules.js?v=716"></script><script src="help.js?v=716"></script><script src="alim-preview.js?v=716"></script><script src="pick.js?v=716"></script><script src="field.js?v=716"></script><script src="panel.js?v=716"></script>
+<link rel="stylesheet" href="alim.css?v=717"><script src="hada-rules.js?v=717"></script><script src="help.js?v=717"></script><script src="alim-preview.js?v=717"></script><script src="pick.js?v=717"></script><script src="field.js?v=717"></script><script src="panel.js?v=717"></script>
 <script>
 "use strict";
 
@@ -3452,7 +3452,7 @@ function panelAttend(p,t,k,sid,o){o=o||{};const st=t.state;const isMk=k.startsWi
   const x=stu(sid);if(!x){p.innerHTML="";return}
   const attF=s=>isMk?m.att[s]:attOf(b,d,s),a=attF(sid),ab=a==="결석";
   const setAtt=v=>{lBase(k);if(isMk)m.att[sid]=v||null;else DB.att[k+"|"+sid]=v||null;commit()};
-  const kindT=isMk?"보강":"정규";const live=LIVE_ON(),S=live&&typeof LIVE_LS!=="undefined"&&!isMk?LIVE_LS[k]:null,info=S&&S.info||null;
+  const kindT=isMk?"보강":"정규";const live=LIVE_ON(),S=live&&typeof LIVE_LS!=="undefined"&&!isMk?LIVE_LS[k]:null,info=S&&S.info||null;/* 261120 대표: 오늘 등원 학생 · 출결 현황 · 수업 일지에서 연 학생 창도 수업 창과 같은 서버 수업(LIVE_LS)을 받아 와야 [출석][결석] · 등원 · 하원이 수업 저장 길로 감 */if(live&&!isMk&&!S&&typeof liveLessonOpen==="function"&&typeof LIVE_L!=="undefined"&&LIVE_L[k])liveLessonOpen(k);
   const tm0=(S&&S.times&&S.times[sid])||o.tm||(live?null:lpStamp(k,sid,start,end,a,d));const tmOv=(DB.stampEd||{})[k+"|"+sid];const tm=tmOv?Object.assign({},tm0,tmOv):tm0;/* 261119 대표: 등원 · 하원은 입력칸 · [수정]을 눌러야 고쳐짐 */const studs=isMk?m.sids.map(stu).filter(Boolean):lessonRoster(b,d);
   const tab=["info","learn","rt","rep"].includes(st.astab)?st.astab:"info";const tabOn=(ab||isMk)&&tab!=="info"?"info":tab;/* 결석 · 보강 수업 줄은 학습 · 보고서 탭이 흐려져 [정보]만 */
   const cname=c?c.name:"보강";const ak=`${k}|${sid}`;st.anOpen=sid;
@@ -3468,7 +3468,7 @@ function panelAttend(p,t,k,sid,o){o=o||{};const st=t.state;const isMk=k.startsWi
         ${stt==="none"?`<div class="hfh" id="asMkWhy"></div>`:(stt==="pend"||stt==="done")&&mkm?`<div class="asr"><span class="t"><b>${mdw(mkm.d)}</b> ${fmt(mkm.start)}–${fmt(mkm.end)}<small>${esc(mkm.classId&&cls(mkm.classId)?(cls(mkm.classId)||{}).name:"클래스 미정")}</small></span></div>`
         :`<div class="mkpl asc">${cands.map(z=>{const cz=z.classId?cls(z.classId):null;return `<button type="button" class="mkpr" data-ascand="${z.id}"><span class="dotc" style="background:${cz?classBar(cz):"var(--line2)"}"></span><b>${mdw(z.d)} ${fmt(z.start)}–${fmt(z.end)}</b><span class="mkpc">${cz?esc(cz.name):"클래스 미정"}</span><small>${z.sids.length}명</small></button>`}).join("")||'<div class="lnone">다가오는 보강 수업이 없어요</div>'}</div>${activeTab.screen==="makeup"?"":`<div class="row"><button type="button" class="btn sm" id="asMkNew">${IC("repeat","s")}보강 메뉴로 이동</button></div>`}`}</div>`}
     body=`<div class="box"><h3>출결</h3>${o.offLesson?'<div class="offbox">휴강한 수업이라 출결은 받지 않아요.</div>':`<div class="hfh" id="asAtt"></div>`}</div>${mkSec}
-      <div class="box"><h3>등원 · 하원${HELP("키오스크에 찍힌 시각이에요(24시간). 평소엔 고칠 수 없고, [수정]을 눌러야 고칠 수 있어요.")}<span class="sp"></span><button type="button" class="btn icon sm ${st.asStEd?"pri":""}" id="asStEd" ${live?"disabled":""} title="${st.asStEd?"수정 끝":"수정 — 눌러야 고칠 수 있어요"}">${IC(st.asStEd?"check":"edit2","s")}</button></h3><div class="asstamp"><div class="hfh" id="asIn"></div><div class="hfh" id="asOut"></div></div>${tm&&(tm.in||tm.out)?"":'<div class="hint">키오스크 기록이 없어요</div>'}</div>
+      <div class="box"><h3>등원 · 하원${HELP("키오스크에 찍힌 시각이에요(24시간). 평소엔 고칠 수 없고, [수정]을 눌러야 고칠 수 있어요.")}<span class="sp"></span><button type="button" class="btn icon sm ${st.asStEd?"pri":""}" id="asStEd" ${live?"disabled":""} title="${st.asStEd?"수정 끝":"수정 — 눌러야 고칠 수 있어요"}">${IC(st.asStEd?"check":"edit2","s")}</button></h3><div class="asstamp"><div class="hfh" id="asIn"></div><div class="hfh" id="asOut"></div></div>${tm&&(tm.in||tm.out)?(live&&window.LIVE_ATTW&&!isMk?'<div class="hint">키오스크가 찍은 시각은 고치지 않아요 — 기록이 없는 칸만 직접 넣어요</div>':""):`<div class="hint">키오스크 기록이 없어요${live&&window.LIVE_ATTW&&!isMk?" — 직접 넣을 수 있어요":""}</div>`}</div>
       <div class="box"><h3>수업 정보</h3><div class="hfgrid"><div class="hfh full" data-asi="담당강사"></div><div class="hfh full" data-asi="클래스"></div><div class="hfh full" data-asi="수업 구분"></div></div></div>
       <div class="box"><h3>메모(내부용)</h3><div class="hfh" data-anf="memo"></div></div>`}
   else if(tabOn==="learn"){
@@ -3500,7 +3500,11 @@ function panelAttend(p,t,k,sid,o){o=o||{};const st=t.state;const isMk=k.startsWi
     p.querySelectorAll("[data-ascand]").forEach(bt=>bt.onclick=()=>{const mm=DB.mk.find(z=>z.id===bt.dataset.ascand);if(mm)mkPut(ak,mm)});
     const nw=p.querySelector("#asMkNew");if(nw)nw.onclick=()=>{navPush();openScreen("makeup",false,{mtab:"wait"});const s2=activeTab.state;s2.mkSel=ak;s2.mym=d.slice(0,7);panelOpen=true;toast(`${x.name} 학생의 결석을 골라 뒀어요 — 보강 대기에서 날짜 · 시간을 정해요`);render()}}
   anBind(p,k,b?b.classId:(m.classId||null),d,st);
-  {const hi=p.querySelector("#asIn"),ho=p.querySelector("#asOut");if(hi&&ho&&window.HF){const ed=!!st.asStEd&&!live;const put=(f,v)=>{const m0=DB.stampEd=DB.stampEd||{},key=k+"|"+sid;m0[key]=Object.assign({},m0[key],{[f]:v||""});commit()};HF.time(hi,{label:"등원",value:(tm&&tm.in)||"",step:5,disabled:!ed,onChange:v=>put("in",v)});HF.time(ho,{label:"하원",value:(tm&&tm.out)||"",step:5,disabled:!ed,onChange:v=>put("out",v)})}const eb=p.querySelector("#asStEd");if(eb)eb.onclick=()=>{st.asStEd=!st.asStEd;render()}}
+  {const hi=p.querySelector("#asIn"),ho=p.querySelector("#asOut");if(hi&&ho&&window.HF){const ed=!!st.asStEd&&!live;
+      /* 261120 대표: 실제 자료 = 키오스크 기록이 있는 칸은 읽기 전용, 기록이 없는 칸은 직접 입력(수업 저장 때 노션 출석의 등원 · 하원 스탬프로 — 수업 창과 같은 S.times 길) */
+      const lv2=!!(live&&S&&window.LIVE_ATTW&&!isMk),t0=lv2&&S._times0?(JSON.parse(S._times0)[sid]||{}):{};const edIn=lv2?!t0.in:ed,edOut=lv2?!t0.out:ed;
+      const put=(f,v)=>{if(lv2){S.times=S.times||{};S.times[sid]=Object.assign({in:"",out:""},S.times[sid],{[f]:v||""});lBase(k);commit();return}const m0=DB.stampEd=DB.stampEd||{},key=k+"|"+sid;m0[key]=Object.assign({},m0[key],{[f]:v||""});commit()};
+      HF.time(hi,{label:"등원",value:(tm&&tm.in)||"",step:5,disabled:!edIn,onChange:v=>put("in",v)});HF.time(ho,{label:"하원",value:(tm&&tm.out)||"",step:5,disabled:!edOut,onChange:v=>put("out",v)});if(lv2){hi.classList.toggle("asfree",edIn);ho.classList.toggle("asfree",edOut)}}const eb=p.querySelector("#asStEd");if(eb)eb.onclick=()=>{st.asStEd=!st.asStEd;render()}}
   p.querySelectorAll("[data-asi]").forEach(h2=>{if(window.HF)HF.text(h2,{label:h2.dataset.asi,icon:h2.dataset.asi==="담당강사"?"users":h2.dataset.asi==="클래스"?"layers":"repeat",value:{"담당강사":c?(tch(c.teacherId)||{}).name||"—":"—","클래스":cname,"수업 구분":kindT}[h2.dataset.asi],disabled:true});if(h2.dataset.asi==="클래스"&&c)hfDot(h2,classBar(c))});
   /* 학습 */
   if(tabOn==="learn"){p.querySelectorAll("[data-reco]").forEach(h=>h.onclick=()=>{st.asRecOpen=st.asRecOpen===h.dataset.reco?null:h.dataset.reco;render()});recActBind(p,k,live&&!window.LIVE_RECW)}
@@ -4948,6 +4952,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del&&!z._virtual).
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="appdata.js?v=716"></script><script src="appsave.js?v=716"></script><script src="appview.js?v=716"></script><script src="livelesson.js?v=716"></script><script src="live.js?v=716"></script>
+<script src="appdata.js?v=717"></script><script src="appsave.js?v=717"></script><script src="appview.js?v=717"></script><script src="livelesson.js?v=717"></script><script src="live.js?v=717"></script>
 </body>
 </html>
