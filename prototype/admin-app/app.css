@@ -146,7 +146,6 @@ textarea.inp{height:auto;padding:var(--space-2) var(--space-3)}
 .blk.sel{box-shadow:0 0 0 2px var(--brand-deep);z-index:5}
 .blk.same{box-shadow:0 0 0 1px var(--brand-deep);border-style:dashed}
 .blk.dim{opacity:.3}
-.blk.conflict{box-shadow:0 0 0 2px var(--danger)}
 .blk.drop{box-shadow:0 0 0 2px var(--success)}
 .blk .rz{position:absolute;left:0;right:0;bottom:0;height:8px;cursor:ns-resize}
 .blk .lock{display:inline-flex;vertical-align:-2px;margin-left:var(--space-1)}
@@ -789,7 +788,6 @@ td .stag,h3 .stag,.dlg h2 .stag{margin-left:var(--space-2)}
 .blk:hover{box-shadow:0 2px 4px rgba(60,45,30,.1),0 6px 14px rgba(60,45,30,.12)}
 .blk.sel,.blk.sel:hover{box-shadow:0 0 0 2.5px var(--brand-deep),0 6px 14px rgba(60,45,30,.12);z-index:5}
 .blk.same{box-shadow:0 0 0 1px var(--brand-deep),0 1px 2px rgba(60,45,30,.08)}
-.blk.conflict{box-shadow:0 0 0 2px var(--danger)}
 .blk.drop{box-shadow:0 0 0 2px var(--success)}
 body.dragging-stu .blk.drop-ok{box-shadow:0 0 0 2px var(--brand-deep)}
 .blk.flash{box-shadow:0 0 0 3px var(--danger)!important;z-index:6}

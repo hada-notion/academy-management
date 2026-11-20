@@ -59,7 +59,7 @@ function menuIcon(k){for(const g of MENU)for(const x of g[1])if(x[0]===k)return 
 const GATES={P1:["teachers","students","schools","glevels","classes","enrolls","timetable","seasons","subjects","areas","books","progress"],
  P2:["today","events","exams","reports","completion","letters","tuition","bill","bookfees","charges","etcs","costs","profit","legal","files","alims"],
  P3:["lesson"],P3b:["makeup","records"],P6:["admin"]};
-const GATES_ON=["P1","P2","P3","P2e","P3b","P3w","P6"];/* 261120 대표: 관리자 설정 화면은 실제 자료 모드에서도 열림(기능은 없고 기존 웹 화면 admin_settings.html로 가는 카드) *//* 출시 판(261119 원본 검수 통과 칸): P1 입력 + P2 보기 + P3 수업 + P2e 일정 쓰기 + P3b 학습기록 · 루틴 쓰기(보강 화면 읽기) + P3w 출결 쓰기. P3m(보강 쓰기, 끌어놓기 UI는 사람 확인 뒤) · P6은 꺼짐 */
+const GATES_ON=["P1","P2","P3","P2e","P3b","P3w","P3m","P6"];/* 261120 대표: 코드에 저장 길이 있는 기능은 모두 켬(보강 쓰기 P3m 포함) *//* 261120 대표: 관리자 설정 화면은 실제 자료 모드에서도 열림(기능은 없고 기존 웹 화면 admin_settings.html로 가는 카드) *//* 출시 판(261119 원본 검수 통과 칸): P1 입력 + P2 보기 + P3 수업 + P2e 일정 쓰기 + P3b 학습기록 · 루틴 쓰기(보강 화면 읽기) + P3w 출결 쓰기. P3m(보강 쓰기, 끌어놓기 UI는 사람 확인 뒤) · P6은 꺼짐 */
 /* 1) 메뉴와 연결된 칸 = 그 메뉴 아이콘(대표 261115). 메뉴 아이콘을 바꾸면 같이 바뀜 */
 const MENU_LINK=[[/^(학생|받는 학생|대상 학생|응시 학생|형제자매|형제·자매|학생\(개별일 때\)|학생 이름|학생이름)$/,"students"],[/^(선생님|담당 강사|담당강사|담당자|강사|담당 선생님|담당)$/,"teachers"],[/^(클래스|등록 클래스|수강 클래스|클래스 이름)$/,"classes"],[/^학교$/,"schools"],[/^학년$/,"@gradcap"],[/^시험$/,"exams"],[/^시즌$/,"@gitcommit"]/* 261118: 시즌 메뉴는 일정 › 시즌 탭이라 메뉴 아이콘이 없음 — 시즌 화면 제목 아이콘(gitcommit) 그대로 */,[/^(과목|영역)$/,"subjects"],[/^(교재|프로그램|교재·프로그램)$/,"books"],[/^일정$/,"events"],[/^(보고서|학습 보고서)$/,"reports"],[/^수강료$/,"tuition"],[/^청구$/,"bill"],[/^교재비$/,"bookfees"],[/^등록$/,"enrolls"],[/^시간표$/,"timetable"],[/^가정통신문$/,"letters"],[/^진도$/,"progress"]];
 /* 2) 뜻을 보여 주는 예외(대표 지정) — 칸 종류 규칙보다 먼저 */
