@@ -5,6 +5,7 @@
 //   { mode: "incremental", table?: "cr_…" } — 마지막 동기화 이후 Notion에서 바뀐 것만(표를 안 주면 네 표 모두).
 //   { mode: "class", sessionId } — 그 수업이 속한 반의 앞뒤 수업과 출석·기록·학습활동만.
 //   { mode: "library" } — 라이브러리·단원목록 복사본 전체 대조(v2.5.125, 10분마다).
+//   { mode: "events" } — (261123 웹훅 반영) 노션 웹훅 대기열 처리(_shared/notionEventsApply.ts). 예약 notion-events-drain이 할 일이 있을 때 1분마다.
 //   { mode: "app", step: "fill" | "incremental" | "reconcile-next", db? } — 관리 앱 읽기 복사본 app_rows(v2.8.0 항목 74, _shared/appCopy.ts).
 //       fill = 커서 없는 첫 DB 처음 채우기, incremental = 커서 있는 DB 모두 바뀐 것만, reconcile-next = 가장 오래 전 대조한 DB 하나. db를 주면 그 DB만 reconcile.
 // Notion은 읽기만 한다. 실제 로직은 _shared/classRoomCopy.ts. 수업 관리(class-room)는 아직 이 표를 읽지 않는다.
@@ -12,6 +13,7 @@ import { CORS_HEADERS, requireAdminKey } from "../_shared/adminShared.ts"
 import { COPY_TABLES, isCopyTable, reconcileTable, incrementalTable, syncClassOfSession } from "../_shared/classRoomCopy.ts"
 import { reconcileLibrary } from "../_shared/libraryCopy.ts"
 import { textbookSources } from "../_shared/textbookSearch.ts"
+import { drainEvents, liveDeps } from "../_shared/notionEventsApply.ts"
 import { APP_DBS, isAppDb, reconcileApp, incrementalApp, reconcileNext, nextUnfilled } from "../_shared/appCopy.ts"
 
 const json = (data: unknown, status = 200) =>
@@ -46,6 +48,9 @@ Deno.serve(async (req: Request) => {
     if (body?.mode === "library") {
       return json({ ok: true, mode: "library", result: await reconcileLibrary(await textbookSources()), ms: Date.now() - startedAt })
     }
+    if (body?.mode === "events") {
+      return json({ ok: true, mode: "events", result: await drainEvents(liveDeps, `cron-${crypto.randomUUID().slice(0, 8)}`, 90_000), ms: Date.now() - startedAt })
+    }
     if (body?.mode === "app") {
       if (body.db !== undefined) {
         if (!isAppDb(body.db)) return json({ error: `db는 ${APP_DBS.join(", ")} 중 하나여야 합니다.` }, 400)
@@ -63,7 +68,7 @@ Deno.serve(async (req: Request) => {
       if (body.step === "reconcile-next") return json({ ok: true, mode: "app", step: "reconcile-next", results: [await reconcileNext()], ms: Date.now() - startedAt })
       return json({ error: 'app의 step은 "fill", "incremental", "reconcile-next" 중 하나여야 합니다.' }, 400)
     }
-    return json({ error: 'mode는 "reconcile", "incremental", "class", "library", "app" 중 하나여야 합니다.' }, 400)
+    return json({ error: 'mode는 "reconcile", "incremental", "class", "library", "events", "app" 중 하나여야 합니다.' }, 400)
   } catch (err) {
     console.error("[sync-class-room-copy]", (err as Error).message)
     return json({ error: (err as Error).message, ms: Date.now() - startedAt }, 500)

@@ -306,7 +306,7 @@ function sbHeaders(extra: Record<string, string> = {}) {
 	if (!SB_URL() || !SB_KEY()) throw new Error("SB_URL / SB_SERVICE_ROLE_KEY Secrets가 설정되어 있지 않습니다.")
 	return { apikey: SB_KEY(), Authorization: `Bearer ${SB_KEY()}`, "Content-Type": "application/json", ...extra }
 }
-async function upsertRows(rows: Row[]): Promise<void> {
+export async function upsertRows(rows: Row[]): Promise<void> {
 	const now = new Date().toISOString()
 	for (let i = 0; i < rows.length; i += 300) {
 		const res = await fetchSupabaseWithRetry(`${SB_URL()}/rest/v1/app_rows?on_conflict=id`, {
@@ -326,7 +326,7 @@ async function selectIds(db: AppDb): Promise<string[]> {
 		if (part.length < 1000) return ids
 	}
 }
-async function deleteIds(ids: string[]): Promise<void> {
+export async function deleteIds(ids: string[]): Promise<void> {
 	for (let i = 0; i < ids.length; i += 100) {
 		const list = ids.slice(i, i + 100).map((id) => `"${id}"`).join(",")
 		const res = await fetchSupabaseWithRetry(`${SB_URL()}/rest/v1/app_rows?id=in.(${list})`, { method: "DELETE", headers: sbHeaders({ Prefer: "return=minimal" }) })

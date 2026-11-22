@@ -52,12 +52,16 @@ const FETCH_TIMEOUT_MS = 12_000
 // (2026-10-16 메뉴 일괄 생성에서 출석 1건이 9초 차로 두 번 생긴 원인). 읽기·고치기는 여러 번 보내도 결과가 같아 기본값(true).
 // (v2.8.0 항목 100) maxWaitMs: 429 다시 시도 대기가 이 값보다 길면 기다리지 않고 그 429 응답을 돌려준다(호출자가 "잠시 뒤 다시"로
 // 처리). 관리 앱 `status`·DB 찾기만 쓴다 — 주지 않으면 전과 같이 Retry-After를 그대로 기다린다.
+// (261123 웹훅 반영) 이 실행에서 Notion을 부른 횟수(재시도 포함). 웹훅 처리기가 초당 횟수를 맞추는 데 쓴다.
+export const notionCalls = { n: 0 }
+
 export async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 5, opts: { retryAmbiguous?: boolean; maxWaitMs?: number } = {}): Promise<Response> {
 	const retryAmbiguous = opts.retryAmbiguous ?? true
 	const callStartedAt = Date.now()
 	let lastRes: Response | undefined
 	let lastErr: Error | undefined
 	for (let attempt = 0; attempt <= maxRetries; attempt++) {
+		if (url.startsWith(NOTION_API)) notionCalls.n++
 		const controller = new AbortController()
 		const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
 		try {
