@@ -6,7 +6,7 @@
 <title>관리 앱 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3C%2Fsvg%3E">
 <link rel="stylesheet" href="hada-tokens.css?v=742">
-<link rel="stylesheet" href="app.css?v=754">
+<link rel="stylesheet" href="app.css?v=755">
 <link rel="stylesheet" href="pick.css?v=742">
 <link rel="stylesheet" href="field.css?v=742">
 </head>
@@ -2068,11 +2068,11 @@ function gtRefs(L,r){const c=L.coll;if(c==="areas"){const n=DB.subjects.filter(z
   if(c==="books"){const n=bookUsers(r).length;return n?`쓰는 학생 ${n}명이 있어요`:""}return ""}
 /* 261119 대표 "특별한 이유가 없으면 삭제하지 못하게": 실제 자료 모드에서 노션에 있는 줄은 삭제하지 않는다(시간표만 서버 delete 허용). 학생 · 클래스 · 시즌은 [실수로 만든 줄] =
    이름 앞에 "(실수) "만 붙여 저장(대표: "이름을 실수로 바꿔 놓고 나중에 동기화되면 노션에서 삭제") — 상태는 건드리지 않음, 되돌리기 = 접두사만 지움. 이름을 고칠 수 있는 목록(학생 · 클래스 · 시즌 · 강사 · 과목 · 영역)에 있고,
-   그 밖은 "삭제·종료는 노션에서 해요" + [노션 열기]. 저장 전 새 줄 · 예시 모드는 그대로 */
+   그 밖은 "삭제·종료는 위 N(노션)에서 해요"(아래 줄 단추는 없음 — 머리 [N] 하나). 저장 전 새 줄 · 예시 모드는 그대로 */
 const MISTAKE="(실수) ",MISTAKE_COLLS=["students","classes","seasons","teachers","subjects","areas"];
 function liveNoDel(L,r){return !!(window.LIVE&&window.LIVE.loaded&&r&&L&&L.coll!=="blocks"&&typeof appsIsId==="function"&&appsIsId(r.id))}
 function liveNoDelBox(L,r){const nk=L.coll==="enrolls"?"enrolls":activeTab.screen;const mk=String(r.name||"").startsWith(MISTAKE);
-  return `<span class="hint">삭제·종료는 노션에서 해요</span><button type="button" class="lnk" data-notion="${nk}"${notionRowAttr(r)}>${IC("notion","s")}노션 열기</button>`}
+  return `<span class="hint">삭제·종료는 위 N(노션)에서 해요</span>`}
 function liveMistake(L,r){const mk=String(r.name||"").startsWith(MISTAKE);
   r.name=mk?r.name.slice(MISTAKE.length):MISTAKE+(r.name||"");
   markDirty(L,r);commit();toast(mk?"실수 표시를 풀었어요 — 저장하면 노션에 반영돼요":"이름 앞에 (실수)를 붙였어요 — 저장하면 노션에 반영돼요(삭제하지 않아요)")}
@@ -5004,6 +5004,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del&&!z._virtual).
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="finance.js?v=748"></script><script src="finlive.js?v=742"></script><script src="exams.js?v=750"></script><script src="appdata.js?v=743"></script><script src="appsave.js?v=754"></script><script src="appview.js?v=754"></script><script src="livelesson.js?v=744"></script><script src="liveadmin.js?v=742"></script><script src="livebook.js?v=742"></script><script src="liveschool.js?v=742"></script><script src="liveteacher.js?v=747"></script><script src="live.js?v=754"></script><script src="liverefresh.js?v=742"></script><script src="livereq.js?v=742"></script>
+<script src="finance.js?v=748"></script><script src="finlive.js?v=755"></script><script src="exams.js?v=750"></script><script src="appdata.js?v=743"></script><script src="appsave.js?v=755"></script><script src="appview.js?v=755"></script><script src="livelesson.js?v=744"></script><script src="liveadmin.js?v=742"></script><script src="livebook.js?v=742"></script><script src="liveschool.js?v=742"></script><script src="liveteacher.js?v=747"></script><script src="live.js?v=755"></script><script src="liverefresh.js?v=742"></script><script src="livereq.js?v=742"></script>
 </body>
 </html>
