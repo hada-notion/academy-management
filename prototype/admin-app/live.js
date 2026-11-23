@@ -458,7 +458,8 @@ function liveSaveRow(L, r) {
     toast("삭제했어요 — 저장 전에 만든 줄이라 노션에는 없었어요");
     return null;
   }
-  const only = (coll, row) => row === r || (L.coll === "students" && coll === "enrolls" && row.studentId === r.id);
+  const only = (coll, row) => row === r || (L.coll === "students" && coll === "enrolls" && row.studentId === r.id)
+    || (L.coll === "exams" && ((coll === "tests" && row.id === r.testId) || (coll === "grades" && row.examId === r.id))); /* 시험정보 창 [시험 저장] = 새로 고른 시험(학원) 줄 + 이 시험의 성적 줄까지(261123 원본 대조 — 새 시험 줄이 빠져 연결이 다음 저장으로 밀렸음) */
   return liveSave({ only }).then((res) => { try { if (res && res.deleted && activeTab.state.sel === r.id && !(DB[L.coll] || []).includes(r)) { activeTab.state.sel = null; render(); } } catch (_) {} return res; });
 }
 /* ═════ [동기화](노션 → 서버 사본, 261119) — 서버 app-api { action:"run", name:"sync-copy", dbs, full:true }(노션에서 지운 줄까지 통째로 대조, 느려도 됨).
