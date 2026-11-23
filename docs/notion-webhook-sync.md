@@ -63,6 +63,11 @@ select status, count(*) from public.notion_event_queue group by status;
 - 구독 끄기: 노션 연동 설정 > Webhooks에서 Pause 또는 Delete.
 - 끊김 감지만 끄기: `drop trigger notion_webhook_events_watch on public.notion_webhook_events; drop trigger notion_webhook_events_simulate on public.notion_webhook_events;` + `select public.notion_subscription_poll_set(15);`(폴링 15분 고정). 함수는 표 · 함수가 없으면 대조를 건너뛴다.
 
+## 앱 자동 동기화 끄기(PR 519, 병합 보류)와 끊김 되돌림이 겹칠 때
+- 겹치는 곳: 519는 `app-copy-incremental` 크론을 지운다. 그런데 `notion_subscription_poll_set`은 그 크론이 없어도(`cur`가 비어 있어도) 원하는 주기로 다시 만든다 — 구독이 끊김 ↔ 정상으로 바뀔 때마다 지운 크론이 되살아난다.
+- 이기는 쪽: 519(꺼 둠)가 이긴다. 끊김 때 폴링을 5분으로 앞당기는 건 `app-copy-incremental`이 이미 있을 때만 의미가 있고, 없으면 앱은 웹훅 자동 갱신과 [동기화]로 따라간다.
+- 고칠 곳: 519를 병합하는 날 같은 묶음에서 새 마이그레이션으로 `notion_subscription_poll_set`을 다시 정의해, `app-copy-incremental`용 `cron.schedule`을 `cur`가 있을 때만 부르게 한다(`class-room-copy-incremental`은 그대로). 519 코드와 20261123060000은 고치지 않는다.
+
 ## 구독 새로 만들어 확인 토큰 바꾸기 (대표가 노션 · Supabase 화면에서)
 시험 때 확인 토큰 값이 대화에 한 번 보였다. 실사용 전에 바꾼다. 값은 어디에도 적지 않는다.
 1. 노션 연동 설정 → 원본 내부 연동 → Webhooks → **+ Create a subscription**. URL은 지금 구독과 같은 `…/functions/v1/notion-events`, API version `2025-09-03`.
