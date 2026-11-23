@@ -93,7 +93,9 @@ import { authorizeKey, securityEnabled } from "../_shared/adminSecurity.ts"
 // 바꿨다 -- 이 라우트(index.ts)의 호출 방식 자체는 바뀌지 않는다. 자세한 내용은
 // _shared/registrationTextbookTarget.ts의 PART N-12 주석 참고.
 
-import { extractPageId, getPage, describeBody } from "../_shared/notionClient.ts"
+import { extractPageId, getPage, describeBody, todaySeoulDate, queryAllPages, fullRelationIds, updatePageProperties } from "../_shared/notionClient.ts"
+import { DS_CLASS_SESSION } from "../_shared/constants.ts"
+import { endRegistration, endNote, EndPartialError, SESSION_PROP_REG, SESSION_PROP_DATE, type EndDeps } from "../_shared/registrationEnd.ts"
 import {
 	TEXTBOOK_STATUS_SPEC,
 	cleanupUnusedBooksOnEnd,
@@ -108,6 +110,20 @@ import { runSyncWebhookForPage } from "../_shared/webhookIngest.ts"
 import { resolveAdminKeyFromRequest, getCurrentAdminKey } from "../_shared/adminShared.ts"
 import { runInBackground, respondAccepted } from "../_shared/backgroundTask.ts"
 import { isRunning, markRunning, markDone, markError } from "../_shared/statusTracking.ts"
+
+// 종료 처리 수업 단계(registrationEnd.ts)가 쓰는 노션 길
+const END_DEPS: EndDeps = {
+	today: todaySeoulDate,
+	sessionsFrom: (regId, from) => queryAllPages(DS_CLASS_SESSION, {
+		and: [
+			{ property: SESSION_PROP_REG, relation: { contains: regId } },
+			{ property: SESSION_PROP_DATE, date: { on_or_after: from } },
+		],
+	}),
+	relationAll: (page, prop) => fullRelationIds(page, prop),
+	patch: async (id, props) => { await updatePageProperties(id, props) },
+	log: (m) => console.warn(m),
+}
 
 async function processPage(pageId: string): Promise<void> {
 	const result = await createIndividualBooksForRegistration(pageId)
@@ -345,8 +361,20 @@ Deno.serve(async (req: Request) => {
 		} else if (route === "cleanup-on-end") {
 			// 다른 함수(registrationSync.ts의 callTextbookCleanup)가 내부적으로 동기 호출해서 즉시
 			// 결과를 받아야 하므로, 이 라우트는 큐를 거치지 않고 그대로 동기 처리된다.
+			// (v2.8.0, 261123) 교재 정리 앞에 노션 버튼의 수업 · 종료일 단계를 같이 한다(_shared/registrationEnd.ts) —
+			// 관리 앱이 `요청` = reg-end-cleanup만 써도 노션 버튼과 같은 결과. 노션 버튼이 먼저 했으면 고칠 것이 없어 그대로.
+			let end
+			try {
+				end = await endRegistration(await getPage(pageId), END_DEPS)
+			} catch (err) {
+				if (err instanceof EndPartialError) {
+					console.error("[cleanup-on-end] 일부 수업 실패:", pageId.slice(-6), err.result.failed.length)
+					return new Response(JSON.stringify({ error: err.message, result: err.result }), { status: 502, headers: { "Content-Type": "application/json" } })
+				}
+				throw err
+			}
 			const result = await cleanupUnusedBooksOnEnd(pageId)
-			return new Response(JSON.stringify({ ok: true, result }), { status: 200 })
+			return new Response(JSON.stringify({ ok: true, end, result, note: endNote(end, result) }), { status: 200, headers: { "Content-Type": "application/json" } })
 		} else {
 			return new Response(JSON.stringify({ error: `알 수 없는 경로: ${route}` }), { status: 404 })
 		}
