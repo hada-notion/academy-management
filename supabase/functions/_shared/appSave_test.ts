@@ -88,7 +88,7 @@ Deno.test("저장 요청 검사: 빈 목록 · 많은 줄 · 쓸 수 없는 DB �
 
 // ---------- saveChanges(가짜 Notion · Supabase) ----------
 type Call = { url: string; method: string; body?: any }
-function mockFetch(opts: { copyDb?: string; edited?: string; locked?: boolean }) {
+function mockFetch(opts: { copyDb?: string; edited?: string; locked?: boolean; copyFails?: boolean }) {
   const calls: Call[] = []
   let n = 0
   globalThis.fetch = (async (input: Request | URL | string, init?: RequestInit) => {
@@ -102,6 +102,7 @@ function mockFetch(opts: { copyDb?: string; edited?: string; locked?: boolean })
     if (url.includes("/v1/pages/") && method === "GET") return ok({ id: ID, properties: opts.locked ? { 잠금: { type: "checkbox", checkbox: true } } : {}, last_edited_time: opts.edited ?? "2026-11-17T00:00:00.000Z" })
     if (url.includes("/v1/pages/") && method === "PATCH") return ok({ id: ID, properties: body.properties, last_edited_time: "2026-11-17T01:00:00.000Z" })
     if (url.includes("/rest/v1/app_rows?select=db")) return ok(opts.copyDb ? [{ db: opts.copyDb }] : [])
+    if (url.includes("/rest/v1/app_rows") && opts.copyFails && method === "POST") return new Response('{"message":"copy write failed"}', { status: 400 })
     if (url.includes("/rest/v1/app_rows")) return new Response(null, { status: 201 })
     return new Response("unexpected " + url, { status: 500 })
   }) as typeof fetch
@@ -139,6 +140,21 @@ Deno.test("앞 줄이 실패하면 그 tmp를 가리키는 뒤 줄도 실패, �
     { op: "create", db: "학생(학원) DB", props: { 이름: "다른 학생" } },
   ]))
   assertEquals(r.map((x) => x.ok), [false, false, true])
+})
+
+// (261123 출시 전 5번) 노션엔 만들었는데 사본 쓰기만 실패: 실패로 답하면 앱이 다시 만들어 중복이 생긴다.
+Deno.test("출시 전 5번: 사본 쓰기만 실패해도 새 id와 함께 성공 + '노션엔 저장됨, 앱 사본만 못 맞춤', tmp를 가리키는 뒤 줄도 이어 감", async () => {
+  const calls = mockFetch({ copyFails: true })
+  const r = await saveChanges(checkChanges([
+    { op: "create", db: "학생(학원) DB", tmp: "tmp:s1", props: { 이름: "예시 학생" } },
+    { op: "create", db: "등록(학원) DB", props: { 이름: "예시 등록", 학생: ["tmp:s1"] } },
+  ]))
+  assertEquals(r.map((x) => x.ok), [true, true])
+  assertEquals(typeof r[0].id, "string")
+  assertEquals(r[0].tmp, "tmp:s1")
+  assertEquals(r[0].warn, "노션엔 저장됨, 앱 사본만 못 맞춤 — 잠시 뒤 저절로 맞춰져요(다시 저장하지 않아도 돼요)")
+  assertEquals(calls.filter((c) => c.url.endsWith("/v1/pages")).length, 2, "노션에 한 번씩만")
+  assertEquals(calls.filter((c) => c.url.endsWith("/v1/pages"))[1].body.properties.학생, { relation: [{ id: r[0].id }] })
 })
 
 // ---------- 일정(학원) DB(2.8): 앱이 쓰는 칸만, 잠긴 줄 날짜 거절, 리포트 맞추기 ----------

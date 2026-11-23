@@ -62,7 +62,8 @@ import { ACTIVITY_MEMO, nameLearner, propKey } from "./propAlias.ts"
 type Page = Record<string, any>
 
 export class ClassRoomError extends Error {
-	constructor(public status: number, message: string) {
+	// detail(261123 출시 전 4번): 여러 줄 중 일부만 실패했을 때 어떤 줄이 됐고 안 됐는지(class-room이 응답 본문에 함께 싣는다).
+	constructor(public status: number, message: string, public detail?: Record<string, unknown>) {
 		super(message)
 	}
 }
@@ -731,6 +732,20 @@ export async function loadStudent(registrationId: string) {
 }
 
 // ---------- 저장 (편집 모드의 [저장]) ----------
+// (261123 출시 전 4번) 여러 줄을 3개씩 노션에 쓰다 한 줄이 실패해도 나머지는 끝까지 쓰고, 된 줄은 사본에도 반영한다.
+// 하나라도 실패하면 502 + { saved, savedIds, failed: [{ id, error }] } — 앱은 실패한 줄만 작성 중으로 남긴다.
+const failText = (err: unknown) => err instanceof ClassRoomError ? err.message : `노션에 쓰지 못했어요(${String((err as Error)?.message ?? err).replace(/\s+/g, " ").slice(0, 120)})`
+export async function settleWrites<T extends { id: string }>(items: T[], write: (it: T) => Promise<Page>): Promise<{ ok: Page[]; failed: { id: string; error: string }[] }> {
+	const out = await mapWithConcurrency(items, 3, async (it) => {
+		try { return { page: await write(it) } } catch (err) { return { id: it.id, error: failText(err) } }
+	})
+	return { ok: out.filter((o): o is { page: Page } => "page" in o).map((o) => o.page), failed: out.filter((o): o is { id: string; error: string } => !("page" in o)) }
+}
+export function partialFailure(what: string, total: number, ok: Page[], failed: { id: string; error: string }[], extra: Record<string, unknown> = {}): ClassRoomError {
+	const first = failed[0]?.error ?? ""
+	return new ClassRoomError(502, `${what} ${total}건 중 ${failed.length}건을 저장하지 못했어요 — ${first}`, { saved: ok.length, savedIds: ok.map((p) => p.id as string), failed, ...extra })
+}
+
 export async function saveAttendance(items: unknown) {
 	if (!Array.isArray(items) || items.length === 0 || items.length > MAX_ITEMS) throw new ClassRoomError(400, "저장할 내용이 없습니다.")
 	const updates = items.map((it: any) => {
@@ -756,10 +771,11 @@ export async function saveAttendance(items: unknown) {
 		return { id: it.attendanceId as string, props, memo: it.memo === undefined ? undefined : richText(String(it.memo)) }
 	})
 	// 출석 메모는 `메모(내부용)`으로 쓰고, 아직 안 바꾼 학원이면 `메모`로 다시 쓴다(v2.8.0 항목 62).
-	const saved = await mapWithConcurrency(updates, 3, (u) => u.memo === undefined
+	const { ok, failed } = await settleWrites(updates, (u) => (u.memo === undefined
 		? updatePageProperties(u.id, u.props)
-		: withAttMemoName((memoProp) => updatePageProperties(u.id, { ...u.props, [memoProp]: u.memo }))) as Page[]
-	await mirrorSaved("cr_attendance", saved) // 복사본 함께 쓰기(v2.5.115, v2.5.116부터 Notion 수정 응답을 그대로)
+		: withAttMemoName((memoProp) => updatePageProperties(u.id, { ...u.props, [memoProp]: u.memo }))) as Promise<Page>)
+	await mirrorSaved("cr_attendance", ok) // 복사본 함께 쓰기(v2.5.115, v2.5.116부터 Notion 수정 응답을 그대로) — 된 줄만
+	if (failed.length) throw partialFailure("출결", updates.length, ok, failed)
 	return { saved: updates.length }
 }
 
@@ -791,10 +807,11 @@ export async function saveActivities(items: unknown) {
 		return { id: it.activityId as string, props, memo }
 	})
 	// 학습활동 메모는 `메모(내부용)`으로 쓰고, 아직 안 바꾼 학원이면 `메모`로 다시 쓴다(v2.8.0 항목 64).
-	const saved = await mapWithConcurrency(updates, 3, (u) => u.memo === undefined
+	const { ok, failed } = await settleWrites(updates, (u) => (u.memo === undefined
 		? updatePageProperties(u.id, u.props)
-		: activityMemoName.run((memoProp) => updatePageProperties(u.id, { ...u.props, [memoProp]: u.memo }))) as Page[]
-	await mirrorSaved("cr_activities", saved) // 복사본 함께 쓰기(v2.5.115, v2.5.116부터 Notion 수정 응답을 그대로)
+		: activityMemoName.run((memoProp) => updatePageProperties(u.id, { ...u.props, [memoProp]: u.memo }))) as Promise<Page>)
+	await mirrorSaved("cr_activities", ok) // 복사본 함께 쓰기(v2.5.115, v2.5.116부터 Notion 수정 응답을 그대로) — 된 줄만
+	if (failed.length) throw partialFailure("학생별 결과", updates.length, ok, failed)
 	return { saved: updates.length }
 }
 
@@ -845,7 +862,10 @@ export async function createRecords(body: any) {
 	const existing = await getPages(rel(ctx.session, "학습기록"))
 	const results: { id: string; title: string; created: boolean }[] = []
 	const targets: (Page | null)[] = bookIds.length ? await getPages(bookIds) : [null]
-	for (const book of targets) {
+	// (261123 출시 전 4번) 교재 여러 권 중 하나가 실패해도 앞에서 만든 기록은 사본에 넣고, 만든 것 · 못 만든 것을 함께 답한다.
+	const failed: { id: string; error: string }[] = []
+	let firstErr: unknown = null
+	for (const book of targets) try {
 		const same = existing.find((r) => selectName(r, "구분") === kind && (book ? rel(r, "진도교재")[0] === book.id : !rel(r, "진도교재").length && plain(r, "주제") === topic))
 		if (same && !chosen) {
 			results.push({ id: same.id, title: anyTitleText(same), created: false })
@@ -879,9 +899,16 @@ export async function createRecords(body: any) {
 		const page = await createPage(DS_LEARNING_RECORD, props) as Page
 		existing.push(page)
 		results.push({ id: page.id as string, title: anyTitleText(page) || String((props["학습"] as any).title[0].text.content), created: true })
+	} catch (err) {
+		firstErr ??= err
+		failed.push({ id: book?.id as string ?? "", error: failText(err) })
 	}
 	// 복사본 함께 쓰기(v2.5.115): 새 기록과, "학습기록" 관계가 바뀐 수업
-	await mirrorJobs([["cr_records", results.map((r) => r.id)], ["cr_sessions", [ctx.session.id as string]]])
+	if (results.length) await mirrorJobs([["cr_records", results.map((r) => r.id)], ["cr_sessions", [ctx.session.id as string]]])
+	if (failed.length) {
+		if (!results.some((r) => r.created)) throw firstErr // 하나도 안 만들었으면 예전과 같은 오류(400 등)
+		throw new ClassRoomError(502, `기록 ${targets.length}건 중 ${failed.length}건을 만들지 못했어요 — ${failed[0].error}`, { records: results, failed })
+	}
 	return { records: results, unitsSaved: unitIds?.length ? unitsOn : undefined }
 }
 
@@ -1015,13 +1042,19 @@ export async function createMakeupSession(body: any) {
 	}) as Page
 	const sessionId = session.id as string
 	const made: string[] = []
+	// (261123 출시 전 4번) 보강 수업을 만든 뒤 배정 하나가 실패해도 나머지를 배정하고, 만든 수업 · 배정한 결석은 사본에 넣는다.
+	// 실패가 있으면 502 + { sessionId, assigned, failed } — 앱은 수업을 다시 만들지 않는다(sessionId가 있으니 이미 노션에 있음).
+	const failed: { id: string; error: string }[] = []
 	let current = session
 	for (const a of absences) {
-		const r = await assignMakeup(a.id as string, sessionId, { absence: a, session: current }).catch(makeupError)
-		made.push(r.attendanceId)
-		current = await getPage(sessionId) as Page // 명단(등록)이 늘었으니 다시 읽고 다음 배정
+		try {
+			const r = await assignMakeup(a.id as string, sessionId, { absence: a, session: current }).catch(makeupError)
+			made.push(r.attendanceId)
+			current = await getPage(sessionId) as Page // 명단(등록)이 늘었으니 다시 읽고 다음 배정
+		} catch (err) { failed.push({ id: a.id as string, error: failText(err) }) }
 	}
 	await mirrorMakeup(sessionId, [...made, ...absences.map((a) => a.id as string)])
+	if (failed.length) throw new ClassRoomError(502, `보강 수업은 만들었고 결석 ${absences.length}건 중 ${failed.length}건을 배정하지 못했어요 — ${failed[0].error}`, { sessionId, assigned: made, failed })
 	return { sessionId, assigned: made }
 }
 

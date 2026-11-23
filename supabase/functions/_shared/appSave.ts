@@ -192,7 +192,9 @@ async function upsertCopy(db: WriteDb, page: Record<string, any>): Promise<Recor
 
 // ---------- 저장 ----------
 export type Change = { op: "create" | "update" | "delete"; db: string; id?: string; tmp?: string; edited?: string; props?: Record<string, unknown> }
-export type ChangeResult = { i: number; ok: boolean; id?: string; tmp?: string; row?: Record<string, unknown>; error?: string; conflict?: boolean; deleted?: boolean; blocked?: Record<string, number> }
+export type ChangeResult = { i: number; ok: boolean; id?: string; tmp?: string; row?: Record<string, unknown> | null; error?: string; conflict?: boolean; deleted?: boolean; blocked?: Record<string, number>; warn?: string }
+// (261123 출시 전 5번) 노션엔 썼고 앱 사본(Supabase)만 못 쓴 줄의 안내 — 앱이 그대로 보여 준다.
+export const COPY_ONLY_FAILED = "노션엔 저장됨, 앱 사본만 못 맞춤 — 잠시 뒤 저절로 맞춰져요(다시 저장하지 않아도 돼요)"
 
 // ---------- 지우기(op "delete") ----------
 // 노션 페이지를 휴지통으로 보내고(복구 가능) 복사본(app_rows) 줄도 같은 요청에서 바로 뺀다. 앱 화면이 [삭제]를 내는 DB만 열고,
@@ -302,8 +304,15 @@ export async function saveChanges(changes: Change[]): Promise<ChangeResult[]> {
 			// (scheduleVisibility.noticeReportSyncNotNeeded) 여기서 직접 리포트를 맞춘다(학부모 공개를 끈 것도 빠지게).
 			if (eventAffectsReport(c.db as WriteDb, cprops)) saveDeps.refreshReport(page.id)
 			if (c.db === LIBRARY_DB) saveDeps.syncLibraryBook(page.id)
-			const row = await timed("복사본반영", () => upsertCopy(c.db as WriteDb, page))
-			out.push({ i, ok: true, id: page.id, tmp: c.tmp, row })
+			// (261123 출시 전 5번) 노션에는 이미 썼다. 사본 쓰기만 실패하면 실패로 답하지 않는다 — 실패로 답하면 앱이 새 줄을
+			// 작성 중으로 남기고, 다시 [저장]하면 노션에 같은 줄이 하나 더 생긴다. 새 id와 함께 성공 + 안내(warn)로 답한다.
+			// 사본은 웹훅 · 폴링(5분)이 저절로 맞춘다.
+			let row: Awaited<ReturnType<typeof upsertCopy>> | null = null, warn: string | undefined
+			try { row = await timed("복사본반영", () => upsertCopy(c.db as WriteDb, page)) } catch (err) {
+				warn = COPY_ONLY_FAILED
+				console.error(`[appSave] ${c.db} ${c.op} 노션엔 저장, 사본 쓰기 실패: ${String((err as Error).message).slice(0, 200)}`)
+			}
+			out.push({ i, ok: true, id: page.id, tmp: c.tmp, row, ...(warn ? { warn } : {}) })
 			console.log(`[appSave] ${c.db} ${c.op} ${Date.now() - t0}ms (${steps.join(" ")})`)
 		} catch (err) {
 			out.push({ i, ok: false, id: c.id, tmp: c.tmp, error: err instanceof SaveError ? err.message : "Notion에 쓰지 못했습니다: " + String((err as Error).message).slice(0, 200) })

@@ -172,6 +172,53 @@ Deno.test("워커 다시 넘기기: 지금 서버 키로 본문 그대로, 실�
   assert(threw, "unknown id throws")
 })
 
+// (261123 출시 전 3번) 요청 칸에서 온 다시 넘기기가 성공하면 "⚠️ 실패"로 남은 요청 칸을 ✅ 완료(자동 재시도)로.
+Deno.test("출시 전 3번: 자동 재시도 성공 → 요청 칸 ✅ 완료(자동 재시도), 사람이 다시 눌렀으면 그대로", async () => {
+  const sel = (name: string) => ({ type: "select", select: { name } })
+  const mk = (st: number, reqNow: string, body = '{"ok":true}') => {
+    const patches: any[] = []
+    return {
+      patches,
+      deps: {
+        fetch: (async () => new Response(body, { status: st })) as any,
+        baseUrl: () => "https://x.supabase.co",
+        key: async () => "server-key",
+        request: {
+          readPage: async (id: string) => ({ id, properties: { "요청": sel(reqNow) } }),
+          patch: async (id: string, props: any) => { patches.push({ id, props }) },
+          now: () => Date.UTC(2026, 10, 23, 1, 0, 0),
+          log: () => {},
+        },
+      },
+    }
+  }
+  const evBody = JSON.stringify({ source: { type: "notion-events", request: "session-record" }, data: { id: "p" } })
+  const a = mk(202, "⚠️ 실패")
+  await processRouterRetryItem({ id: "session-record", pageId: "p", body: evBody }, undefined, a.deps)
+  eq(a.patches.length, 1)
+  eq(a.patches[0].props["요청"].select.name, "✅ 완료")
+  assert(a.patches[0].props["요청 결과"].rich_text[0].text.content.startsWith("✅ 완료(자동 재시도) · 학습기록 생성"), a.patches[0].props["요청 결과"].rich_text[0].text.content)
+  // 그사이 다시 눌렀으면(처리 중 · 새 요청) 건드리지 않는다
+  for (const now of ["🔄 처리 중", "session-record", "✅ 완료"]) {
+    const b = mk(202, now)
+    await processRouterRetryItem({ id: "session-record", pageId: "p", body: evBody }, undefined, b.deps)
+    eq(b.patches.length, 0, now)
+  }
+  // 옛 길잡이(자동화 웹훅)에서 온 다시 넘기기는 요청 칸이 없으니 쓰지 않는다
+  const c = mk(202, "⚠️ 실패")
+  await processRouterRetryItem({ id: "session-record", pageId: "p", body: '{"data":{"id":"p"}}' }, undefined, c.deps)
+  eq(c.patches.length, 0)
+  // 함수가 4xx로 거절하면 요청 칸은 실패 그대로, 이유만 바꿔 쓴다(더는 자동으로 안 넘김)
+  const d = mk(400, "⚠️ 실패", '{"error":"보고서 구분이 비어 있습니다"}')
+  await processRouterRetryItem({ id: "session-record", pageId: "p", body: evBody }, undefined, d.deps)
+  eq(d.patches[0].props["요청"], undefined)
+  assert(d.patches[0].props["요청 결과"].rich_text[0].text.content.includes("보고서 구분이 비어 있습니다"))
+  // 결과 쓰기가 실패해도 throw하지 않는다(던지면 큐가 같은 동작을 한 번 더 넘김)
+  const e = mk(202, "⚠️ 실패")
+  e.deps.request.patch = async () => { throw new Error("504") }
+  await processRouterRetryItem({ id: "session-record", pageId: "p", body: evBody }, undefined, e.deps)
+})
+
 Deno.test("GET은 405", async () => {
   eq((await handleRouter(new Request("https://x/functions/v1/notion-router"), deps())).status, 405)
 })

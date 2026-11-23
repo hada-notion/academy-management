@@ -25,6 +25,7 @@ import { authorizeKey, securityEnabled } from "./adminSecurity.ts"
 import { getCurrentAdminKey, resolveAdminKeyFromRequest } from "./adminShared.ts"
 import { enqueueSync, recordSyncFailure, wakeSyncQueueWorker } from "./syncQueue.ts"
 import { resolveActions, routeById, targetUrl, ACTION_HEADER } from "./webhookRoutes.ts"
+import { finishRetriedRequest, isNotionEventsBody, liveRequestDeps, type RequestDeps } from "./notionRequests.ts"
 
 export const ROUTER_MISS_TARGET = "notion-router"
 export const ROUTER_RETRY_TARGET = "notion-router-retry"
@@ -57,7 +58,7 @@ function json(body: unknown, status: number): Response {
 // 실패로 볼 응답: 네트워크·시간 초과(0)와 5xx. 4xx는 기존 함수가 판단한 결과라 그대로 둔다(다시 해도 같음).
 const isForwardFailure = (status: number) => status === 0 || status >= 500
 
-async function forward(deps: Pick<RouterDeps, "fetch">, url: string, key: string, raw: string): Promise<{ status: number; error?: string }> {
+async function forward(deps: Pick<RouterDeps, "fetch">, url: string, key: string, raw: string, withText = false): Promise<{ status: number; error?: string; text?: string }> {
   try {
     const res = await deps.fetch(url, {
       method: "POST",
@@ -65,6 +66,8 @@ async function forward(deps: Pick<RouterDeps, "fetch">, url: string, key: string
       body: raw || "{}",
       signal: AbortSignal.timeout(FORWARD_TIMEOUT_MS),
     })
+    // (261123 출시 전 3번) 다시 넘기기는 거절 이유 · 안내(note)를 요청 칸에 쓰려고 본문도 읽는다.
+    if (withText) return { status: res.status, text: (await res.text().catch(() => "")).slice(0, 2000) }
     return { status: res.status }
   } catch (err) {
     return { status: 0, error: (err as Error).message }
@@ -128,18 +131,27 @@ export async function handleRouter(req: Request, deps: RouterDeps = defaultRoute
 // process-sync-queue 워커: 길잡이가 넘기지 못한 동작 하나를 다시 넘긴다. 실패(0·5xx)면 throw → 워커가 최대 3번 재시도,
 // 끝내 안 되면 failed → sync-failure-audit 보고. 키는 저장하지 않고 지금 서버 키(보안 모드면 내부 키)를 쓴다.
 export type RouterRetryPayload = { id: string; pageId?: string | null; body: string }
-export const routerRetryDeps = {
+export type RouterRetryDeps = {
+  fetch: (...a: Parameters<typeof fetch>) => Promise<Response>
+  baseUrl: () => string
+  key: () => Promise<string>
+  // (261123 출시 전 3번) 요청 칸(notion-events)에서 온 다시 넘기기면 끝난 결과를 그 줄 요청 칸에. 없으면 쓰지 않음.
+  request?: Pick<RequestDeps, "readPage" | "patch" | "now" | "log">
+}
+export const routerRetryDeps: RouterRetryDeps = {
   fetch: (...a: Parameters<typeof fetch>) => fetch(...a),
   baseUrl: () => Deno.env.get("SB_URL") ?? "",
   key: () => getCurrentAdminKey(),
+  request: liveRequestDeps,
 }
 
-export async function processRouterRetryItem(payload: RouterRetryPayload, _cachedGetPage?: unknown, deps = routerRetryDeps): Promise<void> {
+export async function processRouterRetryItem(payload: RouterRetryPayload, _cachedGetPage?: unknown, deps: RouterRetryDeps = routerRetryDeps): Promise<void> {
   const route = routeById(payload?.id)
   if (!route) throw new Error(`notion-router-retry: 모르는 동작 ${payload?.id}`)
   const base = deps.baseUrl()
   if (!base) throw new Error("SB_URL이 설정되지 않았습니다.")
-  const r = await forward({ fetch: deps.fetch as typeof fetch }, targetUrl(base, route), await deps.key(), payload.body ?? "{}")
+  const r = await forward({ fetch: deps.fetch as typeof fetch }, targetUrl(base, route), await deps.key(), payload.body ?? "{}", true)
   if (isForwardFailure(r.status)) throw new Error(`notion-router-retry ${payload.id} → ${route.fn}${route.path} 실패: ${r.error ?? `HTTP ${r.status}`}`)
   console.log(`[notion-router-retry] ${payload.id} page=${payload.pageId ?? "-"} → HTTP ${r.status}`)
+  if (deps.request && payload.pageId && isNotionEventsBody(payload.body)) await finishRetriedRequest(payload.pageId, payload.id, r, deps.request)
 }
