@@ -7,6 +7,36 @@
    실제 자료 모드가 아니면 아무것도 바꾸지 않는다(시제품 예시 목록 그대로). */
 const LBK = { units: {}, series: null };
 const lbKyoboCover = (isbn) => `https://contents.kyobobook.co.kr/sih/fit-in/458x0/pdt/${isbn}.jpg`;
+/* 즐겨찾기 [교재 가져오기](261123 — 옛 라이브러리 웹 화면 kyoboGrab 그대로). 교보문고 페이지에서 돌기 때문에 이 파일의 다른 함수·변수를 쓰지 않는다.
+   구조화 데이터(schema.org Book) · 취소선 정가 · "기본정보" 쪽수 · "이 책의 시리즈" · "목차"(없으면 교보문고 목차 요청). 즐겨찾기 주소는 줄바꿈이 사라질 수 있어 함수 안에 // 주석을 두지 않는다. */
+async function lbKyoboGrab(){
+ const fail=m=>alert('교재 가져오기: '+m);
+ const send=(json,msg)=>{const done=()=>alert(msg);const copy=()=>{const t=document.createElement('textarea');t.value=json;document.body.append(t);t.select();const ok=document.execCommand('copy');t.remove();if(ok)done();else prompt('아래 내용을 모두 복사(Ctrl+C)하세요.',json)};if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(json).then(done,copy);else copy()};
+ if(/^search\.kyobobook\.co\.kr$/.test(location.hostname)){
+  const items=[...document.querySelectorAll('input.result_checkbox:checked')].map(c=>({pid:String(c.dataset.pid||''),isbn13:(/97[89]\d{10}/.exec(String(c.dataset.bid||''))||[''])[0],title:String(c.dataset.name||'').trim()})).filter(x=>/^S\d+$/.test(x.pid));
+  if(!items.length)return fail('검색 결과에서 가져올 책을 체크한 뒤 눌러 주세요(한 번에 20권까지).');
+  if(items.length>20)return fail('한 번에 20권까지 가져올 수 있어요. 지금 '+items.length+'권이 체크되어 있어요.');
+  return send(JSON.stringify({hada:'books',v:1,source:'kyobo-list',items}),'체크한 '+items.length+'권을 복사했어요.\n\n하다 앱 라이브러리 [책 찾기] > [교보문고]에서 [가져온 정보 붙여넣기]를 누르세요. 정가·출판사·목차는 앱이 교보문고에서 한 권씩 채워요.');
+ }
+ const id=(/\/detail\/(S\d+)/.exec(location.pathname)||[])[1];
+ if(!/(^|\.)kyobobook\.co\.kr$/.test(location.hostname)||!id)return fail('교보문고 책 상세 페이지나 검색 목록에서 눌러 주세요.');
+ const ld=[...document.querySelectorAll('script[type="application/ld+json"]')].map(x=>{try{return JSON.parse(x.textContent)}catch(e){return null}}).flat().find(x=>x&&x['@type']==='Book');
+ if(!ld)return fail('책 정보를 찾지 못했어요. 페이지를 새로고침한 뒤 다시 눌러 주세요.');
+ const sec=n=>[...document.querySelectorAll('section')].find(x=>{const h=x.querySelector('h1,h2,h3,h4');return h&&h.textContent.replace(/\s+/g,'')===n});
+ const clean=html=>{const t=document.createElement('textarea');t.innerHTML=String(html||'').replace(/<br\s*\/?>/gi,'\n').replace(/<\/(p|div|li|tr|h5|h6)>/gi,'\n').replace(/<[^>]+>/g,'');return t.value.split('\n').map(l=>l.replace(/\s+/g,' ').trim()).filter(l=>l&&!/^(펼치기|접기)$/.test(l)).join('\n')};
+ const body=el=>{if(!el)return '';const c=el.cloneNode(true);c.querySelectorAll('h1,h2,h3,h4,button,script,style').forEach(x=>x.remove());return clean(c.innerHTML)};
+ let pages=null;const info=sec('기본정보');
+ if(info)for(const th of info.querySelectorAll('th'))if(/쪽수/.test(th.textContent)){const m=/([\d,]+)\s*쪽/.exec(th.nextElementSibling?th.nextElementSibling.textContent:'');if(m)pages=+m[1].replace(/,/g,'')}
+ const sale=+((ld.offers||{}).price||0),del=document.querySelector('del,s,[class*="line-through"]'),list=del?+del.textContent.replace(/[^\d]/g,''):0;
+ const sa=(sec('이책의시리즈')||document.createElement('i')).querySelector('a');
+ let toc=body(sec('목차'));
+ if(!toc)try{const j=await (await fetch('/api/gw/pdt/v2/product/component/'+id+'/middle')).json();toc=clean(((j.data||{}).middle||{}).contentTableList)}catch(e){}
+ const data={hada:'book',v:1,source:'kyobo',url:location.origin+location.pathname,title:String(ld.name||'').trim(),isbn13:(/97[89]\d{10}/.exec(String(ld.isbn||'')+' '+String(ld.image||''))||[''])[0],cover:String(ld.image||'').split('?')[0].replace(/\/fit-in\/\d+x\d+\//,'/fit-in/458x0/'),publisher:String((ld.publisher||{}).name||'').trim(),
+  price:list&&(!sale||list>=sale&&list<=sale*3)?list:sale,pages,series:sa?sa.textContent.trim():'',toc};
+ const n=toc?toc.split('\n').length:0;
+ send(JSON.stringify(data),'교재 정보를 복사했어요.\n'+data.title+'\n목차 '+(n?n+'줄':'없음(교보문고에 목차가 없어요)')+'\n\n하다 앱 라이브러리 [책 찾기] > [교보문고]에서 [가져온 정보 붙여넣기]를 누르세요.');
+}
+const lbGrabHref = () => "javascript:" + encodeURIComponent("(" + lbKyoboGrab.toString() + ")()");
 const lbErr = (e) => (e && e.status === 401) || (e && e.status === 403) ? "관리자 로그인이 필요해요 — 새로고침해서 다시 로그인해요" : (e && e.message) || "서버에 연결하지 못했어요";
 const lbOpts = (k) => (DB.opts && Array.isArray(DB.opts[k]) ? DB.opts[k] : []);
 /* 등록 뒤(원본 검수 261123): 서버가 노션에 직접 만든 교재는 노션 구독 알림이 오지 않아 앱 사본에 바로 안 들어온다 —
@@ -22,14 +52,19 @@ async function lbAfterAdd(okMsg) {
 }
 
 /* ───── 책 찾기 ───── */
+function lbGrabBox(F) {
+  return `<div class="bfgrab"><div class="row"><a class="btn pri" id="bfGrab" href="${esc(lbGrabHref())}" draggable="true" title="즐겨찾기 막대로 끌어다 놓아요">${IC("clip", "s")}교재 가져오기</a><button class="btn" id="bfPaste" ${F.busy ? "disabled" : ""}>가져온 정보 붙여넣기</button></div>
+  <details class="bfgd"><summary class="hint">처음 한 번 준비 — 즐겨찾기에 단추 두기</summary><ol class="hint"><li>위 [교재 가져오기]를 브라우저 즐겨찾기 막대로 끌어다 놓아요(막대가 안 보이면 Ctrl+Shift+B).</li><li>교보문고 책 상세 페이지(또는 검색 목록에서 책을 체크한 뒤 최대 20권)에서 그 즐겨찾기를 눌러요.</li><li>여기로 돌아와 [가져온 정보 붙여넣기]를 눌러요. 정가 · 출판사 · 쪽수 · 목차까지 한 번에 들어와요.</li></ol></details>
+  ${F.grabTa ? '<textarea class="inp bfta" id="bfGrabTa" placeholder="복사한 정보를 여기에 붙여 넣으세요(Ctrl+V)"></textarea>' : ""}</div><div class="hint bfor">단추가 안 되면 아래에 교보문고 주소나 ISBN을 붙여 넣어요.</div>`;
+}
 function lbFindHtml(st) {
   const F = st.bfind, T = F.T, n = F.picks.length;
   const has = (x) => x.registered || DB.books.some((b) => !b.del && x.isbn13 && b.isbn === x.isbn13);
-  const row = (x, i) => `<label class="bfr ${has(x) ? "dis" : ""}"><input type="checkbox" data-bf="${i}" ${F.picks.includes(i) ? "checked" : ""} ${has(x) || F.busy ? "disabled" : ""}><span class="bfc">${x.cover ? `<img class="bkimg" alt="" referrerpolicy="no-referrer" src="${esc(x.cover)}" data-alt="${esc(x.altCover || "")}">` : '<span class="bkph"><i>표지 없음</i></span>'}</span><span class="bft"><b>${esc(x.title)}</b><span class="hint">${esc([x.publisher, x.author, x.price ? WON(x.price) : "", x.units ? `단원 ${x.units}개` : ""].filter(Boolean).join(" · "))}</span><span class="hint">${x.isbn13 ? "ISBN " + esc(x.isbn13) : "ISBN 없음"}${has(x) ? " · 이미 라이브러리에 있어요" : ""}</span></span></label>`;
+  const row = (x, i) => `<label class="bfr ${has(x) ? "dis" : ""}"><input type="checkbox" data-bf="${i}" ${F.picks.includes(i) ? "checked" : ""} ${has(x) || F.busy ? "disabled" : ""}><span class="bfc">${x.cover ? `<img class="bkimg" alt="" referrerpolicy="no-referrer" src="${esc(x.cover)}" data-alt="${esc(x.altCover || "")}">` : '<span class="bkph"><i>표지 없음</i></span>'}</span><span class="bft"><b>${esc(x.title)}</b><span class="hint">${esc([x.publisher, x.author, x.price ? WON(x.price) : "", x.units ? `단원 ${x.units}개` : ""].filter(Boolean).join(" · "))}</span><span class="hint">${x.isbn13 ? "ISBN " + esc(x.isbn13) : "ISBN 없음"}${has(x) ? " · 이미 라이브러리에 있어요" : ""}${x.err ? " · 정보를 못 받았어요: " + esc(x.err) : ""}</span></span></label>`;
   const list = F.res.length ? `<div class="bfl">${F.res.map(row).join("")}</div>` : `<div class="hint bfe">${esc(F.msg || (T === "s" ? "책 이름 · 출판사 · ISBN으로 찾아요(국립중앙도서관). 예: 쎈 중등 수학" : "교보문고 책 상세 주소를 붙여 넣고 [가져오기]를 눌러요. ISBN 13자리도 돼요."))}</div>`;
   const body = T === "m"
     ? `<div class="hint">찾아도 없는 책 · 자체 교재는 직접 적어 등록해요(교재명 · 출판사 · 시리즈 · 가격 · 분량 · ISBN · 단원).</div><div class="row"><button class="btn" id="bfM">${IC("plus", "s")}직접 등록</button></div>`
-    : `<div class="bfq">${T === "s" ? `<span class="searchbox">${IC("search")}<input class="inp" id="bfQ" placeholder="책 이름 · 출판사 · ISBN" value="${esc(F.q)}" autocomplete="off"></span>` : `<textarea class="inp bfta" id="bfQ" placeholder="교보문고 책 주소 또는 ISBN을 붙여 넣으세요(Ctrl+V)">${esc(F.q)}</textarea>`}<button class="btn" id="bfGo" ${F.busy ? "disabled" : ""}>${T === "s" ? "검색" : "가져오기"}</button></div>${F.busy ? `<div class="hint">${esc(F.busy)}</div>` : ""}${list}${F.res.length && F.msg ? `<div class="hint warn">${esc(F.msg)}</div>` : ""}`;
+    : `${T === "k" ? lbGrabBox(F) : ""}<div class="bfq">${T === "s" ? `<span class="searchbox">${IC("search")}<input class="inp" id="bfQ" placeholder="책 이름 · 출판사 · ISBN" value="${esc(F.q)}" autocomplete="off"></span>` : `<textarea class="inp bfta" id="bfQ" placeholder="교보문고 책 주소 또는 ISBN을 붙여 넣으세요(Ctrl+V)">${esc(F.q)}</textarea>`}<button class="btn" id="bfGo" ${F.busy ? "disabled" : ""}>${T === "s" ? "검색" : "가져오기"}</button></div>${F.busy ? `<div class="hint">${esc(F.busy)}</div>` : ""}${list}${F.res.length && F.msg ? `<div class="hint warn">${esc(F.msg)}</div>` : ""}`;
   return `${PANEL.head({ icon: IC("search"), name: "책 찾기", belong: "교재 추가" })}${PANEL.tabs([{ id: "s", label: "검색" }, { id: "k", label: "교보문고" }, { id: "m", label: "직접 등록" }], T, "bt")}
   <div class="box"><h3>${T === "s" ? "검색해서 추가" : T === "k" ? "교보문고에서 가져오기" : "직접 등록"}${HELP("고른 책을 노션 라이브러리에 바로 등록해요 — 교재명 · 출판사 · 시리즈 · 가격 · 분량 · ISBN · 표지(교보문고)와 목차에서 나눈 단원까지. 목차가 없으면 단원 없이 들어가요 — 교재 창 [단원] 탭에서 목차를 붙여 넣어요. 과목은 등록한 뒤 줄을 눌러 넣어요. 이미 라이브러리에 있는 책(같은 ISBN)은 고를 수 없어요.")}</h3>${body}</div>
   ${PANEL.foot({ back: { id: "bfX", label: "닫기" }, go: T === "m" ? null : { id: "bfAdd", icon: IC("plus", "s"), label: "라이브러리에 등록", off: !n || !!F.busy, count: n || "", title: "고른 책을 노션 라이브러리에 등록해요" } })}`;
@@ -63,6 +98,55 @@ function lbFindBind(p, st) {
     F.busy = ""; draw();
     const i = document.querySelector("#lp #bfQ"); if (i) { i.focus(); if (i.setSelectionRange && F.T === "s") i.setSelectionRange(i.value.length, i.value.length); }
   };
+  const grabFill = async (raw) => {
+    let d = null; try { d = JSON.parse(String(raw || "").trim()); } catch (_) {}
+    const bad = () => { F.grabTa = false; F.res = []; F.picks = []; F.msg = "교보문고에서 가져온 정보가 아니에요 — 교보문고 책 페이지에서 [교재 가져오기]를 다시 누른 뒤 붙여넣어요"; draw(); };
+    if (!d || (d.hada !== "book" && d.hada !== "books")) return bad();
+    F.grabTa = false; F.msg = ""; F.q = "";
+    if (d.hada === "book") {
+      if (!String(d.title || "").trim()) return bad();
+      F.busy = "목차를 나누는 중…"; draw();
+      let units = [], note = "";
+      if (d.toc) { try { const r = await liveBookApi({ action: "parse", text: String(d.toc).slice(0, 20000) }); units = ((r.toc && r.toc.units) || []).filter((u) => u.include !== false).map((u) => ({ name: u.name, page: u.page })); } catch (e) { note = "목차를 나누지 못했어요 — 단원 없이 들어가요. " + lbErr(e); } }
+      else note = "교보문고에 목차가 없어서 단원 없이 들어가요 — 교재 창 [단원] 탭에서 붙여 넣어요";
+      const isbn = /^97[89]\d{10}$/.test(String(d.isbn13)) ? String(d.isbn13) : "";
+      F.res = [{ src: "kyobo", title: String(d.title).trim().slice(0, 200), isbn13: isbn, price: +d.price > 0 ? Math.round(+d.price) : null, publisher: String(d.publisher || ""), cover: isbn ? lbKyoboCover(isbn) : /^https:\/\/contents\.kyobobook\.co\.kr\//.test(String(d.cover || "")) ? String(d.cover) : "", units: units.length, unitList: units }];
+      F.msg = note; F.busy = "";
+      if (!F.res[0].registered && !DB.books.some((b) => !b.del && isbn && b.isbn === isbn)) F.picks = [0];
+      return draw();
+    }
+    const items = (Array.isArray(d.items) ? d.items : []).filter((x) => /^S\d{9,15}$/.test(String(x && x.pid))).slice(0, 20);
+    if (!items.length) return bad();
+    const mine = (F.res = items.map((x) => { const isbn = /^97[89]\d{10}$/.test(String(x.isbn13)) ? String(x.isbn13) : ""; return { src: "kyobo", pid: String(x.pid), title: String(x.title || "").trim().slice(0, 200), isbn13: isbn, price: null, publisher: "", cover: isbn ? lbKyoboCover(isbn) : "", units: 0, unitList: [] }; }));
+    F.picks = []; let ok = 0;
+    for (let k = 0; k < mine.length; k++) {
+      if (st.bfind !== F || F.res !== mine) return;
+      F.busy = `${k + 1}/${mine.length}권 정가 · 출판사 · 목차를 교보문고에서 가져오는 중…`; draw();
+      const z = mine[k];
+      try {
+        const r = await liveBookApi({ action: "kyobo-book", pid: z.pid });
+        if (!z.title) z.title = r.title || "";
+        if (!z.isbn13 && r.isbn13) { z.isbn13 = r.isbn13; z.cover = lbKyoboCover(r.isbn13); }
+        z.price = r.price || null; z.publisher = r.publisher || "";
+        z.unitList = ((r.toc && r.toc.units) || []).filter((u) => u.include !== false).map((u) => ({ name: u.name, page: u.page })); z.units = z.unitList.length;
+        ok++;
+      } catch (e) { z.err = lbErr(e); }
+    }
+    if (st.bfind !== F) return;
+    F.picks = mine.map((z, i) => i).filter((i) => !mine[i].err && !(mine[i].isbn13 && DB.books.some((b) => !b.del && b.isbn === mine[i].isbn13)));
+    F.busy = ""; F.msg = ok === mine.length ? `${ok}권 정보를 채웠어요 — 확인하고 [라이브러리에 등록]을 눌러요` : `${mine.length}권 중 ${ok}권만 채웠어요 — 못 채운 책은 교재명 · 표지만 있어요(책 상세 페이지에서 한 권씩 가져와요)`;
+    draw();
+  };
+  const gp = p.querySelector("#bfPaste");
+  if (gp) gp.onclick = async () => {
+    let t = ""; try { t = await navigator.clipboard.readText(); } catch (_) {}
+    if (t && t.trim().startsWith("{")) return grabFill(t);
+    F.grabTa = true; F.msg = ""; draw(); const ta = document.querySelector("#lp #bfGrabTa"); if (ta) ta.focus();
+  };
+  const gt = p.querySelector("#bfGrabTa");
+  if (gt) { gt.addEventListener("paste", (e) => { e.preventDefault(); grabFill(e.clipboardData.getData("text")); }); gt.addEventListener("input", () => { if (gt.value.trim().endsWith("}")) grabFill(gt.value); }); }
+  const gl = p.querySelector("#bfGrab");
+  if (gl) gl.onclick = (e) => { e.preventDefault(); toast("[교재 가져오기]는 여기서 누르지 않고, 즐겨찾기 막대로 끌어다 놓은 뒤 교보문고 책 페이지에서 눌러요"); };
   const g = p.querySelector("#bfGo");
   if (g) { g.onclick = go; const inp = p.querySelector("#bfQ"); if (inp && F.T === "s") inp.onkeydown = (e) => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); go(); } }; }
   p.querySelectorAll("[data-bf]").forEach((c) => (c.onchange = () => { const i = +c.dataset.bf; F.picks = c.checked ? [...F.picks, i] : F.picks.filter((z) => z !== i); const l = p.querySelector(".bfl"), sc = l ? l.scrollTop : 0; render(); const l2 = document.querySelector("#lp .bfl"); if (l2) l2.scrollTop = sc; }));
