@@ -14,7 +14,7 @@ const SUBS = {
     health: { state: 'down', since: new Date(Date.now() - 12 * 60000).toISOString(), reason: '노션에서 고친 줄 2개를 웹훅으로 받지 못했어요(폴링이 찾음)', missed: 2, pollMin: 5, lastReportAt: new Date(Date.now() - 60000).toISOString(), simulating: false } },
   none: { tables: false, state: 'none', tokenAt: null, lastEventAt: null, lastEventType: null, events24h: 0, rejectedAt: null, pending: 0, failed: 0 },
 };
-const FAKE_KEY = 'TEST-ONLY-FAKE-KEY-0000', GOOD_KEY = 'TEST-ONLY-FAKE-GOOD-1111', KEY_SECRET = { NL_CERT_KEY: true, KAKAO_REST_KEY: true }; let keyVault = {};
+const FAKE_KEY = 'TEST-ONLY-FAKE-KEY-0000', GOOD_KEY = 'TEST-ONLY-FAKE-GOOD-1111', KEY_SECRET = { NL_CERT_KEY: true }; let keyVault = {}, keyStatusCalls = [];
 const CLEAR_STATUS = { workspace: '하다 예시 학원', canStart: true, flag: null, keep: ['알림톡 설정(학원) DB', '과목(학원) DB'], missing: [], unknown: ['메모 DB'],
   dbs: [{ name: '학생(학원) DB', group: '학생 · 등록', required: true, checked: true, count: 30 }, { name: '등록(학원) DB', group: '학생 · 등록', required: true, checked: true, count: 45 },
     { name: '라이브러리(학원) DB', group: '기준 자료', required: false, checked: false, count: 120, capped: true }] };
@@ -39,10 +39,10 @@ const CLEAR_STATUS = { workspace: '하다 예시 학원', canStart: true, flag: 
         if (q.action === 'change') return q.current_password === 'old-pass-1' ? reply(route, 200, { ok: true, changed_at: '2026-11-23T05:00:00Z' }) : reply(route, 401, { error: '현재 비밀번호가 올바르지 않습니다.' });
         if (q.action === 'logout') return reply(route, 200, { ok: true });
         if (q.action === 'login') return reply(route, 200, { session: 'sess-2', must_change: false });
-        // (261123 키 자동 등록) 외부 키 — 값은 되돌려 주지 않는다. GOOD_KEY만 연결됨, 나머지는 키가 틀림
-        if (q.action === 'keys-status') { const keys = {}; for (const n of ['NEIS_API_KEY', 'NL_CERT_KEY', 'KAKAO_REST_KEY']) { const v = keyVault[n]; keys[n] = { app: !!v, changed_at: v ? '2026-11-23T05:00:00Z' : null, test_state: v ? v.test : null, tested_at: null, secret: !!KEY_SECRET[n] }; } return reply(route, 200, { keys }); }
-        if (q.action === 'key-set') { const test = q.value === GOOD_KEY ? 'ok' : 'wrong'; keyVault[q.name] = { value: q.value, test }; return reply(route, 200, { ok: true, changed_at: '2026-11-23T05:00:00Z', test, tested_at: '2026-11-23T05:00:01Z' }); }
-        if (q.action === 'key-test') { const v = keyVault[q.name]; return reply(route, 200, v ? { test: v.test, source: 'app' } : KEY_SECRET[q.name] ? { test: 'ok', source: 'secret' } : { test: null, source: '' }); }
+        // (v2.8.0 항목 113) 외부 키 — 값은 되돌려 주지 않는다. GOOD_KEY만 연결됨, 나머지는 키가 틀림. 서버 Secret(도서관)은 연결됨
+        if (q.action === 'keys-status') { keyStatusCalls.push(q.check === true); const keys = {}; for (const n of ['NEIS_API_KEY', 'NL_CERT_KEY']) { const v = keyVault[n], sec = !!KEY_SECRET[n], source = v ? 'app' : sec ? 'secret' : ''; keys[n] = { app: !!v, changed_at: v ? '2026-11-23T05:00:00Z' : null, secret: sec, source, state: v ? v.test : sec ? 'ok' : 'none', checked_at: source ? '2026-11-23T05:52:00Z' : null }; } return reply(route, 200, { keys }); }
+        if (q.action === 'key-set') { const test = q.value === GOOD_KEY ? 'ok' : 'wrong'; keyVault[q.name] = { value: q.value, test }; return reply(route, 200, { ok: true, changed_at: '2026-11-23T05:00:00Z', test }); }
+        if (q.action === 'key-test') { const v = keyVault[q.name]; return reply(route, 200, v ? { test: v.test, source: 'app', checked_at: '2026-11-23T05:53:00Z' } : KEY_SECRET[q.name] ? { test: 'ok', source: 'secret', checked_at: '2026-11-23T05:53:00Z' } : { test: null, source: '' }); }
         if (q.action === 'key-clear') { delete keyVault[q.name]; return reply(route, 200, { ok: true, secret: !!KEY_SECRET[q.name] }); }
       }
       if (fn === 'clear-example-data') {
@@ -166,25 +166,30 @@ const CLEAR_STATUS = { workspace: '하다 예시 학원', canStart: true, flag: 
   }
   // (261123 키 자동 등록) 외부 키: 가짜 키 저장 → 키가 틀림, 맞는 키 → 연결됨, 공백 막기, 삭제 → 서버 설정값 · 없음, 값은 화면 · 저장소 · 콘솔에 없음
   if (!process.env.ONLY || process.env.ONLY === 'keys') {
-    keyVault = {};
+    keyVault = {}; keyStatusCalls = [];
     const { page, calls, errors, logs } = await open('b', 'on');
     const seg = (t, label, next) => { const a = t.split(label)[1] || ''; return next ? a.split(next)[0] : a; };
     const row = async (label, next) => seg(await page.locator('section.cbox', { hasText: '외부 키' }).innerText(), label, next);
-    assert.match(await row('나이스', '국립중앙도서관'), /없음/); assert.match(await row('국립중앙도서관', '카카오'), /서버 설정값/);
+    // 열자마자(누르지 않고) 상태가 보임: 나이스 = 키 없음, 도서관 = 서버 설정값 연결됨 + 확인 시각. 카카오 줄 없음
+    assert.equal(keyStatusCalls[0], true, '열 때 check:true로 부름');
+    assert.match(await row('나이스', '국립중앙도서관'), /키 없음/); assert.match(await row('국립중앙도서관'), /연결됨[\s\S]*서버 설정값[\s\S]*\d\d:\d\d 확인/);
+    assert.ok(!/카카오/.test(await page.locator('section.cbox', { hasText: '외부 키' }).innerText()), '카카오 줄 없음');
+    await page.locator('section.cbox', { hasText: '외부 키' }).screenshot({ path: shots + 'admin-live-keys-open.png' });
     await page.click('[data-ladm="kset:NEIS_API_KEY"]'); assert.equal(await page.getAttribute('#lakey', 'type'), 'password');
     await page.fill('#lakey', ' ' + FAKE_KEY); await page.click('.dlg #co'); assert.match(await page.textContent('#laerr'), /공백/);
     await page.fill('#lakey', FAKE_KEY); await page.click('.dlg #co'); await page.waitForFunction(() => /키가 틀림/.test(document.querySelector('#view').textContent));
-    assert.match(await row('나이스', '국립중앙도서관'), /앱에 저장[\s\S]*키가 틀림/);
+    assert.match(await row('나이스', '국립중앙도서관'), /키가 틀림[\s\S]*앱에 넣은 키/);
     await page.locator('section.cbox', { hasText: '외부 키' }).screenshot({ path: shots + 'admin-live-keys-wrong.png' });
-    await page.click('[data-ladm="kset:KAKAO_REST_KEY"]'); await page.fill('#lakey', GOOD_KEY); await page.click('.dlg #co');
-    await page.waitForFunction(() => /연결됨/.test(document.querySelector('#view').textContent.split('카카오')[1] || ''));
-    await page.click('[data-ladm="ktest:KAKAO_REST_KEY"]'); await page.waitForTimeout(300);
-    await page.click('[data-ladm="kdel:KAKAO_REST_KEY"]'); await page.click('.dlg #co'); await page.waitForFunction(() => /서버 설정값/.test(document.querySelector('#view').textContent.split('카카오')[1] || ''));
+    await page.click('[data-ladm="kset:NL_CERT_KEY"]'); await page.fill('#lakey', GOOD_KEY); await page.click('.dlg #co');
+    await page.waitForFunction(() => /연결됨[\s\S]*앱에 넣은 키/.test(document.querySelector('#view').textContent.split('국립중앙도서관')[1] || ''));
+    await page.click('[data-ladm="ktest:NL_CERT_KEY"]'); await page.waitForTimeout(300);
+    await page.click('[data-ladm="kdel:NL_CERT_KEY"]'); await page.click('.dlg #co'); await page.waitForFunction(() => /서버 설정값/.test(document.querySelector('#view').textContent.split('국립중앙도서관')[1] || ''));
     await page.click('[data-ladm="kdel:NEIS_API_KEY"]'); assert.match(await page.textContent('.dlg'), /동작하지 않아요/); await page.click('.dlg #co');
-    await page.waitForFunction(() => /없음/.test((document.querySelector('#view').textContent.split('나이스')[1] || '').split('국립중앙도서관')[0]));
+    await page.waitForFunction(() => /키 없음/.test((document.querySelector('#view').textContent.split('나이스')[1] || '').split('국립중앙도서관')[0]));
     await checkLayout(page, '외부 키');
+    assert.ok(keyStatusCalls.every(Boolean), '다시 그릴 때도 check:true(서버가 10분 안 결과는 다시 씀)');
     const set = calls.filter((c) => c.action === 'key-set'); assert.equal(set.length, 2); assert.ok(set.every((c) => c.key === 'sess-1' && Object.keys(c.body).sort().join() === 'action,name,value'));
-    assert.deepEqual(calls.filter((c) => c.action === 'key-clear').map((c) => c.body.name), ['KAKAO_REST_KEY', 'NEIS_API_KEY']);
+    assert.deepEqual(calls.filter((c) => c.action === 'key-clear').map((c) => c.body.name), ['NL_CERT_KEY', 'NEIS_API_KEY']);
     const leak = (x) => x.includes(FAKE_KEY) || x.includes(GOOD_KEY);
     assert.ok(!leak(await page.content()), '화면에 키 값 없음'); assert.ok(!leak(await page.evaluate(() => JSON.stringify({ ...localStorage }) + JSON.stringify({ ...sessionStorage }) + location.href)), '저장소 · 주소에 키 값 없음');
     assert.ok(!logs.some(leak), '콘솔에 키 값 없음'); assert.ok(calls.filter((c) => leak(JSON.stringify(c.body))).every((c) => c.fn === 'admin-security' && c.action === 'key-set'), '키 값은 key-set에만');

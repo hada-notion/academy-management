@@ -1,6 +1,6 @@
 // _shared/externalKeys.ts — 외부 키 읽기 한 곳(v2.8.0, 261123 키 자동 등록).
 //
-// 학원이 받은 외부 키(나이스 NEIS_API_KEY · 국립중앙도서관 NL_CERT_KEY · 카카오 KAKAO_REST_KEY)는
+// 학원이 받은 외부 키(나이스 NEIS_API_KEY · 국립중앙도서관 NL_CERT_KEY — 카카오는 v2.8.0 항목 113에서 뺌)는
 //   1) 관리 앱 [관리자 설정]에서 넣은 값(Supabase Vault, SQL hada_external_key 'read') 먼저,
 //   2) 없으면 지금처럼 함수 Secret(환경 변수).
 // 키를 쓰는 코드는 모두 externalKey()로 읽는다. 값은 로그 · 응답 · 오류 글에 쓰지 않는다.
@@ -8,7 +8,7 @@
 //   저장 직후 다른 함수의 다음 요청(5초 뒤)부터 새 키. 저장 · 지우기를 받은 admin-security는 바로 비운다(forgetExternalKeys).
 // Vault를 읽지 못하면(서버 설정 없음 · 연결 실패 · 이 판 마이그레이션 전) 조용히 Secret으로 간다(기존 학원 그대로 동작).
 
-export const EXTERNAL_KEYS = ["NEIS_API_KEY", "NL_CERT_KEY", "KAKAO_REST_KEY"] as const
+export const EXTERNAL_KEYS = ["NEIS_API_KEY", "NL_CERT_KEY"] as const
 export type ExternalKeyName = typeof EXTERNAL_KEYS[number]
 export const isExternalKeyName = (v: unknown): v is ExternalKeyName => typeof v === "string" && (EXTERNAL_KEYS as readonly string[]).includes(v)
 

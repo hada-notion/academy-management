@@ -4,7 +4,8 @@
    - 예시 데이터 비우기: clear-example-data (state · status · start · stop) — 워크스페이스 이름을 그대로 넣어야 시작, 한 번 끝나면 서버가 잠근다
    - 서버 · 노션 연결, 노션 연동 구독 상태: admin-security status + app-api admin-status(_shared/notionSubscriptionStatus.ts, 서버 표에서 읽기만)
    - 웹훅 키 교체 · 교체 현황(옛 버튼 방식)은 옮기지 않는다 — 원본은 노션 연동 구독 방식. 옛 방식 학원은 구독으로 바꾼 뒤 이 판을 받는다(docs/updates/v2.8.0.md 운영 적용 순서).
-   - 외부 키(나이스 · 국립중앙도서관 · 카카오): admin-security (keys-status · key-set · key-test · key-clear) — 넣은 키는 서버 Vault에만,
+   - 외부 키(나이스 · 국립중앙도서관 — 카카오는 v2.8.0 항목 113에서 뺌): admin-security (keys-status check · key-set · key-test · key-clear) — 넣은 키는 서버 Vault에만,
+     화면을 열면 서버가 연결 상태를 바로 알려 줌(10분 안 결과는 다시 씀),
      화면에는 있음 · 바꾼 날 · 연결 확인 결과만(값은 되돌려 받지 않음). 함수는 Vault 먼저 · 없으면 Supabase Secrets(_shared/externalKeys.ts)
    - 첫 설치의 초기 비밀번호(0000)는 live.js 로그인 창이 바로 새 비밀번호를 정하게 한다(서버 scope "settings" 로그인 → change).
    비밀번호 칸 값은 보낸 바로 뒤 지우고, 어디에도 적지 않는다(콘솔 · 저장소 · 주소). 실제 자료 모드가 아니면(LIVE 없음) 시제품 카드 그대로. */
@@ -45,7 +46,7 @@
       take("profile", sec("profile")),
       take("admin", liveApi(window.LIVE, { action: "admin-status" })),
       take("clear", clr("state", {}, 20000)),
-      take("keys", sec("keys-status").then((r) => r.keys, (e) => { throw e.status === 400 ? new Error("서버에 아직 이 기능이 없어요 — 업데이트를 적용하면 생겨요") : e; }).then((k) => { if (!k || typeof k !== "object") throw new Error("서버에 아직 이 기능이 없어요 — 업데이트를 적용하면 생겨요"); return k; })),
+      take("keys", sec("keys-status", { check: true }, 30000).then((r) => r.keys, (e) => { throw e.status === 400 ? new Error("서버에 아직 이 기능이 없어요 — 업데이트를 적용하면 생겨요") : e; }).then((k) => { if (!k || typeof k !== "object") throw new Error("서버에 아직 이 기능이 없어요 — 업데이트를 적용하면 생겨요"); return k; })),
     ]);
     S.loading = false; S.at = Date.now();
     redraw();
@@ -86,25 +87,25 @@
   /* 외부 키(261123 키 자동 등록): 키마다 한 줄 = 이름 · 지금 쓰는 키(앱에 저장 · 서버 설정값 · 없음) · 연결 확인 · 단추 */
   const KEYS = [
     ["NEIS_API_KEY", "나이스", "학교 검색 · 학사일정", "나이스 교육정보 개방 포털(open.neis.go.kr) > 인증키 신청"],
-    ["NL_CERT_KEY", "국립중앙도서관", "교재 정보(주력)", "국립중앙도서관 ISBN 서지정보(nl.go.kr/seoji) > 인증키 신청"],
-    ["KAKAO_REST_KEY", "카카오", "교재 정보(보조 · 수입 원서)", "카카오 개발자(developers.kakao.com) > 내 애플리케이션 > REST API 키"],
+    ["NL_CERT_KEY", "국립중앙도서관", "라이브러리 책 검색", "국립중앙도서관 ISBN 서지정보(nl.go.kr/seoji) > 인증키 신청"],
   ];
-  const TEST = { ok: ["g", "연결됨"], wrong: ["r", "키가 틀림"], unknown: ["w", "확인 못 함"] };
-  const testTag = (t) => t && TEST[t] ? tag(TEST[t][0], TEST[t][1]) : "";
+  /* 연결 상태(대표 261123 "누르지 않아도 바로"): 서버가 화면을 열 때 확인한 결과 — 키 없음 · 연결됨 · 키가 틀림 · 확인 못 함 */
+  const STATE = { ok: ["g", "연결됨"], wrong: ["r", "키가 틀림"], unknown: ["w", "확인 못 함"], none: ["w", "키 없음"] };
+  const hm = (iso) => iso ? new Intl.DateTimeFormat("ko-KR", { ...KST, hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso)) : "";
   function keyRows() {
     if (S.err.keys) return [["외부 키", errCell("keys"), btn("refresh", "다시 확인", "rotc")]];
     if (!S.keys) return [["외부 키", loadingCell, ""]];
     return KEYS.map(([name, label, use]) => {
-      const k = S.keys[name] || {};
-      let cell;
-      if (k.app) cell = `${tag("b", "앱에 저장")} <span class="hint">바꾼 날 ${esc(day(k.changed_at))}</span> ${testTag(k.test_state) || '<span class="hint">· 연결 확인 전</span>'}${k.test_state === "wrong" ? ` <span class="hint">— 다시 붙여 넣거나 삭제해요${k.secret ? "(삭제하면 서버 설정값으로 돌아가요)" : ""}</span>` : ""}`;
-      else if (k.secret) cell = `${tag("", "서버 설정값")} <span class="hint">Supabase Secrets에 넣은 키를 써요 — 여기 저장하면 그 키 대신 써요</span>`;
-      else cell = `${tag("w", "없음")} <span class="hint">${esc(use)}${k.secret === false ? "이 동작하지 않아요" : ""}</span>`;
-      const acts = btn("kset:" + name, "키 저장", "save") + (k.app || k.secret ? btn("ktest:" + name, "연결 확인", "rotc") : "") + (k.app ? btn("kdel:" + name, "삭제", "trash") : "");
+      const k = S.keys[name] || {}, st = STATE[k.state];
+      const from = k.source === "app" ? `앱에 넣은 키 · ${esc(day(k.changed_at))} 저장` : k.source === "secret" ? "서버 설정값(Supabase Secrets)" : "";
+      const when = k.checked_at ? ` · ${esc(hm(k.checked_at))} 확인` : "";
+      const why = k.state === "wrong" ? ` — 받은 키를 다시 붙여 넣어요${k.source === "app" && k.secret ? "(삭제하면 서버 설정값으로 돌아가요)" : ""}` : k.state === "unknown" ? " — 상대 서버가 답하지 않았어요. 잠시 뒤 [연결 확인]" : k.state === "none" ? ` — ${esc(josa(use, "이", "가"))} 동작하지 않아요` : "";
+      const cell = `${st ? tag(st[0], st[1]) : '<span class="hint">확인 전</span>'} <span class="hint">${from || when ? from + when + why : why.replace(/^ — /, "")}</span>`;
+      const acts = btn("kset:" + name, "키 저장", "save") + (k.source ? btn("ktest:" + name, "연결 확인", "rotc") : "") + (k.app ? btn("kdel:" + name, "삭제", "trash") : "");
       return [`${esc(label)}<br><span class="hint">${esc(use)}</span>`, cell, acts];
     });
   }
-  const keyHelp = "학원이 받은 외부 키를 여기에 붙여 넣으면 서버가 바로 써요(Supabase Secrets에 넣지 않아도 돼요 — 넣어 둔 키도 그대로 써요). 넣은 키는 다시 보여 주지 않고 저장한 날과 연결 확인 결과만 보여요. 여기서 삭제하면 Secrets에 넣은 키로 돌아가요.";
+  const keyHelp = "학원이 받은 외부 키를 여기에 붙여 넣으면 서버가 바로 써요(Supabase Secrets에 넣지 않아도 돼요 — 넣어 둔 키도 그대로 써요). 넣은 키는 다시 보여 주지 않아요. 이 화면을 열면 서버가 연결을 확인해 바로 보여 줘요(10분 안에 확인했으면 그 결과). 여기서 삭제하면 Secrets에 넣은 키로 돌아가요.";
   const keyLabel = (name) => (KEYS.find((x) => x[0] === name) || [])[1] || name;
   const testMsg = (t, name) => t === "ok" ? `${keyLabel(name)}에 연결됐어요` : t === "wrong" ? `${josa(keyLabel(name), "이", "가")} 키를 받지 않았어요(키가 틀림) — 받은 키를 다시 붙여 넣어요` : `${keyLabel(name)} 연결을 확인하지 못했어요 — 잠시 뒤 [연결 확인]을 눌러요`;
   function keyDialog(name) {
@@ -150,7 +151,7 @@
     catch (e) { toast(friendly(e)); }
     finally { if (button) { button.disabled = false; button.classList.remove("loading"); } }
   }
-  async function reloadKeys() { try { const k = (await sec("keys-status")).keys; if (!k || typeof k !== "object") throw new Error("서버에 아직 이 기능이 없어요 — 업데이트를 적용하면 생겨요"); S.keys = k; delete S.err.keys; } catch (e) { S.err.keys = friendly(e); } redraw(); }
+  async function reloadKeys() { try { const k = (await sec("keys-status", { check: true }, 30000)).keys; if (!k || typeof k !== "object") throw new Error("서버에 아직 이 기능이 없어요 — 업데이트를 적용하면 생겨요"); S.keys = k; delete S.err.keys; } catch (e) { S.err.keys = friendly(e); } redraw(); }
 
   /* 화면: 시안 a · b · c(주소 &admv=a|b|c, 검수용) — 노션 연동 구독을 어디에 둘지. 기본 = b(따로 카드) */
   const VARIANT = () => ((/[?&]admv=([abc])(&|$)/.exec(location.search) || [])[1] || "b");

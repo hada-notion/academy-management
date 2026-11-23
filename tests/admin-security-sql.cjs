@@ -205,6 +205,32 @@ await db.exec(fs.readFileSync('supabase/migrations/20261123090000_external_keys.
  ok((await ek('set',{name:'NEIS_API_KEY',value:FAKE})).ok,true);ok(await ek('read'),{keys:{NEIS_API_KEY:FAKE}});
  ok((await raw("select count(*)::int as n from vault.secrets where name='hada_ext_NEIS_API_KEY'"))[0].n,1);
  await db.exec("drop trigger no_delete on vault.secrets");
+ // (2바퀴째) 20261123110000: 카카오를 빼고 연결 확인 결과 표. 앱에 넣은 카카오 키가 있던 서버에서도 지워진다.
+ ok((await ek('set',{name:'KAKAO_REST_KEY',value:FAKE2})).ok,true);
+ await db.exec(fs.readFileSync('supabase/migrations/20261123110000_external_keys_checks.sql','utf8'));
+ {
+  const v2=fs.readFileSync('supabase/migrations/20261123110000_external_keys_checks.sql','utf8').replace(/--[^\n]*/g,'').replace(/\bdo\s+update\b/gi,'do upsert');
+  const unsafeV2=[...v2.matchAll(/\b(delete\s+from|update)\s[^;]*;/gi)].map(m=>m[0]).filter(s=>!/\bwhere\b/i.test(s)&&!/^update_secret/i.test(s));
+  if(unsafeV2.length)throw new Error('external keys v2: DELETE/UPDATE without WHERE: '+unsafeV2.join(' | '));
+ }
+ ok((await raw("select count(*)::int as n from vault.secrets where name='hada_ext_KAKAO_REST_KEY'"))[0].n,0);
+ ok((await raw("select count(*)::int as n from public.hada_external_keys where name='KAKAO_REST_KEY'"))[0].n,0);
+ ok((await ek('set',{name:'KAKAO_REST_KEY',value:FAKE})).status,400);
+ ok(await ek('read'),{keys:{NEIS_API_KEY:FAKE}}); // NEIS key survives the migration
+ let st2=await ek('status');ok(Object.keys(st2.keys),['NEIS_API_KEY']);ok(st2.checks,{});
+ ok((await ek('checked',{name:'NEIS_API_KEY',source:'app',state:'wrong'})).ok,true);
+ ok((await ek('checked',{name:'NL_CERT_KEY',source:'secret',state:'ok'})).ok,true);
+ ok((await ek('checked',{name:'NL_CERT_KEY',source:'x',state:'ok'})).status,400);
+ ok((await ek('checked',{name:'NL_CERT_KEY',source:'app',state:'maybe'})).status,400);
+ st2=await ek('status');ok(st2.checks.NEIS_API_KEY.state,'wrong');ok(st2.checks.NL_CERT_KEY.source,'secret');ok(JSON.stringify(st2).includes('FAKE'),false);
+ ok((await ek('set',{name:'NEIS_API_KEY',value:FAKE2})).ok,true);ok((await ek('status')).checks.NEIS_API_KEY,undefined); // saving resets the check
+ ok((await ek('clear',{name:'NL_CERT_KEY'})).ok,true);ok((await ek('status')).checks.NL_CERT_KEY,undefined);  // delete resets the check
+ ok((await raw("select count(*)::int as n from vault.secrets where name='sync_queue_admin_key'"))[0].n,1);
+ for(const role of ['anon','authenticated']){
+  await db.exec('set role '+role);
+  for(const query of ['select * from public.hada_external_key_checks',"select public.hada_external_key('status')"]){let denied=false;try{await db.query(query);}catch{denied=true;}ok(denied,true);}
+  await db.exec('reset role');
+ }
  for(const role of ['anon','authenticated']){
   await db.exec('set role '+role);
   for(const query of ['select * from public.hada_external_keys',"select public.hada_external_key('read')","select public.hada_external_key('status')"]){let denied=false;try{await db.query(query);}catch{denied=true;}ok(denied,true);}

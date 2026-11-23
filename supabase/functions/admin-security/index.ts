@@ -4,6 +4,8 @@ import { normalizeBareDbTitle } from '../_shared/dbNames.ts';
 import { narrowSameName,rootTitle } from '../_shared/appCopy.ts';
 import { EXTERNAL_KEYS,isExternalKeyName,externalKeyRpc,forgetExternalKeys,externalKey } from '../_shared/externalKeys.ts';
 import { testExternalKey } from '../_shared/externalKeyCheck.ts';
+// 관리자 설정을 열 때 연결 확인 결과를 다시 쓰는 시간(1안 10분 — 2안 하루 한 번 · 3안 매번은 결과 문서). 확인 못 함은 1분 뒤 다시.
+export const KEY_RECHECK_MS=10*60*1000,KEY_RECHECK_UNKNOWN_MS=60*1000;
 // While security is disabled the function only answers with a fixed 503 message and no secrets, so the
 // browser must be able to read it for the legacy-login fallback even before ADMIN_ALLOWED_ORIGINS is set.
 function cors(req:Request,enforceOrigin:boolean):Record<string,string> {
@@ -184,26 +186,36 @@ export async function handleAdminSecurity(req:Request):Promise<Response> {
         const st=(e as {status?:number}).status;if(st&&st<500&&st!==404)throw new SecurityError(st,(e as Error).message);
         console.error('[admin-security] external key store',action,(e as Error).message.slice(0,80));
         throw new SecurityError(503,'키 저장소에 연결하지 못했습니다. 업데이트(마이그레이션)가 적용됐는지 확인해 주세요.');}};
-      if(b.action==='keys-status'){
-        const st=await store('status');const keys:Record<string,unknown>={};
-        for(const n of EXTERNAL_KEYS){const k=st.keys?.[n];keys[n]={app:!!k,changed_at:k?.changed_at??null,test_state:k?.test_state??null,tested_at:k?.tested_at??null,secret:!!Deno.env.get(n)};}
-        return result({keys});
-      }
+      // 연결 상태(대표 261123 "누르지 않아도 바로"): 키마다 지금 쓰는 키의 출처(app · secret · 없음)와 마지막 확인 결과.
+      // check=true(관리자 설정을 열 때)면 결과가 없거나 오래됐을 때만 상대 서버에 한 번 묻는다 — 10분(확인 못 함은 1분) 안이면 다시 씀.
+      const view=async(st:any,check:boolean,force:string|null)=>{
+        const out:Record<string,unknown>={};
+        await Promise.all(EXTERNAL_KEYS.map(async(n)=>{
+          const app=!!st.keys?.[n],secret=!!Deno.env.get(n),source=app?'app':secret?'secret':'';
+          let c=st.checks?.[n]??null;if(c&&c.source!==source)c=null;
+          let state:string|null=source?(c?.state??null):'none',checked_at:string|null=source?(c?.checked_at??null):null;
+          const age=c?Date.now()-Date.parse(c.checked_at):Infinity,ttl=c?.state==='unknown'?KEY_RECHECK_UNKNOWN_MS:KEY_RECHECK_MS;
+          if(source&&((check&&!(age<ttl))||force===n)){
+            const key=await externalKey(n);
+            if(key){state=await testExternalKey(n,key);const w=await store('checked',{name:n,source,state}).catch(()=>null);checked_at=w?.checked_at??new Date().toISOString();}
+          }
+          out[n]={app,changed_at:st.keys?.[n]?.changed_at??null,secret,source,state,checked_at};
+        }));
+        return Object.fromEntries(EXTERNAL_KEYS.map((n)=>[n,out[n]])); // 화면 줄 순서 그대로
+      };
+      if(b.action==='keys-status')return result({keys:await view(await store('status'),b.check===true,null)});
       const name=b.name as (typeof EXTERNAL_KEYS)[number];
       if(b.action==='key-set'){
         if(typeof b.value!=='string'||!/^[!-~]{8,256}$/.test(b.value))throw new SecurityError(400,'키 형식이 올바르지 않습니다. 받은 키를 앞뒤 공백 없이 그대로 붙여 넣어 주세요.');
         const saved=await store('set',{name,value:b.value});forgetExternalKeys();
         const test=await testExternalKey(name,b.value);
-        const tested=await store('tested',{name,state:test}).catch(()=>({tested_at:null}));
-        return result({ok:true,changed_at:saved.changed_at,test,tested_at:tested.tested_at});
+        await store('checked',{name,source:'app',state:test}).catch(()=>null);
+        return result({ok:true,changed_at:saved.changed_at,test});
       }
       if(b.action==='key-test'){
-        // 지금 함수가 쓰는 키(앱에서 넣은 값 먼저, 없으면 Secret)로 확인한다. 앱에서 넣은 키일 때만 결과를 남긴다.
-        forgetExternalKeys();const st=await store('status');const fromApp=!!st.keys?.[name];
-        const key=await externalKey(name);if(!key)return result({test:null,source:''});
-        const test=await testExternalKey(name,key);
-        if(fromApp)await store('tested',{name,state:test}).catch(()=>null);
-        return result({test,source:fromApp?'app':'secret'});
+        // [연결 확인]: 지금 함수가 쓰는 키(앱에서 넣은 값 먼저, 없으면 Secret)로 바로 다시 확인한다.
+        forgetExternalKeys();const keys:any=await view(await store('status'),false,name);const k=keys[name];
+        return result({test:k.source?k.state:null,source:k.source,checked_at:k.checked_at});
       }
       await store('clear',{name});forgetExternalKeys();
       return result({ok:true,secret:!!Deno.env.get(name)});

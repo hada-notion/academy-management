@@ -2529,7 +2529,7 @@ function renderAdmin(v){if(window.LIVE&&window.LIVE.loaded&&typeof liveAdminRend
   {icon:"login",title:"로그인",rows:[["상태",'<span class="tag g">로그인됨</span> 이 기기에서 12시간 유지',cbtn("logout","로그아웃")]]},
   {icon:"lock",title:"보안",rows:[["관리자 비밀번호","마지막으로 바꾼 지 42일",cbtn("soon","바꾸기")],["보안 모드",ADM.sec?'<span class="tag g">켜짐</span> 화면·노션·키오스크가 저마다 다른 키로 서버를 불러요':'<span class="tag">꺼짐</span> 키 하나로 모두 불러요 — 설치를 마친 뒤 서버 설정에서 켜요',""]]},
   /* 261123 키 자동 등록: 실제 자료 모드는 liveadmin.js가 서버(admin-security keys-*)에 붙인다. 여기는 시제품 모양만 */
-  {icon:"shield",title:"외부 키",help:"학원이 받은 외부 키를 여기에 붙여 넣으면 서버가 바로 써요. 넣은 키는 다시 보여 주지 않고 저장한 날과 연결 확인 결과만 보여요.",rows:[["나이스<br><span class=\"hint\">학교 검색 · 학사일정</span>",'<span class="tag b">앱에 저장</span> <span class="hint">바꾼 날 2026. 11. 23.</span> <span class="tag g">연결됨</span>',cbtn("soon","키 저장","save")+cbtn("soon","연결 확인","rotc")+cbtn("soon","삭제","trash")],["국립중앙도서관<br><span class=\"hint\">교재 정보(주력)</span>",'<span class="tag">서버 설정값</span> <span class="hint">Supabase Secrets에 넣은 키를 써요</span>',cbtn("soon","키 저장","save")+cbtn("soon","연결 확인","rotc")],["카카오<br><span class=\"hint\">교재 정보(보조 · 수입 원서)</span>",'<span class="tag w">없음</span> <span class="hint">교재 정보(보조 · 수입 원서)이 동작하지 않아요</span>',cbtn("soon","키 저장","save")]]},
+  {icon:"shield",title:"외부 키",help:"학원이 받은 외부 키를 여기에 붙여 넣으면 서버가 바로 써요. 넣은 키는 다시 보여 주지 않아요. 이 화면을 열면 서버가 연결을 확인해 바로 보여 줘요.",rows:[["나이스<br><span class=\"hint\">학교 검색 · 학사일정</span>",'<span class="tag g">연결됨</span> <span class="hint">앱에 넣은 키 · 2026. 11. 23. 저장 · 14:52 확인</span>',cbtn("soon","키 저장","save")+cbtn("soon","연결 확인","rotc")+cbtn("soon","삭제","trash")],["국립중앙도서관<br><span class=\"hint\">라이브러리 책 검색</span>",'<span class="tag g">연결됨</span> <span class="hint">서버 설정값(Supabase Secrets) · 14:52 확인</span>',cbtn("soon","키 저장","save")+cbtn("soon","연결 확인","rotc")]]},
   {icon:"trash",title:"예시 데이터 비우기",help:"새 학원이 처음 설치할 때 한 번만 써요. 비운 뒤에는 잠겨요.",rows:[["상태",ADM.cleared?"이미 비웠어요 — 다시 쓸 수 없어요":"아직 비우지 않았어요",ADM.cleared?"":cbtn("clear","비우기…","","danger")]]},
   {icon:"activity",title:"연결",rows:[["서버·노션",'<span class="tag g">연결됨</span>',cbtn("ping","다시 확인","rotc")]]}]})}
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-cact]");if(!b)return;const a=b.dataset.cact;
@@ -4954,6 +4954,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del&&!z._virtual).
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="appdata.js?v=727"></script><script src="appsave.js?v=728"></script><script src="appview.js?v=727"></script><script src="livelesson.js?v=728"></script><script src="liveadmin.js?v=727"></script><script src="livebook.js?v=727"></script><script src="liveschool.js?v=727"></script><script src="live.js?v=728"></script><script src="liverefresh.js?v=727"></script>
+<script src="appdata.js?v=727"></script><script src="appsave.js?v=728"></script><script src="appview.js?v=727"></script><script src="livelesson.js?v=728"></script><script src="liveadmin.js?v=729"></script><script src="livebook.js?v=729"></script><script src="liveschool.js?v=727"></script><script src="live.js?v=728"></script><script src="liverefresh.js?v=727"></script>
 </body>
 </html>
