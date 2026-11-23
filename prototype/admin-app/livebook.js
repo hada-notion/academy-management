@@ -213,7 +213,7 @@ function lbSeriesDialog() {
       try {
         const res = await liveBookApi(Object.assign({ action: "edit-series" }, body));
         apply(res);
-        /* 서버(v2.8.0)는 새 선택지로 옮겨 바꾸고 실패면 이유로 답한다. 옛 서버(ok인데 노션 이름 그대로)를 쓰는 학원도 있어 돌아온 목록에 새 이름이 있을 때만 바뀐 것으로 */
+        /* 원본 검수 261123: 서버가 ok로 답해도 노션이 이름을 안 바꾼 때가 있다 — 돌아온 목록에 새 이름이 있을 때만 바뀐 것으로 */
         if (from && to && !(res.series || []).some((o) => o.name === to)) { S.msg = "노션이 이름 바꾸기를 받지 않았어요 — 노션 라이브러리 DB [시리즈] 칸에서 직접 바꿔요"; }
         else { if (from && to) lbSeriesRenamed(from, to); S.msg = ""; toast(done); }
       } catch (e) { S.msg = lbErr(e); }
