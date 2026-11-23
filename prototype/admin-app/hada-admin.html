@@ -6,7 +6,7 @@
 <title>관리 앱 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3C%2Fsvg%3E">
 <link rel="stylesheet" href="hada-tokens.css?v=742">
-<link rel="stylesheet" href="app.css?v=750">
+<link rel="stylesheet" href="app.css?v=751">
 <link rel="stylesheet" href="pick.css?v=742">
 <link rel="stylesheet" href="field.css?v=742">
 </head>
@@ -2484,8 +2484,8 @@ const isTodo=e=>!!e&&!e.del&&evSubOf(e)==="할일";
 const homeTodos=d=>DB.events.filter(e=>isTodo(e)&&e.stat!=="완료"&&e.start&&e.start<=dPlus(d,7)).sort((a,b)=>a.start<b.start?-1:a.start>b.start?1:String(a.name).localeCompare(String(b.name),"ko"));
 function homeTodoBoard(d){const xs=homeTodos(d),ts=DB.teachers.filter(x=>!x.del).slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),"ko")),has=new Set(ts.map(x=>x.id));
   const cols=[{id:"",name:"담당자 없음"},...ts].map(c=>({c,xs:xs.filter(e=>c.id?e.who===c.id:!has.has(e.who))})).filter(g=>g.xs.length);/* 할 일이 있는 담당자만(노션 보드 "빈 그룹 숨기기"와 같음) */
-  const card=e=>{const late=e.start<d;return `<div class="hbcard${late?" late":""}" data-tev="${e.id}" title="일정 화면에서 열기"><b class="hbn">${esc(e.name)}</b><span class="hbm"><span class="hbd">${mdw(e.start)}</span>${late?'<span class="rpill late">밀림</span>':""}<span class="rpill st" data-st="${esc(e.stat)}">${esc(e.stat)}</span><button type="button" class="btn sm hbdone" data-tdone="${e.id}" title="진행상태를 완료로 — 홈에서 빠져요">${IC("check","s")}완료</button></span></div>`};
-  return `<section class="cbox hboard"><h3>${IC("check","l")}담당자별 할 일 <span class="hint">${xs.length}</span>${HELP("일정 중 세부 구분이 할일인 것 — 이 날까지 밀린 일과 7일 안 할 일을 담당자마다 모아요. [완료]를 누르면 진행상태가 완료로 바뀌고 여기서 빠져요(노션도 같이). 새 할 일은 일정에서 세부 구분 할일로 만들어요.")}<span class="sp"></span><button type="button" class="btn sm" data-tadd>${IC("plus","s")}할 일 추가</button></h3>
+  const card=e=>{const late=e.start<d;return `<div class="hbcard${late?" late":""}" data-tev="${e.id}" title="일정 화면에서 열기"><b class="hbn">${esc(e.name)}</b><span class="hbm"><span class="hbd">${mdw(e.start)}</span>${late?'<span class="rpill late">밀림</span>':""}<label class="hbchk${e.stat==="진행 중"?" mid":""}" title="완료에 체크하면 홈에서 빠져요(노션 완료 칸)${e.stat==="진행 중"?" — 지금 진행 중":""}"><input type="checkbox" data-tdone="${e.id}">완료</label></span></div>`};/* 261124 대표: 노션 완료 칸이 체크박스 표시 — 앱 카드도 같은 말·모양(진행 중 = 반쯤 찬 칸) */
+  return `<section class="cbox hboard"><h3>${IC("check","l")}담당자별 할 일 <span class="hint">${xs.length}</span>${HELP("일정 중 세부 구분이 할일인 것 — 이 날까지 밀린 일과 7일 안 할 일을 담당자마다 모아요. 카드의 완료에 체크하면 여기서 빠져요(노션 완료 칸도 같이). 새 할 일은 일정에서 세부 구분 할일로 만들어요.")}<span class="sp"></span><button type="button" class="btn sm" data-tadd>${IC("plus","s")}할 일 추가</button></h3>
   ${cols.length?`<div class="hbcols">${cols.map(({c,xs})=>`<div class="hbcol"><div class="hbh">${IC(c.id?"user":"users","s")}<b>${esc(c.name)}</b><span class="hint">${xs.length}</span></div>${xs.map(card).join("")||'<div class="hint hbnone">할 일이 없어요</div>'}</div>`).join("")}</div>`:'<div class="hint">7일 안 할 일이 없어요</div>'}</section>`}
 function renderToday(v,t){const st=t.state,d=st.day||TODAY;const its=dayItems(d),mks=(DB.mk||[]).filter(m=>m.d===d&&!m.del&&!m.off),on=its.filter(x=>!x.e.off);
   const td=DB.events.filter(e=>isTodo(e)&&e.stat!=="완료"&&e.start),late=td.filter(e=>e.start<d).length,today=td.filter(e=>e.start===d).length,nw=DB.students.filter(x=>!x.del&&stuStat(x)==="new").length;
@@ -2499,15 +2499,15 @@ function renderToday(v,t){const st=t.state,d=st.day||TODAY;const its=dayItems(d)
   v.querySelectorAll("[data-dn]").forEach(x=>x.onclick=()=>{const k=+x.dataset.dn;st.day=k?dPlus(d,k):TODAY;render()});
   v.querySelectorAll("[data-todogo]").forEach(x=>x.onclick=ev=>openScreen(x.dataset.todogo,ev.ctrlKey||ev.metaKey));
   v.querySelectorAll("[data-tev]").forEach(x=>x.onclick=ev=>{if(ev.target.closest("[data-tdone]"))return;panelOpen=true;openScreen("events",ev.ctrlKey||ev.metaKey,{sel:x.dataset.tev,lf:{"다가오는 일정":false}})});
-  v.querySelectorAll("[data-tdone]").forEach(x=>x.onclick=ev=>{ev.stopPropagation();homeTodoDone(x.dataset.tdone)});
+  v.querySelectorAll("[data-tdone]").forEach(x=>{x.onclick=ev=>ev.stopPropagation();x.onchange=()=>homeTodoDone(x.dataset.tdone)});v.querySelectorAll(".hbchk").forEach(l=>l.onclick=ev=>ev.stopPropagation());v.querySelectorAll(".hbchk.mid input").forEach(i=>i.indeterminate=true);
   v.querySelectorAll("[data-tadd]").forEach(x=>x.onclick=ev=>openScreen("events",ev.ctrlKey||ev.metaKey));
   v.querySelectorAll("[data-htile]").forEach(x=>x.onclick=ev=>{const k=x.dataset.htile,nt=ev.ctrlKey||ev.metaKey;if(k==="lesson")return openScreen("timetable",nt,{view:"lesson",lv:"today"});if(k==="new")return openScreen("students",nt,{sub:"new"});const b=v.querySelector(".hboard");if(b)b.scrollIntoView({block:"start",behavior:"smooth"})})}
 /* 할 일 [완료](홈 보드 카드): 진행상태 = 완료. 실제 자료 모드면 그 줄만 노션에 바로 저장(서버 EVENT_PROPS 진행상태), 실패하면 되돌림 */
 async function homeTodoDone(id){const e=byId(DB.events,id);if(!e||e.stat==="완료")return;const prev=e.stat;e.stat="완료";commit();
   if(!(window.LIVE&&window.LIVE.loaded&&typeof liveSave==="function")){toast(`"${e.name}" 완료 — 홈에서 빠졌어요(Ctrl+Z로 되돌려요)`);return}
   const res=await liveSave({only:(c,r)=>c==="events"&&r.id===id});
-  if(!res||(res.failed||[]).length){e.stat=prev;render();toast("노션에 저장하지 못해 되돌렸어요 — 노션 일정에서 진행상태를 바꿔 주세요");return}
-  toast(`"${e.name}" 완료 — 노션 진행상태도 완료예요`)}
+  if(!res||(res.failed||[]).length){e.stat=prev;render();toast("노션에 저장하지 못해 되돌렸어요 — 노션 일정에서 완료에 체크해 주세요");return}
+  toast(`"${e.name}" 완료 — 노션 완료 칸에도 체크됐어요`)}
 /* 200판: 출석부 격자 줄 — 등록마다 그 달 날짜별 기호. 휴강은 빈칸, 이 주만 옮긴 수업은 옮긴 날, 보강 수업은 △ */
 /* 203판: 영수증 원부 줄 — 일련번호는 결제한 해마다 결제일 순 순번, 대장 번호는 첫 등록일 순 */
 function rollNos(){const m={};DB.students.filter(x=>!x.del&&DB.enrolls.some(e=>e.studentId===x.id)).map(x=>({x,d:DB.enrolls.filter(e=>e.studentId===x.id).map(e=>e.start||"").sort()[0]||""})).sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:a.x.id<b.x.id?-1:1).forEach((z,i)=>m[z.x.id]=String(i+1).padStart(4,"0"));return m}

@@ -3551,9 +3551,7 @@ html:root .lj .ljh,html:root .lj dl{font-size:12px}
 .hbm{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:var(--text-caption);color:var(--muted);font-variant-numeric:tabular-nums}
 .hbm .rpill{display:inline-flex;align-items:center;height:20px;padding:0 var(--space-2);border-radius:var(--radius-pill);font-size:var(--text-micro);font-weight:700;background:var(--line2);color:var(--muted)}
 .hbm .rpill.late{background:var(--danger-soft);color:var(--danger-ink)}
-.hbm .rpill.st[data-st="진행 중"]{background:var(--info-soft);color:var(--info-ink)}
-.hbm .rpill.st[data-st="미완료"]{background:var(--warning-soft);color:var(--warning-ink)}
-.hbm .hbdone{margin-left:auto;height:28px}
+.hbchk{margin-left:auto;display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 4px;font-size:var(--text-caption);color:var(--muted);cursor:pointer}.hbchk input{width:16px;height:16px;margin:0;accent-color:var(--brand-deep);cursor:pointer}.hbchk.mid input{accent-color:var(--info)}
 .hbnone{padding:var(--space-2) var(--space-1)}
 .htiles{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-3)}
 .htile{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:76px;padding:var(--space-3) var(--space-4);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);font:inherit;color:var(--ink);cursor:pointer;text-align:left}
