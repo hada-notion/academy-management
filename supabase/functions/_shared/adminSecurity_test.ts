@@ -214,3 +214,75 @@ Deno.test('admin keys: blocked on the initial password and without a session; st
   const logs=await withServer(fakeServer({},{down:true}),async()=>{Deno.env.set('ADMIN_SECURITY_ENABLED','true');const r=await handleAdminSecurity(request({action:'key-set',name:'NEIS_API_KEY',value:FAKE},'https://admin.example.test','s'));assert(r.status===503);const t=await r.text();noValue(t);assert(/키 저장소/.test(t));});
   for(const l of logs)noValue(l);});
 }
+// (v2.8.0, 261123 대표 "0000 비밀번호로 예시 데이터 비우기 / 한번 진행하고 나면 막히도록") 초기 비밀번호 세션은 예시 데이터 비우기만 더 받는다.
+// 가짜 서버: SQL(hada_security_command)은 실제 규칙대로 — must_change면 authorize는 늘 none, profile은 관리자 세션만(키오스크 거절).
+{
+  const {handleClearExampleData}=await (async()=>{const old=Deno.serve;(Deno as any).serve=()=>({});try{return await import('../clear-example-data/index.ts');}finally{(Deno as any).serve=old;}})();
+  const {authorizeInitialSetup,INITIAL_SETUP_ROUTES,SECURITY_BROWSER_ROUTES}=await import('./adminSecurity.ts');
+  const INIT=('a'.repeat(64)),KIOSK=('b'.repeat(64)),FAKE_WS='예시 학원';
+  type World={mustChange:boolean,flag:any,writes:any[],queued:any[],rpc:string[]};
+  const world=(over:Partial<World>={}):World=>({mustChange:true,flag:null,writes:[],queued:[],rpc:[],...over});
+  async function sessionsOf(){return {admin:await sha256(INIT),kiosk:await sha256(KIOSK)};}
+  async function withWorld(w:World,run:()=>Promise<void>){
+    const s=await sessionsOf();const old=fetch;
+    globalThis.fetch=(async(input:any,init:any)=>{
+      const url=String(input),method=init?.method??'GET',body=init?.body?JSON.parse(init.body):null,j=(v:unknown,st=200)=>new Response(JSON.stringify(v),{status:st,headers:{'Content-Type':'application/json'}});
+      if(url.includes('/rpc/hada_security_command')){
+        const a=body.p_action,d=body.p_data??{};w.rpc.push(a);
+        if(a==='internal')return j({internal_key:'f'.repeat(64)});
+        if(a==='authorize'){if(w.mustChange)return j({kind:'none'});if(d.candidate===s.admin)return j({kind:'session'});if(d.candidate===s.kiosk)return j({kind:'kiosk'});return j({kind:'none'});}
+        if(d.session_hash!==s.admin)return j({error:'다시 로그인해 주세요.',status:401});
+        if(a==='profile')return j({password_hash:'x',changed_at:'2026-11-23T00:00:00Z',version:1,must_change:w.mustChange});
+        if(a.startsWith('webhook-')&&w.mustChange)return j({error:'초기 비밀번호를 먼저 변경해 주세요.',status:409});
+        return j({ok:true});
+      }
+      if(url.includes('/rest/v1/hada_setup_flags')){
+        if(method==='GET')return j(w.flag?[{value:w.flag,updated_at:'2026-11-23T00:00:00Z'}]:[]);
+        w.writes.push(body);const v=Array.isArray(body)?body[0].value:body.value;
+        if(method==='PATCH'){if(w.flag?.state!=='running')return j([]);w.flag=v;return j([{}]);}
+        w.flag=v;return new Response(null,{status:201});
+      }
+      if(url.includes('/rest/v1/sync_queue')){w.queued.push(body);return new Response(null,{status:201});}
+      if(url.includes('/users/me'))return j({bot:{workspace_name:FAKE_WS}});
+      if(url.includes('/search'))return j({results:[],has_more:false});
+      if(url.includes('/functions/v1/process-sync-queue'))return j({ok:true});
+      return j({});
+    }) as typeof fetch;
+    try{Deno.env.set('ADMIN_SECURITY_ENABLED','true');await run();await new Promise(r=>setTimeout(r,20));}finally{globalThis.fetch=old;Deno.env.delete('ADMIN_SECURITY_ENABLED');}
+  }
+  const clear=(body:any,key=INIT)=>handleClearExampleData(new Request('https://mock.supabase.co/functions/v1/clear-example-data',{method:'POST',headers:{'Content-Type':'application/json','x-admin-key':key},body:JSON.stringify(body)}));
+  const opts={sanitizeOps:false,sanitizeResources:false};
+  Deno.test({...opts,name:'0000 session: example clear state · start · stop are open (workspace name still required)',fn:()=>{const w=world();return withWorld(w,async()=>{
+    const st=await clear({action:'state'});const sd=await st.json();assert(st.status===200&&sd.canStart===true&&sd.flag===null,JSON.stringify(sd));
+    const bad=await clear({action:'start',workspace:'다른 이름',dbs:['출석(학원) DB']});assert(bad.status===400&&w.writes.length===0&&w.queued.length===0);
+    const ok=await clear({action:'start',workspace:FAKE_WS,dbs:['출석(학원) DB']});const od=await ok.json();assert(ok.status===200&&od.state==='running'&&w.queued.length===1,JSON.stringify(od));
+    const stop=await clear({action:'stop'});assert(stop.status===200&&(await stop.json()).flag.state==='stopped');
+    assert(w.rpc.includes('profile'));});}});
+  Deno.test({...opts,name:'0000 session: no other route or admin action opens',fn:()=>{const w=world();return withWorld(w,async()=>{
+    for(const route of [...SECURITY_BROWSER_ROUTES].filter(r=>r!=='clear-example-data').concat(['generate-classes','process-sync-queue','send-report','toggle-report-link','admin-security'])){
+      const r=new Request(`https://mock.supabase.co/functions/v1/${route}`);
+      assert(!await authorizeKey(r,INIT,''),'authorizeKey '+route);assert(!await authorizeInitialSetup(r,INIT),'initial '+route);}
+    assert(INITIAL_SETUP_ROUTES.size===1&&INITIAL_SETUP_ROUTES.has('clear-example-data'));
+    for(const body of [{action:'keys-status'},{action:'key-set',name:'NEIS_API_KEY',value:'test-only-value-123'},{action:'key-test',name:'NEIS_API_KEY'},{action:'key-clear',name:'NEIS_API_KEY'},{action:'webhook-status'},{action:'webhook-links'},{action:'root-title'},{action:'webhook-check',item:'x',checked:true},{action:'webhook-finish'}]){
+      const r=await handleAdminSecurity(request(body,'https://admin.example.test',INIT));assert(r.status===409,body.action+' '+r.status);}
+    // 비밀번호 바꾸기 길(profile)은 그대로 열려 있다.
+    assert((await handleAdminSecurity(request({action:'profile'},'https://admin.example.test',INIT))).status===200);});}});
+  Deno.test({...opts,name:'0000 path is closed to kiosk sessions, unknown tokens, legacy mode and changed passwords',fn:async()=>{
+    const w=world();await withWorld(w,async()=>{
+      for(const key of [KIOSK,'c'.repeat(64),'','0000','not-hex-'+'a'.repeat(56)]){const r=await clear({action:'state'},key);assert(r.status===401,key+' '+r.status);}
+      // 64자리 hex가 아닌 값은 서버에 묻지도 않는다(profile은 KIOSK · 'c'… 두 번만).
+      assert(w.rpc.filter(a=>a==='profile').length===2,w.rpc.join());});
+    // 비밀번호를 정한 뒤(must_change=false): 0000 길은 닫히고 보통 관리자 세션 규칙만 남는다.
+    const after=world({mustChange:false});await withWorld(after,async()=>{const r=new Request('https://mock.supabase.co/functions/v1/clear-example-data');assert(!await authorizeInitialSetup(r,INIT));assert((await clear({action:'state'},KIOSK)).status===401);assert((await clear({action:'state'})).status===200);});
+    Deno.env.delete('ADMIN_SECURITY_ENABLED');assert(!await authorizeInitialSetup(new Request('https://mock.supabase.co/functions/v1/clear-example-data'),INIT));}});
+  Deno.test({...opts,name:'after one finished clear (done) or on a running academy (locked), start is refused for 0000 and for a changed password',fn:async()=>{
+    for(const state of ['done','locked']){
+      for(const mustChange of [true,false]){
+        const w=world({mustChange,flag:{state,done:12,finishedAt:'2026-11-23T00:00:00Z'}});
+        await withWorld(w,async()=>{
+          const st=await (await clear({action:'state'})).json();assert(st.canStart===false,state);
+          const r=await clear({action:'start',workspace:FAKE_WS,dbs:['출석(학원) DB']});assert(r.status===409,`${state} ${mustChange} ${r.status}`);
+          assert(w.queued.length===0&&w.writes.length===0&&w.flag.state===state);});
+      }
+    }}});
+}

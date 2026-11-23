@@ -8,11 +8,15 @@
      화면을 열면 서버가 연결 상태를 바로 알려 줌(10분 안 결과는 다시 씀),
      화면에는 있음 · 바꾼 날 · 연결 확인 결과만(값은 되돌려 받지 않음). 함수는 Vault 먼저 · 없으면 Supabase Secrets(_shared/externalKeys.ts)
    - 첫 설치의 초기 비밀번호(0000)는 live.js 로그인 창이 바로 새 비밀번호를 정하게 한다(서버 scope "settings" 로그인 → change).
+     그 창에서 비밀번호를 바꾸지 않고 [예시 데이터 비우기]도 할 수 있다(261123 대표 "0000 비밀번호로 진행 가능하도록 / 한번 진행하고 나면 막히도록"):
+     0000 세션은 서버가 clear-example-data만 더 받는다(_shared/adminSecurity.ts authorizeInitialSetup) — 아래 window.liveInitialClear가 같은 비우기 창을 그 세션으로 연다.
    비밀번호 칸 값은 보낸 바로 뒤 지우고, 어디에도 적지 않는다(콘솔 · 저장소 · 주소). 실제 자료 모드가 아니면(LIVE 없음) 시제품 카드 그대로. */
 (function () {
   const S = { at: 0, loading: false, server: null, profile: null, admin: null, clear: null, keys: null, err: {} };
-  const root = () => String(window.LIVE.url).replace(/\/+$/, "");
-  const session = () => (window.LIVE && window.LIVE.session) || "";
+  /* OVR = 0000 설치 길(로그인 전, LIVE 없음)에서 비우기 창을 열 때 쓰는 연결 { url, session, onClose } */
+  let OVR = null;
+  const root = () => String(OVR ? OVR.url : window.LIVE.url).replace(/\/+$/, "");
+  const session = () => (OVR ? OVR.session : window.LIVE && window.LIVE.session) || "";
   /* 옛 관리자 설정 화면의 request()와 같은 부름(admin-security, x-admin-key = 관리자 세션) */
   async function sec(action, values = {}, timeout = 20000) {
     const res = await fetch(root() + "/functions/v1/admin-security", { method: "POST", headers: { "Content-Type": "application/json", ...(session() ? { "x-admin-key": session() } : {}) }, body: JSON.stringify({ action, ...values }), cache: "no-store", signal: AbortSignal.timeout(timeout) });
@@ -227,7 +231,7 @@
     const ws = s.workspace || "";
     modal(`<h2>예시 데이터 비우기</h2><div class="box la-clear"><div class="warnbox"><b>되돌리기 어려워요.</b> 노션 휴지통으로 보내 30일 안에 되살릴 수는 있지만 한 건씩 되살려야 해요. 실제로 쓰기 시작한 뒤에는 누르지 않아요. 한 번 끝나면 이 기능은 잠겨요.</div><div id="lasel"><p class="hint" id="lasum"></p><div class="la-grid">${groupHtml}</div><p class="hint">항상 남기는 DB: ${esc(keep)} · 체크를 푼 DB와 매뉴얼 페이지 · DB 템플릿도 그대로예요.</p>${(s.missing || []).length ? `<p class="hint">찾지 못한 DB(연동 공유 확인): ${esc(s.missing.join(", "))}</p>` : ""}${(s.unknown || []).length ? `<p class="hint">목록에 없어 건드리지 않는 DB ${s.unknown.length}개: ${esc(s.unknown.join(", "))}</p>` : ""}<label class="lab" for="laws">확인을 위해 워크스페이스 이름 <b>${esc(ws || "(이름 없음)")}</b>을 그대로 넣어요</label><input class="inp" id="laws" autocomplete="off" spellcheck="false" maxlength="200"><p class="hint">페이지가 많으면 10~25분 걸려요. 이 창을 닫아도 서버에서 계속 지워요.</p></div><div id="laprog" hidden><div class="la-bar"><span id="labar"></span></div><p class="hint" id="lacount"></p></div><p class="hint" id="ladone" hidden></p><p class="err" id="laerr" hidden></p></div><div class="actions"><span class="sp"></span><button class="btn" id="cc">닫기</button><button class="btn" id="lastop" hidden>중단</button><button class="btn danger pri2" id="co" disabled>예시 데이터 비우기</button></div>`, (m, close0) => {
       const f = (id) => m.querySelector(id), boxes = () => [...m.querySelectorAll("[data-ladb]")], ok = f("#co"), err = f("#laerr");
-      const close = () => { stopPoll(); close0(); load(); };
+      const close = () => { stopPoll(); close0(); if (OVR) { const back = OVR.onClose; OVR = null; if (back) back(); } else load(); };
       f("#cc").onclick = close;
       const show = (t) => { err.textContent = t; err.hidden = !t; };
       const sum = () => { const on = boxes().filter((b) => b.checked); f("#lasum").textContent = `이 학원 워크스페이스: ${ws || "(이름 없음)"} · 고른 DB ${on.length}개 · 비울 페이지 ${on.reduce((t, b) => t + Number(b.dataset.n), 0)}건`; ok.disabled = !s.canStart || !on.length || f("#laws").value !== ws; };
@@ -264,6 +268,13 @@
     });
   }
 
+  /* 0000 설치 길(live.js liveFirstPassword): 초기 비밀번호 세션으로 비우기 상태를 읽고, 같은 비우기 창을 연다. 창을 닫으면 onClose(비밀번호 정하기 창으로 돌아감).
+     state → [한 줄, 시작할 수 있나, 색] 또는 null(서버가 아직 이 길을 모름 · 연결 실패 — 그때는 비밀번호 정하기만 보인다) */
+  window.liveInitialClear = {
+    state: async (conn) => { const was = OVR; OVR = { url: conn.url, session: conn.session }; try { return clearLine(await clr("state", {}, 20000)); } catch (_) { return null; } finally { OVR = was; } },
+    open: (conn, onClose) => { OVR = { url: conn.url, session: conn.session, onClose }; clearDialog(null).then(() => { if (OVR && !document.querySelector("#modalRoot .la-clear")) { const back = OVR.onClose; OVR = null; if (back) back(); } }); },
+  };
+
   document.addEventListener("click", (e) => {
     const b = e.target.closest && e.target.closest("[data-ladm]");
     if (!b || !(window.LIVE && window.LIVE.loaded)) return;
@@ -279,6 +290,6 @@
   });
   /* 화면 전용 모양(app.css를 건드리지 않는다 — 기존 토큰만) */
   const css = document.createElement("style");
-  css.textContent = ".la-clear .la-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-2);margin:var(--space-2) 0;max-height:46vh;overflow:auto}.la-grp{border:1px solid var(--line);border-radius:var(--radius-md);padding:var(--space-1) var(--space-2)}.la-gh{font-weight:700;font-size:var(--text-label);display:flex;align-items:center;gap:var(--space-1);min-height:28px}.la-grp .hk{display:flex;align-items:center;gap:var(--space-2);min-height:32px;font-size:var(--text-label)}.la-grp .hk .hint{margin-left:auto}.la-bar{height:8px;background:var(--brand-soft);border-radius:999px;overflow:hidden;margin:var(--space-2) 0}.la-bar span{display:block;height:100%;width:0;background:var(--success-ink);transition:width .3s}.dlg .lab{display:block;margin:var(--space-2) 0 var(--space-1);font-size:var(--text-label);font-weight:600}.dlg .box .inp{width:100%;box-sizing:border-box}";
+  css.textContent = ".la-clear .la-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-2);margin:var(--space-2) 0;max-height:46vh;overflow:auto}.la-grp{border:1px solid var(--line);border-radius:var(--radius-md);padding:var(--space-1) var(--space-2)}.la-gh{font-weight:700;font-size:var(--text-label);display:flex;align-items:center;gap:var(--space-1);min-height:28px}.la-grp .hk{display:flex;align-items:center;gap:var(--space-2);min-height:32px;font-size:var(--text-label)}.la-grp .hk .hint{margin-left:auto}.la-bar{height:8px;background:var(--brand-soft);border-radius:999px;overflow:hidden;margin:var(--space-2) 0}.la-bar span{display:block;height:100%;width:0;background:var(--success-ink);transition:width .3s}.dlg .lab{display:block;margin:var(--space-2) 0 var(--space-1);font-size:var(--text-label);font-weight:600}.dlg .box .inp{width:100%;box-sizing:border-box}.lv-setup{border:1px solid var(--line);border-radius:var(--radius-md);padding:var(--space-2) var(--space-3);margin:var(--space-2) 0 var(--space-3)}.lv-setup-t{font-weight:700;font-size:var(--text-label);margin-bottom:var(--space-1)}.lv-setup .btn{margin-top:var(--space-2)}";
   document.head.appendChild(css);
 })();

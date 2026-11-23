@@ -164,6 +164,58 @@ const CLEAR_STATUS = { workspace: '하다 예시 학원', canStart: true, flag: 
     assert.ok(!logs.some((l) => /first-pass-1/.test(l)), '콘솔에 비밀번호 없음');
     assert.deepEqual(errors, []); done.push('첫 설치 비밀번호'); await page.close();
   }
+  // 7) (261123 대표 "0000 비밀번호로 예시 데이터 비우기 / 한번 진행하고 나면 막히도록") 설치 길: 0000 → 새 비밀번호 창 안 [예시 데이터 비우기…] →
+  //    같은 비우기 창(설정용 세션 sess-0) → 끝 → 창으로 돌아오면 "잠겼어요"만(단추 없음) → [취소] = 0000 세션 로그아웃, 비밀번호는 그대로.
+  //    잠긴 학원(locked) · 서버가 이 길을 모름(401)이면 설치 상자가 안 보인다. 0000 세션으로는 clear-example-data · 로그인 · 로그아웃 말고 부르지 않는다.
+  for (const mode of ['open', 'locked', 'old']) {
+    const page = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    const calls = [], errors = []; let clearState = mode === 'locked' ? { state: 'locked' } : null;
+    page.on('pageerror', (e) => errors.push(e.message)); page.on('dialog', (d) => d.accept());
+    const reply = (route, status, data) => route.fulfill({ status, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify(data) });
+    const can = () => !clearState || !['done', 'locked', 'running'].includes(clearState.state);
+    await page.route(H + '**', async (route) => {
+      const req = route.request(); if (req.method() === 'OPTIONS') return reply(route, 200, {});
+      const fn = req.url().slice(H.length).split('?')[0], q = req.postDataJSON() || {}, key = req.headers()['x-admin-key'];
+      calls.push({ fn, action: q.action, key, body: q });
+      if (fn === 'admin-security' && q.action === 'login') return q.password === '0000' && q.scope === 'settings' ? reply(route, 200, { session: 'sess-0', must_change: true }) : reply(route, 409, { error: '초기 비밀번호 상태입니다. 관리자 설정 페이지에서 비밀번호를 먼저 변경해 주세요.' });
+      if (fn === 'admin-security' && q.action === 'logout') return reply(route, 200, { ok: true });
+      if (fn === 'clear-example-data') {
+        if (mode === 'old' || key !== 'sess-0') return reply(route, 401, { error: '인증 실패' });
+        if (q.action === 'state') return reply(route, 200, { flag: clearState, canStart: can(), updatedAt: '2026-11-23T05:00:00Z' });
+        if (q.action === 'status') return reply(route, 200, { ...CLEAR_STATUS, flag: clearState, canStart: can() });
+        if (q.action === 'start') { if (q.workspace !== CLEAR_STATUS.workspace) return reply(route, 400, { error: '워크스페이스 이름이 맞지 않습니다.' }); clearState = { state: 'running', done: 10, total: 75 }; setTimeout(() => { clearState = { state: 'done', done: 75, total: 75, finishedAt: '2026-11-23T05:10:00Z' }; }, 1500); return reply(route, 200, clearState); }
+      }
+      return reply(route, 403, { error: '0000 세션으로 부르면 안 되는 곳' });
+    });
+    await page.goto(`${origin}/prototype/admin-app/hada-admin.html?live=1`);
+    await page.waitForSelector('#lvpw', { timeout: 15000 }); await page.fill('#lvpw', '0000'); await page.click('.dlg #co');
+    await page.waitForSelector('#lvnp1', { timeout: 10000 }); await page.waitForTimeout(800);
+    if (mode !== 'open') {
+      assert.equal(await page.isVisible('#lvclr'), false, mode + ': 설치 상자 안 보임');
+      await page.screenshot({ path: shots + `admin-live-0000-${mode}.png` });
+      await page.mouse.click(8, 8); await page.waitForSelector("#lvpw", { timeout: 10000 }); /* 바깥 누름 = 취소: 로그인 창으로, 앱 화면에 남지 않음 */
+      if (mode === "locked") { await page.waitForTimeout(300); assert.ok(calls.some((c) => c.action === "logout" && c.key === "sess-0"), "바깥 누름도 0000 세션 로그아웃"); }
+    } else {
+      assert.equal(await page.isVisible('#lvclrgo'), true); assert.match(await page.textContent('#lvclr'), /아직 비우지 않았어요[\s\S]*한 번 끝나면 잠겨/);
+      await page.screenshot({ path: shots + 'admin-live-0000-open.png' });
+      await page.click('#lvclrgo'); await page.waitForSelector('.dlg .la-clear', { timeout: 15000 });
+      await page.fill('#laws', CLEAR_STATUS.workspace); await page.screenshot({ path: shots + 'admin-live-0000-clear.png' });
+      await page.click('.dlg #co'); await page.waitForFunction(() => /비웠어요[\s\S]*잠겼어요/.test(document.querySelector('.dlg').textContent), null, { timeout: 15000 });
+      await page.click('.dlg #cc'); await page.waitForSelector('#lvnp1', { timeout: 10000 });
+      await page.waitForFunction(() => { const b = document.querySelector('#lvclr'); return b && !b.hidden && /잠겼어요/.test(b.textContent); }, null, { timeout: 10000 });
+      assert.equal(await page.isVisible('#lvclrgo'), false, '끝난 뒤 비우기 단추 없음');
+      await page.screenshot({ path: shots + 'admin-live-0000-done.png' });
+      await page.click('.dlg #cc'); await page.waitForSelector('#lvpw', { timeout: 10000 }); await page.waitForTimeout(300);
+      assert.ok(calls.some((c) => c.action === 'logout' && c.key === 'sess-0'), '취소 = 0000 세션 로그아웃');
+      assert.equal(calls.filter((c) => c.action === 'change').length, 0, '비밀번호는 바꾸지 않음');
+      assert.deepEqual(calls.filter((c) => c.fn === 'clear-example-data' && c.action === 'start').map((c) => c.key), ['sess-0']);
+    }
+    const settingsLogins = calls.filter((c) => c.action === 'login' && c.body.scope === 'settings').length;
+    assert.ok(settingsLogins <= (mode === 'open' ? 2 : 1), '설정용 로그인은 창을 열 때 한 번(돌아올 때 다시 쓰기) — ' + settingsLogins);
+    assert.deepEqual(calls.filter((c) => c.key === 'sess-0' && !(c.fn === 'clear-example-data' || (c.fn === 'admin-security' && c.action === 'logout'))), [], '0000 세션은 비우기 · 로그아웃에만');
+    assert.equal(calls.filter((c) => c.fn === 'app-api').length, 0, '로그인 전 노션 자료 부름 없음');
+    assert.deepEqual(errors, []); done.push('0000 설치 비우기 ' + mode); await page.close();
+  }
   // (261123 키 자동 등록) 외부 키: 가짜 키 저장 → 키가 틀림, 맞는 키 → 연결됨, 공백 막기, 삭제 → 서버 설정값 · 없음, 값은 화면 · 저장소 · 콘솔에 없음
   if (!process.env.ONLY || process.env.ONLY === 'keys') {
     keyVault = {}; keyStatusCalls = [];

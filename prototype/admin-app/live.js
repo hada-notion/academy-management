@@ -287,18 +287,43 @@ window.liveModeFor = function (search, hostname, protocol) {
 })();
 
 /* 첫 설치 초기 비밀번호 바꾸기(261123, 옛 관리자 설정 웹 화면에서 옮김): 초기 비밀번호로 설정용 세션(scope "settings")을 받아 change → 새 비밀번호로 다시 로그인.
-   비밀번호 값은 보낸 바로 뒤 지우고 어디에도 적지 않는다. 서버 동작(admin-security login · change)은 그대로 */
-function liveFirstPassword(cfg, first, done, back) {
+   비밀번호 값은 보낸 바로 뒤 지우고 어디에도 적지 않는다. 서버 동작(admin-security login · change)은 그대로.
+   (261123 대표 "0000 비밀번호로 예시데이터 비우기 / 한번 진행하고 나면 막히도록") 설치하는 하다랩이 비밀번호를 바꾸지 않고 예시 데이터를 먼저 비우는 길:
+   창을 열면 설정용 세션(setup)을 한 번 받아 비우기 상태를 읽는다 → 시작할 수 있으면 [예시 데이터 비우기…](liveadmin.js liveInitialClear, 관리자 설정과 같은 창),
+   끝났으면 "비웠어요 — 잠겼어요" 한 줄, 이미 쓰던 학원(locked) · 서버가 이 길을 모름 · 연결 실패면 아무것도 안 보인다(비밀번호 정하기만).
+   [취소]는 그 세션을 로그아웃해 0000 세션이 남지 않게 한다. 0000 세션으로 할 수 있는 일은 서버가 비우기 · 비밀번호 바꾸기로만 막는다 */
+function liveFirstPassword(cfg, first, done, back, setup) {
   const call = async (body, key) => {
     const res = await fetch(String(cfg.url).replace(/\/+$/, "") + "/functions/v1/admin-security", { method: "POST", headers: { "Content-Type": "application/json", ...(key ? { "x-admin-key": key } : {}) }, body: JSON.stringify(body), cache: "no-store" });
     const out = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(out.error || "관리자 로그인 서버에 연결하지 못했어요");
     return out;
   };
-  modal(`<h2>새 관리자 비밀번호 정하기</h2><div class="box"><p class="hint">처음 설치한 초기 비밀번호예요. 새 비밀번호를 정하면 이 앱 · 키오스크 · 법정 서류 · 수업 관리에서 그 비밀번호로 로그인해요.</p><label class="lab" for="lvnp1">새 비밀번호</label><input class="inp" id="lvnp1" type="password" autocomplete="new-password" minlength="8" maxlength="128"><p class="hint">앞뒤 공백 없이 8~128자. 0000은 쓸 수 없어요.</p><label class="lab" for="lvnp2">새 비밀번호 확인</label><input class="inp" id="lvnp2" type="password" autocomplete="new-password" minlength="8" maxlength="128"><p class="hint" id="lvnerr"></p></div><div class="actions"><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">비밀번호 정하기</button></div>`, (m, close) => {
+  const getSetup = async () => setup || (setup = (await call({ action: "login", password: first, scope: "settings" })).session);
+  modal(`<h2>새 관리자 비밀번호 정하기</h2><div class="box"><p class="hint">처음 설치한 초기 비밀번호예요. 새 비밀번호를 정하면 이 앱 · 키오스크 · 법정 서류 · 수업 관리에서 그 비밀번호로 로그인해요.</p><div class="lv-setup" id="lvclr" hidden><div class="lv-setup-t">설치하는 중이면 — 예시 데이터 먼저 비우기</div><p class="hint" id="lvclrst"></p><p class="hint" id="lvclrhelp">비밀번호를 정하지 않고 비울 수 있어요. 한 번 끝나면 잠겨 다시 비울 수 없어요. 비운 뒤 이 창을 닫으면 0000 그대로 넘길 수 있어요.</p><button class="btn danger" id="lvclrgo" type="button">예시 데이터 비우기…</button></div><label class="lab" for="lvnp1">새 비밀번호</label><input class="inp" id="lvnp1" type="password" autocomplete="new-password" minlength="8" maxlength="128"><p class="hint">앞뒤 공백 없이 8~128자. 0000은 쓸 수 없어요.</p><label class="lab" for="lvnp2">새 비밀번호 확인</label><input class="inp" id="lvnp2" type="password" autocomplete="new-password" minlength="8" maxlength="128"><p class="hint" id="lvnerr"></p></div><div class="actions"><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">비밀번호 정하기</button></div>`, (m, close) => {
     const a = m.querySelector("#lvnp1"), b = m.querySelector("#lvnp2"), err = m.querySelector("#lvnerr"), ok = m.querySelector("#co");
+    const box = m.querySelector("#lvclr"), go = m.querySelector("#lvclrgo");
     const wipe = () => { a.value = ""; b.value = ""; };
-    m.querySelector("#cc").onclick = () => { wipe(); first = ""; close(); back(); };
+    const cancel = () => { wipe(); const s = setup; first = ""; setup = ""; close(); if (s) call({ action: "logout" }, s).catch(() => {}); back(); };
+    m.querySelector("#cc").onclick = cancel;
+    m.onclick = (e) => { if (e.target === m) cancel(); }; /* 바깥을 눌러도 [취소]와 같이 — 0000 상태로 앱 화면에 남지 않고 로그인 창으로 */
+    /* 예시 데이터 비우기 상태(설치 길). liveadmin.js가 없거나 실패하면 그대로 숨김 */
+    (async () => {
+      if (!window.liveInitialClear) return;
+      let st = null; try { st = await window.liveInitialClear.state({ url: cfg.url, session: await getSetup() }); } catch (_) { st = null; }
+      if (!st || !box.isConnected) return;
+      const [line, canStart, tone] = st;
+      if (!canStart && tone !== "g") return; /* 이미 쓰던 학원(locked): 보이지 않는다 */
+      m.querySelector("#lvclrst").textContent = line;
+      m.querySelector("#lvclrhelp").hidden = !canStart; go.hidden = !canStart; box.hidden = false;
+    })();
+    go.onclick = async () => {
+      go.disabled = true;
+      try {
+        const s = await getSetup(), keep = first;
+        window.liveInitialClear.open({ url: cfg.url, session: s }, () => liveFirstPassword(cfg, keep, done, back, s));
+      } catch (e) { err.textContent = e.message; go.disabled = false; }
+    };
     const submit = async () => {
       err.textContent = "";
       const nw = a.value;
@@ -306,10 +331,11 @@ function liveFirstPassword(cfg, first, done, back) {
       if (nw !== b.value) return (err.textContent = "새 비밀번호와 확인 값이 달라요");
       ok.disabled = true;
       try {
-        const s1 = await call({ action: "login", password: first, scope: "settings" });
-        await call({ action: "change", current_password: first, new_password: nw }, s1.session);
+        const s1 = await getSetup();
+        try { await call({ action: "change", current_password: first, new_password: nw }, s1); }
+        catch (e) { if (!/로그인/.test(e.message || "")) throw e; setup = ""; await call({ action: "change", current_password: first, new_password: nw }, await getSetup()); } /* 설정용 세션이 12시간 지나 풀렸으면 한 번 다시 받는다 */
         const s2 = await HadaAdminAuth.login(cfg.url, nw);
-        wipe(); first = ""; close(); toast("새 비밀번호로 바꿨어요"); done(s2);
+        wipe(); first = ""; setup = ""; close(); toast("새 비밀번호로 바꿨어요"); done(s2);
       } catch (e) { err.textContent = e.message; } finally { ok.disabled = false; }
     };
     ok.onclick = submit;
