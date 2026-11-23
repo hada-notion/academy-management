@@ -3517,3 +3517,5 @@ html:root .lj .ljh,html:root .lj dl{font-size:12px}
 .finsum{max-width:420px}
 .finrow{display:flex;justify-content:space-between;gap:var(--space-3);padding:var(--space-1) 0}.finrow small{color:var(--muted,#8A7F72);font-weight:400}
 .finnote{margin-top:var(--space-2)}
+.finbar{display:flex;align-items:center;gap:var(--space-2);margin:0 0 var(--space-2)}.finbar .hint{color:var(--muted,#8A7F72)}
+.finf{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-1) 0}.finf>span{flex:0 0 96px;color:var(--muted,#8A7F72)}.finf input,.finf select{flex:1;min-width:0}
