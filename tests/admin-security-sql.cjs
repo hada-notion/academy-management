@@ -55,6 +55,12 @@ await db.exec("update public.hada_security_state set locked_until=now()-interval
 ok((await rpc('login',{verified:true,version:1,token_hash:token})).ok,true);
 ok((await rpc('authorize',{candidate:token})).kind,'none');
 ok((await rpc('profile',{session_hash:token})).must_change,true);
+// (v2.8.0, 261123) The 0000 example-clear path (authorizeInitialSetup) trusts profile: only an admin session of the
+// current version passes it — a kiosk session or an unknown token gets 401 even while the initial password is active.
+await db.exec(`insert into public.hada_security_sessions(token_hash,version,kind,expires_at) values('${kiosk}',1,'kiosk','infinity')`);
+ok((await rpc('profile',{session_hash:kiosk})).status,401);
+ok((await rpc('profile',{session_hash:other})).status,401);
+await db.exec(`delete from public.hada_security_sessions where token_hash='${kiosk}'`);
 const change={session_hash:token,expected_version:1,password_hash:changed,internal_key:key2,internal_hash:key2};
 ok((await rpc('change',{...change,expected_version:0})).status,409);
 ok((await rpc('change',{...change,password_hash:'bad'})).status,400);

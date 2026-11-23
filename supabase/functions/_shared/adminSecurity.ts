@@ -56,8 +56,8 @@ export function equalSecret(a:string,b:string):boolean {
   for(let i=0;i<Math.max(aa.length,bb.length);i++)diff|=(aa[i]??0)^(bb[i]??0);
   return diff===0;
 }
-// Published initial password. It only opens the password-change screen (must_change) and is never
-// accepted by business pages; the deploy manager can reset an academy back to it.
+// Published initial password. It only opens the password-change screen (must_change) and the one-time
+// example-data clear (authorizeInitialSetup); it is never accepted by business pages. The deploy manager can reset an academy back to it.
 export const INITIAL_PASSWORD='0000';
 export function validatePassword(raw:unknown):string {
   if(typeof raw!=='string'||raw.length<8||raw.length>128||raw.trim()!==raw)throw new SecurityError(400,'비밀번호는 앞뒤 공백 없이 8~128자로 입력해 주세요.');
@@ -114,6 +114,16 @@ export async function authorizeKey(req:Request,provided:unknown,legacy:string):P
   // Long-lived kiosk sessions: check-in and the minimal directory only (the full list exposes report tokens).
   if(result.kind==='kiosk')return route==='kiosk-checkin'||(route==='list-students'&&new URL(req.url).searchParams.get('kiosk')==='1');
   return false;
+}
+// (v2.8.0, 261123 대표 "0000 비밀번호로 예시 데이터 비우기") 설치 때 하다랩이 비밀번호를 바꾸지 않고 예시 데이터를 비울 수 있게,
+// 초기 비밀번호(must_change) 상태의 관리자 세션은 예시 데이터 비우기(clear-example-data) 한 곳만 더 받는다.
+// SQL authorize는 must_change일 때 모든 세션을 'none'으로 돌려주므로 그대로 두고, 여기서 profile(관리자 세션 확인 — 키오스크 세션은 거절)로
+// must_change인지 본다. must_change가 아니면 false(그때는 authorizeKey가 이미 정상 판단함). 비우기는 한 번 끝나면 서버가 잠근다(exampleClear.ts).
+export const INITIAL_SETUP_ROUTES=new Set(['clear-example-data']);
+export async function authorizeInitialSetup(req:Request,provided:unknown):Promise<boolean> {
+  if(!securityEnabled()||!INITIAL_SETUP_ROUTES.has(routeName(req)))return false;
+  if(typeof provided!=='string'||!/^[0-9a-f]{64}$/.test(provided))return false;
+  try{const ctx=await securityRpc('profile',{session_hash:await sha256(provided)});return ctx?.must_change===true;}catch(_){return false;}
 }
 export async function currentInternalKey():Promise<string> {
   let state=await securityRpc('internal');
