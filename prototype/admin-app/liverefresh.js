@@ -17,7 +17,7 @@ const lrLive = () => !!(window.LIVE_MODE && window.LIVE && window.LIVE.loaded &&
 /* 요청 값: 동작 ID(서버가 아직 안 받음) = 대기 · 🔄 처리 중 · ✅ 완료 · ⚠️ 실패. 요청 결과 = 서버가 쓴 한 줄(이유 · 걸린 초) */
 function lrReq(r) {
   const p = (r && r.props) || {}, v = String(p["요청"] == null ? "" : p["요청"]).trim();
-  const msg = String(p["요청 결과"] == null ? "" : p["요청 결과"]).trim().replace(/^(🔄|✅|⚠️)?\s*(처리 중|완료|실패)\s*·?\s*/u, ""); /* 앞머리 상태는 알약이 보임 */
+  const msg = String(p["요청 결과"] == null ? "" : p["요청 결과"]).trim().replace(/^(🔄|✅|⚠️)?\s*(처리 중|완료|실패)\s*·?\s*/u, "").replace(/\s*·?\s*(\d{1,2}\/\d{1,2}\s+)?\d{1,2}:\d{2}(:\d{2})?\s*$/, ""); /* 앞머리 상태는 알약이 보이고, 글 끝 시각은 lrReqHtml이 한 번만 붙임 */
   if (!v) return null;
   const age = Date.now() - (Date.parse(r.notion_edited_at || "") || Date.now());
   if (/^🔄|처리 중/.test(v)) return { k: age > LR_SLOW_MS ? "slow" : "run", label: age > LR_SLOW_MS ? "오래 걸려요" : "처리 중", msg, age };
@@ -145,6 +145,15 @@ function lrPendingTidy() {
   }
 }
 
+/* 툴바 글자(live.js liveSyncMount가 부름): 자동 갱신이 켜져 있으면 그 상태와 마지막 받은 시각, 아니면 null(기존 "마지막 동기화") */
+function lrSyncText() {
+  if (LR_OFF || !lrLive()) return null;
+  const tm = LR.okAt ? new Date(LR.okAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Seoul" }) : "";
+  return "자동 갱신 켜짐" + (tm ? ` · 마지막 받음 ${tm}` : "");
+}
+function lrSyncAt() { const t = document.getElementById("syncAt"), x = lrSyncText(); if (t && x && t.textContent !== x) t.textContent = x; }
+window.lrSyncText = lrSyncText;
+
 /* ---------- 받기 ---------- */
 async function lrPull() {
   if (!lrLive() || LR_OFF) return;
@@ -155,7 +164,7 @@ async function lrPull() {
     const at = window.LIVE.at;
     const res = await liveApi(window.LIVE, { action: "changes", since: LR.cur, dbs: Object.keys(window.APP_RAW.raw) });
     if (!lrLive() || window.LIVE.at !== at) return; /* 그사이 전체를 다시 받았으면 버림 */
-    LR.cur = res.now || LR.cur;
+    LR.cur = res.now || LR.cur; LR.okAt = Date.now(); lrSyncAt();
     if (res.many) { lrMany(); }
     else if (lrApplyRaw(res.rows, res.gone)) { LR.need = true; LR.reqVer++; lrFlush(); }
     if (res.crAt) { if (LR.crAt && res.crAt > LR.crAt) lrCrPoke(); LR.crAt = res.crAt; }
