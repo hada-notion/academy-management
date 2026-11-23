@@ -230,7 +230,12 @@ const CLEAR_STATUS = { workspace: '하다 예시 학원', canStart: true, flag: 
     assert.match(await row('나이스', '국립중앙도서관'), /키 없음/); assert.match(await row('국립중앙도서관'), /연결됨[\s\S]*서버 설정값[\s\S]*\d\d:\d\d 확인/);
     assert.ok(!/카카오/.test(await page.locator('section.cbox', { hasText: '외부 키' }).innerText()), '카카오 줄 없음');
     await page.locator('section.cbox', { hasText: '외부 키' }).screenshot({ path: shots + 'admin-live-keys-open.png' });
+    // (261123 대표) 받는 곳 링크: 카드 줄과 [키 저장] 창 모두 새 탭 · noopener, 주소 = 노션 키 발급 매뉴얼의 NEIS_API_KEY · NL_CERT_KEY 페이지
+    const KL = { 'https://open.neis.go.kr': /나이스/, 'https://www.nl.go.kr/NL/contents/N31101010000.do': /국립중앙도서관/ };
+    const cardLinks = await page.locator('section.cbox', { hasText: '외부 키' }).locator('a.link-chip').evaluateAll((as) => as.map((x) => [x.getAttribute('href'), x.target, x.rel, x.textContent.trim()]));
+    assert.equal(cardLinks.length, 2, '카드 줄 링크 둘'); for (const [h, t, r, tx] of cardLinks) { assert.ok(KL[h] && KL[h].test(tx), '링크 주소 · 이름 ' + h + ' ' + tx); assert.equal(t, '_blank'); assert.match(r, /noopener/); }
     await page.click('[data-ladm="kset:NEIS_API_KEY"]'); assert.equal(await page.getAttribute('#lakey', 'type'), 'password');
+    { const dl = await page.locator('.dlg a.link-chip').evaluateAll((as) => as.map((x) => [x.getAttribute('href'), x.target, x.rel])); assert.deepEqual(dl, [['https://open.neis.go.kr', '_blank', 'noopener']], '창 링크(나이스)'); }
     await page.fill('#lakey', ' ' + FAKE_KEY); await page.click('.dlg #co'); assert.match(await page.textContent('#laerr'), /공백/);
     await page.fill('#lakey', FAKE_KEY); await page.click('.dlg #co'); await page.waitForFunction(() => /키가 틀림/.test(document.querySelector('#view').textContent));
     assert.match(await row('나이스', '국립중앙도서관'), /키가 틀림[\s\S]*앱에 넣은 키/);
