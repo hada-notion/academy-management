@@ -87,7 +87,7 @@
     const p = S.profile, srv = S.server, ad = S.admin, sub = ad && ad.subscription;
     const loginRow = ["상태", S.err.auth ? '<span class="tag r">로그인 풀림</span> <span class="hint">다른 곳에서 비밀번호를 바꿨거나 12시간이 지났어요</span>' : `${tag("g", "로그인됨")} <span class="hint">이 탭을 닫거나 12시간이 지나면 풀려요</span>`, S.err.auth ? btn("relogin", "다시 로그인", "login") : btn("logout", "로그아웃")];
     const pwRow = ["관리자 비밀번호", p ? `마지막으로 바꾼 날 ${esc(day(p.changed_at))}${p.change_due ? ` ${tag("w", "바꿀 때가 됐어요")}` : ` <span class="hint">· 다음 권장 ${esc(day(p.recommended_at))}</span>`}` : S.err.profile ? errCell("profile") : loadingCell, p ? btn("pw", "바꾸기", "lock") : ""];
-    const pwHelp = "키오스크 · 법정 서류 · 학교 검색 · 수업 관리 · 이 앱에서 같이 써요. 바꾸면 그 화면들의 로그인이 모두 풀리고 새 비밀번호로 다시 로그인해요(키오스크 기기 포함). 노션 버튼 · 자동화는 그대로예요.";
+    const pwHelp = "키오스크 · 법정 서류 · 수업 관리 · 이 앱에서 같이 써요. 바꾸면 그 화면들의 로그인이 모두 풀리고 새 비밀번호로 다시 로그인해요(키오스크 기기 포함). 노션 버튼 · 자동화는 그대로예요.";
     const cl = S.clear ? clearLine(S.clear) : null;
     const clearRow = ["상태", cl ? `${cl[2] ? tag(cl[2], cl[1] ? "열림" : "잠김") + " " : ""}${esc(cl[0])}` : S.err.clear ? errCell("clear") : loadingCell, cl && cl[1] ? btn("clear", "비울 데이터 확인…", "", "danger") : ""];
     const srvRow = ["서버", srv ? tag("g", "연결됨") : S.err.server ? errCell("server") : loadingCell, ""];
@@ -114,7 +114,7 @@
 
   /* 비밀번호 바꾸기 — 옛 관리자 설정 화면과 같은 change(현재 · 새 · 확인). 끝나면 모든 로그인이 풀린다 */
   function pwDialog() {
-    modal(`<h2>관리자 비밀번호 바꾸기</h2><div class="box"><label class="lab" for="lapw0">현재 비밀번호</label><input class="inp" id="lapw0" type="password" autocomplete="current-password" maxlength="128"><label class="lab" for="lapw1">새 비밀번호</label><input class="inp" id="lapw1" type="password" autocomplete="new-password" minlength="8" maxlength="128"><p class="hint">앞뒤 공백 없이 8~128자. 초기 비밀번호 0000은 쓸 수 없어요.</p><label class="lab" for="lapw2">새 비밀번호 확인</label><input class="inp" id="lapw2" type="password" autocomplete="new-password" minlength="8" maxlength="128"><div class="warnbox">바꾸면 키오스크 · 법정 서류 · 학교 검색 · 수업 관리 · 이 앱의 로그인이 모두 풀리고 새 비밀번호로 다시 로그인해요. 노션 버튼 · 자동화는 그대로예요.</div><p class="err" id="laerr" hidden></p></div><div class="actions"><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">비밀번호 바꾸기</button></div>`, (m, close) => {
+    modal(`<h2>관리자 비밀번호 바꾸기</h2><div class="box"><label class="lab" for="lapw0">현재 비밀번호</label><input class="inp" id="lapw0" type="password" autocomplete="current-password" maxlength="128"><label class="lab" for="lapw1">새 비밀번호</label><input class="inp" id="lapw1" type="password" autocomplete="new-password" minlength="8" maxlength="128"><p class="hint">앞뒤 공백 없이 8~128자. 초기 비밀번호 0000은 쓸 수 없어요.</p><label class="lab" for="lapw2">새 비밀번호 확인</label><input class="inp" id="lapw2" type="password" autocomplete="new-password" minlength="8" maxlength="128"><div class="warnbox">바꾸면 키오스크 · 법정 서류 · 수업 관리 · 이 앱의 로그인이 모두 풀리고 새 비밀번호로 다시 로그인해요. 노션 버튼 · 자동화는 그대로예요.</div><p class="err" id="laerr" hidden></p></div><div class="actions"><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">비밀번호 바꾸기</button></div>`, (m, close) => {
       const f = (id) => m.querySelector(id), err = f("#laerr"), ok = f("#co");
       const wipe = () => m.querySelectorAll("input[type=password]").forEach((i) => { i.value = ""; });
       const show = (t) => { err.textContent = t; err.hidden = !t; };

@@ -6,7 +6,7 @@ Supabase 프로젝트 정보를 이번 학원의 값으로 한 번에 치환하�
 무엇을 바꾸는지 (자동 치환 대상):
   1) supabase/migrations/*.sql  — pg_cron이 호출하는 Edge Function URL
   2) hada_config.js — 학원별 연결 설정 파일 하나. 정적 호스팅이라 서버 환경변수를 못 쓰는
-     화면들(학부모 리포트·키오스크·법정 서류·학교 검색·관리자 설정)이 모두 이 파일의
+     화면들(학부모 리포트·키오스크·법정 서류·수업 관리·관리 앱)이 모두 이 파일의
      supabaseUrl/supabaseAnonKey를 읽는다. 화면 파일에는 주소·키를 직접 넣지 않는다(v2.5.63).
   3) README.md — 운영 웹앱 주소 안내문
 
