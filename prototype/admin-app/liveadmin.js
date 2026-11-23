@@ -90,8 +90,8 @@
 
   /* 외부 키(261123 키 자동 등록): 키마다 한 줄 = 이름 · 지금 쓰는 키(앱에 저장 · 서버 설정값 · 없음) · 연결 확인 · 단추 */
   const KEYS = [
-    ["NEIS_API_KEY", "나이스", "학교 검색 · 학사일정", "나이스 교육정보 개방 포털(open.neis.go.kr) > 인증키 신청"],
-    ["NL_CERT_KEY", "국립중앙도서관", "라이브러리 책 검색", "국립중앙도서관 ISBN 서지정보(nl.go.kr/seoji) > 인증키 신청"],
+    ["NEIS_API_KEY", "나이스", "학교 검색 · 학사일정", "나이스 교육정보 개방 포털(open.neis.go.kr) > 인증키 신청", "https://open.neis.go.kr", "나이스 교육정보 개방 포털"],
+    ["NL_CERT_KEY", "국립중앙도서관", "라이브러리 책 검색", "국립중앙도서관 ISBN 서지정보(nl.go.kr/seoji) > 인증키 신청", "https://www.nl.go.kr/NL/contents/N31101010000.do", "국립중앙도서관 Open API"],
   ];
   /* 연결 상태(대표 261123 "누르지 않아도 바로"): 서버가 화면을 열 때 확인한 결과 — 키 없음 · 연결됨 · 키가 틀림 · 확인 못 함 */
   const STATE = { ok: ["g", "연결됨"], wrong: ["r", "키가 틀림"], unknown: ["w", "확인 못 함"], none: ["w", "키 없음"] };
@@ -99,23 +99,25 @@
   function keyRows() {
     if (S.err.keys) return [["외부 키", errCell("keys"), btn("refresh", "다시 확인", "rotc")]];
     if (!S.keys) return [["외부 키", loadingCell, ""]];
-    return KEYS.map(([name, label, use]) => {
+    return KEYS.map(([name, label, use, , url, site]) => {
       const k = S.keys[name] || {}, st = STATE[k.state];
       const from = k.source === "app" ? `앱에 넣은 키 · ${esc(day(k.changed_at))} 저장` : k.source === "secret" ? "서버 설정값(Supabase Secrets)" : "";
       const when = k.checked_at ? ` · ${esc(hm(k.checked_at))} 확인` : "";
       const why = k.state === "wrong" ? ` — 받은 키를 다시 붙여 넣어요${k.source === "app" && k.secret ? "(삭제하면 서버 설정값으로 돌아가요)" : ""}` : k.state === "unknown" ? " — 상대 서버가 답하지 않았어요. 잠시 뒤 [연결 확인]" : k.state === "none" ? ` — ${esc(josa(use, "이", "가"))} 동작하지 않아요` : "";
       const cell = `${st ? tag(st[0], st[1]) : '<span class="hint">확인 전</span>'} <span class="hint">${from || when ? from + when + why : why.replace(/^ — /, "")}</span>`;
-      const acts = btn("kset:" + name, "키 저장", "save") + (k.source ? btn("ktest:" + name, "연결 확인", "rotc") : "") + (k.app ? btn("kdel:" + name, "삭제", "trash") : "");
+      const acts = btn("kset:" + name, "키 저장", "save") + (k.source ? btn("ktest:" + name, "연결 확인", "rotc") : "") + (k.app ? btn("kdel:" + name, "삭제", "trash") : "") + keyLink(url, site);
       return [`${esc(label)}<br><span class="hint">${esc(use)}</span>`, cell, acts];
     });
   }
   const keyHelp = "학원이 받은 외부 키를 여기에 붙여 넣으면 서버가 바로 써요(Supabase Secrets에 넣지 않아도 돼요 — 넣어 둔 키도 그대로 써요). 넣은 키는 다시 보여 주지 않아요. 이 화면을 열면 서버가 연결을 확인해 바로 보여 줘요(10분 안에 확인했으면 그 결과). 여기서 삭제하면 Secrets에 넣은 키로 돌아가요.";
+  /* 받는 곳 링크(대표 261123): 새 탭 · 노션 키 발급 매뉴얼의 NEIS_API_KEY · NL_CERT_KEY 페이지와 같은 주소. 모양 = DESIGN.md 카드 안 이동 링크 .link-chip */
+  const keyLink = (url, site) => `<a class="link-chip" href="${esc(url)}" target="_blank" rel="noopener">${esc(site)} ↗</a>`;
   const keyLabel = (name) => (KEYS.find((x) => x[0] === name) || [])[1] || name;
   const testMsg = (t, name) => t === "ok" ? `${keyLabel(name)}에 연결됐어요` : t === "wrong" ? `${josa(keyLabel(name), "이", "가")} 키를 받지 않았어요(키가 틀림) — 받은 키를 다시 붙여 넣어요` : `${keyLabel(name)} 연결을 확인하지 못했어요 — 잠시 뒤 [연결 확인]을 눌러요`;
   function keyDialog(name) {
-    const [, label, use, where] = KEYS.find((x) => x[0] === name);
+    const [, label, use, where, url, site] = KEYS.find((x) => x[0] === name);
     const k = (S.keys && S.keys[name]) || {};
-    modal(`<h2>${esc(label)} 키 저장</h2><div class="box"><p class="hint">${esc(use)}에 써요. 받는 곳: ${esc(where)}</p><label class="lab" for="lakey">${esc(label)} 키(${esc(name)})</label><input class="inp" id="lakey" type="password" autocomplete="off" spellcheck="false" maxlength="256" placeholder="받은 키를 그대로 붙여 넣어요"><p class="hint">저장하면 다음 요청부터 이 키를 써요. 저장한 뒤 한 번 연결을 확인해요. 넣은 키는 다시 보여 주지 않아요.</p>${k.app ? '<div class="warnbox">이미 앱에 저장한 키가 있어요 — 새 키로 바뀌어요.</div>' : k.secret ? '<div class="warnbox">지금은 Supabase Secrets에 넣은 키를 써요 — 저장하면 이 키를 먼저 써요(Secrets 값은 그대로 남아요).</div>' : ""}<p class="err" id="laerr" hidden></p></div><div class="actions"><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">키 저장</button></div>`, (m, close) => {
+    modal(`<h2>${esc(label)} 키 저장</h2><div class="box"><p class="hint">${esc(use)}에 써요. 받는 곳: ${esc(where)} ${keyLink(url, site)}</p><label class="lab" for="lakey">${esc(label)} 키(${esc(name)})</label><input class="inp" id="lakey" type="password" autocomplete="off" spellcheck="false" maxlength="256" placeholder="받은 키를 그대로 붙여 넣어요"><p class="hint">저장하면 다음 요청부터 이 키를 써요. 저장한 뒤 한 번 연결을 확인해요. 넣은 키는 다시 보여 주지 않아요.</p>${k.app ? '<div class="warnbox">이미 앱에 저장한 키가 있어요 — 새 키로 바뀌어요.</div>' : k.secret ? '<div class="warnbox">지금은 Supabase Secrets에 넣은 키를 써요 — 저장하면 이 키를 먼저 써요(Secrets 값은 그대로 남아요).</div>' : ""}<p class="err" id="laerr" hidden></p></div><div class="actions"><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">키 저장</button></div>`, (m, close) => {
       const f = (id) => m.querySelector(id), inp = f("#lakey"), err = f("#laerr"), ok = f("#co");
       const wipe = () => { inp.value = ""; };
       const show = (t) => { err.textContent = t; err.hidden = !t; };
