@@ -1,7 +1,7 @@
 /* 재무 3메뉴를 노션 메뉴 셋과 1:1로(261123 대표 · 노션 재무 구조 2안 — 노션 재무결과.md):
    수강료(만들고 알리기) 탭 4 = 클래스별 수강료 생성 · 다음 달 수강료 확인 · 수강료 발송함 · 다음 달 수강료 안내
    청구서(만들고 알리기) 탭 7 = 클래스 · 교재비 · 재료비 · 기타경비 · 전체 · 청구 줄 · 기타경비 목록
-   결제 · 손익(옛 손익 분석) 탭 7 = 수강료 납부 · 청구서 납부 · 결제 내역 · 청구서 결제 · 매출 · 지출 · 손익(그래프 셋)
+   결제 · 손익(옛 손익 분석) 탭 5 = 수강료 납부 · 청구서 납부 · 결제 내역 · 청구서 결제 · 그래프(칩 [손익 | 매출 | 지출 | 모두])
    이 파일은 화면 틀 · 탭 · 보기 · 그래프 · 확인 창만 정한다(서버를 몰라도 되는 것). 노션에 쓰는 쪽(결제 줄 · 생성 · 담기)은 window.finRun(종류, 값)이 정해지면 그쪽으로 간다 — 없으면 "서버 연결 전"이라고 알린다.
    발송(일괄 전송 · 안내문 전송)은 앱에 넣지 않는다(보기 · 상태만). */
 (function () {
@@ -82,7 +82,7 @@
     return [...der, ...alive(DB.costs)].sort((a, b) => String(b.date).localeCompare(String(a.date)));
   };
   const monthRows = () => safe(() => P.rows(), []).slice().reverse(); /* 오래된 달 → 지금 */
-  LISTS.profit.subs = [["t", "수강료 납부"], ["q", "청구서 납부"], ["c", "결제 내역"], ["r", "청구서 결제"], ["s", "매출"], ["x", "지출"], ["p", "손익"]];
+  LISTS.profit.subs = [["t", "수강료 납부"], ["q", "청구서 납부"], ["c", "결제 내역"], ["r", "청구서 결제"], ["g", "그래프"]];
   LISTS.profit.title = "결제 · 손익";
   LISTS.profit.ftabs = null;
   /* 수강료 납부 — 수강료 DB, 청구기간 = 고른 달, 결제 관리가 결제 완료가 아닌 것 */
@@ -118,25 +118,30 @@
     note: (rows) => `합계 ${WON(rows.reduce((a, x) => a + (+x.amount || 0), 0))} · ${rows.length}건`,
     cols: [["이름", (x) => x._n || `${stuName(x.studentId)} · ${x.name || x.item || ""}`], ["결제상태", () => "🟢결제 완료"], ["결제일", (x) => D10(x.paidOn)], ["교재", (x) => x.name || x.item || "—"], ["결제 방법", (x) => x.how || "—"], ["결제 금액", (x) => WON(x.amount)], ["결제 줄 고치기", (x) => (isLive() && x._n !== undefined ? btn("bpedit", x.id, "고치기") : "")]],
   });
-  /* 매출 · 지출 · 손익 — 결제 DB 월별 선 그래프(노션 차트 보기) */
-  const chart = (vals, labels, tone, name) => {
-    const W = 760, H = 210, L = 64, R = 16, Tp = 16, Bt = 30, n = vals.length, hi = Math.max(0, ...vals), lo = Math.min(0, ...vals), span = hi - lo || 1;
+  /* 그래프 = 한 탭, 칩 [손익 | 매출 | 지출 | 모두](대표 261123 — 노션은 보기 3개 그대로, 앱만 칩 한 탭). 결제 DB 월별 선 그래프 + 고른 칩에 맞춘 달별 표 */
+  const SER = { p: { name: "손익", tone: "green", pick: (r) => r.net }, s: { name: "매출", tone: "blue", pick: (r) => r.tu + r.ot }, x: { name: "지출", tone: "red", pick: (r) => r.out } };
+  const GM = [["p", "손익"], ["s", "매출"], ["x", "지출"], ["a", "모두"]];
+  const chart = (series, labels, title) => {
+    const all = series.flatMap((s) => s.vals), W = 760, H = 210, L = 64, R = 16, Tp = 16, Bt = 30, n = labels.length, hi = Math.max(0, ...all), lo = Math.min(0, ...all), span = hi - lo || 1;
     const y = (v) => Tp + (1 - (v - lo) / span) * (H - Tp - Bt), x = (i) => L + (n > 1 ? i * (W - L - R) / (n - 1) : 0);
     const fm = (v) => (Math.abs(v) >= 10000 ? Math.round(v / 10000).toLocaleString("ko-KR") + "만" : String(Math.round(v)));
     const grid = [0, 1, 2, 3].map((k) => { const v = lo + span * k / 3; return `<line x1="${L}" y1="${y(v)}" x2="${W - R}" y2="${y(v)}" class="fcg"/><text x="${L - 8}" y="${y(v) + 4}" class="fct" text-anchor="end">${fm(v)}</text>`; }).join("");
     const zero = lo < 0 ? `<line x1="${L}" y1="${y(0)}" x2="${W - R}" y2="${y(0)}" class="fcz"/>` : "";
-    const pts = vals.map((v, i) => `${x(i)},${y(v)}`).join(" ");
-    const dots = vals.map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="3.5" class="fcd"><title>${labels[i]} ${WON(v)}</title></circle>`).join("");
+    const lines = series.map((s) => `<polyline points="${s.vals.map((v, i) => `${x(i)},${y(v)}`).join(" ")}" class="fcl t-${s.tone}"/>` + s.vals.map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="3.5" class="fcd t-${s.tone}"><title>${labels[i]} ${s.name} ${WON(v)}</title></circle>`).join("")).join("");
     const xl = labels.map((l, i) => (n <= 13 || i % 2 === 0 ? `<text x="${x(i)}" y="${H - 8}" class="fct" text-anchor="middle">${mm(l)}월</text>` : "")).join("");
-    return `<div class="finchart ${tone}"><div class="fch"><b>${name}</b><small>월별 · 결제 금액 합계</small></div><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${name} 월별 그래프">${grid}${zero}<polyline points="${pts}" class="fcl"/>${dots}${xl}</svg></div>`;
+    const lg = series.length > 1 ? `<span class="fcleg">${series.map((s) => `<i class="t-${s.tone}"></i>${s.name}`).join("")}</span>` : "";
+    return `<div class="finchart"><div class="fch"><b>${title}</b><small>월별 · 결제 금액 합계</small>${lg}</div><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${title} 월별 그래프">${grid}${zero}${lines}${xl}</svg></div>`;
   };
-  const chartScreen = (key, name, tone, pick) => base(P, {
-    title: "결제 · 손익", cal: true, coll: "profit", ro: true, rows: () => [], fields: [], help: `결제(학원) DB의 ${name}을 달마다 모아 선 그래프로 봐요(노션 ${name} 차트와 같아요). 숫자는 [결제 내역]에서 고쳐요.`,
-    calFn: () => { const rs = monthRows().slice(-12); const vals = rs.map(pick), labels = rs.map((r) => r.m); const tb = `<table class="t finsum"><thead><tr><th>달</th><th class="n">${name}</th></tr></thead><tbody>${rs.slice().reverse().map((r) => `<tr><td>${r.m}</td><td class="n">${r.any ? WON(pick(r)) : "—"}</td></tr>`).join("")}</tbody></table>`; return `<div class="finwrap">${chart(vals, labels, tone, name)}${tb}</div>`; },
+  LISTS.profit_g = base(P, {
+    title: "결제 · 손익", cal: true, coll: "profit", ro: true, rows: () => [], fields: [], help: "결제(학원) DB를 달마다 모아 선 그래프로 봐요. 칩으로 손익 · 매출 · 지출을 고르고, [모두]는 세 줄을 겹쳐 봐요(노션은 보기 셋, 앱은 칩 한 탭 — 결과는 같아요). 숫자는 [결제 내역]에서 고쳐요.",
+    calFn: (Lx, st) => {
+      const gm = (st && st.gm) || "p", keys = gm === "a" ? ["s", "x", "p"] : [gm], rs = monthRows().slice(-12), labels = rs.map((r) => r.m);
+      const chips = `<div class="vseg subseg finchips" role="group" aria-label="그래프 고르기">${GM.map(([k, t]) => `<button type="button" data-fin="gmode" data-id="${k}" class="${gm === k ? "on" : ""}" aria-pressed="${gm === k}">${t}</button>`).join("")}</div>`;
+      const th = keys.map((k) => `<th class="n">${SER[k].name}</th>`).join(""), tr = rs.slice().reverse().map((r) => `<tr><td>${r.m}</td>${keys.map((k) => `<td class="n">${r.any ? WON(SER[k].pick(r)) : "—"}</td>`).join("")}</tr>`).join("");
+      const title = gm === "a" ? "손익 · 매출 · 지출" : SER[gm].name;
+      return `<div class="finwrap">${chips}${chart(keys.map((k) => ({ name: SER[k].name, tone: SER[k].tone, vals: rs.map(SER[k].pick) })), labels, title)}<table class="t finsum"><thead><tr><th>달</th>${th}</tr></thead><tbody>${tr}</tbody></table></div>`;
+    },
   });
-  LISTS.profit_s = chartScreen("s", "매출", "tone-blue", (r) => r.tu + r.ot);
-  LISTS.profit_x = chartScreen("x", "지출", "tone-red", (r) => r.out);
-  LISTS.profit_p = chartScreen("p", "손익", "tone-green", (r) => r.net);
 
   /* ═════ 단추 확인 창 — 노션에 있는 값만(생성 내역 · 실시간 처리 상태 · 수강료 기간 · 금액) ═════ */
   const run = (kind, ctx, close) => {
@@ -155,6 +160,7 @@
     const b = e.target.closest && e.target.closest("[data-fin]"); if (!b || b.disabled) return;
     e.preventDefault(); e.stopPropagation();
     const k = b.dataset.fin, id = b.dataset.id;
+    if (k === "gmode") { if (activeTab) { activeTab.state.gm = id; render(); } return; }
     if (window.finAct && window.finAct[k]) { window.finAct[k](id, b); return; }
     const row = k === "pay" ? DB.tuition.find((x) => x.id === id) : k === "cpay" ? DB.charges.concat(DB._appvCharges || []).find((x) => x.id === id) : DB.classes.find((x) => x.id === id);
     if (row && act[k]) act[k](row);

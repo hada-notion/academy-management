@@ -44,6 +44,10 @@
       ctx.rid = ctx.rid || uuid();
       return pay({ action: "record-payment", requestId: ctx.rid, itemId }, close, (o) => "청구서 결제 기록을 노션에 만들었어요" + (o && o.item && o.item["결제 상태"] ? " — " + o.item["결제 상태"] : "")).then(done, done);
     }
+    if (kind === "tuition-create") { /* 클래스 [월 수강료 생성] = 클래스 `요청` = class-tuition-create(수강료 기간이 비면 다음 달 · 월간 수업 총량이 비면 서버가 안 만듦) */
+      if (window.LQ_ACT_NAME) window.LQ_ACT_NAME["class-tuition-create"] = "월 수강료 생성";
+      return Promise.resolve(window.liveRequest("classes", [String(ctx.classId)], { 요청: "class-tuition-create" }, "월 수강료 생성")).then((ok) => { done(); if (ok && close) close(); }, (e) => { done(); say(errText(e)); });
+    }
     if (kind === "etc-charge") {
       return Promise.resolve(window.liveRequest("classes", [String(ctx.classId)], { 요청: "class-etc-charge" }, "기타경비 청구")).then((ok) => { done(); if (ok && close) close(); }, (e) => { done(); say(errText(e)); });
     }

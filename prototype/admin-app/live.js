@@ -479,9 +479,11 @@ function liveSyncMount() {
   if (!sa || !on) { if (b) b.remove(); if (t) t.remove(); return; }
   if (b && b.parentElement !== sa.parentElement) { b.remove(); if (t) t.remove(); b = t = null; }
   if (!b) {
+    document.querySelectorAll("#syncAt").forEach((x) => x.remove());
     sa.insertAdjacentHTML("beforebegin", `<span class="sync-at" id="syncAt"></span><button type="button" class="btn tb-sync ${window._liveSyncing ? "busy" : ""}" id="syncBtn" ${window._liveSyncing ? "disabled" : ""} title="동기화 — 노션에서 바뀐 것 · 지운 줄까지 이 화면의 자료를 통째로 맞춰요(오래 걸릴 수 있어요). 저장과는 달라요: 노션 → 앱 방향이에요">${IC("rotc", "s")}<span>${window._liveSyncing ? "맞추는 중…" : "동기화"}</span></button>`);
     b = document.getElementById("syncBtn"); t = document.getElementById("syncAt"); b.onclick = liveSyncRun;
   }
+  { const tr = document.querySelector("#view > .top.pg-ttl"); if (t && tr && t.parentElement !== tr) tr.appendChild(t); } /* 261123 대표: 자동 갱신 줄은 단추 줄이 아니라 제목 줄 오른쪽 끝(단추 묶음 바로 위) */
   if (t) { const auto = typeof window.lrSyncText === "function" ? window.lrSyncText() : null; if (b) b.title = b.title.replace(/ \(마지막 동기화 [^)]*\)$/, "") + (auto && window.LIVE_SYNCED_AT ? ` (마지막 동기화 ${liveSyncTime(window.LIVE_SYNCED_AT)})` : ""); const txt = auto || (window.LIVE_SYNCED_AT ? `마지막 동기화 ${liveSyncTime(window.LIVE_SYNCED_AT)}` : ""); if (t.textContent !== txt || !t.dataset.f) { t.textContent = txt; t.dataset.f = "1"; try { if (typeof fitBars === "function") fitBars(); } catch (_) {} } } /* 단추 · 시각이 붙은 뒤 위 줄이 맞는지 다시 잰다 */
 }
 /* 시스템 타이틀 = 노션 최상위 페이지 제목(서버 status.rootTitle). 사이드바 제목 · 탭 제목 앞부분에 쓰고, 없으면 지금 글자 그대로. */
