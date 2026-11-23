@@ -1173,13 +1173,18 @@ function closePanel(t){panelOutGhost();const st=(t||activeTab).state;st.seaPanel
 function bindPhead(p,t){const x=p.querySelector("[data-pclose]");if(x)x.onclick=()=>closePanel(t)}
 // 바깥 누르기: 누른 순간(pointerdown) 바깥인지 정하고, 뗀 뒤(다른 처리 끝난 다음) 닫음.
 // 빈 칸을 누르면 시간표가 먼저 다시 그려져 click 대상이 사라지는 문제 때문(261112)
-let downOut=false;
-document.addEventListener("pointerdown",e=>{downOut=false;if(dockOn)return;const pn=document.querySelector(".body>.panel, #lp");if(!pn||!activeTab)return;const tg=e.target;if(!tg.closest||pn.contains(tg))return;
+let downOut=false,downSel="";
+/* 261124 대표 "다른 학생을 클릭해도 창은 열린 채 내용만 바뀌어야": 바깥 누르기라도 그 누르기로 다른 줄을 골랐으면(고른 열쇠가 새 값) 닫지 않음.
+   줄 모양(클래스)을 아래 목록에 하나씩 넣어 주던 방식이라 빠진 화면(오늘 등원 학생 .lde 등)은 학생을 바꿔 누를 때마다 창이 번갈아 닫혔음 */
+const PSEL_K=["sel","lsel","ldStu","atmStu","mkStu","lsStu","mkSel","evDay","panel"];
+function pselOf(){const st=activeTab&&activeTab.state;if(!st)return null;return PSEL_K.map(k=>st[k]??null).concat([(st.drill||[]).length])}
+function pselNew(a){const st=activeTab&&activeTab.state;if(!st||!a)return false;return PSEL_K.some((k,i)=>st[k]!=null&&st[k]!==a[i])||(st.drill||[]).length>a[PSEL_K.length]}
+document.addEventListener("pointerdown",e=>{downOut=false;downSel=null;if(dockOn)return;const pn=document.querySelector(".body>.panel, #lp");if(!pn||!activeTab)return;const tg=e.target;if(!tg.closest||pn.contains(tg))return;
   if(tg.closest(".blk,.lpsr,.ldb,.lj,.lmc,.lmmore,.lvmkadd,.alsendm,.pend,.pending,.modal,#modalRoot,.combopop,.twheel,.ddpop,.hp-pop,.hp-dim,.hf-pop,.hovercard,#qtip,.toast,.ghost,.landing,.rsz,#panelT,#dockT,#saveAll,#undoB,#redoB,#rvAll,#addRow,.bkcard,.pgrp,tr[data-id],.it[data-scr],#tabs,.dpop,.cfday,.mkt,#mkPanelT,[data-cfnav],.mkseg,[data-mn],.subseg"))return;/* 487판: 달력 틀 칸(보강 고르기 · 놓기) · 보강 대기 표 · 창 단추는 창을 닫지 않음 */
   if(activeTab.state.mode==="add"&&activeTab.state.view!=="lesson"&&tg.closest("#grid"))return;
   if(activeTab.state.view==="lesson"&&activeTab.state.lmode==="mk"&&tg.closest("#grid"))return;
-  downOut=true},true);
-document.addEventListener("pointerup",()=>{if(!downOut)return;downOut=false;setTimeout(()=>{if(document.querySelector(".body>.panel, #lp"))closePanel(activeTab)},0)},true);
+  downOut=true;downSel=pselOf()},true);
+document.addEventListener("pointerup",()=>{if(!downOut)return;downOut=false;const a=downSel;setTimeout(()=>{if(pselNew(a))return;if(document.querySelector(".body>.panel, #lp"))closePanel(activeTab)},0)},true);
 
 /* 학생 시간 겹침(대표 261112): 같은 시즌·같은 요일·겹치는 시간의 다른 블록에 이미 있으면 그 블록을 돌려준다 */
 function studentBusyAt(sid,seasonId,day,start,end,selfId,per){return DB.blocks.find(b=>b.id!==selfId&&!b.ended&&(b.seasonId===seasonId||(()=>{const a=seasonOf(seasonId),o=seasonOf(b.seasonId);return a&&o&&a.start<=o.end&&o.start<=a.end})())&&b.day===day&&b.start<end&&start<b.end&&(!per||perOverlap(effPeriod(b),per))&&b.regs.some(r=>{const e=enr(r);return e&&e.studentId===sid}))||null}
@@ -4967,6 +4972,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del&&!z._virtual).
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="finance.js?v=742"></script><script src="finlive.js?v=742"></script><script src="exams.js?v=742"></script><script src="appdata.js?v=743"></script><script src="appsave.js?v=742"></script><script src="appview.js?v=742"></script><script src="livelesson.js?v=744"></script><script src="liveadmin.js?v=742"></script><script src="livebook.js?v=742"></script><script src="liveschool.js?v=742"></script><script src="liveteacher.js?v=747"></script><script src="live.js?v=746"></script><script src="liverefresh.js?v=742"></script><script src="livereq.js?v=742"></script>
+<script src="finance.js?v=748"></script><script src="finlive.js?v=742"></script><script src="exams.js?v=742"></script><script src="appdata.js?v=743"></script><script src="appsave.js?v=742"></script><script src="appview.js?v=742"></script><script src="livelesson.js?v=744"></script><script src="liveadmin.js?v=742"></script><script src="livebook.js?v=742"></script><script src="liveschool.js?v=742"></script><script src="liveteacher.js?v=747"></script><script src="live.js?v=746"></script><script src="liverefresh.js?v=742"></script><script src="livereq.js?v=742"></script>
 </body>
 </html>
