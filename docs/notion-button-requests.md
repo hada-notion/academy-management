@@ -51,7 +51,7 @@
 ## 관리 앱 단추 (261123, 항목 117)
 
 관리 앱 실제 자료 모드의 단추도 노션 버튼과 **같은 줄 · 같은 칸**을 앱 저장 길(app-api `save` update)로 바꾼다 — 서버는 그 칸 변화를 노션 버튼과 똑같이 받는다(`prototype/admin-app/livereq.js`).
-- `요청` = 동작 ID: 등록 `reg-link-regenerate` · `reg-registration-notice`, 진도관리 `progress-completion`, 클래스 `class-etc-charge`, 학생 `student-inquiry`.
+- `요청` = 동작 ID: 등록 `reg-link-regenerate` · `reg-registration-notice`, 진도관리 `progress-completion`, 학생 `student-inquiry`. 다른 화면은 공용 입구 `window.liveRequest(묶음, 줄들, 칸, 이름)`으로 같은 길을 쓴다(클래스 `class-etc-charge`는 재무 구조 정리 뒤).
 - 자동화가 보는 상태 칸(노션 버튼도 이 칸만 바꿈): 등록 `교재 생성 상태` · `시간표 안내 상태` = ⚪ 대기(클래스 단추는 수강 중 등록마다). 노션 자동화는 앱(API)이 바꾼 칸에도 돈다(원본 실측).
 - 학생 `개인정보 동의` 자동화(`student-inquiry-auto`)는 "동의 ☑인 새 줄"에서만 돈다 — 이미 있는 줄은 노션에서 체크해도 돌지 않았다(원본 실측 261123). 앱은 체크만 바꾸고 안내는 [접수 안내 전송]으로.
 - 앱이 쓰지 못하는 것: 등록 [종료 처리](수업 DB까지 고침), 삭제 동작, 수강료 · 청구서 안내문 전송(서버 `APP_REQUEST_DENY`).

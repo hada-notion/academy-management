@@ -7,7 +7,8 @@
        등록 [링크 재발급] → 등록 요청 = reg-link-regenerate        등록 [등록 안내 전송] → 등록 요청 = reg-registration-notice
        등록 · 클래스 [시간표 변경 안내 전송] → 등록 `시간표 안내 상태` = ⚪ 대기(노션 자동화가 요청 = reg-timetable-notice) — 클래스는 수강 중 등록 전부
        등록 · 클래스 [교재 생성] → 등록 `교재 생성 상태` = ⚪ 대기(자동화 → reg-textbook-queue) — 클래스는 수강 중 등록 전부
-       진도 [수료] → 진도관리 요청 = progress-completion            클래스 [한 번 청구] → 클래스 요청 = class-etc-charge(노션 [기타경비 청구])
+       진도 [수료] → 진도관리 요청 = progress-completion
+       (클래스 [한 번 청구] = 노션 [기타경비 청구]는 재무 구조 정리 뒤로 보류 — 담당 P0 261123. 아래 길은 남겨 두고 LQ_OPEN에서만 뺌)
        학생 [접수 안내 전송] → 학생 요청 = student-inquiry            학생 [개인정보 동의] 체크 → 학생 `개인정보 동의`만(노션 자동화 student-inquiry-auto는
          "동의 ☑인 새 줄"에서만 돈다 — 원본 실측 261123: 이미 있는 줄은 노션에서 직접 체크해도 안 돎. 그래서 안내는 [접수 안내 전송]으로)
    - 아직 막힌 것(서버가 그 DB에 쓰지 못함 · 노션 버튼이 다른 DB까지 고침): 등록 [종료 처리](수업 DB) · 수료 보고서 [보내기](보고서 DB) ·
@@ -27,7 +28,7 @@ const LQ_STAT = { "등록 안내": "안내 상태", "시간표 변경 안내": "
 const lqStatBad = (r, label) => { const k = LQ_STAT[label], v = k ? String(((r && r.props) || {})[k] || "") : ""; return /^⚠️/.test(v); };
 const lqErrOf = (r) => { const p = (r && r.props) || {}; for (const k of LQ_ERR) if (typeof p[k] === "string" && p[k].trim()) return p[k].trim(); return ""; };
 /* 앱이 여는 단추(live.js p1Denied가 먼저 통과시킴) */
-window.LQ_OPEN = "[data-act=enReissue],[data-act=genPg],[data-act=genPg1],[data-act=pgDone],[data-act=pgRep],[data-pgdo^='done|'],[data-pgdo^='rep|'],[data-cetone],[data-s1rc],[data-engd2],[data-ttn],#bfM";
+window.LQ_OPEN = "[data-act=enReissue],[data-act=genPg],[data-act=genPg1],[data-act=pgDone],[data-act=pgRep],[data-pgdo^='done|'],[data-pgdo^='rep|'],[data-s1rc],[data-engd2],[data-ttn],#bfM";
 const lqLive = () => !!(window.LIVE && window.LIVE.loaded && window.APP_RAW);
 const lqEsc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const lqIsId = (v) => /^[0-9a-f-]{32,36}$/i.test(String(v || ""));
@@ -119,6 +120,10 @@ function lqDress() {
   const body = panel.querySelector(":scope > .pbody"), head = panel.querySelector(":scope > .ptabs") || panel.querySelector(":scope > .phead");
   if (body) body.insertAdjacentHTML("afterbegin", html); else if (head) head.insertAdjacentHTML("afterend", html); else panel.insertAdjacentHTML("afterbegin", html);
 }
+/* 다른 화면(재무 등)이 같은 길을 쓰는 공용 입구: 확인 창 없이 바로 — 부르는 쪽이 확인 창을 띄운 뒤에.
+   liveRequest("classes", [id], { "요청": "class-etc-charge" }, "기타경비 청구") → 저장 · 처리 중 · 결과 알림까지 같은 모양 */
+window.liveRequest = (coll, ids, props, label) => { if (!LQ_DB[coll]) throw new Error("liveRequest: 모르는 묶음 " + coll); const why = lqBlocked(coll, ids); if (why) { toast(why); return Promise.resolve(false); } return lqSend(coll, ids, props, label); };
+window.liveRequestDb = (coll, db) => { LQ_DB[coll] = db; }; /* 재무 묶음(청구서 등)을 더할 때 */
 /* 확인 창 → 보내기 */
 function lqAsk(title, body, ok, coll, ids, props, label) {
   const why = lqBlocked(coll, ids); if (why) { toast(why); return; }
@@ -180,7 +185,7 @@ function lqClick(ev) {
     lqAsk("이 교재를 수료 처리할까요?", `<div><b>${lqEsc(nmBook(x.bookId))}</b> · ${lqEsc(nmCls(x.classId))}${x.mode === "개별" && x.studentId ? " · " + lqEsc(nmStu(x.studentId)) : ""}</div><div class="hint">노션 진도 [수료]와 같아요 — 진도교재가 완료로 바뀌고, 수강 중인 학생마다 수료 보고서가 만들어져요. 보내기는 발송함에서 따로 해요.</div>`, "수료", "progress", [id], { "요청": "progress-completion" }, LQ_NAME["progress-completion"]);
     return;
   }
-  if (b.dataset.cetone) {
+  if (b.dataset.cetone && b.matches(window.LQ_OPEN)) {
     stop(); const cid = b.dataset.cetone, c = lqRow("classes", cid); if (!c) return;
     const em = window.APP_RAW.raw["기타경비(학원) DB"], once = (c.etcIds || []).map((i) => em && em.get(String(i))).filter((r) => r && /한 번/.test(String((r.props || {})["받는 방식"] || ""))).map((r) => (r.props || {})["이름"] || "");
     lqAsk("기타경비를 청구할까요?", `<div><b>${lqEsc(c.name)}</b> · 수강 중 ${lqActive(cid).length}명</div><div class="hint">노션 클래스 [기타경비 청구]와 같아요 — 이 반에 붙인 기타경비 중 받는 방식이 "한 번"인 것을 오늘 다니는 학생마다 청구서로 만들어요.</div>${once.length ? `<div>한 번 받는 기타경비: ${once.map(lqEsc).join(" · ")}</div>` : '<div class="hint">이 반에 받는 방식이 "한 번"인 기타경비가 없어요 — 서버가 이유를 남기고 아무것도 만들지 않아요.</div>'}`, "청구", "classes", [cid], { "요청": "class-etc-charge" }, LQ_NAME["class-etc-charge"]);

@@ -95,16 +95,16 @@ const DBS = () => ({
   await sel(page, 'classes', C1, '진도'); await press(page, '#view .panel [data-act=genPg]'); await ok(page);
   assert.deepEqual((await last(saves, 4)).map((c) => [c.id, c.props['교재 생성 상태']]), [[E1, '⚪ 대기'], [E2, '⚪ 대기']]);
   done.push('교재 생성(클래스)');
-  // 5) 클래스 [한 번 청구] → 확인 창에 한 번 받는 기타경비 이름 → 클래스 요청 = class-etc-charge
-  await sel(page, 'classes', C1, '정보'); await press(page, '#view .panel [data-cetone]');
-  const t5 = await dlg(page); assert.match(t5, /노션 클래스 \[기타경비 청구\]와 같아요/); assert.match(t5, /예시 모의고사비/);
-  await page.screenshot({ path: shots + 'request-live-etc.png' }); await ok(page);
-  assert.deepEqual(await last(saves, 5), [{ op: 'update', db: '클래스(학원) DB', id: C1, props: { '요청': 'class-etc-charge' } }]);
-  done.push('한 번 청구');
+  // 5) 클래스 [한 번 청구]는 재무 구조 정리 뒤로 보류(담당 P0 261123) — 꺼진 채, 까닭이 보임, 보내지 않음
+  await sel(page, 'classes', C1, '정보');
+  assert.equal(await page.evaluate(() => document.querySelector('#view .panel [data-cetone]').disabled), true, '[한 번 청구] 꺼짐');
+  assert.match(await page.evaluate(() => document.querySelector('#view .panel [data-cetone]').title), /노션 클래스 \[기타경비 청구\]/);
+  assert.equal(saves.length, 4, '보내지 않음');
+  done.push('한 번 청구 보류');
   // 6) 클래스 [시간표 변경 안내 전송] → 수강 중 등록의 시간표 안내 상태 = ⚪ 대기
   await sel(page, 'classes', C1, '시간표'); await press(page, '#view .panel [data-ttn]');
   assert.match(await dlg(page), /노션 \[시간표 변경 안내\] 버튼과 같아요/); await ok(page);
-  assert.deepEqual((await last(saves, 6)).map((c) => [c.id, c.props['시간표 안내 상태']]), [[E1, '⚪ 대기'], [E2, '⚪ 대기']]);
+  assert.deepEqual((await last(saves, 5)).map((c) => [c.id, c.props['시간표 안내 상태']]), [[E1, '⚪ 대기'], [E2, '⚪ 대기']]);
   //    서버가 받아 대기열에 넣은 동안(상태 칸 ⏳)은 "대기열" 한 줄, 상태 칸이 ⚠️가 되면 그 이유로 알림
   await page.evaluate((ids) => ids.forEach((r, i) => { const p = APP_RAW.raw['등록(학원) DB'].get(r).props; p['요청'] = '✅ 완료'; p['요청 결과'] = `✅ 완료 · 시간표 안내 · 1.${i}초 · 11/23 11:00:0${i}`; p['시간표 안내 상태'] = '⏳ 대기열'; }), [E1, E2]);
   await page.waitForFunction(() => /대기열에서 처리하고 있어요/.test(document.querySelector('#view .panel').innerText), null, { timeout: 8000 });
@@ -114,21 +114,21 @@ const DBS = () => ({
   // 7) 진도 [수료] → 진도관리 요청 = progress-completion
   await sel(page, 'progress', P1, '수료'); await press(page, '#view .panel [data-act=pgDone]');
   assert.match(await dlg(page), /노션 진도 \[수료\]와 같아요/); await ok(page);
-  assert.deepEqual(await last(saves, 7), [{ op: 'update', db: '진도관리(학원) DB', id: P1, props: { '요청': 'progress-completion' } }]);
+  assert.deepEqual(await last(saves, 6), [{ op: 'update', db: '진도관리(학원) DB', id: P1, props: { '요청': 'progress-completion' } }]);
   done.push('수료');
   // 8) 학생 [접수 안내 전송] → 학생 요청 = student-inquiry / [개인정보 동의] → 확인 창 → 개인정보 동의 = true
   await sel(page, 'students', S1); await page.evaluate(() => [...document.querySelectorAll('#view .panel [data-s1rc]')][0].click());
   assert.match(await dlg(page), /노션 \[접수안내 전송\] 버튼과 같아요/); await ok(page);
-  assert.deepEqual(await last(saves, 8), [{ op: 'update', db: '학생(학원) DB', id: S1, props: { '요청': 'student-inquiry' } }]);
+  assert.deepEqual(await last(saves, 7), [{ op: 'update', db: '학생(학원) DB', id: S1, props: { '요청': 'student-inquiry' } }]);
   await sel(page, 'students', S2); await press(page, '#view .panel .hf-swrow[aria-label="개인정보 동의"]');
   assert.match(await dlg(page), /개인정보 동의를 체크할까요\?/); await ok(page);
-  assert.deepEqual(await last(saves, 9), [{ op: 'update', db: '학생(학원) DB', id: S2, props: { '개인정보 동의': true } }]);
+  assert.deepEqual(await last(saves, 8), [{ op: 'update', db: '학생(학원) DB', id: S2, props: { '개인정보 동의': true } }]);
   done.push('접수 안내 · 개인정보 동의');
   // 9) 저장 안 한 변경이 있는 줄은 보내지 않음(서버는 노션 값을 읽음)
   await page.evaluate((r) => { const e = DB.enrolls.find((x) => x.id === r); e.note = '고친 메모'; e.state = 'draft'; render(); }, E2);
   await sel(page, 'enrolls', E2, '현황'); await press(page, '#view .panel [data-ermore]'); await press(page, '#view .panel [data-act=enReissue]');
   assert.match(await page.evaluate(() => [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' ')), /먼저 \[저장\]/);
-  assert.equal(await dlg(page), '', '확인 창 없음'); assert.equal(saves.length, 9, '보내지 않음');
+  assert.equal(await dlg(page), '', '확인 창 없음'); assert.equal(saves.length, 8, '보내지 않음');
   done.push('저장 안 한 줄');
   // 10) 아직 막힌 것: 등록 [종료 처리]는 꺼진 채(노션 버튼이 수업 DB까지 고침 — 서버 저장 길 없음)
   await sel(page, 'enrolls', E1, '정보');
