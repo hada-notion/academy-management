@@ -77,10 +77,15 @@ const DBS = () => ({
   await page.waitForTimeout(300); assert.match(await page.textContent('#view .panel'), /노션 요청 처리 중|노션 요청 대기/, '창 위에 처리 중');
   done.push('링크 재발급');
   // 2) 등록 [등록 안내 전송] → 공용 보내기 창(설명 = 노션 버튼) → 등록 요청 = reg-registration-notice
+  //    앞 요청과 같은 이유(알림톡 꺼짐)가 되풀이돼도 상태 칸이 ⚠️면 "받았지만 하지 못했어요"(원본 사용성 시험에서 "완료"로 보였던 것)
+  const OFF = "알림톡 설정의 '등록 안내' 행을 켜 주세요.";
+  await page.evaluate(([r, off]) => { const p = APP_RAW.raw['등록(학원) DB'].get(r).props; p['마지막 오류'] = off; p['안내 상태'] = '⚠️ 오류'; p['요청'] = '✅ 완료'; p['요청 결과'] = '✅ 완료 · 등록 안내 · 2.0초 · 11/23 09:00:00'; }, [E2, OFF]);
   await sel(page, 'enrolls', E2, '정보'); await press(page, '#view .panel [data-engd2]');
   assert.match(await dlg(page), /노션 \[등록 안내\] 버튼과 같아요/); await ok(page);
   assert.deepEqual(await last(saves, 2), [{ op: 'update', db: '등록(학원) DB', id: E2, props: { '요청': 'reg-registration-notice' } }]);
-  done.push('등록 안내');
+  await page.evaluate(([r, off]) => { const p = APP_RAW.raw['등록(학원) DB'].get(r).props; p['요청'] = '✅ 완료'; p['요청 결과'] = '✅ 완료 · 등록 안내 · 2.1초 · 11/23 10:00:00'; p['마지막 오류'] = off; p['안내 상태'] = '⚠️ 오류'; }, [E2, OFF]); // 서버가 끝낸 모습(이유 글은 앞과 같음)
+  await page.waitForFunction(() => [...document.querySelectorAll('.toast')].some((t) => /받았지만 하지 못했어요/.test(t.textContent)), null, { timeout: 8000 });
+  done.push('등록 안내 · 받았지만 못 함');
   // 3) 등록 [교재 생성](개별 교재) → 등록 교재 생성 상태 = ⚪ 대기(노션 자동화가 요청을 씀)
   await sel(page, 'enrolls', E1, '진도'); await press(page, '#view .panel [data-act=genPg1]');
   assert.match(await dlg(page), /노션 등록 \[교재 생성\]과 같아요/); await ok(page);
@@ -100,7 +105,12 @@ const DBS = () => ({
   await sel(page, 'classes', C1, '시간표'); await press(page, '#view .panel [data-ttn]');
   assert.match(await dlg(page), /노션 \[시간표 변경 안내\] 버튼과 같아요/); await ok(page);
   assert.deepEqual((await last(saves, 6)).map((c) => [c.id, c.props['시간표 안내 상태']]), [[E1, '⚪ 대기'], [E2, '⚪ 대기']]);
-  done.push('시간표 변경 안내');
+  //    서버가 받아 대기열에 넣은 동안(상태 칸 ⏳)은 "대기열" 한 줄, 상태 칸이 ⚠️가 되면 그 이유로 알림
+  await page.evaluate((ids) => ids.forEach((r, i) => { const p = APP_RAW.raw['등록(학원) DB'].get(r).props; p['요청'] = '✅ 완료'; p['요청 결과'] = `✅ 완료 · 시간표 안내 · 1.${i}초 · 11/23 11:00:0${i}`; p['시간표 안내 상태'] = '⏳ 대기열'; }), [E1, E2]);
+  await page.waitForFunction(() => /대기열에서 처리하고 있어요/.test(document.querySelector('#view .panel').innerText), null, { timeout: 8000 });
+  await page.evaluate((ids) => ids.forEach((r) => { const p = APP_RAW.raw['등록(학원) DB'].get(r).props; p['시간표 안내 상태'] = '⚠️ 오류'; p['마지막 오류'] = '알림톡 설정의 시간표 변경 안내 행을 켜 주세요.'; }), [E1, E2]);
+  await page.waitForFunction(() => [...document.querySelectorAll('.toast')].some((t) => /시간표 변경 안내 2줄 — 서버가 받았지만 하지 못했어요/.test(t.textContent)), null, { timeout: 8000 });
+  done.push('시간표 변경 안내 · 대기열');
   // 7) 진도 [수료] → 진도관리 요청 = progress-completion
   await sel(page, 'progress', P1, '수료'); await press(page, '#view .panel [data-act=pgDone]');
   assert.match(await dlg(page), /노션 진도 \[수료\]와 같아요/); await ok(page);

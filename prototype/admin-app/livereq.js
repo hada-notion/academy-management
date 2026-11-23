@@ -22,6 +22,9 @@ window.LQ_ACT_NAME = { "reg-link-regenerate": "링크 재발급", "reg-registrat
   "progress-completion": "수료", "class-etc-charge": "기타경비 청구", "student-inquiry": "접수안내 전송", "student-inquiry-auto": "접수안내 전송", "reg-report-sync": "학생 페이지 동기화", "class-report-sync": "학생 페이지 동기화" };
 /* 서버가 받은 뒤 그 줄에 남기는 이유 칸(완료여도 할 일을 못 했으면 여기에 — 알림톡 꺼짐 · 예시 데이터 부족 등) */
 const LQ_ERR = ["접수안내 마지막 오류", "마지막 오류"];
+/* 동작마다 서버가 결과를 적는 상태 칸 — 같은 이유가 되풀이돼도(이유 글이 그대로) 이 칸이 ⚠️면 "받았지만 못 함" */
+const LQ_STAT = { "등록 안내": "안내 상태", "시간표 변경 안내": "시간표 안내 상태", "교재 생성": "교재 생성 상태", "접수안내 전송": "접수안내 전송 상태", "수료": "수료 상태" };
+const lqStatBad = (r, label) => { const k = LQ_STAT[label], v = k ? String(((r && r.props) || {})[k] || "") : ""; return /^⚠️/.test(v); };
 const lqErrOf = (r) => { const p = (r && r.props) || {}; for (const k of LQ_ERR) if (typeof p[k] === "string" && p[k].trim()) return p[k].trim(); return ""; };
 /* 앱이 여는 단추(live.js p1Denied가 먼저 통과시킴) */
 window.LQ_OPEN = "[data-act=enReissue],[data-act=genPg],[data-act=genPg1],[data-act=pgDone],[data-act=pgRep],[data-pgdo^='done|'],[data-pgdo^='rep|'],[data-cetone],[data-s1rc],[data-engd2],[data-ttn],#bfM";
@@ -76,11 +79,16 @@ function lqTick() {
     for (const [id, w] of LQ.watch) {
       const r = lqRaw(w.coll, id), q = r && typeof lrReq === "function" ? lrReq(r) : null, res = String(((r || {}).props || {})["요청 결과"] || "");
       const fresh = res && res !== w.res;
-      if (q && fresh && (q.k === "ok" || q.k === "fail")) { done.push([id, w, q]); continue; }
+      if (q && fresh && (q.k === "ok" || q.k === "fail")) {
+        /* 큐로 보내는 동작(알림톡 · 교재 생성 등)은 요청 ✅ = "서버가 받음"이고 실제 결과는 상태 칸에 나중에 — 상태 칸이 ✅ · ⚠️가 될 때까지 더 본다 */
+        const sk = LQ_STAT[w.label], sv = sk ? String(((r || {}).props || {})[sk] || "") : "";
+        if (q.k === "ok" && sk && /^(⏳|🔄)/u.test(sv)) { if (!w.queued) { w.queued = true; try { render(); } catch (_) {} } if (Date.now() - w.at <= 180000) continue; }
+        done.push([id, w, q]); continue;
+      }
       if (Date.now() - w.at > 180000) { LQ.watch.delete(id); LQ.last.set(id, Object.assign({}, w, { k: "slow", msg: "3분이 지나도 결과가 오지 않았어요 — 홈 입력 점검의 \"오래 걸리는 요청\"에서 봐요", end: Date.now() })); toast(`${w.label}: 3분이 지나도 결과가 오지 않았어요 — 홈 입력 점검의 "오래 걸리는 요청"에서 봐요`); }
     }
     /* 완료여도 그 줄의 오류 칸이 새로 찼으면(알림톡 꺼짐 · 데이터 부족) "받았지만 못 함"으로 알린다 — 노션에서 보는 것과 같은 이유 글 */
-    const fin = done.map(([id, w, q]) => { LQ.watch.delete(id); const e = lqErrOf(lqRaw(w.coll, id)), warn = q.k === "ok" && e && e !== w.err; const k = q.k === "fail" ? "fail" : warn ? "warn" : "ok", msg = q.k === "fail" ? q.msg : warn ? e : q.msg; LQ.last.set(id, Object.assign({}, w, { k, msg, end: Date.now() })); return { w, k, msg }; });
+    const fin = done.map(([id, w, q]) => { LQ.watch.delete(id); const r1 = lqRaw(w.coll, id), e = lqErrOf(r1), warn = q.k === "ok" && (lqStatBad(r1, w.label) || (!!e && e !== w.err)); const k = q.k === "fail" ? "fail" : warn ? "warn" : "ok", msg = q.k === "fail" ? q.msg : warn ? (e || String(((r1 || {}).props || {})["실시간 처리 상태"] || "").replace(/^⚠️\s*/u, "") || "이유는 노션 그 줄의 상태 칸에 있어요") : q.msg; LQ.last.set(id, Object.assign({}, w, { k, msg, end: Date.now(), doneRes: String(((r1 || {}).props || {})["요청 결과"] || "") })); return { w, k, msg }; });
     if (fin.length) {
       const by = new Map(); fin.forEach((f) => { const key = f.w.label + "|" + f.k + "|" + f.msg; by.set(key, Object.assign({ n: 0 }, f, { n: ((by.get(key) || {}).n || 0) + 1 })); });
       toast([...by.values()].map((f) => `${f.w.label}${f.n > 1 ? ` ${f.n}줄` : ""} ${f.k === "ok" ? "완료" : f.k === "warn" ? "— 서버가 받았지만 하지 못했어요" : "실패"}${f.msg ? " — " + f.msg : ""}`).join(" / "));
@@ -98,13 +106,15 @@ function lqDress() {
   /* 처리 중: 보낸 줄이 끝날 때까지는 이 한 줄만 — 창이 보고 있는 그 줄의 자동 갱신 한 줄(lr-note)은 앞 요청의 결과일 수 있어 숨긴다
      (상태 칸을 바꾸는 단추는 노션 자동화가 요청을 쓰기까지 몇 초 ~ 1분 동안 앞 요청 "완료"가 보였음 — 사용성 시험 261123) */
   const ws = [...LQ.watch].filter(([, w]) => here(w)).map(([, w]) => w);
-  if (sel && LQ.watch.has(sel) && here(LQ.watch.get(sel))) panel.querySelectorAll(".lr-note.ok,.lr-note.fail,.lr-note.run,.lr-note.wait,.lr-note.slow").forEach((n) => { if (!n.classList.contains("lq-note")) n.remove(); });
+  const selLast = sel && LQ.last.get(sel), selBad = selLast && here(selLast) && selLast.k !== "ok" && Date.now() - selLast.end < 600000 && String(((lqRaw(selLast.coll, sel) || {}).props || {})["요청 결과"] || "") === selLast.doneRes; /* 받았지만 못 함 · 실패면 자동 갱신의 초록 "완료" 줄은 숨김(두 줄이 엇갈려 보였음) */
+  if (sel && (selBad || (LQ.watch.has(sel) && here(LQ.watch.get(sel))))) panel.querySelectorAll(".lr-note.ok,.lr-note.fail,.lr-note.run,.lr-note.wait,.lr-note.slow").forEach((n) => { if (!n.classList.contains("lq-note")) n.remove(); });
   const by = new Map(); ws.forEach((w) => by.set(w.label, (by.get(w.label) || 0) + 1));
   const PILL = { ok: ["ok", "완료"], warn: ["fail", "받았지만 못 함"], fail: ["fail", "실패"], slow: ["slow", "오래 걸려요"] };
   /* 끝난 결과(10분): 못 함 · 실패는 그 줄을 보고 있어도 이유를 보인다 */
-  const fins = new Map(); for (const [id, f] of LQ.last) { if (Date.now() - f.end > 600000) { LQ.last.delete(id); continue; } if (!here(f) || (id === sel && f.k === "ok")) continue; const key = f.label + "|" + f.k + "|" + f.msg; fins.set(key, Object.assign({ n: 0 }, f, { n: ((fins.get(key) || {}).n || 0) + 1 })); }
+  const fins = new Map(); for (const [id, f] of LQ.last) { if (Date.now() - f.end > 600000) { LQ.last.delete(id); continue; } if (!here(f) || (id === sel && f.k === "ok")) continue; if (f.doneRes !== undefined && String(((lqRaw(f.coll, id) || {}).props || {})["요청 결과"] || "") !== f.doneRes) { LQ.last.delete(id); continue; } /* 그 뒤 새 요청이 있었으면 지난 결과는 내림 */ const key = f.label + "|" + f.k + "|" + f.msg; fins.set(key, Object.assign({ n: 0 }, f, { n: ((fins.get(key) || {}).n || 0) + 1 })); }
   if (!by.size && !fins.size) return;
-  const html = [...by].map(([l, n]) => `<div class="lr-note run lq-note" role="status"><span class="pill lr-rq run">노션 요청 처리 중</span><span class="lr-msg">${lqEsc(l)}${n > 1 ? ` · ${n}줄` : ""} — 끝나면 알려 드려요</span></div>`).join("")
+  const qd = new Set(ws.filter((w) => w.queued).map((w) => w.label));
+  const html = [...by].map(([l, n]) => `<div class="lr-note run lq-note" role="status"><span class="pill lr-rq run">노션 요청 처리 중</span><span class="lr-msg">${lqEsc(l)}${n > 1 ? ` · ${n}줄` : ""} — ${qd.has(l) ? "서버가 받아 대기열에서 처리하고 있어요. " : ""}끝나면 알려 드려요</span></div>`).join("")
     + [...fins.values()].map((f) => `<div class="lr-note ${PILL[f.k][0]} lq-note" role="status"><span class="pill lr-rq ${PILL[f.k][0]}">노션 요청 ${PILL[f.k][1]}</span><span class="lr-msg">${lqEsc(f.label)}${f.n > 1 ? ` · ${f.n}줄` : ""}${f.msg ? " — " + lqEsc(f.msg) : ""}</span></div>`).join("");
   const body = panel.querySelector(":scope > .pbody"), head = panel.querySelector(":scope > .ptabs") || panel.querySelector(":scope > .phead");
   if (body) body.insertAdjacentHTML("afterbegin", html); else if (head) head.insertAdjacentHTML("afterend", html); else panel.insertAdjacentHTML("afterbegin", html);
