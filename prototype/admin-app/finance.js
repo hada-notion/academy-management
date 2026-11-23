@@ -18,6 +18,7 @@
   const etcSum = (t) => safe(() => tuEtc(t).reduce((a, z) => a + z.amt, 0), 0);
   const btn = (k, id, label, extra) => `@h:<button type="button" class="btn sm" data-fin="${k}" data-id="${esc(id)}" ${extra || ""}>${label}</button>`;
   const pill = (tone, t) => `@s:nc-${tone}|${t}`;
+  const isLive = () => !!(window.LIVE && window.LIVE.loaded && window.APP_RAW);
   const base = (b, o) => Object.assign({}, b, { subs: null, filters: [], ftabs: null, noAdd: 1, noDel: true, byMonth: null, note: null, infoX: null }, o);
 
   /* ═════ 수강료 — 탭 4 ═════ */
@@ -69,6 +70,8 @@
       ["교재비 생성 여부", (c) => { const es = enrolled(c), miss = es.filter((e) => !alive(DB.bookfees).some((b) => b.studentId === e.studentId && b.classId === c.id)).length; return es.length ? (miss ? pill("yellow", `청구서 없는 학생 ${miss}명`) : pill("green", "모두 있음")) : "—"; }],
       ["교재비 생성 · 기타경비 청구", (c) => btn("bill", c.id, "교재비 생성") + btn("etc", c.id, "기타경비 청구").slice(3)]],
   });
+  /* [담기] — 청구서 한 줄의 교재를 진도관리에 담아요(노션 청구서 [담기]) */
+  ["bill_b"].forEach((k) => { if (LISTS[k] && LISTS[k].cols) LISTS[k] = Object.assign({}, LISTS[k], { cols: [...LISTS[k].cols, ["담기", (x) => btn("cart", x.id, "담기")]] }); });
   if (LISTS.bill_l) LISTS.bill_l = Object.assign({}, LISTS.bill_l, { title: "청구서", cols: [...LISTS.bill_l.cols.filter((c) => c[0] !== "결제"), ["결제금액", (x) => (x.paidOn ? WON(x.amount) : "—")], ["결제 상태", (x) => (x.paidOn ? "🟢결제 완료" : "!미납")]] });
 
   /* ═════ 결제 · 손익 — 탭 7 ═════ */
@@ -92,27 +95,28 @@
   /* 청구서 납부 — 청구 항목 DB, 결제 상태가 결제 완료가 아닌 것(교습비 줄은 청구 항목이 아님) */
   LISTS.profit_q = base(LISTS.charges, {
     title: "결제 · 손익", fields: [], ro: true, roRow: () => true, infoX: null, fieldsOf: null,
-    rows: () => { safe(() => chargesSync()); return alive(DB.charges).filter((x) => x.kind !== "교습비" && !x.paidOn); }, byMonth: (x) => x.month, empty: "이 달에 아직 다 안 낸 청구 줄이 없어요",
+    /* 실제 자료: 노션 청구 항목 줄 그대로(줄 id = 노션 id — [결제]가 그 줄에 결제를 이어요). 예시: 청구서에서 다시 만든 줄 */
+    rows: () => { if (isLive() && Array.isArray(DB._appvCharges)) return DB._appvCharges.filter((x) => !x.del && x.kind !== "교습비" && !x.paidOn); safe(() => chargesSync()); return alive(DB.charges).filter((x) => x.kind !== "교습비" && !x.paidOn); }, byMonth: (x) => x.month, empty: "이 달에 아직 다 안 낸 청구 줄이 없어요",
     help: "아직 다 안 낸 청구서 줄이에요(교재비 · 재료비 · 기타경비). [결제]는 청구 결제에 한 줄을 만들어요. 알림톡은 보내지 않아요.",
     note: (rows) => (rows.length ? `${rows.length}줄 · ${WON(rows.reduce((a, x) => a + (+x.amount || 0), 0))}` : "다 냈어요"),
     cols: [["이름", (x) => `${stuName(x.studentId)} · ${x.name || x.item || ""}`], ["등록", (x) => clsName(x.classId)], ["청구 월", (x) => x.month || "—"], ["종류", (x) => x.kind], ["교재비 금액", (x) => WON(x.amount)], ["결제금액", () => "—"], ["결제", (x) => btn("cpay", x.id, "결제")]],
   });
   /* 결제 내역 — 결제 DB 이번 달, 구분 필터. [＋ 결제 줄]로 지출 · 청구서 결제 매출을 넣는다 */
   LISTS.profit_c = base(C, {
-    title: "결제 · 손익", noAdd: 0, rows: () => payRows(), byMonth: (x) => (typeof mKey === "function" ? mKey(x.date) : String(x.date).slice(0, 7).replace("-", ".")), roRow: (r) => !!r._der,
+    title: "결제 · 손익", noAdd: 0, rows: () => (isLive() && Array.isArray(DB.pays) ? DB.pays.filter((x) => !x.del) : payRows()), byMonth: (x) => (typeof mKey === "function" ? mKey(x.date) : String(x.date).slice(0, 7).replace("-", ".")), roRow: (r) => !!r._der,
     help: "그 달 결제 기록이에요(노션 결제(학원) DB). [＋ 결제 줄]로 지출(임대료 · 교재 구입)이나 청구서 결제를 매출로 옮겨 넣고, 줄을 눌러 결제일 · 수단 · 금액 · 비고를 고쳐요. 수강료 [결제]로 생긴 줄은 수강료 칸에서 고쳐요.",
-    cols: [["결제일", (x) => D10(x.date), "date"], ["결제", (x) => x.name, "name"], ["구분", (x) => (x.kind === "지출" ? pill("red", "지출") : pill("blue", "매출")), "kind"], ["결제 수단", (x) => x.how || "—", "how"], ["결제 금액", (x) => WON(x.amount), "amount"], ["비고", (x) => x.memo || "—", "memo"]],
+    cols: [["결제일", (x) => D10(x.date), "date"], ["결제", (x) => x.name, "name"], ["구분", (x) => (x.kind === "지출" ? pill("red", "지출") : pill("blue", "매출")), "kind"], ["결제 수단", (x) => x.how || "—", "how"], ["결제 금액", (x) => WON(x.amount), "amount"], ["비고", (x) => x.memo || "—", "memo"], ["결제 줄 고치기", (x) => (isLive() && !x._der ? btn("pedit", x.id, "고치기") : "")]],
     ftabs: [["지출", "지출", (x) => x.kind === "지출"], ["매출", "매출", (x) => x.kind === "매출"]], note: (rows) => `매출 ${WON(rows.filter((x) => x.kind === "매출").reduce((a, x) => a + x.amount, 0))} · 지출 ${WON(rows.filter((x) => x.kind === "지출").reduce((a, x) => a + x.amount, 0))}`,
     fields: C.fields, blank: () => ({ id: uid("co"), name: "새 결제", kind: "지출", date: TODAY, how: "카드", amount: 0, memo: "" }),
   });
   /* 청구서 결제 — 청구 결제 DB, 고른 달 결제일. 합계 줄(이 합계를 결제 내역에 매출 한 줄로 옮긴다) */
   LISTS.profit_r = base(LISTS.charges, {
     title: "결제 · 손익", fields: [], ro: true, roRow: () => true, infoX: null, fieldsOf: null,
-    rows: () => { safe(() => chargesSync()); return alive(DB.charges).filter((x) => x.kind !== "교습비" && x.paidOn).map((x) => Object.assign({}, x, { id: "cr" + x.id })).sort((a, b) => String(b.paidOn).localeCompare(String(a.paidOn))); },
+    rows: () => { if (isLive() && Array.isArray(DB.billPays)) return DB.billPays.filter((x) => !x.del).map((x) => ({ id: x.id, studentId: x.studentId, classId: x.classId, name: x.book || x.name, _n: x.name, paidOn: x.date, amount: x.amount, how: x.how, kind: "청구 결제" })).sort((a, b) => String(b.paidOn).localeCompare(String(a.paidOn))); safe(() => chargesSync()); return alive(DB.charges).filter((x) => x.kind !== "교습비" && x.paidOn).map((x) => Object.assign({}, x, { id: "cr" + x.id })).sort((a, b) => String(b.paidOn).localeCompare(String(a.paidOn))); },
     byMonth: (x) => String(x.paidOn).slice(0, 7).replace("-", "."), empty: "이 달 청구서 결제가 없어요",
     help: "청구서(교재비 · 재료비 · 기타경비)로 받은 결제예요(노션 청구 결제(학원) DB). 이 합계는 결제 내역의 손익에 자동으로 들어가지 않아요 — 달 끝에 결제 내역에 매출로 한 줄 넣어요.",
     note: (rows) => `합계 ${WON(rows.reduce((a, x) => a + (+x.amount || 0), 0))} · ${rows.length}건`,
-    cols: [["이름", (x) => `${stuName(x.studentId)} · ${x.name || x.item || ""}`], ["결제상태", () => "🟢결제 완료"], ["결제일", (x) => D10(x.paidOn)], ["교재", (x) => x.name || x.item || "—"], ["결제 방법", (x) => x.how || "—"], ["결제 금액", (x) => WON(x.amount)]],
+    cols: [["이름", (x) => x._n || `${stuName(x.studentId)} · ${x.name || x.item || ""}`], ["결제상태", () => "🟢결제 완료"], ["결제일", (x) => D10(x.paidOn)], ["교재", (x) => x.name || x.item || "—"], ["결제 방법", (x) => x.how || "—"], ["결제 금액", (x) => WON(x.amount)], ["결제 줄 고치기", (x) => (isLive() && x._n !== undefined ? btn("bpedit", x.id, "고치기") : "")]],
   });
   /* 매출 · 지출 · 손익 — 결제 DB 월별 선 그래프(노션 차트 보기) */
   const chart = (vals, labels, tone, name) => {
@@ -151,7 +155,8 @@
     const b = e.target.closest && e.target.closest("[data-fin]"); if (!b || b.disabled) return;
     e.preventDefault(); e.stopPropagation();
     const k = b.dataset.fin, id = b.dataset.id;
-    const row = k === "pay" ? DB.tuition.find((x) => x.id === id) : k === "cpay" ? DB.charges.find((x) => x.id === id) : DB.classes.find((x) => x.id === id);
+    if (window.finAct && window.finAct[k]) { window.finAct[k](id, b); return; }
+    const row = k === "pay" ? DB.tuition.find((x) => x.id === id) : k === "cpay" ? DB.charges.concat(DB._appvCharges || []).find((x) => x.id === id) : DB.classes.find((x) => x.id === id);
     if (row && act[k]) act[k](row);
   }, true);
   /* 결제 내역은 처음 열 때 구분 전체(노션 결제 내역은 구분 필터가 비어 있음) */
