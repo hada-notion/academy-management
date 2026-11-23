@@ -1,7 +1,7 @@
 /* 강사별 관리 앱 계정(강사계정 261123). 실제 자료 모드에서만 쓴다.
    - 강사 로그인: 아이디 = 노션 강사 DB 연락처(휴대폰 번호), 첫 비밀번호 = 같은 번호. 첫 로그인이면 바로 새 비밀번호 정하기(바꾸기 전엔 서버가 아무것도 열지 않음).
-   - 강사가 보는 메뉴 = 서버(app-api "me")가 준 메뉴 이름(노션 메뉴(학원) DB 편집허용 ↔ 강사 DB 노션 계정)만. 재무 · 관리자 설정 · 바로가기는 늘 빠진다.
-     메뉴가 없으면 빈 화면 + "원장에게 메뉴 권한을 요청하세요". 화면을 숨기는 것은 보기 좋으라고 — 막는 것은 서버(_shared/teacherAccess.ts).
+   - 강사가 보는 메뉴 = 서버(app-api "me")가 준 메뉴 이름(노션 메뉴(학원) DB 편집허용 · 댓글허용 ↔ 강사 DB 노션 계정)만. 댓글허용만인 메뉴는 보기만.
+     재무 · 관리자 설정 · 바로가기는 늘 빠진다. 메뉴가 하나도 없으면 서버가 로그인을 거절한다(빈 화면 안내는 남은 세션용 대비). 화면을 숨기는 것은 보기 좋으라고 — 막는 것은 서버(_shared/teacherAccess.ts).
    - 원장: 직원 창 [앱 계정] 탭 — 켜기 · 끄기 · 상태(첫 로그인 전 · 사용 중 · 잠김 · 꺼짐) · 첫 비밀번호로 되돌리기.
    비밀번호 칸 값은 보낸 바로 뒤 지우고 어디에도 적지 않는다. 서버: admin-security teacher-* · teachers-status */
 (function () {
@@ -101,6 +101,12 @@
       };
       (typeof tabs !== "undefined" ? tabs : []).forEach(fix); if (typeof activeTab !== "undefined") fix(activeTab);
     } catch (_) {}
+    /* (대표 261123 "댓글허용이면 보기만") 보이지만 편집허용이 없는 메뉴의 화면은 보기만 잠금(live.js liveRoAdd) — 저장 · 편집 · 단추가 꺼진다. 서버도 403 */
+    const edits = Array.isArray(me.editMenus) ? me.editMenus : menus;
+    if (typeof window.liveRoAdd === "function") {
+      const scrs = new Set([...Object.keys(SCREEN_MENU()), "lesson", "timetable"]);
+      scrs.forEach((x) => { if (ok(x) && !window.liveTeacherAllowed(x, edits)) window.liveRoAdd(x); });
+    }
     document.body.classList.add("live-teacher");
   };
   /* 강사 화면 덧그리기: 메뉴가 하나도 없으면 빈 화면 안내, 위 줄에 "강사 · 이름 [로그아웃]" */
@@ -144,6 +150,7 @@
     if (!a) return ["꺼짐", "", "앱 계정을 켜지 않았어요"];
     if (!a.enabled) return ["꺼짐", "", "앱 계정을 껐어요 — 로그인할 수 없어요"];
     if (a.locked) return ["잠김", "r", "비밀번호를 여러 번 틀려 15분 잠겼어요"];
+    if (row.menu && !row.menu.menus) return ["메뉴 권한 없음", "r", "노션 메뉴관리 편집허용 · 댓글허용 어디에도 없어 로그인이 안 돼요"];
     if (a.must_change) return ["첫 로그인 전", "w", "첫 비밀번호(휴대폰 번호)로 로그인해 새 비밀번호를 정해야 해요"];
     return ["사용 중", "g", "강사가 정한 비밀번호로 쓰고 있어요"];
   };
@@ -154,9 +161,12 @@
     if (!row) return `<div class="box"><p class="hint">서버 자료에 이 강사가 아직 없어요 — 위 [동기화] 뒤 다시 봐요</p><button class="btn" data-ltact="reload">다시 불러오기</button></div>`;
     const [label, tone, desc] = stateOf(row), a = row.account, on = !!(a && a.enabled);
     const warn = !row.phone ? "노션 연락처에 휴대폰 번호가 없어요 — 번호를 넣어야 켤 수 있어요" : row.duplicate ? "같은 휴대폰 번호인 강사가 둘 이상이에요 — 노션 연락처를 먼저 고쳐요" : "";
+    /* 메뉴 권한(노션 메뉴관리 편집허용 · 댓글허용): 하나도 없으면 켜도 로그인이 거절된다 */
+    const m = row.menu, noMenu = !!(m && !m.menus);
+    const menuTxt = !m ? "확인하지 못했어요(노션 계정을 읽지 못함)" : noMenu ? "메뉴 권한 없음 — 로그인 안 됨(노션 메뉴관리 편집허용 · 댓글허용에 이 강사를 넣어요)" : `${m.menus}개 메뉴(고치기 ${m.edit} · 보기만 ${m.menus - m.edit})`;
     const idNow = a && a.phone && a.phone !== row.phone ? `${phoneText(a.phone)} <span class="hint">(노션 번호가 바뀌었어요 — 되돌리기를 하면 새 번호로 맞춰요)</span>` : phoneText(row.phone || (a && a.phone)) || "—";
     return `<div class="box lt-acct"><h3>관리 앱 계정 <span class="tag ${tone}">${label}</span></h3><p class="hint">${desc}</p>`
-      + `<dl class="lt-kv"><dt>아이디</dt><dd>${idNow}</dd><dt>첫 비밀번호</dt><dd>휴대폰 번호와 같아요(첫 로그인 때 바꿔요)</dd><dt>보이는 메뉴</dt><dd>노션 메뉴관리에서 이 강사의 노션 계정을 편집허용에 넣은 메뉴만 — 재무 · 관리자 설정은 늘 원장만</dd></dl>`
+      + `<dl class="lt-kv"><dt>아이디</dt><dd>${idNow}</dd><dt>첫 비밀번호</dt><dd>휴대폰 번호와 같아요(첫 로그인 때 바꿔요)</dd><dt>메뉴 권한</dt><dd${noMenu ? ' class="lt-bad"' : ""}>${esc(menuTxt)}</dd><dt>보이는 메뉴</dt><dd>노션 메뉴관리 편집허용 메뉴는 고치기, 댓글허용 메뉴는 보기만 — 재무 · 관리자 설정은 늘 원장만</dd></dl>`
       + (warn ? `<div class="warnbox">${warn}</div>` : "")
       + `<div class="lt-row">${on ? `<button class="btn" data-ltact="off" data-ltid="${esc(row.teacher_id)}">앱 계정 끄기</button>` : `<button class="btn pri" data-ltact="on" data-ltid="${esc(row.teacher_id)}" ${warn ? "disabled" : ""}>앱 계정 켜기</button>`}`
       + (a ? `<button class="btn" data-ltact="reset" data-ltid="${esc(row.teacher_id)}" ${warn ? "disabled" : ""}>첫 비밀번호로 되돌리기</button>` : "") + `</div>`
@@ -195,7 +205,7 @@
   const css = document.createElement("style");
   css.textContent = ".lt-l{display:block;margin:var(--space-2) 0 var(--space-1);font-size:var(--text-label);color:var(--muted)}.lt-err{color:var(--danger-ink);min-height:1.4em}"
     + ".lt-kv{display:grid;grid-template-columns:auto 1fr;gap:var(--space-1) var(--space-3);margin:var(--space-2) 0;font-size:var(--text-label)}.lt-kv dt{color:var(--muted)}.lt-kv dd{margin:0}"
-    + ".lt-row{display:flex;gap:var(--space-2);flex-wrap:wrap;margin:var(--space-2) 0}.lt-who{display:flex;align-items:center;gap:var(--space-2);margin:0 0 var(--space-3);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);background:var(--surface);font-size:var(--text-label)}.lt-who .sp{flex:1}.live-teacher .side .tour{display:none}"
+    + ".lt-bad{color:var(--danger-ink);font-weight:600}.lt-row{display:flex;gap:var(--space-2);flex-wrap:wrap;margin:var(--space-2) 0}.lt-who{display:flex;align-items:center;gap:var(--space-2);margin:0 0 var(--space-3);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);background:var(--surface);font-size:var(--text-label)}.lt-who .sp{flex:1}.live-teacher .side .tour{display:none}"
     + ".lt-empty{max-width:var(--form-max,560px);margin:var(--space-6,48px) auto}";
   document.head.appendChild(css);
 })();

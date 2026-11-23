@@ -16,7 +16,7 @@
 // 읽기 로직은 _shared/appCopy.ts.
 import { CORS_HEADERS, getCurrentAdminKey } from "../_shared/adminShared.ts"
 import { securityEnabled } from "../_shared/adminSecurity.ts"
-import { requireAccess, teacherAppDeny, maskTeacherRows, teacherReadDbs, TEACHER_DB, type Access } from "../_shared/teacherAccess.ts"
+import { requireAccess, teacherAppDeny, maskTeacherRows, teacherReadDbs, teacherWriteDbs, TEACHER_DB, type Access } from "../_shared/teacherAccess.ts"
 import { APP_DBS, isAppDb, listApp, statusApp, warmSources, syncCopy, lastSyncedAt, rootTitle, NotionBusyError } from "../_shared/appCopy.ts"
 import { checkChanges, saveChanges, runGenerateClasses, writeOptions, SaveError } from "../_shared/appSave.ts"
 import { checkPaymentInput, recordPayment } from "../_shared/appPayment.ts"
@@ -43,6 +43,7 @@ export async function handleAppApi(req: Request, deps: Partial<AppApiDeps> = {})
   const teacher = access.role === "teacher" ? access : null
   // 강사가 읽을 수 있는 DB = 편집허용 메뉴들의 화면 DB(_shared/teacherAccess.ts MENU_DBS). 원장은 null(전부).
   const readable = teacher ? teacherReadDbs(teacher.menus) : null
+  const writable = teacher ? teacherWriteDbs(teacher.editMenus) : null // 편집허용 메뉴의 쓰기 DB(댓글허용만인 메뉴는 읽기만)
   // (v2.8.0 항목 101) 어느 요청이 느린지 로그로 보려고 action 이름과 걸린 시간을 한 줄 남긴다 — 1초 넘은 요청만(평소 수십 개 list는 안 남김).
   const t0 = Date.now()
   let action = "?", dbName = ""
@@ -53,7 +54,7 @@ export async function handleAppApi(req: Request, deps: Partial<AppApiDeps> = {})
     try { body = JSON.parse(raw) } catch { return json({ error: "요청 형식이 올바르지 않습니다." }, 400) }
     action = String(body?.action ?? "?").slice(0, 20); dbName = typeof body?.db === "string" ? body.db.slice(0, 40) : ""
     // (강사계정) 누가 로그인했나 — 앱이 메뉴를 거를 때. 원장은 role만.
-    if (body?.action === "me") return json(teacher ? { ok: true, role: "teacher", name: teacher.name, menus: teacher.menus, readDbs: [...readable!] } : { ok: true, role: "owner" })
+    if (body?.action === "me") return json(teacher ? { ok: true, role: "teacher", name: teacher.name, menus: teacher.menus, editMenus: teacher.editMenus, readDbs: [...readable!], writeDbs: [...writable!] } : { ok: true, role: "owner" })
     if (teacher) {
       const denied = teacherAppDeny(teacher, body)
       if (denied) return json({ error: denied[1], role: "teacher" }, denied[0])
@@ -102,7 +103,7 @@ export async function handleAppApi(req: Request, deps: Partial<AppApiDeps> = {})
       if (body.name === "sync-copy") {
         if (body.dbs !== undefined && (!Array.isArray(body.dbs) || body.dbs.length > 40 || !body.dbs.every(isAppDb))) return json({ error: "dbs는 앱 DB 이름 목록이어야 합니다." }, 400)
         if (body.full === true && (!Array.isArray(body.dbs) || !body.dbs.length || body.dbs.length > 3)) return json({ error: "full은 dbs를 1~3개 줄 때만 씁니다." }, 400)
-        const dbs = readable && body.dbs === undefined ? APP_DBS.filter((d) => readable.has(d)) : body.dbs
+        const dbs = writable && body.dbs === undefined ? APP_DBS.filter((d) => writable.has(d)) : body.dbs
         return json({ ok: true, ...(await D.syncCopy(dbs, body.full === true)) })
       }
       if (body.name !== "generate-classes") return json({ error: 'run의 name은 "generate-classes" 또는 "sync-copy"여야 합니다.' }, 400)

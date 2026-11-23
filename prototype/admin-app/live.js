@@ -50,17 +50,21 @@ window.liveModeFor = function (search, hostname, protocol) {
   const EXW = gOn.has("P2") && gOn.has("P2x"); window.LIVE_EXW = EXW;
   const P2ON = gOn.has("P2"), RO = new Set([...GATES.P2, ...GATES.P3, ...GATES.P3b, "schools"].filter((s) => !(EVW && s === "events") && !(MKW && s === "makeup") && !(EXW && s === "exams"))); /* P3 수업은 걸음 1 = 보기만 */
   window.liveRO = (s) => RO.has(s);
+  /* (강사계정 · 대표 261123 "댓글허용이면 보기만") 강사가 댓글허용에만 든 메뉴의 화면은 보기만 칸과 같은 잠금으로(liveteacher.js가 넣음). 서버도 쓰기 403 */
+  window.liveTeacherRo = new Set();
+  window.liveRoAdd = (scr) => { RO.add(scr); window.liveTeacherRo.add(scr); };
+  const tRo = (scr) => window.liveTeacherRo.has(scr);
   window.liveScr = (t) => (t && t.screen === "timetable" && t.state && t.state.view === "lesson" ? "lesson" : t ? t.screen : "");
   let roBase = null, roScreen = null, roBusy = false;
   /* 출결 쓰기(P3 걸음 2, 칸 P3w — 수업 칸 P3과 함께 켤 때만): 수업 창의 [출석][결석] · [모두 출석] · [되돌리기] · [수업 저장]만 풀고 나머지는 보기만 그대로 */
   const ATTW = gOn.has("P3") && gOn.has("P3w"); window.LIVE_ATTW = ATTW;
-  const attw = () => ATTW && liveScr(typeof activeTab !== "undefined" ? activeTab : null) === "lesson";
+  const attw = () => ATTW && !tRo("lesson") && liveScr(typeof activeTab !== "undefined" ? activeTab : null) === "lesson";
   const roPass = () => RO_PASS0 + (attw() ? ",.attseg,.ldattf,#asAtt,.asfree,#allOk,#lsRev,#lsSave,#attEd,.attv.ed,.attpop .so" : "") + (recTab() ? "," + REC_AREA : "") + (recw() ? ",#lsRev,#lsSave" : "") /* 학습기록 쓰기(P3b)만 켜도 수업 창 아래 [수업 저장] · [되돌리기]가 눌림(기록 · 루틴 체크 저장) */ + (window.LIVE_MKW && inLesson() ? ",[data-mkin]" : ""); /* 536판(대표 261119): 출결 = 값 칸 .attv + 머리 [편집] #attEd + 떠 있는 목록 .attpop .so(body). .attseg는 과제 단추 */
   /* 학습기록 쓰기(칸 P3b — 수업 칸 P3과 함께 켤 때만, 261119 원본검수 Z1): 하루 수업 페이지의 학습기록 · 과제검사 · 학습활동 · 진도 · 루틴 탭을 풀고, 저장은 livelesson.js(update-record · create-records · save-activities · save-routines) */
   const RECW = gOn.has("P3") && gOn.has("P3b"); window.LIVE_RECW = RECW;
   const REC_TABS = ["prog", "log", "hw", "act", "rt"];
   const inLesson = () => liveScr(typeof activeTab !== "undefined" ? activeTab : null) === "lesson";
-  const recw = () => RECW && inLesson();
+  const recw = () => RECW && !tRo("lesson") && inLesson();
   /* 학습기록 쓰기가 켜지면 수업 창의 [학습] 탭 · 학생 창의 [학습] 탭 안을 잠그지 않는다(수업 전체 화면은 없어져 옛 #lpIn · .lpx · lptab은 더 쓰지 않음) */
   const recTab = () => { if (!recw()) return false; const st = (activeTab && activeTab.state) || {}; return st.lsStu ? st.astab === "learn" : (st.ltab === "log" || st.ltab === "rt"/* 루틴 탭: P3b의 루틴 체크 · [루틴 체크 생성] 쓰기도 같은 칸(원본검수 261119) */); };
   const REC_AREA = ".panel .ptab.on,.panel .pbody";
@@ -82,7 +86,7 @@ window.liveModeFor = function (search, hostname, protocol) {
     let n = v.querySelector(":scope > .ro-line");
     if (!show) { if (n) n.remove(); return; }
     const top = v.querySelector(":scope > .top"); if (!top) return;
-    const txt = RO_NOTE_BY[scr] || RO_NOTE_TEXT;
+    const txt = tRo(scr) ? "댓글 권한 메뉴라 보기만 해요 — 고치려면 원장에게 노션 메뉴관리 편집허용을 요청하세요" : RO_NOTE_BY[scr] || RO_NOTE_TEXT;
     if (n && n.textContent !== txt) n.textContent = txt;
     if (!n) { n = document.createElement("div"); n.className = "ro-line"; n.textContent = txt; }
     if (top.nextElementSibling !== n) top.after(n);
@@ -106,7 +110,7 @@ window.liveModeFor = function (search, hostname, protocol) {
   const roLock = () => {
     const t = typeof activeTab !== "undefined" ? activeTab : null, scr = liveScr(t), on = !!(t && window.LIVE && window.LIVE.loaded && RO.has(scr));
     document.body.classList.toggle("live-ro", on);
-    roNote(on && RO_NOTE_SCREENS.has(scr), scr);
+    roNote(on && (RO_NOTE_SCREENS.has(scr) || tRo(scr)), scr);
     if (!on) { roBase = null; roScreen = null; return; }
     const now = snapRo();
     if (roBase === null || roScreen !== scr) { roBase = now; roScreen = scr; }
