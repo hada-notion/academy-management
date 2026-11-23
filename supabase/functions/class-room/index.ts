@@ -39,7 +39,8 @@ Deno.serve(async (req: Request) => {
     const _timing = { ms: Date.now() - startedAt, notion: notionCount.calls - calls0, notionWaitMs: notionCount.waitMs - wait0 }
     return json(result && typeof result === "object" && !Array.isArray(result) ? { ...result, _timing } : { result, _timing })
   } catch (err) {
-    if (err instanceof ClassRoomError) return json({ error: err.message }, err.status)
+    // (261123 출시 전 4번) 일부만 실패하면 502 + 된 줄 · 안 된 줄(detail) — 옛 앱은 전부 실패로 보고, 새 앱은 안 된 줄만 작성 중으로 남긴다.
+    if (err instanceof ClassRoomError) return json({ ...(err.detail ?? {}), error: err.message }, err.status)
     console.error("[class-room]", (err as Error).message)
     return json({ error: "처리 중 문제가 생겼어요. 잠시 후 다시 시도해 주세요." }, 500)
   }

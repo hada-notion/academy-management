@@ -113,6 +113,18 @@ Deno.test("create-makeup-session: 보강 수업을 만들고 결석들을 배정
  assert(empty.assigned.length === 0 && f.pages[empty.sessionId].properties["수업 구분"].select.name === "보강")
 }))
 
+// (261123 출시 전 4번) 보강 수업을 만든 뒤 배정 하나가 노션 오류로 실패해도 다른 결석은 배정하고, 수업 id와 함께 답한다(앱이 수업을 다시 만들지 않게).
+Deno.test("출시 전 4번: 보강 수업을 만든 뒤 배정 하나가 실패 → 나머지 배정 + 502 { sessionId, assigned, failed }", () => withMock(async (f) => {
+ const base = globalThis.fetch
+ globalThis.fetch = (async (input: any, init: any = {}) => { if (String(input).endsWith("/pages") && init.method === "POST" && JSON.stringify(init.body ?? "").includes("ab1")) return new Response(JSON.stringify({ message: "timeout" }), { status: 409 }); return base(input, init) }) as typeof fetch
+ let err: any = null
+ try { await room.handleClassRoom({ action: "create-makeup-session", absenceIds: ["ab1", "ab2"], teacherId: "t1", start: MK_AT }) } catch (e) { err = e }
+ assert(err instanceof room.ClassRoomError && err.status === 502, String(err?.message))
+ const d = (err as any).detail
+ assert(d.sessionId && f.pages[d.sessionId] && d.assigned.length === 1 && d.failed.length === 1 && d.failed[0].id === "ab1", JSON.stringify(d))
+ assert(f.created.filter((p) => p.db === "sessions").length === 1, "session made once")
+}))
+
 Deno.test("unlink-makeup·delete-makeup-session = 노션 [삭제]와 같은 큐(cascade-delete), 옛 출석·정규 수업·학습기록 있는 수업은 막음", () => withMock(async (f) => {
  const u = await room.handleClassRoom({ action: "unlink-makeup", attendanceId: "mDone" }) as any
  assert(u.status === "queued" && f.queued.some((q) => q.target === "cascade-delete" && q.payload?.pageId === "mDone"), JSON.stringify(f.queued))

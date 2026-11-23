@@ -1,14 +1,14 @@
-// 라이브러리(v2.5.118, 출처 v2.5.120). 국립중앙도서관·카카오·Notion 호출은 모두 가짜 응답. 실제 키·데이터 없음.
+// 라이브러리(v2.5.118, 출처 v2.5.120). 국립중앙도서관·Notion 호출은 모두 가짜 응답. 실제 키·데이터 없음.
 function assert(value: unknown, message = "assertion failed") { if (!value) throw new Error(message) }
-for (const [k, v] of Object.entries({ NOTION_TOKEN: "test-only", DATA_SOURCE_PROGRESS_BOOK_ID: "progress", NL_CERT_KEY: "test-only-nl", KAKAO_REST_KEY: "test-only-kakao" })) Deno.env.set(k, v)
+for (const [k, v] of Object.entries({ NOTION_TOKEN: "test-only", DATA_SOURCE_PROGRESS_BOOK_ID: "progress", NL_CERT_KEY: "test-only-nl" })) Deno.env.set(k, v)
 const tb = await import("./textbookSearch.ts")
 const bs = await import("./bookSources.ts")
 
 const TOC = "Ⅰ. 수와 연산\n1. 소인수분해 ··· 8\n2. 정수와 유리수 ··· 28\n정답과 해설"
 // 국립중앙도서관 ISBN 서지정보 응답 한 건(필드 이름은 공식 출력 명세)
 const NL_DOC = (isbn: string, extra: Record<string, unknown> = {}) => ({ TITLE: "쎈 중등 수학 1-1", VOL: "", SERIES_TITLE: "쎈 중등 수학", AUTHOR: "홍범준", PUBLISHER: "좋은책신사고", EA_ISBN: isbn, PRE_PRICE: "19,000", PAGE: "264 p.", PUBLISH_PREDATE: "20251101", TITLE_URL: "http://seoji.nl.go.kr/cover/x.jpg", BOOK_TB_CNT: TOC, ...extra })
-// 카카오 책 검색 응답 한 건
-const KAKAO_DOC = (isbn13: string, extra: Record<string, unknown> = {}) => ({ title: "Phonics Monster 1", isbn: `11${isbn13.slice(5)} ${isbn13}`, publisher: "AList", price: 5400, sale_price: 4860, authors: ["A List"], datetime: "2024-03-01T00:00:00.000+09:00", contents: "", thumbnail: "https://search1.kakaocdn.net/thumb/R120x174.q85/?fname=http%3A%2F%2Ft1.daumcdn.net%2Flbook%2Fimage%2F123", ...extra })
+// 국립중앙도서관에만 있고 목차 · 쪽수가 없는 책(수입 원서처럼)
+const NL_PLAIN = NL_DOC("9791169513371", { TITLE: "Phonics Monster 1", SERIES_TITLE: "", AUTHOR: "A List", PUBLISHER: "AList", PRE_PRICE: "5,400", PAGE: "", PUBLISH_PREDATE: "20240301", TITLE_URL: "https://t1.daumcdn.net/lbook/image/123", BOOK_TB_CNT: "" })
 const NL_BOOKS = ["9788928334858", "9788928334865"]
 const tt = (s: string) => [{ plain_text: s }]
 const LIB = [
@@ -16,7 +16,7 @@ const LIB = [
 	{ id: "11111111-1111-4111-8111-111111111111", properties: { "교재명": { title: tt("개념원리 수학 1-1") }, "시리즈": { select: null }, "북커버": { files: [] }, "사용중": { checkbox: false }, "단원목록": { relation: [], has_more: false } } },
 ]
 const UNITS = [{ id: "u2", book: "22222222-2222-4222-8222-222222222222", name: "1-2. 일차부등식", page: 30 }, { id: "u1", book: "22222222-2222-4222-8222-222222222222", name: "1-1. 다항식", page: 8 }, { id: "u3", book: "22222222-2222-4222-8222-222222222222", name: "부록", page: null, exams: 1 }]
-function mock(opts: { existing?: string[]; failUnitAt?: number; nlFail?: boolean; kakaoFail?: boolean; schemaFail?: boolean; seriesOpts?: any[]; kyoboFail?: boolean; failPagePatchAt?: number } = {}) {
+function mock(opts: { existing?: string[]; failUnitAt?: number; nlFail?: boolean; schemaFail?: boolean; seriesOpts?: any[]; kyoboFail?: boolean; failPagePatchAt?: number } = {}) {
 	const created: any[] = [], calls: string[] = [], headers: Record<string, string>[] = [], patched: any[] = [], schema: any[] = []
 	const seriesOf: Record<string, string | null> = {}
 	let seriesOpts: any[] = opts.seriesOpts ?? [{ id: "s1", name: "쎈", color: "red" }, { id: "s2", name: "라이트쎈", color: "blue" }]
@@ -30,14 +30,8 @@ function mock(opts: { existing?: string[]; failUnitAt?: number; nlFail?: boolean
 		if (url.startsWith("https://www.nl.go.kr/seoji/SearchApi.do")) {
 			if (opts.nlFail) return reply({ message: "down" }, 500)
 			const q = new URL(url).searchParams, isbn = q.get("isbn")
-			if (isbn) return reply({ TOTAL_COUNT: "1", docs: NL_BOOKS.includes(isbn) ? [NL_DOC(isbn)] : [] })
-			return reply({ TOTAL_COUNT: "3", docs: [NL_DOC("9788928334858"), NL_DOC("9788928334865", { TITLE: "라이트쎈 중등 수학 1-1", BOOK_TB_CNT: "" }), { TITLE: "ISBN 없음", EA_ISBN: "" }] })
-		}
-		if (url.startsWith("https://dapi.kakao.com/v3/search/book")) {
-			if (opts.kakaoFail) return reply({ message: "down" }, 500)
-			const q = new URL(url).searchParams
-			const docs = [KAKAO_DOC("9788928334858", { title: "쎈 중등수학 1-1(카카오)", price: 20000 }), KAKAO_DOC("9791169513371")]
-			return reply({ documents: q.get("target") === "isbn" ? docs.filter((d) => d.isbn.endsWith(q.get("query")!)) : docs, meta: { total_count: 2 } })
+			if (isbn) return reply({ TOTAL_COUNT: "1", docs: NL_BOOKS.includes(isbn) ? [NL_DOC(isbn)] : isbn === NL_PLAIN.EA_ISBN ? [NL_PLAIN] : [] })
+			return reply({ TOTAL_COUNT: "3", docs: [NL_DOC("9788928334858"), NL_DOC("9788928334865", { TITLE: "라이트쎈 중등 수학 1-1", BOOK_TB_CNT: "" }), { TITLE: "ISBN 없음", EA_ISBN: "" }, NL_DOC("9788928334858", { TITLE: "쎈 중등 수학 1-1(같은 ISBN)" }), NL_PLAIN] })
 		}
 		if (url.endsWith("/data_sources/progress")) return reply({ properties: { "라이브러리": { relation: { data_source_id: "books" } } } })
 		if (url.endsWith("/data_sources/units")) return reply({ properties: { "단원명": { title: {} }, "라이브러리": { relation: { data_source_id: "books" } } } })
@@ -99,24 +93,23 @@ Deno.test("matching publisher and series options only when they exist", () => {
 	assert(tb.matchSeries("개념서", "", ["쎈"]) === null)
 })
 
-Deno.test("search: NL and Kakao merged by ISBN13 (NL first), kyobo cover plus alternative cover, registered marked", async () => {
+Deno.test("search: NL results once per ISBN13, kyobo cover plus alternative cover, registered marked", async () => {
 	const m = mock({ existing: ["9788928334865"] })
 	await withMock(m, async () => {
 		const r = await tb.searchBooks("쎈 중등 수학")
 		assert(r.books.map((b) => b.isbn13).join() === "9788928334858,9788928334865,9791169513371", "no-ISBN dropped, duplicates once: " + r.books.map((b) => b.isbn13).join())
 		const [a, b, c] = r.books
-		assert(a.title === "쎈 중등 수학 1-1" && a.price === 19000 && a.pages === 264 && a.pubDate === "2025-11-01" && a.sources.join() === "국립중앙도서관,카카오", "NL values win: " + JSON.stringify(a))
+		assert(a.title === "쎈 중등 수학 1-1" && a.price === 19000 && a.pages === 264 && a.pubDate === "2025-11-01" && a.sources.join() === "국립중앙도서관", "first NL row wins: " + JSON.stringify(a))
 		assert(a.cover === "https://contents.kyobobook.co.kr/sih/fit-in/458x0/pdt/9788928334858.jpg" && a.altCover === "https://seoji.nl.go.kr/cover/x.jpg", "kyobo cover, NL cover as https alternative")
 		assert(!("toc" in a), "toc only in detail")
 		assert(b.registered === true && !a.registered)
-		assert(c.title === "Phonics Monster 1" && c.publisher === "AList" && c.pages === null && c.altCover === "https://t1.daumcdn.net/lbook/image/123" && c.sources.join() === "카카오", "Kakao-only book with original cover: " + JSON.stringify(c))
+		assert(c.title === "Phonics Monster 1" && c.publisher === "AList" && c.pages === null && c.altCover === "https://t1.daumcdn.net/lbook/image/123" && c.sources.join() === "국립중앙도서관", "book without contents or pages: " + JSON.stringify(c))
 		await rejects(() => tb.searchBooks(" "), 400)
 	})
 	const nl = new URL(m.calls.find((c) => c.includes("nl.go.kr"))!).searchParams
 	assert(nl.get("title") === "쎈 중등 수학" && nl.get("result_style") === "json" && nl.get("cert_key") === "test-only-nl")
-	const k = m.calls.findIndex((c) => c.includes("kakao.com"))
-	assert(new URL(m.calls[k]).searchParams.get("target") === "title" && m.headers[k].Authorization === "KakaoAK test-only-kakao")
-	assert(!m.calls.some((c) => c.includes("notion") && /test-only-(nl|kakao)/.test(c)), "keys only go to their own source")
+	assert(!m.calls.some((c) => c.includes("kakao")), "no Kakao calls (removed in v2.8.0 item 113)")
+	assert(!m.calls.some((c) => c.includes("notion") && /test-only-nl/.test(c)), "key only goes to its own source")
 })
 
 Deno.test("detail: NL table of contents becomes units with the 1-1 rule; no contents is tocEmpty", async () => {
@@ -158,7 +151,7 @@ Deno.test("register: cover choice (alt / none / old noCover), duplicate ISBN13 r
 		await tb.registerBook({ isbn13: "9788928334858", noCover: true, units: [] })
 		const covers = m.created.map((c) => c.properties["북커버"]?.files[0].external.url ?? "")
 		assert(covers.join("|") === "https://seoji.nl.go.kr/cover/x.jpg|https://t1.daumcdn.net/lbook/image/123||", covers.join("|"))
-		assert(m.created[1].properties["가격"].number === 5400 && !("전체 분량" in m.created[1].properties), "Kakao-only book has price, no pages")
+		assert(m.created[1].properties["가격"].number === 5400 && !("전체 분량" in m.created[1].properties), "book without pages has price, no pages")
 	})
 	const f = mock({ failUnitAt: 1 })
 	await withMock(f, async () => {
@@ -167,30 +160,17 @@ Deno.test("register: cover choice (alt / none / old noCover), duplicate ISBN13 r
 	})
 })
 
-Deno.test("keys: none is a clear 503 without calls; one key uses only that source", async () => {
-	Deno.env.delete("NL_CERT_KEY"); Deno.env.delete("KAKAO_REST_KEY")
+Deno.test("keys: no NL key is a clear 503 without calls; a stale Kakao key is ignored", async () => {
+	Deno.env.delete("NL_CERT_KEY"); Deno.env.set("KAKAO_REST_KEY", "test-only-kakao")
 	try {
 		const m = mock()
-		await withMock(m, () => rejects(() => tb.searchBooks("쎈 중등"), 503, /NL_CERT_KEY.*KAKAO_REST_KEY/))
+		await withMock(m, () => rejects(() => tb.searchBooks("쎈 중등"), 503, /NL_CERT_KEY/))
 		assert(m.calls.length === 0, m.calls.join())
-		Deno.env.set("KAKAO_REST_KEY", "test-only-kakao")
-		const k = mock()
-		await withMock(k, async () => {
-			const r = await tb.searchBooks("쎈 중등")
-			assert(r.books.length === 2 && r.books.every((b) => b.sources.join() === "카카오"))
-		})
-		assert(!k.calls.some((c) => c.includes("nl.go.kr")), "no NL call without its key")
-	} finally { Deno.env.set("NL_CERT_KEY", "test-only-nl"); Deno.env.set("KAKAO_REST_KEY", "test-only-kakao") }
+	} finally { Deno.env.set("NL_CERT_KEY", "test-only-nl"); Deno.env.delete("KAKAO_REST_KEY") }
 })
 
-Deno.test("sources: one failing source still shows the other; both failing is 502", async () => {
-	await withMock(mock({ nlFail: true }), async () => {
-		const r = await tb.searchBooks("쎈 중등")
-		assert(r.books.map((b) => b.isbn13).join() === "9788928334858,9791169513371", "Kakao results when NL fails")
-	})
-	await withMock(mock({ nlFail: true, kakaoFail: true }), () => rejects(() => tb.searchBooks("쎈 중등"), 502))
-	assert(bs.kakaoCover("https://search1.kakaocdn.net/thumb/x?fname=http%3A%2F%2Ft1.daumcdn.net%2Fa.jpg") === "https://t1.daumcdn.net/a.jpg")
-	assert(bs.kakaoCover("") === "" && bs.kakaoCover("javascript:alert(1)") === "", "only http(s) covers")
+Deno.test("sources: NL failure is 502; NL rows keep VOL and drop hyphens", async () => {
+	await withMock(mock({ nlFail: true }), () => rejects(() => tb.searchBooks("쎈 중등"), 502))
 	assert(bs.nlBook({ EA_ISBN: "978-89-283-3485-8", TITLE: "수학", VOL: "1", PAGE: "" })?.title === "수학 1", "VOL appended, hyphens removed")
 })
 
@@ -226,16 +206,15 @@ Deno.test("add-units: new names only, linked to the book, existing units untouch
 })
 
 // ---------- v2.5.119: ISBN 검색, 직접 추가 ----------
-Deno.test("search: ISBN query looks the book up in both sources", async () => {
+Deno.test("search: ISBN query looks the book up in NL", async () => {
 	const m = mock()
 	await withMock(m, async () => {
 		const one = await tb.searchBooks("979-11-6951-337-1")
-		assert(one.books.length === 1 && one.books[0].isbn13 === "9791169513371" && one.books[0].sources.join() === "카카오", JSON.stringify(one))
+		assert(one.books.length === 1 && one.books[0].isbn13 === "9791169513371" && one.books[0].sources.join() === "국립중앙도서관", JSON.stringify(one))
 		const none = await tb.searchBooks("9780000000002")
 		assert(none.books.length === 0)
 	})
 	assert(new URL(m.calls.find((c) => c.includes("nl.go.kr"))!).searchParams.get("isbn") === "9791169513371")
-	assert(new URL(m.calls.find((c) => c.includes("kakao.com"))!).searchParams.get("target") === "isbn")
 	assert(tb.isbnQuery("쎈 1-1") === null && tb.isbnQuery("9791169513371") === "9791169513371")
 })
 

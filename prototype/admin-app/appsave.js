@@ -475,6 +475,8 @@ async function appSaveSend(conn, DB, opts) {
 				row.id = r.id
 			}
 			if (r.row && r.row.notion_edited_at) row._edited = r.row.notion_edited_at
+			/* (261123 출시 전 5번) 노션엔 저장됐고 앱 사본만 못 맞춘 줄: 성공으로 이어 가고(새 id는 위에서 바꿈 — 다시 만들지 않음) 안내만 남긴다 */
+			if (r.warn) out.warn.push({ coll, name: row.name || "", error: r.warn })
 			if (!ref.partial) { if (coll === "seasons") delete row.dirty; if (row.state === "draft") row.state = "saved" }
 			else if (coll === "seasons") row.dirty = true
 			else row.state = "draft"

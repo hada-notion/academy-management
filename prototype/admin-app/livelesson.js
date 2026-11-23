@@ -59,13 +59,17 @@ function liveLessonReset() {
 }
 async function liveLessonApi(body) {
   const c = window.LIVE;
-  const res = await fetch(String(c.url).replace(/\/+$/, "") + "/functions/v1/class-room", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-admin-key": c.session, Authorization: "Bearer " + c.anonKey, apikey: c.anonKey },
-    body: JSON.stringify(body),
-  });
+  let res;
+  try {
+    res = await fetch(String(c.url).replace(/\/+$/, "") + "/functions/v1/class-room", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-key": c.session, Authorization: "Bearer " + c.anonKey, apikey: c.anonKey },
+      body: JSON.stringify(body),
+    });
+  } catch (_) { const e = new Error("서버에 연결하지 못했어요(인터넷 · 서버 상태 확인)"); e.body = {}; e.status = 0; throw e; }
   const out = await res.json().catch(() => null);
-  if (!res.ok || !out || out.error) throw new Error((out && out.error) || "요청 실패 (" + res.status + ")");
+  /* (261123 출시 전 4번) 일부만 실패하면 서버가 502 + 된 줄(savedIds · records · sessionId) · 안 된 줄(failed)을 함께 준다 — 오류에 붙여 둔다 */
+  if (!res.ok || !out || out.error) { const e = new Error((out && out.error) || "요청 실패 (" + res.status + ")"); e.body = out || {}; e.status = res.status; throw e; }
   return out;
 }
 /* 하루 수업을 받아 시간표와 잇는다: 클래스 + 요일 + 시작 시각이 같은 시간표. 시각만 다르면 그 반 그 요일에 하나뿐인 시간표에 잇는다 */
@@ -303,32 +307,83 @@ async function liveLessonSave(k) {
   if (!n) { toast("저장할 것이 없어요"); return false; }
   if (window._liveLessonSaving) return false;
   window._liveLessonSaving = true;
+  liveLessonSave.failed = false; liveLessonSave.fails = [];
   toast("노션에 저장하는 중이에요");
   const done = [], fail = [];
   const step = async (what, fn) => { try { await fn(); done.push(what); return true; } catch (e) { fail.push(what + " — " + e.message); return false; } };
   const V = { at: Date.now(), rec: {}, att: {}, rt: {}, notice: null }; /* 저장 성공한 것만 모은다(LIVE_SAVED) */
+  /* (261123 출시 전 1번) 된 것만 따로 센다 — 일부가 실패하면 그 수업을 노션 값으로 다시 받지 않고(받으면 실패한 입력이 지워짐) 된 것만 기준 값을 새로 적는다 */
+  const okAtt = new Set(), okAct = new Set(), okRec = new Set(), madeRec = {}; let okNotice = false, okRt = false;
+  /* 여러 명 저장(출결 · 학생별 결과): 서버가 일부만 실패하면 502 + savedIds · failed(출시 전 4번) — 된 줄만 성공으로 */
+  const many = async (what, action, items, key, okSet) => {
+    let bad = 0, why = "";
+    for (let i = 0; i < items.length; i += 60) {
+      const part = items.slice(i, i + 60);
+      try { await liveLessonApi({ action, items: part }); part.forEach((it) => okSet.add(it[key])); }
+      catch (e) {
+        const saved = new Set((e.body && e.body.savedIds) || []);
+        part.forEach((it) => { if (saved.has(it[key])) okSet.add(it[key]); else bad++; });
+        const f0 = e.body && Array.isArray(e.body.failed) && e.body.failed[0];
+        why = why || (f0 && f0.error) || e.message;
+      }
+    }
+    if (bad < items.length) done.push(`${what} ${items.length - bad}건`);
+    if (bad) fail.push(`${what} ${items.length}건 중 ${bad}건 — ${why}`);
+  };
   try {
-    if (P.att.length) { if (await step(`출결 ${P.att.length}명`, async () => { for (let i = 0; i < P.att.length; i += 60) await liveLessonApi({ action: "save-attendance", items: P.att.slice(i, i + 60) }); })) P.att.forEach((a) => { if (a.status !== undefined) V.att[a.attendanceId] = a.status; }); }
-    if (P.notice !== null) { if (await step("수업 안내 메모", () => liveLessonApi({ action: "update-session", sessionId: L.id, notice: P.notice }))) V.notice = P.notice; }
-    for (const u of P.recUpd) { if (await step("학습기록", () => liveLessonApi({ action: "update-record", ...u }))) V.rec[u.recordId] = { range: u.range, content: u.content, bookId: u.bookId }; }
+    if (P.att.length) { await many("출결", "save-attendance", P.att, "attendanceId", okAtt); P.att.forEach((a) => { if (a.status !== undefined && okAtt.has(a.attendanceId)) V.att[a.attendanceId] = a.status; }); }
+    if (P.notice !== null) { if (await step("수업 안내 메모", () => liveLessonApi({ action: "update-session", sessionId: L.id, notice: P.notice }))) { V.notice = P.notice; okNotice = true; } }
+    for (const u of P.recUpd) { if (await step("학습기록", () => liveLessonApi({ action: "update-record", ...u }))) { V.rec[u.recordId] = { range: u.range, content: u.content, bookId: u.bookId }; okRec.add(u.recordId); } }
     for (const x of P.recNew) await step(`새 ${x.rec.kind} 기록`, async () => {
-      const res = await liveLessonApi({ action: "create-records", ...x.body });
+      let res;
+      try { res = await liveLessonApi({ action: "create-records", ...x.body }); }
+      catch (e) { const r0 = ((e.body && e.body.records) || []).find((r) => r.id); if (r0) madeRec[x.rec.id] = r0.id; throw e; } /* 일부만 만들어졌으면 그 id로 이어 감(다시 만들지 않음) */
       const made = (res.records || res.results || []).find((r) => r.created !== false) || (res.records || res.results || [])[0];
+      if (made && made.id) madeRec[x.rec.id] = made.id;
       /* 과제 · 평가는 학생별 학습활동을 만들어 둔다(서버가 뒤에서 만든다 — 학생별 결과는 다음 저장에) */
       if (made && made.id && (x.rec.kind === "과제" || x.rec.kind === "평가")) await liveLessonApi({ action: "create-activities", recordId: made.id });
     });
-    if (P.acts.length) await step(`학생별 결과 ${P.acts.length}건`, async () => { for (let i = 0; i < P.acts.length; i += 60) await liveLessonApi({ action: "save-activities", items: P.acts.slice(i, i + 60) }); });
-    if (P.routines.length) { if (await step(`루틴 체크 ${P.routines.length}건`, async () => { for (let i = 0; i < P.routines.length; i += 60) await liveLessonApi({ action: "save-routines", items: P.routines.slice(i, i + 60) }); })) P.routines.forEach((c) => { V.rt[c.checkId] = !!c.done; }); }
+    if (P.acts.length) await many("학생별 결과", "save-activities", P.acts, "activityId", okAct);
+    if (P.routines.length) { if (await step(`루틴 체크 ${P.routines.length}건`, async () => { for (let i = 0; i < P.routines.length; i += 60) await liveLessonApi({ action: "save-routines", items: P.routines.slice(i, i + 60) }); })) { P.routines.forEach((c) => { V.rt[c.checkId] = !!c.done; }); okRt = true; } }
     LIVE_SAVED[k] = V; /* 다시 받을 때 이 값을 기준으로(60초) */
-    if (!fail.length) LDIRTY.delete(k);
-    delete LIVE_LS[k]; delete LIVE_LN[k]; delete LIVE_LD[k.split("|")[1]]; /* 그 수업 · 그날을 노션 값으로 다시 받는다 */
+    const newHw = P.recNew.some((x) => x.rec.kind !== "학습");
+    if (!fail.length) {
+      LDIRTY.delete(k);
+      delete LIVE_LS[k]; delete LIVE_LN[k]; delete LIVE_LD[k.split("|")[1]]; /* 그 수업 · 그날을 노션 값으로 다시 받는다 */
+    } else liveLessonKeepFailed(k, S, P, { okAtt, okAct, okRec, madeRec, okNotice, okRt });
     if (window.liveRoReset) window.liveRoReset();
     try { undoStack.length = 0; if (typeof redoStack !== "undefined") redoStack = []; lastSnap = snapshot(); } catch (_) {}
     render();
-    const newHw = P.recNew.some((x) => x.rec.kind !== "학습");
-    toast(fail.length ? `일부만 저장했어요 — ${fail.join(" · ")}` : `노션에 저장했어요 · ${done.join(" · ")}${newHw ? " — 학생별 결과는 잠시 뒤 다시 열어 적어요" : ""}`);
+    liveLessonSave.failed = fail.length > 0; liveLessonSave.fails = fail.slice();
+    toast(fail.length ? `${done.length ? "일부만 저장했어요" : "저장하지 못했어요"} — 못 한 것은 작성 중으로 남겼어요(다시 [저장]) · ${fail.join(" · ")}` : `노션에 저장했어요 · ${done.join(" · ")}${newHw ? " — 학생별 결과는 잠시 뒤 다시 열어 적어요" : ""}`);
     return !fail.length;
   } finally { window._liveLessonSaving = false; }
+}
+/* (261123 출시 전 1번) 수업 저장이 일부 실패했을 때: 입력은 그대로 두고(다시 받지 않음) 된 것만 "저장됨" 기준으로 옮긴다.
+   그래서 작성 중 표시 · 위 [저장] 수에는 실패한 것만 남고, 다시 [저장]하면 실패한 것만 다시 나간다. */
+function liveLessonKeepFailed(k, S, P, ok) {
+  const B = LDIRTY.get(k), sidOf = (aid) => Object.keys(S.att).find((sid) => S.att[sid] === aid);
+  const t0 = S._times0 ? JSON.parse(S._times0) : {};
+  P.att.forEach((a) => {
+    const sid = sidOf(a.attendanceId); if (!sid || !ok.okAtt.has(a.attendanceId)) return;
+    if (B && B.att && a.status !== undefined) { const ak = k + "|" + sid; if (ak in DB.att) B.att[sid] = DB.att[ak]; else delete B.att[sid]; }
+    if (a.arrivedAt !== undefined || a.leftAt !== undefined) t0[sid] = Object.assign({}, S.times[sid] || {});
+    if (a.comment !== undefined || a.memo !== undefined) (DB.anotes || []).forEach((n) => { if (n.key === k && n.sid === sid && n.state === "draft") n.state = "saved"; });
+  });
+  S._times0 = JSON.stringify(t0);
+  if (ok.okNotice && S.info) S._notice0 = S.info.notice || "";
+  if (ok.okRt && S.routines) (S.routines.checks || []).forEach((c) => { if (S._rt0 && c.checkId in S._rt0) S._rt0[c.checkId] = !!c.done; });
+  (DB.recs || []).forEach((r) => {
+    if (r.key !== k || r.state !== "draft" || r.del) return;
+    const newId = ok.madeRec[r.id];
+    if (newId) { S.recIds.add(newId); r.id = newId; r.state = "saved"; return; } /* 새 기록: 노션에 만든 id로(다시 만들지 않음) */
+    if (!S.recIds.has(r.id)) return; /* 못 만든 새 기록 — 작성 중 그대로 */
+    const base = r._actBase ? JSON.parse(r._actBase) : {};
+    let actFail = false;
+    Object.entries(r._act || {}).forEach(([sid, id]) => { if (ok.okAct.has(id)) base[sid] = JSON.parse(JSON.stringify((r.acts || {})[sid] || {})); else if (P.acts.some((a) => a.activityId === id)) actFail = true; });
+    r._actBase = JSON.stringify(base);
+    if (ok.okRec.has(r.id) && !actFail) r.state = "saved";
+  });
 }
 /* ───── 보강(261119 (가)) ───── */
 const liveNorm = (v) => String(v || "").replace(/-/g, "").toLowerCase();
@@ -416,11 +471,13 @@ function liveMakeupPlan() {
 }
 async function liveMakeupSave() {
   const P = liveMakeupPlan(), n = P.create.length + P.assign.length + P.unlink.length + P.del.length + P.att.length;
+  liveMakeupSave.failed = false; liveMakeupSave.fails = [];
   if (!n) { if (P.skip.length) toast(P.skip.join(" · ")); return 0; }
   const done = [], fail = [], made = new Set();
   const step = async (what, fn) => { try { await fn(); done.push(what); return true; } catch (e) { fail.push(what + " — " + e.message); return false; } };
   if (P.att.length) await step(`보강 여부 · 보강 출결 ${P.att.length}건`, async () => { for (let i = 0; i < P.att.length; i += 60) await liveLessonApi({ action: "save-attendance", items: P.att.slice(i, i + 60) }); });
-  for (const x of P.create) if (await step("새 보강", () => liveLessonApi({ action: "create-makeup-session", ...x.body }))) made.add(x.mk.id);
+  /* (261123 출시 전 4번) 보강 수업은 만들었고 배정 일부만 실패하면 서버가 sessionId를 준다 — 이미 노션에 있으니 앱의 새 보강은 버리고 서버 것을 다시 받는다(다시 만들지 않음). 못 이은 결석은 보강 대기에 남는다 */
+  for (const x of P.create) if (await step("새 보강", async () => { try { await liveLessonApi({ action: "create-makeup-session", ...x.body }); } catch (e) { if (e.body && e.body.sessionId) made.add(x.mk.id); throw e; } })) made.add(x.mk.id);
   for (const x of P.assign) await step("보강 배정", () => liveLessonApi({ action: "assign-makeup", ...x }));
   for (const x of P.unlink) await step("보강에서 빼기", () => liveLessonApi({ action: "unlink-makeup", ...x }));
   for (const x of P.del) await step("보강 지우기", () => liveLessonApi({ action: "delete-makeup-session", ...x }));
@@ -431,6 +488,7 @@ async function liveMakeupSave() {
   try { [...LDIRTY.keys()].forEach((k) => { if (k.startsWith("mk:")) LDIRTY.delete(k); }); } catch (_) {}
   LIVE_MW.state = ""; liveMakeupLoad();
   Object.keys(LIVE_MKD).forEach((d) => { delete LIVE_LD[d]; delete LIVE_MKD[d]; });
+  liveMakeupSave.failed = fail.length > 0; liveMakeupSave.fails = fail.slice();
   toast(fail.length ? `보강 일부만 저장했어요 — ${fail.join(" · ")}` : `보강을 노션에 저장했어요 · ${done.join(" · ")}${P.unlink.length || P.del.length ? " — 빼기 · 지우기는 노션이 차례로 처리해요(잠시 뒤 반영)" : ""}`);
   return done.length;
 }

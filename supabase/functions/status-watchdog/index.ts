@@ -53,6 +53,7 @@ import { CLASS_LETTER_GEN_STATUS_SPEC, CLASS_TUITION_GEN_STATUS_SPEC } from "../
 import { TIMETABLE_NOTICE_STATUS_SPEC } from "../_shared/timetableNotice.ts"
 import { REGISTRATION_NOTICE_STATUS_SPEC } from "../_shared/registrationNotice.ts"
 import { resolveMenuDataSourceId } from "../_shared/menuDataSource.ts"
+import { liveSweepDeps, sweepStaleRequests } from "../_shared/notionRequests.ts"
 
 // 메뉴(학원) DB는 전용 Secret이 없다. 이 워치독은 그 안의 "시간표" 단일 행만 상태 관리 대상이다.
 // 예전에는 원본 데이터소스 id를 여기 직접 적어 운영 학원에서는 매번 실패했다. 이제 실행할 때
@@ -176,7 +177,14 @@ Deno.serve(async (req) => {
 		}
 	}
 
-	return new Response(JSON.stringify({ ok: true, results }, null, 2), {
+	// (261123 출시 전 2번) 노션 버튼 `요청` 칸이 "🔄 처리 중"에서 멈춘 줄 → ⚠️ 실패(요청 칸 DB만, _shared/notionRequests.ts).
+	let requests: { recovered: number; ids: string[]; sources: number } | { error: string }
+	try { requests = await sweepStaleRequests(liveSweepDeps, staleMinutesOverride ?? 15) } catch (err) {
+		console.error("[status-watchdog] 요청 칸 sweep 실패:", (err as Error).message)
+		requests = { error: (err as Error).message.slice(0, 200) }
+	}
+
+	return new Response(JSON.stringify({ ok: true, results, requests }, null, 2), {
 		status: 200,
 		headers: {
 			"Content-Type": "application/json",

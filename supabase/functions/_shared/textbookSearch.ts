@@ -2,10 +2,10 @@
 //
 // 라이브러리(library.html → textbook-api, v2.5.118). 책을 찾고, 고른 책을 Notion 라이브러리(학원) DB에
 // 한 권 만들고 목차에서 고친 단원을 단원목록 DB에 만든다.
-//   - 책 정보(v2.5.120): 국립중앙도서관 ISBN 서지정보(NL_CERT_KEY) + 카카오 책 검색(KAKAO_REST_KEY). _shared/bookSources.ts.
+//   - 책 정보(v2.5.120): 국립중앙도서관 ISBN 서지정보(NL_CERT_KEY, 카카오는 v2.8.0 항목 113에서 뺌). _shared/bookSources.ts.
 //     알라딘 OpenAPI는 2026-10-30 종료로 쓰지 않는다.
 //   - DB 위치: 진도교재 DB의 "라이브러리"(옛 이름 "정규교재") 관계 → 라이브러리 DB, 그 "단원목록" 관계 → 단원목록 DB(새 Notion ID 설정 없음).
-//   - 북커버: 메뉴얼 7-6 규칙대로 ISBN13으로 만든 교보문고 이미지 주소. 화면에서 열리지 않으면 국립중앙도서관·카카오 표지,
+//   - 북커버: 메뉴얼 7-6 규칙대로 ISBN13으로 만든 교보문고 이미지 주소. 화면에서 열리지 않으면 국립중앙도서관 표지,
 //     그것도 없으면 넣지 않는다(화면이 고른 결과를 cover: "kyobo" | "alt" | "none"으로 보낸다).
 //   - 출판사·시리즈: 이미 있는 선택지와 맞을 때만 넣는다(DB 선택지를 새로 만들지 않는다).
 //   - 같은 ISBN13이 라이브러리에 있으면 "등록됨"으로 보여 주고 다시 만들지 않는다.
@@ -78,8 +78,8 @@ async function registeredIsbns(isbns: string[]): Promise<Set<string>> {
 }
 
 // ---------- 동작 ----------
-// 검색: ISBN13(하이픈·띄어쓰기 허용)이면 그 책 한 권, 아니면 교재명으로 국립중앙도서관·카카오를 함께 찾아
-// 하나의 목록으로(같은 ISBN13은 한 번만, 국립중앙도서관 값 우선).
+// 검색: ISBN13(하이픈·띄어쓰기 허용)이면 그 책 한 권, 아니면 교재명으로 국립중앙도서관에서 찾아
+// 하나의 목록으로(같은 ISBN13은 한 번만).
 export const isbnQuery = (q: string) => { const d = q.replace(/[-s]/g, ""); return isIsbn13(d) ? d : null }
 export async function searchBooks(query: unknown) {
 	const q = String(query ?? "").trim()
@@ -93,7 +93,7 @@ export async function searchBooks(query: unknown) {
 async function lookup(isbn13: string): Promise<Book> {
 	if (!isIsbn13(isbn13)) throw new TextbookError(400, "ISBN13 형식이 올바르지 않습니다.")
 	const book = await fromSource(() => lookupIsbn(isbn13))
-	if (!book) throw new TextbookError(404, "국립중앙도서관·카카오에서 이 교재를 찾지 못했습니다.")
+	if (!book) throw new TextbookError(404, "국립중앙도서관에서 이 교재를 찾지 못했습니다.")
 	return book
 }
 
@@ -157,7 +157,7 @@ export async function registerBook(body: any) {
 	const isbn13 = String(body?.isbn13 ?? "")
 	const book = await lookup(isbn13)
 	const name = String(body?.title ?? "").replace(/\s+/g, " ").trim().slice(0, 200) || book.title
-	// cover: "kyobo"(기본) | "alt"(국립중앙도서관·카카오 표지) | "none". 옛 화면의 noCover도 받는다.
+	// cover: "kyobo"(기본) | "alt"(국립중앙도서관 표지) | "none". 옛 화면의 noCover도 받는다.
 	const choice = body?.noCover ? "none" : String(body?.cover ?? "kyobo")
 	const cover = choice === "none" ? "" : choice === "alt" ? book.altCover : coverUrl(isbn13)
 	return await createLibraryBook({ name, isbn13, price: book.price, pages: book.pages, cover, publisher: book.publisher, seriesHint: book.series, units: body?.units, seriesPick: await pickOption(body?.series, "series"), publisherPick: await pickOption(body?.publisher, "publishers") })

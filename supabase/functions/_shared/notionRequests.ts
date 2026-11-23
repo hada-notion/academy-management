@@ -160,9 +160,11 @@ export async function handleRequest(page: Page, req: { id: string; ids: string[]
 	// 노션 자동화 웹훅과 같은 모양: { source, data: 페이지 }. 요청 칸은 접수 전 값(동작 ID) 그대로 둔다.
 	const body = JSON.stringify({ source: { type: "notion-events", request: req.id }, data: page })
 	await deps.patch(page.id, { [REQUEST_PROP]: selectProp(STATE_RUNNING), [RESULT_PROP]: textProp(`${STATE_RUNNING} · ${label} · ${kst(t0)} 접수`) })
+	// (261123 출시 전 2번) 여기부터는 무엇이 실패해도 요청 칸을 "처리 중"에 두지 않는다 — 처리 중은 요청이 아니라서(requestOf)
+	// 대기열이 다시 돌아도 건너뛰고, 사람은 실제로 돌았는지 알 수 없다. 넘기기 예외는 status 0(넘기지 못함)으로 본다.
 	const results: ForwardResult[] = await Promise.all(req.ids.map(async (id) => {
 		const route = routeById(id)!
-		const r = await deps.forward(route, body)
+		const r = await deps.forward(route, body).catch((err) => ({ status: 0, error: (err as Error)?.message ?? String(err) } as { status: number; text?: string; error?: string }))
 		const out: ForwardResult = { id, status: r.status }
 		if (isForwardFailure(r.status)) {
 			out.error = r.error ?? (reasonOf(r.text) || `HTTP ${r.status}`)
@@ -176,7 +178,9 @@ export async function handleRequest(page: Page, req: { id: string; ids: string[]
 		return out
 	}))
 	// 다시 읽어: 그 사이 새 요청이 들어왔나 · 바로 답한 함수(200)가 줄을 ⚠️ 오류로 끝냈나.
-	const now = await deps.readPage(page.id)
+	// 다시 읽기가 실패하면(노션 오류·시간 초과) 새 요청은 없다고 보고 마무리한다 — 처리 중에 남기는 것보다 낫다.
+	let now: Page | null = null, readFailed = false
+	try { now = await deps.readPage(page.id) } catch (err) { readFailed = true; deps.log(`[notionRequests] ${page.id.slice(-6)} 다시 읽기 실패(마무리는 함): ${(err as Error).message}`) }
 	const failed = results.filter((r) => r.error)
 	// (261123 원본 실측) 함수는 예시 데이터가 모자라면 실패로 답하지 않고 줄의 `상태` = ⚠️ 오류 · `마지막 오류`에 이유를 쓴다
 	// (예: 시험 기간 연결 "학교와 시험을 먼저 고르세요."). 요청 칸이 ✅ 완료면 사람이 놓치므로, 바로 처리하는 함수(200 — 큐에
@@ -196,10 +200,73 @@ export async function handleRequest(page: Page, req: { id: string; ids: string[]
 		: `${STATE_FAILED} · ${why} · ${kst(deps.now())}`
 	// 그 사이 새 요청이 들어왔으면 요청 칸은 그대로 두고 결과만.
 	const cur = propText(now?.properties?.[REQUEST_PROP]).trim()
-	const overwritten = cur !== STATE_RUNNING
-	await deps.patch(page.id, overwritten ? { [RESULT_PROP]: textProp(resultText) } : { [REQUEST_PROP]: selectProp(state), [RESULT_PROP]: textProp(resultText) })
+	const overwritten = !readFailed && cur !== STATE_RUNNING
+	try {
+		await deps.patch(page.id, overwritten ? { [RESULT_PROP]: textProp(resultText) } : { [REQUEST_PROP]: selectProp(state), [RESULT_PROP]: textProp(resultText) })
+	} catch (err) {
+		// 마지막 쓰기가 실패하면 한 번 더(긴 글이 문제일 수 있어 짧게). 그래도 안 되면 감시(sweepStaleRequests)가 15분 뒤 ⚠️ 실패로.
+		deps.log(`[notionRequests] ${page.id.slice(-6)} 마지막 쓰기 실패, 다시 씀: ${(err as Error).message}`)
+		const short = `${state} · ${label} · ${kst(deps.now())}`
+		await deps.patch(page.id, overwritten ? { [RESULT_PROP]: textProp(short) } : { [REQUEST_PROP]: selectProp(state), [RESULT_PROP]: textProp(short) })
+	}
 	deps.log(`[notionRequests] ${page.id.slice(-6)} ${req.ids.join(",")} → ${state} ${sec}s${rowError ? " (줄 ⚠️ 오류)" : ""}${overwritten ? " (새 요청 있음)" : ""}`)
 	return { state, ids: req.ids, results, ms, overwritten }
+}
+
+// ---------- 자동 재시도 결과를 요청 칸에 (261123 출시 전 3번) ----------
+// 넘기기가 실패하면 요청 칸은 "⚠️ 실패 … 자동으로 다시 넘기고 있어요"다. 다시 넘기기(webhookRouter processRouterRetryItem)가
+// 끝나면 그 결과로 바꾼다: 성공 = ✅ 완료 + "(자동 재시도)", 함수가 4xx로 거절 = ⚠️ 실패 + 그 이유(더는 다시 넘기지 않으니).
+// 요청 칸이 지금 ⚠️ 실패일 때만 쓴다 — 그사이 사람이 다시 눌렀으면(새 요청·처리 중·완료) 건드리지 않는다.
+// 이 쓰기가 실패해도 throw하지 않는다(던지면 큐가 같은 동작을 한 번 더 넘긴다).
+export function isNotionEventsBody(body: string | undefined): boolean {
+	try { return JSON.parse(body ?? "")?.source?.type === "notion-events" } catch { return false }
+}
+export async function finishRetriedRequest(pageId: string, id: string, r: { status: number; text?: string }, deps: Pick<RequestDeps, "readPage" | "patch" | "now" | "log">): Promise<"done" | "failed" | "skip"> {
+	try {
+		const page = await deps.readPage(pageId)
+		if (propText(page?.properties?.[REQUEST_PROP]).trim() !== STATE_FAILED) return "skip"
+		const ok = r.status < 400
+		const text = ok
+			? `${STATE_DONE}(자동 재시도) · ${names([id])} · ${kst(deps.now())}${noteOf(r.text) ? ` · ${noteOf(r.text)}` : ""}`
+			: `${STATE_FAILED} · ${names([id])} — ${readableReason(r.status, reasonOf(r.text) || `HTTP ${r.status}`, false)} · ${kst(deps.now())}`
+		await deps.patch(pageId, ok ? { [REQUEST_PROP]: selectProp(STATE_DONE), [RESULT_PROP]: textProp(text) } : { [RESULT_PROP]: textProp(text) })
+		deps.log(`[notionRequests] ${pageId.slice(-6)} ${id} 자동 재시도 → ${ok ? STATE_DONE : STATE_FAILED}`)
+		return ok ? "done" : "failed"
+	} catch (err) {
+		deps.log(`[notionRequests] ${pageId.slice(-6)} 자동 재시도 결과 쓰기 실패: ${(err as Error).message}`)
+		return "skip"
+	}
+}
+
+// ---------- 오래된 "처리 중" 회수 (261123 출시 전 2번) ----------
+// 함수가 통째로 죽으면(실행 시간 한도 등) 위 마무리도 못 한다. 감시(status-watchdog, 5분마다)가 요청 칸이 있는 DB
+// (처리기가 기억한 notion_request_sources)에서 `요청` = 처리 중이고 staleMinutes분 넘게 아무도 고치지 않은 줄을 ⚠️ 실패로 바꾼다.
+// 기준은 줄의 마지막 수정 시각(처리 중을 쓴 때 · 그 뒤 함수가 쓴 때) — 아직 일하는 함수가 줄을 고치면 그만큼 늦게 본다.
+export interface SweepDeps {
+	sources(): Promise<string[]>
+	query(ds: string, filter: Record<string, unknown>): Promise<{ id: string }[]>
+	patch(pageId: string, props: Record<string, unknown>): Promise<void>
+	now(): number
+	log(msg: string): void
+}
+export const STALE_REQUEST_TEXT = "처리 중에 서버가 끝을 알리지 못했어요(15분 넘음). 실제로 됐는지 이 줄의 상태 칸을 보고, 안 됐으면 다시 눌러 주세요"
+export async function sweepStaleRequests(deps: SweepDeps, staleMinutes = 15): Promise<{ recovered: number; ids: string[]; sources: number }> {
+	const ids: string[] = []
+	const sources = await deps.sources()
+	const before = new Date(deps.now() - staleMinutes * 60_000).toISOString()
+	const filter = { and: [{ property: REQUEST_PROP, select: { equals: STATE_RUNNING } }, { timestamp: "last_edited_time", last_edited_time: { before } }] }
+	for (const ds of sources) {
+		let rows: { id: string }[] = []
+		try { rows = await deps.query(ds, filter) } catch (err) { deps.log(`[notionRequests] 감시: ${ds.slice(-6)} 찾기 실패 ${(err as Error).message}`); continue }
+		for (const r of rows) {
+			try {
+				await deps.patch(r.id, { [REQUEST_PROP]: selectProp(STATE_FAILED), [RESULT_PROP]: textProp(`${STATE_FAILED} · ${STALE_REQUEST_TEXT} · ${kst(deps.now())}`) })
+				ids.push(r.id)
+			} catch (err) { deps.log(`[notionRequests] 감시: ${r.id.slice(-6)} 쓰기 실패 ${(err as Error).message}`) }
+		}
+	}
+	if (ids.length) deps.log(`[notionRequests] 감시: 오래된 처리 중 ${ids.length}줄 → ${STATE_FAILED}`)
+	return { recovered: ids.length, ids, sources: sources.length }
 }
 
 // ---------- 실제 바깥 일 ----------
@@ -237,6 +304,25 @@ export const liveRequestDeps: RequestDeps = {
 		await enqueueSync("notion-router-retry", { id, pageId, body, firstError })
 		wakeSyncQueueWorker()
 	},
+	now: () => Date.now(),
+	log: (m) => console.log(m),
+}
+
+export const liveSweepDeps: SweepDeps = {
+	async sources() {
+		const { fetchSupabaseWithRetry } = await import("./reportCacheShared.ts")
+		const env = (globalThis as any).Deno.env
+		const url = String(env.get("SB_URL") ?? "").replace(/\/$/, ""), key = env.get("SB_SERVICE_ROLE_KEY") ?? ""
+		if (!url) return []
+		const res = await fetchSupabaseWithRetry(`${url}/rest/v1/notion_request_sources?has_request=eq.true&select=id`, { headers: { apikey: key, Authorization: `Bearer ${key}` } })
+		if (!res.ok) throw new Error(`요청 칸 DB 목록 읽기 실패: ${res.status}`)
+		return ((await res.json()) as { id: string }[]).map((r) => r.id)
+	},
+	async query(ds, filter) {
+		const { queryAllPages } = await import("./notionClient.ts")
+		return await queryAllPages(ds, filter) as { id: string }[]
+	},
+	patch: liveRequestDeps.patch,
 	now: () => Date.now(),
 	log: (m) => console.log(m),
 }

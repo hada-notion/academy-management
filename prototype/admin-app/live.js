@@ -542,19 +542,20 @@ async function liveSave(opts) { /* opts.only(coll,row) = 이 줄만 저장(창 [
   try {
     if (window.LIVE_OPTS_PENDING && window.LIVE_OPTS_PROMISE) { toast("노션 선택지를 불러온 뒤에 저장해요"); await window.LIVE_OPTS_PROMISE; } /* 선택지에 없는 값을 거르려면 선택지가 먼저 필요(저장 층이 읽음) */
     /* 수업 출결(작성 중인 수업)이 있으면 먼저 수업 관리 서버로 보낸다(출결 쓰기 칸이 켜져 있을 때) */
-    let lessons = 0;
+    /* (261123 출시 전 1번) 수업 저장이 실패한 것(lfails)은 아래 앱 저장이 "저장할 변경이 없어요" · "저장했어요"로 덮지 않고, 그 수업 작성 중 표시(LDIRTY)도 지우지 않는다 */
+    let lessons = 0; const lfails = [], keepL = new Set();
     if (!opts.only && (window.LIVE_ATTW || window.LIVE_RECW) && typeof liveLessonSave === "function") {
       /* 작성 중인 수업 = 수업 창 표시(LDIRTY) + 학습기록 쓰기 칸이면 작성 중 기록이 있는 수업(Z1) — 실제 수업(LIVE_LS)만 */
       const ks = new Set([...LDIRTY.keys()].filter((k) => !k.startsWith("mk:")));
       if (window.LIVE_RECW) (DB.recs || []).forEach((r) => { if (r.state === "draft" && !r.del && r.key && typeof LIVE_LS !== "undefined" && LIVE_LS[r.key]) ks.add(r.key); });
       if (window.LIVE_RECW && typeof liveRoutineDirtyKeys === "function") liveRoutineDirtyKeys().forEach((k) => ks.add(k)); /* 루틴 체크만 바뀐 수업 */
-      for (const k of ks) { if (await liveLessonSave(k)) lessons++; }
+      for (const k of ks) { if (await liveLessonSave(k)) lessons++; else if (liveLessonSave.failed) { keepL.add(k); lfails.push(...(liveLessonSave.fails || [])); } }
     }
     /* 보강(칸 P3m): 만들기 · 배정 · 빼기 · 지우기를 서버 보강 동작으로 */
-    if (!opts.only && window.LIVE_MKW && typeof liveMakeupSave === "function") lessons += await liveMakeupSave();
+    if (!opts.only && window.LIVE_MKW && typeof liveMakeupSave === "function") { lessons += await liveMakeupSave(); if (liveMakeupSave.failed) lfails.push(...(liveMakeupSave.fails || [])); }
     let pend = 0; try { pend = appSaveCollect(DB, opts.only).changes.length; } catch (_) {}
-    if (lessons && !pend) return { ok: 0, failed: [], lessons };
-    return await liveSaveRun(opts);
+    if ((lessons || lfails.length) && !pend) return { ok: 0, failed: [], lessons, lessonFailed: lfails };
+    return await liveSaveRun(Object.assign({}, opts, { keepL, lessonFails: lfails }));
   } finally { window._liveSaving = false; }
 }
 async function liveSaveRun(opts) {
@@ -572,7 +573,7 @@ async function liveSaveRun(opts) {
   try { (typeof tabs !== "undefined" ? tabs : []).forEach((t) => fix(t.state)); if (typeof activeTab !== "undefined" && activeTab) fix(activeTab.state); } catch (_) {}
   DB.blocks.forEach((b) => { delete b.t0; delete b.regs0; delete b.ending; delete b.addFrom; delete b.moveN; try { tSnap(b); } catch (_) {} });
   try { UNLOCKED.clear(); ORIG.clear(); } catch (_) {}
-  if (!res.failed.length) { try { LDIRTY.clear(); } catch (_) {} }
+  if (!res.failed.length) { try { const keep = (opts && opts.keepL) || new Set(); [...LDIRTY.keys()].forEach((k) => { if (!keep.has(k)) LDIRTY.delete(k); }); } catch (_) {} }
   /* 저장 뒤 실행 취소로 옛 id가 되살아나지 않게 되돌리기 기록을 비운다 */
   try { undoStack.length = 0; if (typeof redoStack !== "undefined") redoStack.length = 0; lastSnap = snapshot(); } catch (_) {}
   try { if (window.liveSelBack) window.liveSelBack(); } catch (_) {}
@@ -580,11 +581,12 @@ async function liveSaveRun(opts) {
   const warn = (res.warn || []).length;
   /* 저장 버튼 규칙(대표 261119): 서버 반영이 끝난 뒤 숫자를 줄이고, 실패한 줄은 이유와 함께 숫자에 남긴다. 바뀐 것이 없으면 "저장할 변경이 없어요" */
   let left = 0; try { left = dirtyCount(); } catch (_) {}
-  if (!res.failed.length && !warn) {
+  const lf = (opts && opts.lessonFails) || [];
+  if (!res.failed.length && !warn && !lf.length) {
     if (!res.ok && !res.sent) { say("저장할 변경이 없어요"); return res; }
     say(`저장했어요 · ${res.ok}줄${res.deleted ? ` (삭제 ${res.deleted}줄 포함)` : ""}${opts && opts.only && left ? ` · 저장할 것 ${left}개 남음(위 [저장])` : ""}`); return res;
   }
   const li = (a) => a.map((f) => `<li><b>${esc2(f.name || f.coll || "")}</b> — ${esc2(f.conflict ? "그사이 노션에서 바뀌었어요. 새로 고친 뒤 다시 저장해요" : f.error || f.msg || f)}</li>`).join("");
-  modal(`<h2>저장 결과</h2><div class="box"><p>노션에 저장 ${res.ok}줄${res.failed.length ? ` · 저장 안 됨 ${res.failed.length}줄(작성 중으로 남겼어요)` : ""}</p>${res.failed.length ? `<ul>${li(res.failed)}</ul>` : ""}${warn ? `<p class="hint">확인할 것 ${warn}건</p><ul>${li((res.warn || []).map((w) => (typeof w === "string" ? { error: w } : w)))}</ul>` : ""}</div><div class="actions"><span class="sp"></span><button class="btn pri" id="co">확인</button></div>`, (m, close) => { m.querySelector("#co").onclick = close; });
+  modal(`<h2>저장 결과</h2><div class="box"><p>노션에 저장 ${res.ok}줄${res.failed.length ? ` · 저장 안 됨 ${res.failed.length}줄(작성 중으로 남겼어요)` : ""}</p>${res.failed.length ? `<ul>${li(res.failed)}</ul>` : ""}${lf.length ? `<p>수업 저장 안 됨 ${lf.length}건(작성 중으로 남겼어요)</p><ul>${lf.map((t) => `<li>${esc2(t)}</li>`).join("")}</ul>` : ""}${warn ? `<p class="hint">확인할 것 ${warn}건</p><ul>${li((res.warn || []).map((w) => (typeof w === "string" ? { error: w } : w)))}</ul>` : ""}</div><div class="actions"><span class="sp"></span><button class="btn pri" id="co">확인</button></div>`, (m, close) => { m.querySelector("#co").onclick = close; });
   return res;
 }
