@@ -1,3 +1,4 @@
+import { externalKey } from "../_shared/externalKeys.ts"
 // 학교 DB ‘학사일정 가져오기’ 버튼 전용. 정기 스캔/다른 학교 실행 없음.
 import { CORS_HEADERS, requireAdminKey, getCurrentAdminKey } from "../_shared/adminShared.ts"
 import { queryAllPages, getPage, updatePageProperties } from "../_shared/notionClient.ts"
@@ -143,7 +144,7 @@ Deno.serve(async req=>{
   if(req.method!=="POST")return json({error:"POST required"},405)
   const denied=await requireAdminKey(req);if(denied)return denied
   try{
-    if(!Deno.env.get("NEIS_API_KEY"))return json({error:"NEIS_API_KEY 설정 필요"},503)
+    if(!(await externalKey("NEIS_API_KEY")))return json({error:"나이스 키(NEIS_API_KEY) 설정 필요 — 관리 앱 [관리자 설정] > 외부 키"},503)
     const body=await req.json()
     if(body.action==="continue"){
       if(!/^[0-9a-f-]{36}$/i.test(String(body.runId??"")))return json({error:"runId 형식 오류"},400)

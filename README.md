@@ -25,7 +25,7 @@ Notion 워크스페이스의 "📘 하다 학원관리 구조·실행 설명서"
 | DB 마이그레이션 | `supabase/migrations/*.sql` (pg_cron, sync_queue 등 포함) |
 | 학부모 리포트 웹앱 | `student_report.html`, `student_report_part1.js`, `student_report_part2.js` (GitHub Pages, 디자인 기준 화면) |
 | 출결 키오스크 웹앱 | `attendance_kiosk.html` → `list-students?kiosk=1`, `kiosk-checkin` (키오스크 전용 30일 로그인) |
-| 관리 화면 2개 | `legal_documents.html`(법정 서류 → `get-legal-document-data`), `school_search.html`(학교 검색 → `school-api`). 상단 메뉴로 같은 탭에서 오가고 로그인을 공유(`admin_auth.js`). 관리자 비밀번호 · 첫 설치 비밀번호 · 예시 데이터 비우기 · 라이브러리(책 찾기 · 단원 · 시리즈)는 관리 앱(`prototype/admin-app`)에서 한다 |
+| 관리 화면 | `legal_documents.html`(법정 서류 → `get-legal-document-data`). 로그인은 관리 앱과 같은 탭에서 공유(`admin_auth.js`). 관리자 비밀번호 · 첫 설치 비밀번호 · 예시 데이터 비우기 · 라이브러리(책 찾기 · 단원 · 시리즈) · 학교(나이스 학교 검색 → `school-api`, 학사일정 가져오기 → `sync-school-calendar`)는 관리 앱(`prototype/admin-app`)에서 한다 |
 | 공용 화면 스타일·메뉴 | `assets/hada-tokens.css`, `assets/hada-ui.css`, `assets/hada-shortcuts.js`. 규칙은 [`docs/DESIGN.md`](docs/DESIGN.md) |
 | 예약 실행(pg_cron) | 큐 워커(매분), 상태 워치독(15분), 동기화 실패 점검(30분), 과제 마감 백필(10분), 키오스크 오늘 출석 준비(매일 04:00 KST, `kiosk-prepare`). 모두 Vault `sync_queue_admin_key`로 인증 |
 | 워크플로 | `deploy-supabase-functions.yml`(함수·마이그레이션 자동 배포), `web-checks.yml`(화면·문서 PR 검사), `sync-attendance-incremental.yml`·`sync-attendance-reconcile.yml`(출석 전체 동기화, 수동 실행만) |

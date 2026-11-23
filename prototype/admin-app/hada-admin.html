@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리 앱 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3C%2Fsvg%3E">
-<link rel="stylesheet" href="hada-tokens.css?v=721">
-<link rel="stylesheet" href="app.css?v=721">
-<link rel="stylesheet" href="pick.css?v=721">
-<link rel="stylesheet" href="field.css?v=721">
+<link rel="stylesheet" href="hada-tokens.css?v=723">
+<link rel="stylesheet" href="app.css?v=723">
+<link rel="stylesheet" href="pick.css?v=723">
+<link rel="stylesheet" href="field.css?v=723">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -20,7 +20,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=721"><script src="hada-rules.js?v=721"></script><script src="help.js?v=721"></script><script src="alim-preview.js?v=721"></script><script src="pick.js?v=721"></script><script src="field.js?v=721"></script><script src="panel.js?v=721"></script>
+<link rel="stylesheet" href="alim.css?v=723"><script src="hada-rules.js?v=723"></script><script src="help.js?v=723"></script><script src="alim-preview.js?v=723"></script><script src="pick.js?v=723"></script><script src="field.js?v=723"></script><script src="panel.js?v=723"></script>
 <script>
 "use strict";
 
@@ -2181,7 +2181,7 @@ async function liveMenuPages(){if(_menuPages)return _menuPages;const c=window.LI
 /* 앱 전체의 노션 연결 한 곳: 사이드바 바깥 메뉴(매뉴얼 · 공개 DB · 비공개 DB · 키오스크) · 학생 보고서 [노션에서 열기] · 수업 페이지 링크 */
 const EXT_MENU={manual:"매뉴얼",pubdb:"공개 DB",privdb:"비공개 DB",files:"자료실"};
 /* 261120 대표: 저장소에 그대로 있는 기존 웹 화면으로 가는 바로가기(앱 폴더 prototype/admin-app 기준 ../../) — 새 탭 */
-const WEB_PAGES={kiosk:"attendance_kiosk.html",classroom:"class_room.html",school:"school_search.html",legal:"legal_documents.html"};/* 261123 대표: 관리자 설정 · 라이브러리 웹 화면은 없앰 — 모두 이 앱에서 */
+const WEB_PAGES={kiosk:"attendance_kiosk.html",classroom:"class_room.html",legal:"legal_documents.html"};/* 261123 대표: 관리자 설정 · 라이브러리 · 학교 검색 웹 화면은 없앰 — 모두 이 앱에서 */
 function openWebPage(k){const f=WEB_PAGES[k];if(!f)return;window.open(new URL("../../"+f,location.href).href,"_blank","noopener")}
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-web]");if(b)openWebPage(b.dataset.web)});
 async function liveOpenExt(key){const nm=EXT_MENU[key];let u="";try{u=(await liveMenuPages())[nm]||""}catch(err){return toast(`노션 주소를 받지 못했어요 — ${err.message}`)}if(!u)return toast(`노션 ‘${nm}’ 주소를 찾지 못했어요 — 노션 메뉴 DB에 그 이름의 줄이 있는지 봐요`);window.open(u,"_blank","noopener")}
@@ -2528,6 +2528,8 @@ function renderAdmin(v){if(window.LIVE&&window.LIVE.loaded&&typeof liveAdminRend
   cardScreen(v,{title:"관리자 설정",scr:"admin",help:"보안과 설치에 쓰는 화면이에요. 원장만 써요.",boxes:[
   {icon:"login",title:"로그인",rows:[["상태",'<span class="tag g">로그인됨</span> 이 기기에서 12시간 유지',cbtn("logout","로그아웃")]]},
   {icon:"lock",title:"보안",rows:[["관리자 비밀번호","마지막으로 바꾼 지 42일",cbtn("soon","바꾸기")],["보안 모드",ADM.sec?'<span class="tag g">켜짐</span> 화면·노션·키오스크가 저마다 다른 키로 서버를 불러요':'<span class="tag">꺼짐</span> 키 하나로 모두 불러요 — 설치를 마친 뒤 서버 설정에서 켜요',""]]},
+  /* 261123 키 자동 등록: 실제 자료 모드는 liveadmin.js가 서버(admin-security keys-*)에 붙인다. 여기는 시제품 모양만 */
+  {icon:"shield",title:"외부 키",help:"학원이 받은 외부 키를 여기에 붙여 넣으면 서버가 바로 써요. 넣은 키는 다시 보여 주지 않고 저장한 날과 연결 확인 결과만 보여요.",rows:[["나이스<br><span class=\"hint\">학교 검색 · 학사일정</span>",'<span class="tag b">앱에 저장</span> <span class="hint">바꾼 날 2026. 11. 23.</span> <span class="tag g">연결됨</span>',cbtn("soon","키 저장","save")+cbtn("soon","연결 확인","rotc")+cbtn("soon","삭제","trash")],["국립중앙도서관<br><span class=\"hint\">교재 정보(주력)</span>",'<span class="tag">서버 설정값</span> <span class="hint">Supabase Secrets에 넣은 키를 써요</span>',cbtn("soon","키 저장","save")+cbtn("soon","연결 확인","rotc")],["카카오<br><span class=\"hint\">교재 정보(보조 · 수입 원서)</span>",'<span class="tag w">없음</span> <span class="hint">교재 정보(보조 · 수입 원서)이 동작하지 않아요</span>',cbtn("soon","키 저장","save")]]},
   {icon:"trash",title:"예시 데이터 비우기",help:"새 학원이 처음 설치할 때 한 번만 써요. 비운 뒤에는 잠겨요.",rows:[["상태",ADM.cleared?"이미 비웠어요 — 다시 쓸 수 없어요":"아직 비우지 않았어요",ADM.cleared?"":cbtn("clear","비우기…","","danger")]]},
   {icon:"activity",title:"연결",rows:[["서버·노션",'<span class="tag g">연결됨</span>',cbtn("ping","다시 확인","rotc")]]}]})}
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-cact]");if(!b)return;const a=b.dataset.cact;
@@ -4951,6 +4953,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del&&!z._virtual).
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="appdata.js?v=722"></script><script src="appsave.js?v=723"></script><script src="appview.js?v=722"></script><script src="livelesson.js?v=723"></script><script src="liveadmin.js?v=722"></script><script src="livebook.js?v=722"></script><script src="live.js?v=723"></script><script src="liverefresh.js?v=722"></script>
+<script src="appdata.js?v=723"></script><script src="appsave.js?v=724"></script><script src="appview.js?v=723"></script><script src="livelesson.js?v=724"></script><script src="liveadmin.js?v=724"></script><script src="livebook.js?v=723"></script><script src="liveschool.js?v=724"></script><script src="live.js?v=724"></script><script src="liverefresh.js?v=723"></script>
 </body>
 </html>

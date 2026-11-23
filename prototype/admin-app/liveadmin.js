@@ -4,10 +4,12 @@
    - 예시 데이터 비우기: clear-example-data (state · status · start · stop) — 워크스페이스 이름을 그대로 넣어야 시작, 한 번 끝나면 서버가 잠근다
    - 서버 · 노션 연결, 노션 연동 구독 상태: admin-security status + app-api admin-status(_shared/notionSubscriptionStatus.ts, 서버 표에서 읽기만)
    - 웹훅 키 교체 · 교체 현황(옛 버튼 방식)은 옮기지 않는다 — 원본은 노션 연동 구독 방식. 옛 방식 학원은 구독으로 바꾼 뒤 이 판을 받는다(docs/updates/v2.8.0.md 운영 적용 순서).
+   - 외부 키(나이스 · 국립중앙도서관 · 카카오): admin-security (keys-status · key-set · key-test · key-clear) — 넣은 키는 서버 Vault에만,
+     화면에는 있음 · 바꾼 날 · 연결 확인 결과만(값은 되돌려 받지 않음). 함수는 Vault 먼저 · 없으면 Supabase Secrets(_shared/externalKeys.ts)
    - 첫 설치의 초기 비밀번호(0000)는 live.js 로그인 창이 바로 새 비밀번호를 정하게 한다(서버 scope "settings" 로그인 → change).
    비밀번호 칸 값은 보낸 바로 뒤 지우고, 어디에도 적지 않는다(콘솔 · 저장소 · 주소). 실제 자료 모드가 아니면(LIVE 없음) 시제품 카드 그대로. */
 (function () {
-  const S = { at: 0, loading: false, server: null, profile: null, admin: null, clear: null, err: {} };
+  const S = { at: 0, loading: false, server: null, profile: null, admin: null, clear: null, keys: null, err: {} };
   const root = () => String(window.LIVE.url).replace(/\/+$/, "");
   const session = () => (window.LIVE && window.LIVE.session) || "";
   /* 옛 관리자 설정 화면의 request()와 같은 부름(admin-security, x-admin-key = 관리자 세션) */
@@ -43,6 +45,7 @@
       take("profile", sec("profile")),
       take("admin", liveApi(window.LIVE, { action: "admin-status" })),
       take("clear", clr("state", {}, 20000)),
+      take("keys", sec("keys-status").then((r) => r.keys, (e) => { throw e.status === 400 ? new Error("서버에 아직 이 기능이 없어요 — 업데이트를 적용하면 생겨요") : e; }).then((k) => { if (!k || typeof k !== "object") throw new Error("서버에 아직 이 기능이 없어요 — 업데이트를 적용하면 생겨요"); return k; })),
     ]);
     S.loading = false; S.at = Date.now();
     redraw();
@@ -80,6 +83,75 @@
     return rows;
   }
 
+  /* 외부 키(261123 키 자동 등록): 키마다 한 줄 = 이름 · 지금 쓰는 키(앱에 저장 · 서버 설정값 · 없음) · 연결 확인 · 단추 */
+  const KEYS = [
+    ["NEIS_API_KEY", "나이스", "학교 검색 · 학사일정", "나이스 교육정보 개방 포털(open.neis.go.kr) > 인증키 신청"],
+    ["NL_CERT_KEY", "국립중앙도서관", "교재 정보(주력)", "국립중앙도서관 ISBN 서지정보(nl.go.kr/seoji) > 인증키 신청"],
+    ["KAKAO_REST_KEY", "카카오", "교재 정보(보조 · 수입 원서)", "카카오 개발자(developers.kakao.com) > 내 애플리케이션 > REST API 키"],
+  ];
+  const TEST = { ok: ["g", "연결됨"], wrong: ["r", "키가 틀림"], unknown: ["w", "확인 못 함"] };
+  const testTag = (t) => t && TEST[t] ? tag(TEST[t][0], TEST[t][1]) : "";
+  function keyRows() {
+    if (S.err.keys) return [["외부 키", errCell("keys"), btn("refresh", "다시 확인", "rotc")]];
+    if (!S.keys) return [["외부 키", loadingCell, ""]];
+    return KEYS.map(([name, label, use]) => {
+      const k = S.keys[name] || {};
+      let cell;
+      if (k.app) cell = `${tag("b", "앱에 저장")} <span class="hint">바꾼 날 ${esc(day(k.changed_at))}</span> ${testTag(k.test_state) || '<span class="hint">· 연결 확인 전</span>'}${k.test_state === "wrong" ? ` <span class="hint">— 다시 붙여 넣거나 삭제해요${k.secret ? "(삭제하면 서버 설정값으로 돌아가요)" : ""}</span>` : ""}`;
+      else if (k.secret) cell = `${tag("", "서버 설정값")} <span class="hint">Supabase Secrets에 넣은 키를 써요 — 여기 저장하면 그 키 대신 써요</span>`;
+      else cell = `${tag("w", "없음")} <span class="hint">${esc(use)}${k.secret === false ? "이 동작하지 않아요" : ""}</span>`;
+      const acts = btn("kset:" + name, "키 저장", "save") + (k.app || k.secret ? btn("ktest:" + name, "연결 확인", "rotc") : "") + (k.app ? btn("kdel:" + name, "삭제", "trash") : "");
+      return [`${esc(label)}<br><span class="hint">${esc(use)}</span>`, cell, acts];
+    });
+  }
+  const keyHelp = "학원이 받은 외부 키를 여기에 붙여 넣으면 서버가 바로 써요(Supabase Secrets에 넣지 않아도 돼요 — 넣어 둔 키도 그대로 써요). 넣은 키는 다시 보여 주지 않고 저장한 날과 연결 확인 결과만 보여요. 여기서 삭제하면 Secrets에 넣은 키로 돌아가요.";
+  const keyLabel = (name) => (KEYS.find((x) => x[0] === name) || [])[1] || name;
+  const testMsg = (t, name) => t === "ok" ? `${keyLabel(name)}에 연결됐어요` : t === "wrong" ? `${josa(keyLabel(name), "이", "가")} 키를 받지 않았어요(키가 틀림) — 받은 키를 다시 붙여 넣어요` : `${keyLabel(name)} 연결을 확인하지 못했어요 — 잠시 뒤 [연결 확인]을 눌러요`;
+  function keyDialog(name) {
+    const [, label, use, where] = KEYS.find((x) => x[0] === name);
+    const k = (S.keys && S.keys[name]) || {};
+    modal(`<h2>${esc(label)} 키 저장</h2><div class="box"><p class="hint">${esc(use)}에 써요. 받는 곳: ${esc(where)}</p><label class="lab" for="lakey">${esc(label)} 키(${esc(name)})</label><input class="inp" id="lakey" type="password" autocomplete="off" spellcheck="false" maxlength="256" placeholder="받은 키를 그대로 붙여 넣어요"><p class="hint">저장하면 다음 요청부터 이 키를 써요. 저장한 뒤 한 번 연결을 확인해요. 넣은 키는 다시 보여 주지 않아요.</p>${k.app ? '<div class="warnbox">이미 앱에 저장한 키가 있어요 — 새 키로 바뀌어요.</div>' : k.secret ? '<div class="warnbox">지금은 Supabase Secrets에 넣은 키를 써요 — 저장하면 이 키를 먼저 써요(Secrets 값은 그대로 남아요).</div>' : ""}<p class="err" id="laerr" hidden></p></div><div class="actions"><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">키 저장</button></div>`, (m, close) => {
+      const f = (id) => m.querySelector(id), inp = f("#lakey"), err = f("#laerr"), ok = f("#co");
+      const wipe = () => { inp.value = ""; };
+      const show = (t) => { err.textContent = t; err.hidden = !t; };
+      f("#cc").onclick = () => { wipe(); close(); };
+      const submit = async () => {
+        show("");
+        const value = inp.value;
+        if (!value) return show("받은 키를 붙여 넣어요");
+        if (value.trim() !== value || /\s/.test(value)) return show("앞뒤 공백 · 줄바꿈 없이 키만 붙여 넣어요");
+        if (value.length < 8) return show("키가 너무 짧아요 — 받은 키 전체를 붙여 넣어요");
+        ok.disabled = true; ok.classList.add("loading");
+        try { const r = await sec("key-set", { name, value }, 30000); wipe(); close(); toast(`${label} 키를 저장했어요 — ${testMsg(r.test, name)}`); reloadKeys(); }
+        catch (e) { show(friendly(e)); if (e.status === 401) { wipe(); close(); relogin("로그인이 풀렸어요 — 다시 로그인해요"); } }
+        finally { ok.disabled = false; ok.classList.remove("loading"); }
+      };
+      ok.onclick = submit;
+      inp.onkeydown = (e) => { if (e.key === "Enter") submit(); };
+      setTimeout(() => inp.focus(), 0);
+    });
+  }
+  function keyDelete(name) {
+    const label = keyLabel(name), k = (S.keys && S.keys[name]) || {};
+    modal(`<h2>${esc(label)} 키 삭제</h2><div class="box">앱에 저장한 ${esc(label)} 키를 서버에서 삭제해요.${k.secret ? " 삭제하면 Supabase Secrets에 넣은 키로 돌아가요." : `<div class="warnbox">Supabase Secrets에도 키가 없어서, 삭제하면 ${esc((KEYS.find((x) => x[0] === name) || [])[2])}이 동작하지 않아요.</div>`}<p class="err" id="laerr" hidden></p></div><div class="actions"><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn danger" id="co">키 삭제</button></div>`, (m, close) => {
+      const ok = m.querySelector("#co"), err = m.querySelector("#laerr");
+      m.querySelector("#cc").onclick = close;
+      ok.onclick = async () => {
+        ok.disabled = true; ok.classList.add("loading");
+        try { const r = await sec("key-clear", { name }); close(); toast(r.secret ? `${label} 키를 삭제했어요 — Supabase Secrets에 넣은 키로 돌아갔어요` : `${label} 키를 삭제했어요`); reloadKeys(); }
+        catch (e) { err.textContent = friendly(e); err.hidden = false; }
+        finally { ok.disabled = false; ok.classList.remove("loading"); }
+      };
+    });
+  }
+  async function keyTest(name, button) {
+    if (button) { button.disabled = true; button.classList.add("loading"); }
+    try { const r = await sec("key-test", { name }, 30000); toast(r.test ? `${r.source === "secret" ? "서버 설정값 — " : ""}${testMsg(r.test, name)}` : `${keyLabel(name)} 키가 없어요`); reloadKeys(); }
+    catch (e) { toast(friendly(e)); }
+    finally { if (button) { button.disabled = false; button.classList.remove("loading"); } }
+  }
+  async function reloadKeys() { try { const k = (await sec("keys-status")).keys; if (!k || typeof k !== "object") throw new Error("서버에 아직 이 기능이 없어요 — 업데이트를 적용하면 생겨요"); S.keys = k; delete S.err.keys; } catch (e) { S.err.keys = friendly(e); } redraw(); }
+
   /* 화면: 시안 a · b · c(주소 &admv=a|b|c, 검수용) — 노션 연동 구독을 어디에 둘지. 기본 = b(따로 카드) */
   const VARIANT = () => ((/[?&]admv=([abc])(&|$)/.exec(location.search) || [])[1] || "b");
   window.liveAdminRender = function (v) {
@@ -87,7 +159,7 @@
     const p = S.profile, srv = S.server, ad = S.admin, sub = ad && ad.subscription;
     const loginRow = ["상태", S.err.auth ? '<span class="tag r">로그인 풀림</span> <span class="hint">다른 곳에서 비밀번호를 바꿨거나 12시간이 지났어요</span>' : `${tag("g", "로그인됨")} <span class="hint">이 탭을 닫거나 12시간이 지나면 풀려요</span>`, S.err.auth ? btn("relogin", "다시 로그인", "login") : btn("logout", "로그아웃")];
     const pwRow = ["관리자 비밀번호", p ? `마지막으로 바꾼 날 ${esc(day(p.changed_at))}${p.change_due ? ` ${tag("w", "바꿀 때가 됐어요")}` : ` <span class="hint">· 다음 권장 ${esc(day(p.recommended_at))}</span>`}` : S.err.profile ? errCell("profile") : loadingCell, p ? btn("pw", "바꾸기", "lock") : ""];
-    const pwHelp = "키오스크 · 법정 서류 · 학교 검색 · 수업 관리 · 이 앱에서 같이 써요. 바꾸면 그 화면들의 로그인이 모두 풀리고 새 비밀번호로 다시 로그인해요(키오스크 기기 포함). 노션 버튼 · 자동화는 그대로예요.";
+    const pwHelp = "키오스크 · 법정 서류 · 수업 관리 · 이 앱에서 같이 써요. 바꾸면 그 화면들의 로그인이 모두 풀리고 새 비밀번호로 다시 로그인해요(키오스크 기기 포함). 노션 버튼 · 자동화는 그대로예요.";
     const cl = S.clear ? clearLine(S.clear) : null;
     const clearRow = ["상태", cl ? `${cl[2] ? tag(cl[2], cl[1] ? "열림" : "잠김") + " " : ""}${esc(cl[0])}` : S.err.clear ? errCell("clear") : loadingCell, cl && cl[1] ? btn("clear", "비울 데이터 확인…", "", "danger") : ""];
     const srvRow = ["서버", srv ? tag("g", "연결됨") : S.err.server ? errCell("server") : loadingCell, ""];
@@ -96,11 +168,12 @@
     const subHelp = "노션에서 고친 것을 서버가 바로 받는 구독이에요. 노션 연동 설정(Webhooks)에서 만들고 끄며, 여기서는 받고 있는지만 봐요.";
     const loginBox = { icon: "login", title: "로그인", rows: [loginRow] };
     const clearBox = { icon: "trash", title: "예시 데이터 비우기", help: "새 학원이 처음 설치할 때 한 번만 써요. 고른 DB의 예시 페이지를 노션 휴지통으로 보내고, 끝나면 잠겨요.", rows: [clearRow] };
+    const keyBox = { icon: "shield", title: "외부 키", help: keyHelp, rows: keyRows() };
     const va = VARIANT();
     let boxes;
-    if (va === "a") boxes = [loginBox, { icon: "lock", title: "보안", help: pwHelp, rows: [pwRow, ["노션 연동", sub ? (() => { const l = subLine(sub); return `${tag(l[1], l[0])} <span class="hint">${esc(l[2])}</span>`; })() : S.err.admin ? errCell("admin") : loadingCell, ""]] }, clearBox, { icon: "activity", title: "연결", rows: [srvRow, notionRow, syncRow] }];
-    else if (va === "c") boxes = [loginBox, { icon: "lock", title: "보안", help: pwHelp, rows: [pwRow] }, clearBox, { icon: "activity", title: "연결", help: subHelp, rows: [srvRow, notionRow, ...subRows(sub).map((r, i) => [i ? r[0] : "연동 구독", r[1], r[2]]), syncRow] }];
-    else boxes = [loginBox, { icon: "lock", title: "보안", help: pwHelp, rows: [pwRow] }, { icon: "activity", title: "연결", rows: [srvRow, notionRow, syncRow] }, { icon: "link", title: "노션 연동 구독", help: subHelp, rows: subRows(sub) }, clearBox];
+    if (va === "a") boxes = [loginBox, { icon: "lock", title: "보안", help: pwHelp, rows: [pwRow, ["노션 연동", sub ? (() => { const l = subLine(sub); return `${tag(l[1], l[0])} <span class="hint">${esc(l[2])}</span>`; })() : S.err.admin ? errCell("admin") : loadingCell, ""]] }, keyBox, clearBox, { icon: "activity", title: "연결", rows: [srvRow, notionRow, syncRow] }];
+    else if (va === "c") boxes = [loginBox, { icon: "lock", title: "보안", help: pwHelp, rows: [pwRow] }, keyBox, clearBox, { icon: "activity", title: "연결", help: subHelp, rows: [srvRow, notionRow, ...subRows(sub).map((r, i) => [i ? r[0] : "연동 구독", r[1], r[2]]), syncRow] }];
+    else boxes = [loginBox, { icon: "lock", title: "보안", help: pwHelp, rows: [pwRow] }, keyBox, { icon: "activity", title: "연결", rows: [srvRow, notionRow, syncRow] }, { icon: "link", title: "노션 연동 구독", help: subHelp, rows: subRows(sub) }, clearBox];
     cardScreen(v, { title: "관리자 설정", scr: "admin", help: "보안과 설치에 쓰는 화면이에요. 원장만 써요.", boxes });
   };
 
@@ -114,7 +187,7 @@
 
   /* 비밀번호 바꾸기 — 옛 관리자 설정 화면과 같은 change(현재 · 새 · 확인). 끝나면 모든 로그인이 풀린다 */
   function pwDialog() {
-    modal(`<h2>관리자 비밀번호 바꾸기</h2><div class="box"><label class="lab" for="lapw0">현재 비밀번호</label><input class="inp" id="lapw0" type="password" autocomplete="current-password" maxlength="128"><label class="lab" for="lapw1">새 비밀번호</label><input class="inp" id="lapw1" type="password" autocomplete="new-password" minlength="8" maxlength="128"><p class="hint">앞뒤 공백 없이 8~128자. 초기 비밀번호 0000은 쓸 수 없어요.</p><label class="lab" for="lapw2">새 비밀번호 확인</label><input class="inp" id="lapw2" type="password" autocomplete="new-password" minlength="8" maxlength="128"><div class="warnbox">바꾸면 키오스크 · 법정 서류 · 학교 검색 · 수업 관리 · 이 앱의 로그인이 모두 풀리고 새 비밀번호로 다시 로그인해요. 노션 버튼 · 자동화는 그대로예요.</div><p class="err" id="laerr" hidden></p></div><div class="actions"><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">비밀번호 바꾸기</button></div>`, (m, close) => {
+    modal(`<h2>관리자 비밀번호 바꾸기</h2><div class="box"><label class="lab" for="lapw0">현재 비밀번호</label><input class="inp" id="lapw0" type="password" autocomplete="current-password" maxlength="128"><label class="lab" for="lapw1">새 비밀번호</label><input class="inp" id="lapw1" type="password" autocomplete="new-password" minlength="8" maxlength="128"><p class="hint">앞뒤 공백 없이 8~128자. 초기 비밀번호 0000은 쓸 수 없어요.</p><label class="lab" for="lapw2">새 비밀번호 확인</label><input class="inp" id="lapw2" type="password" autocomplete="new-password" minlength="8" maxlength="128"><div class="warnbox">바꾸면 키오스크 · 법정 서류 · 수업 관리 · 이 앱의 로그인이 모두 풀리고 새 비밀번호로 다시 로그인해요. 노션 버튼 · 자동화는 그대로예요.</div><p class="err" id="laerr" hidden></p></div><div class="actions"><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">비밀번호 바꾸기</button></div>`, (m, close) => {
       const f = (id) => m.querySelector(id), err = f("#laerr"), ok = f("#co");
       const wipe = () => m.querySelectorAll("input[type=password]").forEach((i) => { i.value = ""; });
       const show = (t) => { err.textContent = t; err.hidden = !t; };
@@ -194,7 +267,10 @@
     const b = e.target.closest && e.target.closest("[data-ladm]");
     if (!b || !(window.LIVE && window.LIVE.loaded)) return;
     const a = b.dataset.ladm;
-    if (a === "refresh") { S.server = S.profile = S.admin = S.clear = null; S.at = 0; render(); return load(); }
+    if (a.startsWith("kset:")) return keyDialog(a.slice(5));
+    if (a.startsWith("ktest:")) return keyTest(a.slice(6), b);
+    if (a.startsWith("kdel:")) return keyDelete(a.slice(5));
+    if (a === "refresh") { S.server = S.profile = S.admin = S.clear = S.keys = null; S.at = 0; render(); return load(); }
     if (a === "pw") return pwDialog();
     if (a === "clear") return clearDialog(b);
     if (a === "relogin") return relogin("다시 로그인해요");
