@@ -6,7 +6,7 @@
 <title>관리 앱 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3C%2Fsvg%3E">
 <link rel="stylesheet" href="hada-tokens.css?v=742">
-<link rel="stylesheet" href="app.css?v=752">
+<link rel="stylesheet" href="app.css?v=753">
 <link rel="stylesheet" href="pick.css?v=742">
 <link rel="stylesheet" href="field.css?v=742">
 </head>
@@ -389,8 +389,8 @@ function scrollBack(o){const pn=document.querySelector(".body>.panel");lastPK=pn
 const BAR_STEPS=["compact","fold-seg","fold-chips","fold-search"],BAR_SEGS=".subseg,.sfseg,.mkseg";
 function barBad(bar){const kids=[...bar.children].filter(e=>e.offsetParent&&!e.classList.contains("sp"));if(!kids.length)return false;const rs=kids.map(k=>k.getBoundingClientRect());const t0=Math.min(...rs.map(r=>r.top));if(rs.some(r=>r.top>t0+8))return true;const br=bar.getBoundingClientRect();if(bar.scrollWidth>bar.clientWidth+1||rs.some(r=>r.right>br.right+1))return true;const s=rs.slice().sort((a,b)=>a.left-b.left);for(let i=1;i<s.length;i++)if(s[i].left<s[i-1].right-1)return true;return false}
 /* 261124 흔들림 점검: 수업 화면 위 줄은 보기(오늘 · 주간 · 월간 · 등원 학생 · 출결 현황)마다 왼쪽 묶음 길이가 달라(생성 단추 · 시각 이동) 1280 · 1440에서 어떤 보기는 한 줄 · 어떤 보기는 두 줄 —
-   보기를 바꿀 때마다(학습기록에서 수업으로 넘어올 때도) 아래 전부가 33px 오르내렸다. 폭이 모자라면(1500 미만) 수업 화면은 늘 두 줄(오른쪽 단추 묶음이 둘째 줄)로 같게 */
-const barTwo=bar=>bar.matches(".top")&&!!bar.querySelector(":scope>.zone.end")&&!!activeTab&&activeTab.screen==="timetable"&&activeTab.state.view==="lesson"&&bar.clientWidth<1500;
+   보기를 바꿀 때마다(학습기록에서 수업으로 넘어올 때도) 아래 전부가 33px 오르내렸다. 폭이 모자라면(위 줄 1800 미만 — 실제 자료는 "자동 갱신 · 마지막 받음" 글이 더해져 1920 창에서도 등원 학생이 넘침) 수업 화면은 늘 두 줄(오른쪽 단추 묶음이 둘째 줄)로 같게 */
+const barTwo=bar=>bar.matches(".top")&&!!bar.querySelector(":scope>.zone.end")&&!!activeTab&&activeTab.screen==="timetable"&&activeTab.state.view==="lesson"&&bar.clientWidth<1800;
 const zoneBad=bar=>{const br=bar.getBoundingClientRect();return [...bar.querySelectorAll(":scope>.zone")].some(z=>{const zr=z.getBoundingClientRect();return [...z.children].some(c=>{if(!c.offsetParent)return false;const r=c.getBoundingClientRect();return r.top>zr.top+8||r.right>br.right+1})})};
 function fitBars(){document.querySelectorAll("#view .pg-bar,#view .top").forEach(bar=>{bar.classList.remove(...BAR_STEPS);bar.querySelectorAll(".foldchip").forEach(x=>x.remove());if(innerWidth<768)return;
   const two=barTwo(bar);bar.classList.toggle("two-row",two);const bad=two?()=>zoneBad(bar):()=>barBad(bar);
