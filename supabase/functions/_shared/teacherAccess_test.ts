@@ -2,7 +2,7 @@
 // 원장 SQL(hada_security_command)과 강사 SQL(hada_teacher_command)은 작은 모형으로 대신한다. 실제 SQL은 tests/teacher-accounts-sql.cjs(PGlite)가
 // 같은 경우(켜기 · 같은 번호 · 첫 로그인 · 바꾸기 · 강사별 잠김 · 되돌리기 · 끄기)를 시험한다.
 // adminSecurity_test.ts가 이 파일을 불러와 CI(web-checks)에서 함께 돈다.
-import { normalizePhone, teacherMenus, teacherAppDeny, maskTeacherRows, requireAccess, teacherWriteDbs, TEACHER_ROUTES, TEACHER_BLOCKED_DBS } from "./teacherAccess.ts"
+import { normalizePhone, teacherMenus, teacherAppDeny, maskTeacherRows, requireAccess, teacherWriteDbs, teacherReadDbs, MENU_DBS, TEACHER_ROUTES, TEACHER_BLOCKED_DBS } from "./teacherAccess.ts"
 import { sha256 } from "./adminSecurity.ts"
 import { WRITE_DBS } from "./appSave.ts"
 import { APP_DBS } from "./appCopy.ts"
@@ -12,7 +12,8 @@ const eq = (a: unknown, b: unknown, m = "") => assert(JSON.stringify(a) === JSON
 Deno.env.set("SB_URL", "https://mock.supabase.co"); Deno.env.set("SB_SERVICE_ROLE_KEY", "test-only-service"); Deno.env.set("NOTION_TOKEN", "test-only-notion")
 Deno.env.set("ADMIN_SECRET", Deno.env.get("ADMIN_SECRET") ?? "test-only-webhook-key-0123456789abcdef")
 const serve0 = Deno.serve; (Deno as any).serve = () => ({})
-const { handleAdminSecurity } = await import("../admin-security/index.ts"); (Deno as any).serve = serve0
+const { handleAdminSecurity } = await import("../admin-security/index.ts")
+const { handleAppApi } = await import("../app-api/index.ts"); (Deno as any).serve = serve0
 
 // ---------- 순수 규칙 ----------
 Deno.test("teacher: 휴대폰 번호 맞추기 — 하이픈 · 공백 · +82는 같은 번호, 휴대폰 꼴이 아니면 빈 값", () => {
@@ -23,11 +24,21 @@ const MENU_ROWS = [
 	{ props: { "이름": "학생", "편집허용": ["u-a"] } }, { props: { "이름": "수업", "편집허용": ["u-a", "u-b"] } },
 	{ props: { "이름": "등록(스터디)", "편집허용": ["u-a"] } }, { props: { "이름": "수강료", "편집허용": ["u-a"] } },
 	{ props: { "이름": "관리자 설정", "편집허용": ["u-a"] } }, { props: { "이름": "일정", "편집허용": [] } }, { props: { "이름": "시험" } },
+	{ props: { "이름": "과목", "편집허용": ["u-c"] } },
 ]
 Deno.test("teacher: 메뉴 = 편집허용에 노션 계정이 든 메뉴만, 재무 · 관리자 설정은 들어 있어도 뺌, 노션 계정이 비면 빈 목록", () => {
 	eq(teacherMenus(MENU_ROWS, ["u-a"]).sort(), ["등록", "수업", "학생"])
 	eq(teacherMenus(MENU_ROWS, ["u-b"]), ["수업"])
 	eq(teacherMenus(MENU_ROWS, []), []); eq(teacherMenus(MENU_ROWS, ["u-z"]), [])
+})
+Deno.test("teacher: 메뉴 → DB 표(한 곳) — 읽기 · 쓰기 DB는 앱 DB 이름, 쓰기는 읽기 안, 재무는 어느 메뉴에도 없음, 메뉴 DB는 늘 읽음", () => {
+	for (const [m, { read, write }] of Object.entries(MENU_DBS)) {
+		for (const db of [...read, ...write]) assert((APP_DBS as readonly string[]).includes(db), `${m}: ${db}`)
+		for (const db of write) assert(read.includes(db), `${m}: 쓰기 ${db}가 읽기에 없음`)
+		for (const db of read) assert(!TEACHER_BLOCKED_DBS.has(db), `${m}: 재무 ${db}`)
+	}
+	const r = teacherReadDbs(["과목"]); assert(r.has("메뉴(학원) DB") && r.has("과목(학원) DB") && !r.has("학생(학원) DB"))
+	eq([...teacherReadDbs([])], ["메뉴(학원) DB"])
 })
 Deno.test("teacher: 쓰기 DB 표는 앱 쓰기 목록 안에만 있고, 재무 · 강사 DB는 어느 메뉴로도 못 씀", () => {
 	const all = teacherWriteDbs(["일정", "학생", "학교", "시험", "클래스", "등록", "시간표", "과목", "라이브러리", "진도", "수업", "수강료", "직원"])
@@ -69,8 +80,10 @@ const TEACHER_ROWS = [
 	{ id: TB, props: { "이름": "예시강사B", "연락처": "010 9999 8888" } },
 	{ id: TD1, props: { "이름": "예시강사D1", "연락처": "010-5555-0000" } }, { id: TD2, props: { "이름": "예시강사D2", "연락처": "01055550000" } },
 	{ id: "f".repeat(32), props: { "이름": "번호없음", "연락처": "" } },
+	{ id: "9".repeat(32), props: { "이름": "예시강사G", "연락처": "010-7777-6666" } },
 ]
-const NOTION_USERS: Record<string, string[]> = { [TA]: ["u-a"], [TB]: [] }
+const TG = "9".repeat(32)
+const NOTION_USERS: Record<string, string[]> = { [TA]: ["u-a"], [TB]: [], [TG]: ["u-c"] }
 type Acc = { teacher_id: string; phone: string; name: string; password_hash: string; must_change: boolean; enabled: boolean; fails: number; locked: boolean; version: number }
 function fakeServer() {
 	const accounts = new Map<string, Acc>(), sessions = new Map<string, { teacher_id: string; version: number; users: string[] }>()
@@ -229,4 +242,67 @@ Deno.test("teacher 흐름: 노션 계정이 비면 메뉴 0개(빈 화면 안내
 	eq((await login("01099998888", "teacher-pass-b")).status, 401)
 	// 로그아웃
 	await sec({ action: "teacher-logout" }, r.body.session); eq(srv.sessions.has(await sha256(r.body.session)), false)
+}))
+
+// ---------- app-api 경로째(담당 261123: 읽기도 메뉴별로 서버에서 막기) ----------
+const STU = "5".repeat(32), SUBJ = "6".repeat(32)
+const OPTIONS = { "학생(학원) DB": { "학생과의 관계": ["어머니", "아버지"], "문의 경로": ["지인"] }, "과목(학원) DB": { "교습과정": ["보습"] }, "영역(학원) DB": { "교습과정": ["보습"] }, "강사(학원) DB": { "직책": ["강사"] }, "수강료(학원) DB": { "결제 수단": ["카드"] } }
+function appDeps(log: string[]) {
+	return {
+		listApp: async (db: string) => { log.push("list:" + db); return db === "강사(학원) DB" ? TEACHER_ROWS : db === "학생(학원) DB" ? [{ id: STU, props: { "이름": "예시학생", "보호자 연락처": "010-0000-0000" } }] : [{ id: SUBJ, props: { "이름": "예시" } }] },
+		writeOptions: async () => JSON.parse(JSON.stringify(OPTIONS)),
+		saveChanges: async (cs: any[]) => { log.push("save:" + cs.map((c) => c.db).join(",")); return cs.map(() => ({ ok: true })) },
+		statusApp: async () => APP_DBS.map((db) => ({ db, rows: 1, cursor: null })),
+		appChanges: async (_s: string | null, dbs: string[]) => { log.push("changes:" + dbs.join(",")); return { ok: true as const, now: "x", rows: [], gone: [], crAt: null } },
+		lastSyncedAt: async () => null, rootTitle: async () => "예시", warmSources: () => {}, healthOf: async () => null,
+		syncCopy: async (dbs?: string[]) => { log.push("sync:" + (dbs ?? ["(전체)"]).join(",")); return { dbs: dbs ?? [] } },
+	} as any
+}
+const api = async (key: string, body: unknown, log: string[]) => {
+	const res = await handleAppApi(new Request("https://mock.supabase.co/functions/v1/app-api", { method: "POST", headers: { "Content-Type": "application/json", "x-admin-key": key }, body: JSON.stringify(body) }), appDeps(log))
+	return { status: res.status, body: await res.json() }
+}
+async function teacherKey(id: string, phone: string, pw: string) {
+	eq((await sec({ action: "teacher-enable", teacher_id: id }, OWNER)).status, 200)
+	const s1 = (await login(phone, phone)).body.session
+	eq((await change(phone, pw, s1)).status, 200)
+	return (await login(phone, pw)).body.session as string
+}
+Deno.test("teacher app-api: 권한 없는 메뉴의 DB는 읽기 · 고르기 목록 · 저장 · 동기화 · 바뀐 줄 모두 거절, 권한 있는 메뉴는 그대로, 원장은 전부", () => withServer(async () => {
+	const log: string[] = []
+	// G: 과목 메뉴만 → 학생 DB(연락처) 못 읽음
+	const g = await teacherKey(TG, "01077776666", "teacher-pass-g")
+	const me = await api(g, { action: "me" }, log)
+	eq(me.body.role, "teacher"); eq(me.body.menus, ["과목"]); eq(me.body.readDbs.sort(), ["과목(학원) DB", "라이브러리(학원) DB", "메뉴(학원) DB", "영역(학원) DB", "학년(학원) DB"])
+	for (const db of ["학생(학원) DB", "등록(학원) DB", "일정(학원) DB", "보고서(학원) DB", "근무(학원) DB", "강사(학원) DB", "수강료(학원) DB", "자료(학원) DB"]) {
+		const r = await api(g, { action: "list", db }, log); eq(r.status, 403, db)
+	}
+	assert(!log.some((x) => x === "list:학생(학원) DB"), "거절된 DB는 사본을 읽지도 않음")
+	eq((await api(g, { action: "list", db: "과목(학원) DB" }, log)).status, 200)
+	eq((await api(g, { action: "list", db: "메뉴(학원) DB" }, log)).status, 200)
+	const opt = await api(g, { action: "options" }, log)
+	eq(Object.keys(opt.body.dbs).sort(), ["과목(학원) DB", "영역(학원) DB"]); eq(opt.body.dbs["과목(학원) DB"]["교습과정"], ["보습"]) // 그 화면 고르기 목록은 그대로
+	eq((await api(g, { action: "save", changes: [{ op: "update", db: "학생(학원) DB", id: STU, props: { "이름": "x" } }] }, log)).status, 403)
+	eq((await api(g, { action: "save", changes: [{ op: "delete", db: "학생(학원) DB", id: STU }] }, log)).status, 403)
+	eq((await api(g, { action: "save", changes: [{ op: "update", db: "과목(학원) DB", id: SUBJ, props: { "이름": "x" } }] }, log)).status, 200)
+	eq((await api(g, { action: "run", name: "sync-copy", dbs: ["학생(학원) DB"] }, log)).status, 403)
+	await api(g, { action: "run", name: "sync-copy" }, log); assert(log.some((x) => x.startsWith("sync:") && !x.includes("학생") && x.includes("과목")), "동기화는 읽기 DB만")
+	await api(g, { action: "changes", since: "2026-11-23T00:00:00Z", dbs: ["학생(학원) DB", "과목(학원) DB"] }, log); eq(log.filter((x) => x.startsWith("changes:")).pop(), "changes:과목(학원) DB")
+	const st = await api(g, { action: "status" }, log); assert(st.body.dbs.every((d: any) => me.body.readDbs.includes(d.db)), "상태도 읽기 DB만")
+	for (const b of [{ action: "admin-status" }, { action: "record-payment", requestId: "r", tuitionId: STU }, { action: "end-preview", id: STU }, { action: "run", name: "generate-classes" }]) eq((await api(g, b, log)).status, 403, JSON.stringify(b))
+	// A: 학생 · 수업 · 등록 → 학생 읽기 · 학생 고르기 목록 · 학생 저장 됨, 강사 줄의 다른 강사 연락처는 지움
+	const a = await teacherKey(TA, "01012345678", "teacher-pass-a")
+	eq((await api(a, { action: "list", db: "학생(학원) DB" }, log)).status, 200)
+	const optA = await api(a, { action: "options" }, log)
+	eq(optA.body.dbs["학생(학원) DB"]["학생과의 관계"], ["어머니", "아버지"]); assert(!optA.body.dbs["수강료(학원) DB"] && !!optA.body.dbs["강사(학원) DB"] && !!optA.body.dbs["과목(학원) DB"], "수업 · 등록 화면이 읽는 과목 · 강사 목록은 그대로, 재무는 없음")
+	eq((await api(a, { action: "save", changes: [{ op: "update", db: "학생(학원) DB", id: STU, props: { "이름": "x" } }] }, log)).status, 200)
+	eq((await api(a, { action: "save", changes: [{ op: "update", db: "과목(학원) DB", id: SUBJ, props: { "이름": "x" } }] }, log)).status, 403)
+	const tl = (await api(a, { action: "list", db: "강사(학원) DB" }, log)).body.rows
+	eq(tl.map((r: any) => r.props["연락처"]).filter(Boolean), ["010-1234-5678"])
+	// 원장: 전부(재무 포함), 고르기 목록 전부
+	eq((await api(OWNER, { action: "list", db: "수강료(학원) DB" }, log)).status, 200)
+	eq(Object.keys((await api(OWNER, { action: "options" }, log)).body.dbs).length, Object.keys(OPTIONS).length)
+	eq((await api(OWNER, { action: "me" }, log)).body, { ok: true, role: "owner" })
+	// 세션 없음 · 첫 비밀번호 세션은 401
+	eq((await api("", { action: "list", db: "과목(학원) DB" }, log)).status, 401)
 }))

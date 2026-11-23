@@ -242,11 +242,12 @@ window.liveModeFor = function (search, hostname, protocol) {
       banner("노션 자료를 받는 중이에요 — 받기 전에는 저장할 수 없어요");
       try {
         /* 보기 칸(P2)이 켜져 있으면 보기 묶음(일정 · 보고서 · 수강료 · 청구 · 시험 · 알림톡 설정 · 자료)도 함께 받는다 */
-        /* (강사계정 261123) 누가 로그인했나 — 강사면 메뉴를 거르고(liveteacher.js), 재무 DB는 받지 않는다(서버도 거절). 옛 서버(me 모름)면 원장으로 본다 */
+        /* (강사계정 261123) 누가 로그인했나 — 강사면 메뉴를 거르고(liveteacher.js), 그 메뉴 화면이 읽는 DB만 받는다(서버도 거절). 옛 서버(me 모름)면 원장으로 본다 */
         let me = null;
         try { me = await liveApi({ url: cfg.url, anonKey: cfg.anonKey, session }, { action: "me" }); } catch (e) { if (/\((401|403)/.test(e.message) || /인증 실패/.test(e.message)) throw new Error("로그인이 필요해요 (401)"); }
         if (typeof window.liveRoleApply === "function") window.liveRoleApply(me);
-        window.LIVE_BLOCKED_DBS = me && me.role === "teacher" ? new Set(["수강료(학원) DB", "결제(학원) DB", "청구서(학원) DB", "청구 항목(학원) DB", "청구 결제(학원) DB", "기타경비(학원) DB"]) : null;
+        /* 강사가 읽을 DB = 서버 표(_shared/teacherAccess.ts MENU_DBS)에서 계산한 readDbs — 앱에 따로 적지 않는다. 그 밖 DB는 부르지 않는다(서버도 403) */
+        window.LIVE_READ_DBS = me && me.role === "teacher" ? new Set(Array.isArray(me.readDbs) ? me.readDbs : []) : null;
         await (P2ON && typeof appViewLoad === "function" ? appViewLoad : appLoad)({ url: cfg.url, anonKey: cfg.anonKey, session });
         appSaveMark(DB); /* 불러온 값을 기준으로 적어 둠 — 저장 때 달라진 칸만 보냄 */
         try { liveStuMark(); } catch (_) {} /* 학생 되돌리기 기준 */

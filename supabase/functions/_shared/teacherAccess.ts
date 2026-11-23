@@ -17,19 +17,40 @@ export const TEACHER_BLOCKED_DBS = new Set([
 export const TEACHER_NO_WRITE_DBS = new Set([TEACHER_DB, ...TEACHER_BLOCKED_DBS])
 // 원장만 메뉴: 편집허용에 들어 있어도 강사에게 열지 않는다(화면과 서버 모두).
 export const OWNER_ONLY_MENUS = new Set(["수강료", "청구서", "손익 분석", "결제 · 손익", "법정 서류", "관리자 설정", "메뉴관리"])
-// 메뉴 이름 → 그 메뉴 화면이 노션에 쓰는 DB(앱 저장 층 appsave.js의 화면 묶음 기준). 여기 없는 DB는 강사가 쓸 수 없다.
-export const MENU_WRITE_DBS: Record<string, string[]> = {
-	"일정": ["일정(학원) DB", "시즌(학원) DB"],
-	"학생": ["학생(학원) DB"],
-	"학교": ["학교(학원) DB", "학년(학원) DB"],
-	"시험": ["시험(학원) DB", "시험정보(학원) DB", "성적(학원) DB"],
-	"클래스": ["클래스(학원) DB", "루틴(학원) DB", "진도관리(학원) DB"],
-	"등록": ["등록(학원) DB", "학생(학원) DB", "진도관리(학원) DB"],
-	"시간표": ["시간표(학원) DB", "시즌(학원) DB"],
-	"과목": ["과목(학원) DB", "영역(학원) DB"],
-	"라이브러리": ["라이브러리(학원) DB"],
-	"진도": ["진도관리(학원) DB"],
-	"수업": ["루틴(학원) DB"],
+// 메뉴 → 그 메뉴 화면이 읽는 DB · 쓰는 DB. 강사 권한의 한 곳(담당 261123 결정): 서버가 이 표로 거르고,
+// 앱은 로그인 때 app-api "me"로 이 표에서 계산한 readDbs를 받아 그 DB만 불러온다(앱에 따로 적지 않음).
+// - read: 화면이 함께 쓰는 DB 전부(이름 · 관계 표시용 포함). 강사는 편집허용 메뉴들의 read 합만 읽는다.
+// - write: 그 화면이 노션에 쓰는 DB(앱 저장 층 appsave.js 묶음 기준). read 안에 있어야 한다(시험이 확인).
+// - 어느 메뉴에도 없는 DB와 재무 · 강사 DB 쓰기는 원장만. 메뉴(학원) DB는 누구나 읽음(메뉴 이름 · 노션 주소).
+const R = (...n: string[]) => n.map((x) => `${x}(학원) DB`)
+const LESSON_READ = R("클래스", "시간표", "시즌", "등록", "학생", "강사", "진도관리", "라이브러리", "루틴", "과목", "영역", "학교", "학년")
+export const MENU_DBS: Record<string, { read: string[]; write: string[] }> = {
+	"홈": { read: R("시즌", "클래스", "시간표", "등록", "학생", "강사", "일정"), write: [] },
+	"일정": { read: R("일정", "시즌", "학교", "학년", "클래스"), write: R("일정", "시즌") },
+	"직원": { read: R("강사", "근무", "클래스", "시간표", "시즌"), write: [] },
+	"수업": { read: LESSON_READ, write: R("루틴") },
+	"보강": { read: LESSON_READ, write: [] },
+	"학습기록": { read: LESSON_READ, write: [] },
+	"학생": { read: R("학생", "등록", "클래스", "시간표", "시즌", "학교", "학년", "강사", "시험", "시험정보", "성적"), write: R("학생") },
+	"학교": { read: R("학교", "학년", "일정", "학생"), write: R("학교", "학년") },
+	"시험": { read: R("시험", "시험정보", "성적", "학생", "학교", "학년", "과목", "영역", "등록", "클래스"), write: R("시험", "시험정보", "성적") },
+	"클래스": { read: R("클래스", "시간표", "시즌", "등록", "학생", "강사", "진도관리", "라이브러리", "루틴", "과목", "영역", "학교", "학년"), write: R("클래스", "루틴", "진도관리") },
+	"등록": { read: R("등록", "학생", "클래스", "시간표", "시즌", "진도관리", "라이브러리", "과목", "영역", "학교", "학년", "강사"), write: R("등록", "학생", "진도관리") },
+	"시간표": { read: R("시간표", "클래스", "시즌", "등록", "학생", "강사", "과목", "영역"), write: R("시간표", "시즌") },
+	"과목": { read: R("과목", "영역", "라이브러리", "학년"), write: R("과목", "영역") },
+	"라이브러리": { read: R("라이브러리", "과목", "영역", "학년"), write: R("라이브러리") },
+	"진도": { read: R("진도관리", "라이브러리", "클래스", "학생", "등록", "과목", "영역", "강사"), write: R("진도관리") },
+	"정기 보고서": { read: R("보고서", "클래스", "학생", "등록", "진도관리", "알림톡 발송함"), write: [] },
+	"수료 보고서": { read: R("보고서", "클래스", "학생", "등록", "진도관리", "알림톡 발송함"), write: [] },
+	"가정통신문": { read: R("가정통신문", "클래스", "일정"), write: [] },
+	"자료실": { read: R("자료"), write: [] },
+	"알림톡 설정": { read: R("알림톡 설정"), write: [] },
+}
+export const ALWAYS_READ_DBS = new Set([TEACHER_MENU_DB])
+export function teacherReadDbs(menus: string[]): Set<string> {
+	const out = new Set<string>(ALWAYS_READ_DBS)
+	for (const m of menus) for (const db of MENU_DBS[m]?.read ?? []) if (!TEACHER_BLOCKED_DBS.has(db)) out.add(db)
+	return out
 }
 // 강사 세션을 받는 경로와 그 경로에 필요한 메뉴(하나라도 있으면 됨). app-api는 안에서 동작마다 거른다.
 export const TEACHER_ROUTES: Record<string, string[] | null> = {
@@ -84,7 +105,7 @@ export function teacherMenus(menuRows: { props?: Record<string, unknown> }[], no
 }
 export function teacherWriteDbs(menus: string[]): Set<string> {
 	const out = new Set<string>()
-	for (const m of menus) for (const db of MENU_WRITE_DBS[m] ?? []) if (!TEACHER_NO_WRITE_DBS.has(db)) out.add(db)
+	for (const m of menus) for (const db of MENU_DBS[m]?.write ?? []) if (!TEACHER_NO_WRITE_DBS.has(db)) out.add(db)
 	return out
 }
 // 강사가 읽는 강사 DB 줄: 다른 강사의 연락처(= 그 강사의 아이디 · 첫 비밀번호)는 지운다. 자기 줄은 그대로.
@@ -128,13 +149,19 @@ export async function requireAccess(req: Request, cors: Record<string, string>, 
 export function teacherAppDeny(t: Extract<Access, { role: "teacher" }>, body: any): [number, string] | null {
 	const a = body?.action
 	const fin = "재무 · 결제는 원장만 볼 수 있어요."
-	if (a === "me" || a === "status" || a === "options" || a === "changes") return null
-	if (a === "list") return TEACHER_BLOCKED_DBS.has(body.db) ? [403, fin] : null
+	const read = teacherReadDbs(t.menus)
+	const noMenu = (db: string) => `${String(db).replace(/\(학원\) DB$/, "")} 메뉴 권한이 없어요 — 원장에게 메뉴 권한을 요청하세요.`
+	if (a === "me" || a === "status" || a === "options" || a === "changes") return null // 응답을 읽기 DB로 거른다(app-api)
+	if (a === "list") return TEACHER_BLOCKED_DBS.has(body.db) ? [403, fin] : read.has(body.db) ? null : [403, noMenu(body.db)]
 	if (a === "admin-status") return [403, "관리자 설정은 원장만 볼 수 있어요."]
 	if (a === "record-payment") return [403, fin]
 	if (a === "end-preview") return t.menus.includes("등록") ? null : [403, "등록 메뉴 권한이 없어요 — 원장에게 메뉴 권한을 요청하세요."]
 	if (a === "run") {
-		if (body.name === "sync-copy") return Array.isArray(body.dbs) && body.dbs.some((d: string) => TEACHER_BLOCKED_DBS.has(d)) ? [403, fin] : null
+		if (body.name === "sync-copy") {
+			if (!Array.isArray(body.dbs)) return null // dbs 없이 = app-api가 읽기 DB로 채움
+			const bad = body.dbs.find((d: string) => !read.has(d))
+			return bad ? [403, TEACHER_BLOCKED_DBS.has(bad) ? fin : noMenu(bad)] : null
+		}
 		if (body.name === "generate-classes") return t.menus.some((m) => m === "수업" || m === "시간표") ? null : [403, "수업 생성 권한이 없어요 — 원장에게 메뉴 권한을 요청하세요."]
 		return null
 	}
@@ -145,7 +172,7 @@ export function teacherAppDeny(t: Extract<Access, { role: "teacher" }>, body: an
 			const db = String(c?.db ?? "")
 			if (TEACHER_BLOCKED_DBS.has(db)) return [403, fin]
 			if (db === TEACHER_DB) return [403, "강사 정보는 원장만 고칠 수 있어요."]
-			if (!ok.has(db)) return [403, `${db.replace(/\(학원\) DB$/, "")} 메뉴 권한이 없어요 — 원장에게 메뉴 권한을 요청하세요.`]
+			if (!ok.has(db)) return [403, noMenu(db)]
 		}
 		return null
 	}
