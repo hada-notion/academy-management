@@ -49,6 +49,13 @@
  --text-micro:.6875rem;
  /* 간격 (4px 단위). 글자·간격·모서리·높이는 rem이라 기기 화면 모드(html.device)에서 함께 커진다 */
  --space-1:.25rem;--space-2:.5rem;--space-3:.75rem;--space-4:1rem;--space-5:1.25rem;--space-6:1.5rem;--space-8:2rem;--space-12:3rem;
+ /* 창·화면 구역의 간격 자리(관리앱-기준.md F3 "간격 다섯"). 구역(.box) 부품 한 곳(app.css "구역 간격")이 쓴다 — 값을 바꾸려면 여기만 */
+ --gap-section:var(--space-6); /* 구역 ↔ 구역: 위 구역 아래 24 + 선 + 24 */
+ --gap-head:var(--space-3);    /* 구역 제목 ↔ 첫 블록 */
+ --gap-block:var(--space-3);   /* 구역 안 블록 ↔ 블록(칸 · 칸 줄 · 단추 줄 · 목록 · 카드 묶음) */
+ --gap-sub:var(--space-6);     /* 구역 안 작은 제목 위 */
+ --gap-in:var(--space-1);      /* 칸 안: 라벨 ↔ 칸 ↔ 딸린 글(설명 · 상태) */
+ --setcards-max:var(--page-max); /* 카드형 설정 화면(관리자 설정 · 학원 정보) 본문 최대 폭 1180 — 그 아래는 화면 폭에 맞춤 */
  /* 모서리: 리포트 기준(배지 6, 버튼·칸 10, 카드 14, 알약) */
  --radius-xs:.1875rem;--radius-sm:.375rem;--radius-md:.625rem;--radius-lg:.875rem;--radius-pill:999px;
  /* 헤더·아이콘 버튼: 1부 5장(헤더 56px, 44×44 클릭 영역 안 20×20 아이콘) */

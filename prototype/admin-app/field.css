@@ -1,5 +1,5 @@
 /* 입력칸 모듈(field) — 왼쪽 아이콘 16 + 왼쪽 정렬, 바깥 높이 40, 선 1 · 모서리 10 (고르기 칸 .hp-sfld와 같은 틀) */
-.hf{position:relative;display:flex;flex-direction:column;gap:4px;min-width:0;font-size:var(--text-small);color:var(--text-ink)}
+.hf{position:relative;display:flex;flex-direction:column;gap:var(--gap-in,4px);min-width:0;font-size:var(--text-small);color:var(--text-ink)}
 .hf-lbl{font-size:var(--text-caption);font-weight:600;color:var(--text-muted);line-height:16px}
 .hf-lbl i{font-style:normal;color:var(--danger)}
 .hf-box{display:flex;align-items:center;gap:var(--space-2);height:40px;padding:0 var(--space-2) 0 var(--space-3);border:1px solid var(--control-border);border-radius:var(--radius-md);background:var(--surface);box-sizing:border-box;min-width:0;cursor:text}
