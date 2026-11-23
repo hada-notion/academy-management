@@ -64,7 +64,7 @@ function appSaveX(DB, warn) {
 		num: (v) => (v === "" || v == null || !isFinite(+v) ? null : +v),
 		d: (v) => (v ? String(v).slice(0, 10) : null),
 		// "YYYY-MM-DDTHH:MM" → 시각이 있으면 한국 시각(+09:00)
-		dt: (v) => { const s = X.str(v); return !s ? null : s.length > 10 ? s.slice(0, 16) + ":00+09:00" : s },
+		dt: (v) => { const s = X.str(v); return !s ? null : s.length > 10 ? s.slice(0, 16).replace(" ", "T") + ":00+09:00" : s },
 		range: (a, b) => (a ? { start: String(a).slice(0, 10), end: b && b !== a ? String(b).slice(0, 10) : null } : null),
 		hhmm: (m) => (typeof m === "number" && isFinite(m) ? String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0") : ""),
 		// 클래스 색: 10색이면 [색]=이름·[색 코드] 비움, 아니면 [색 코드]=#RRGGBB + [색]=가장 가까운 이름

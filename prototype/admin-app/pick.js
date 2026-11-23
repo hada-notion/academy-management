@@ -38,14 +38,18 @@ const sgText=x=>{const sc=x.school||"",g=x.grade||"";if(!sc)return g||"학년?";
 const sgchip=x=>`<span class="hp-g ${gcls(x.grade)}" title="${esc((x.school||"학교 없음")+" · "+(x.grade||"학년 없음"))}">${esc(sgText(x))}</span>`;
 let OPEN=null; // {pop, fld, close}
 function shut(){if(OPEN){const o=OPEN;OPEN=null;o.pop.remove();o.fld.classList.remove("open");o.fld.setAttribute("aria-expanded","false");if(o.onClose)o.onClose()}}
-document.addEventListener("pointerdown",e=>{if(!OPEN)return;if(OPEN.pop.contains(e.target)||OPEN.fld.contains(e.target)||e.target.closest(".hp-dim"))return;shut()},true);
+/* 261123: 눌린 채로 목록이 닫히면(다른 칸을 누를 때) 올려 둔 여백(.pk-lift)을 바로 빼서 칸이 눌린 자리에서 밀려 클릭이 빗나가던 것(학생 목록이 열린 채 클래스 칸을 누르면 한 번 더 눌러야 했음) — 손을 뗀 뒤에 뺀다 */
+let DOWN=false;const LATE=[];
+document.addEventListener("pointerup",()=>{DOWN=false;if(LATE.length)setTimeout(()=>LATE.splice(0).forEach(f=>f()),0)},true);
+document.addEventListener("pointercancel",()=>{DOWN=false;LATE.splice(0).forEach(f=>f())},true);
+document.addEventListener("pointerdown",e=>{DOWN=true;if(!OPEN)return;if(OPEN.pop.contains(e.target)||OPEN.fld.contains(e.target)||e.target.closest(".hp-dim"))return;shut()},true);
 addEventListener("scroll",e=>{if(OPEN&&!OPEN.pop.contains(e.target))place(OPEN)},true);addEventListener("resize",()=>{if(OPEN)place(OPEN)});
 // 목록 자리(v46, 261113 밤 사용성 시험: 위로 열릴 때 칸을 덮고 화면 맨 위에 붙었음): 아래에 다 들어가면 아래, 아니면 위에 다 들어가면 위,
 // 둘 다 모자라면 넓은 쪽에 그 높이만큼(안에서 스크롤). 위로 열 때는 아래 끝을 칸 위 4에 붙여, 찾기로 목록이 줄어도 칸에 붙어 있음. 칸은 절대 가리지 않음
 // v47: 칸 아래 자리가 모자라면 칸이 든 창(스크롤 상자)을 먼저 올려 목록이 아래로 열리게(사용성 시험: 창 아래 칸에서 목록이 위로 열려 창 머리·도구를 가렸음)
 function lift(fld,pop){const need=Math.min(420,pop.scrollHeight||pop.offsetHeight||360)+12;/* v48: 아직 안 그려진 목록은 360으로 어림 */let r=fld.getBoundingClientRect();if(innerHeight-8-r.bottom>=need)return;
   let sc=fld.parentElement;while(sc&&sc!==document.body){const st=getComputedStyle(sc);if(/(auto|scroll)/.test(st.overflowY))break;/* v48: 지금 스크롤이 없어도 창이면 여백을 붙여 올림 */sc=sc.parentElement}if(!sc||sc===document.body)return;
-  const sr=sc.getBoundingClientRect();const want=Math.min(r.top-sr.top-12,need-(innerHeight-8-r.bottom));let room=sc.scrollHeight-sc.clientHeight-sc.scrollTop;if(want>room){/* v48(365판, 어사이드 사용성 3): 창 끝 칸이라 올릴 자리가 없으면 잠깐 아래 여백을 붙여 올림 — 목록을 닫으면 여백도 없앰 */const sp=document.createElement("div");sp.className="pk-lift";sp.style.cssText="flex:none;height:"+(want+sc.clientHeight)+"px";/* 내용이 창보다 짧아도 올릴 수 있게 넉넉히 */sc.appendChild(sp);room=want;const o=OPEN;setTimeout(()=>{const prev=o&&o.onClose;if(o)o.onClose=()=>{sp.remove();prev&&prev()};else sp.remove()},0)}const d=Math.max(0,Math.min(want,room));if(d>0)sc.scrollTop+=d}
+  const sr=sc.getBoundingClientRect();const want=Math.min(r.top-sr.top-12,need-(innerHeight-8-r.bottom));let room=sc.scrollHeight-sc.clientHeight-sc.scrollTop;if(want>room){/* v48(365판, 어사이드 사용성 3): 창 끝 칸이라 올릴 자리가 없으면 잠깐 아래 여백을 붙여 올림 — 목록을 닫으면 여백도 없앰 */const sp=document.createElement("div");sp.className="pk-lift";sp.style.cssText="flex:none;height:"+(want+sc.clientHeight)+"px";/* 내용이 창보다 짧아도 올릴 수 있게 넉넉히 */sc.appendChild(sp);room=want;const o=OPEN;setTimeout(()=>{const prev=o&&o.onClose;if(o)o.onClose=()=>{if(DOWN)LATE.push(()=>sp.remove());else sp.remove();prev&&prev()};else sp.remove()},0)}const d=Math.max(0,Math.min(want,room));if(d>0)sc.scrollTop+=d}
 function place(o){if(!o.fld.isConnected){shut();return} /* v48: 칸이 다시 그려져 없어지면 목록도 닫음(사용성 시험: 형제자매 고른 뒤 왼쪽 위에 막대로 남았음) */const r=o.fld.getBoundingClientRect(),p=o.pop;p.style.width=r.width+"px";p.style.left=r.left+"px";p.style.maxHeight="420px";p.style.top="0px";p.style.bottom="auto";
   const nat=Math.min(420,p.scrollHeight||p.offsetHeight);const dn=innerHeight-8-(r.bottom+4),up=r.top-4-8;
   const below=nat<=dn||(nat>up&&dn>=up);const room=Math.max(120,below?dn:up);p.style.maxHeight=Math.min(420,room)+"px";

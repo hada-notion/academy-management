@@ -130,9 +130,9 @@ const okT=s=>/^([01]\d|2[0-3]):[0-5]\d$/.test(s);
 const times=o=>{const [a,b]=[(o&&o.from)||"07:00",(o&&o.to)||"23:00"].map(t=>+t.slice(0,2)*60+ +t.slice(3));const st=(o&&o.step)||30,L=[];for(let m=a;m<=b;m+=st)L.push({v:pad(Math.floor(m/60))+":"+pad(m%60),t:pad(Math.floor(m/60))+":"+pad(m%60)});return L};
 // 날짜 자리 = 늘 같은 폭(날짜 + 요일, 적는 중·빈 칸·날짜만·날짜 시간 모두 같음) · 날짜·시간 칸 하나 = 글자로 바로 적기(숫자만 넣으면 . : 자동) + 누르면 달력·시간 목록
 function dt(host,o,parts){const vals={d:o.value?o.value.slice(0,10):"",t:o.value&&o.value.length>10?o.value.slice(11,16):(o.time||"")};if(parts==="t")vals.t=o.value||"";
-  const seg=k=>k==="d"?`<span class="hf-dwrap ${o.dow===false?"nodw":""}"><input class="hf-d" data-k="d" inputmode="numeric" placeholder="YYYY.MM.DD" value="${vals.d?vals.d.replace(/-/g,"."):""}" ${o.disabled?"disabled":""}>${o.dow!==false?`<span class="hf-dw"></span>`:""}</span>`:`<input class="hf-t" data-k="t" inputmode="numeric" placeholder="HH:mm" value="${esc(vals.t)}" ${o.disabled?"disabled":""}>`;
+  const seg=k=>k==="d"?`<span class="hf-dwrap ${o.dow===false?"nodw":""}"><input class="hf-d" data-k="d" inputmode="numeric" placeholder="${esc(o.placeholder||"YYYY.MM.DD")}" value="${vals.d?vals.d.replace(/-/g,"."):""}" ${o.disabled?"disabled":""}>${o.dow!==false?`<span class="hf-dw"></span>`:""}</span>`:`<input class="hf-t" data-k="t" inputmode="numeric" placeholder="HH:mm" value="${esc(vals.t)}" ${o.disabled?"disabled":""}>`;
   const b=shell(host,o,`${icn(o.icon||(parts==="t"?"clock":"cal"))}${parts.split("").map(seg).join(parts.length>1?'<span class="hf-sep"></span>':"")}${o.disabled?"":X}`,"hf-dt hf-"+parts);
-  const out=()=>parts==="dt"?(vals.d&&vals.t?vals.d+" "+vals.t:vals.d||""):parts==="d"?vals.d:vals.t;
+  const out=()=>parts==="dt"?(vals.d&&vals.t?vals.d+"T"+vals.t/* 261123: 저장 형식은 앱 자료와 같은 YYYY-MM-DDTHH:mm 한 가지(공백 ↔ T 섞이던 것) */:vals.d||""):parts==="d"?vals.d:vals.t;
   const show=()=>{const w=b.querySelector(".hf-dw");if(w)w.textContent=vals.d?`(${dw(vals.d)})`:"";has(b,vals.d||vals.t)};
   const fire=()=>{show();o.onChange&&o.onChange(out())};
   const opener=i=>{const k=i.dataset.k;pop(b,p=>{if(k==="d")cal(p,vals.d,d=>{vals.d=d;i.value=d.replace(/-/g,".");say(host,o.help||"");fire();close();const nx=b.querySelector(".hf-t");if(nx&&!vals.t){nx.focus()}else i.blur()},o);
