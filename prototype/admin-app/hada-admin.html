@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리 앱 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3C%2Fsvg%3E">
-<link rel="stylesheet" href="hada-tokens.css?v=727">
-<link rel="stylesheet" href="app.css?v=730">
-<link rel="stylesheet" href="pick.css?v=727">
-<link rel="stylesheet" href="field.css?v=727">
+<link rel="stylesheet" href="hada-tokens.css?v=734">
+<link rel="stylesheet" href="app.css?v=734">
+<link rel="stylesheet" href="pick.css?v=734">
+<link rel="stylesheet" href="field.css?v=734">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -20,7 +20,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=727"><script src="hada-rules.js?v=727"></script><script src="help.js?v=727"></script><script src="alim-preview.js?v=727"></script><script src="pick.js?v=727"></script><script src="field.js?v=727"></script><script src="panel.js?v=727"></script>
+<link rel="stylesheet" href="alim.css?v=734"><script src="hada-rules.js?v=734"></script><script src="help.js?v=734"></script><script src="alim-preview.js?v=734"></script><script src="pick.js?v=734"></script><script src="field.js?v=734"></script><script src="panel.js?v=734"></script>
 <script>
 "use strict";
 
@@ -2172,7 +2172,7 @@ function seedX(){const live=DB.enrolls.filter(e=>!e.ended);const m=TODAY.slice(0
 /* 노션 페이지로 가기(화면 ↔ 노션 메뉴 페이지 1:1). 시제품에는 주소가 없어 알림만, 원본에서는 페이지 ID로 엶 */
 LISTS.tuition.head=x=>`${esc(nmStu(x.studentId))} <small class="hsub">${esc(nmCls(x.classId))} · ${x.month} · ${WON(tuAmt(x))}</small>`;LISTS.bookfees.head=x=>`${esc(nmStu(x.studentId))} <small class="hsub">${esc(x.items)}</small>`;LISTS.reports.head=x=>`${esc(nmCls(x.classId))} <small class="hsub">${x.kind} 보고서 · ${D10(x.from)} - ${D10(x.to)}</small>`;LISTS.letters.head=x=>`${esc(nmCls(x.classId))} <small class="hsub">${x.month} 가정통신문</small>`;LISTS.progress.head=x=>`${esc(nmBook(x.bookId))} <small class="hsub">${esc(nmCls(x.classId))} · ${x.mode==="개별"?esc(nmStu(x.studentId)):"클래스 전체"}</small>`;
 /* 261119: 값 = 노션 메뉴(학원) DB 줄 이름(원본 27개 대조: 홈·일정·직원·수업·보강·학습기록·학생·학교·시험·클래스·등록·시간표·과목·라이브러리·진도·정기 보고서·수료 보고서·가정통신문·수강료·청구서·손익 분석·자료실·알림톡 설정·메뉴관리·매뉴얼·공개 DB·비공개 DB). 메뉴가 아닌 하위 화면(기타경비 · 학년 · 영역 · 비용)은 그 화면이 속한 메뉴 이름 */
-const NOTION={today:"홈",bill:"청구서",makeup:"보강",records:"학습기록",files:"자료실",completion:"수료 보고서",etcs:"청구서",students:"학생",enrolls:"등록",classes:"클래스",timetable:"시간표",lesson:"수업",teachers:"직원",subjects:"과목",books:"라이브러리",progress:"진도",events:"일정",reports:"정기 보고서",tuition:"수강료",letters:"가정통신문",schools:"학교",glevels:"학교",areas:"과목",exams:"시험",costs:"손익 분석",profit:"손익 분석",alims:"알림톡 설정"};
+const NOTION={today:"홈",bill:"청구서",makeup:"보강",records:"학습기록",files:"자료실",completion:"수료 보고서",etcs:"청구서",students:"학생",enrolls:"등록",classes:"클래스",timetable:"시간표",lesson:"수업",teachers:"직원",subjects:"과목",books:"라이브러리",progress:"진도",events:"일정",reports:"정기 보고서",tuition:"수강료",letters:"가정통신문",schools:"학교",glevels:"학교",areas:"과목",exams:"시험",costs:"결제 · 손익",profit:"결제 · 손익",alims:"알림톡 설정"};
 function notionBtn(scr){const n=NOTION[scr];if(!n)return "";const miss=window.LIVE&&window.LIVE.loaded&&_menuPages&&!_menuPages[n];/* 261119: 메뉴 주소를 받았는데 그 이름의 줄이 없으면 흐리게 + 이유 */return `<button type="button" class="nlink" aria-label="노션에서 열기" data-notion="${scr}" ${miss?`data-nmiss="1" style="opacity:.4" title="노션 ‘${n}’ 페이지 주소를 찾지 못했어요 — 노션 메뉴 DB에 그 이름의 줄이 있는지 봐요"`:`title="노션 ‘${n}’ 페이지를 새 탭으로 열어요"`}>${IC("notion","s")}</button>`}
 document.addEventListener("click",ev=>{const b=ev.target.closest&&ev.target.closest("[data-engd2]");if(!b)return;const e2=byId(DB.enrolls,b.dataset.engd2);if(e2)enGuideRun(e2)});/* 327판: 등록 화면 창 [등록 안내 전송] */
 /* 261119 대표: 실제 자료 모드의 [N] — 줄 창 = 그 줄의 노션 페이지(data-nurl), 화면 제목 옆 = 그 메뉴의 노션 페이지(서버 사본의 메뉴(학원) DB 줄 주소를 이름으로 찾음). 예시 모드는 아래 알림 그대로 */
@@ -2285,7 +2285,7 @@ Object.assign(LISTS,{
   fieldsOf:r=>r.bill?[]:r.kind==="기타경비"?LISTS.charges.fields.map(f=>f[0]==="item"?["etcId","항목",()=>etcPick().map(x=>({v:x.id,t:x.name,sub:x.item+" · "+WON(x.amt)})),"req","기타경비 목록에서 골라요 — 신고 금액이 들어가요"]:f):LISTS.charges.fields,roRow:r=>!!r.bill,infoX:r=>chInfoBox(r),onSet:(r,k)=>{if(k==="etcId"){const x=etcOf(r.etcId);if(x){r.item=x.item;r.name=r.name||x.name;r.amount=x.amt;r.take=true}setTimeout(render,0)}chFix(r);if(k==="kind")setTimeout(render,0)},
   head:x=>`${esc(nmStu(x.studentId))} <small class="hsub">${esc(x.kind)} · ${esc(x.item||"")} · ${WON(x.amount)}</small>`,
   blank:()=>({id:uid("ch"),studentId:"",classId:"",kind:"기타경비",item:"모의고사비",name:"",take:true,amount:0,month:curM(),bill:"",billId:"",paidOn:""})},
- profit:{title:"손익 분석",coll:"profit",unit:"달",ro:true,noDel:true,ph:"달 검색",help:"달마다 결제 기록(노션 결제 DB)의 매출에서 지출을 뺀 값이에요 — 노션 손익 분석과 같은 숫자. 수강료 결제(매달 기타경비 포함)와 그 밖 매출을 결제일 달로 세고, 교재비 · 재료비 · 한 번 받는 기타경비(청구서 결제)는 결제 DB가 아니라서 안 들어가요. 숫자는 수강료 화면과 [결제 내역]에서 고쳐요.",
+ profit:{title:"결제 · 손익",coll:"profit",unit:"달",ro:true,noDel:true,ph:"달 검색",help:"달마다 결제 기록(노션 결제 DB)의 매출에서 지출을 뺀 값이에요 — 노션 손익 분석과 같은 숫자. 수강료 결제(매달 기타경비 포함)와 그 밖 매출을 결제일 달로 세고, 교재비 · 재료비 · 한 번 받는 기타경비(청구서 결제)는 결제 DB가 아니라서 안 들어가요. 숫자는 수강료 화면과 [결제 내역]에서 고쳐요.",
   /* 261118 담당(노션이 기준): 손익 = 결제 DB만 — 수강료 [결제]가 생성하는 결제 줄(앱 = 수강료 결제일 · 받은 금액) + 결제 내역 매출 − 지출. 청구 결제(청구서)는 넣지 않음 */
   rows:()=>monthsBack(12+(+curM().slice(5,7))).map(/* 261117: 작년 1월부터(필터 탭 올해·작년) */m=>{const tu=DB.tuition.filter(t=>!t.del&&t.paidOn&&mKey(t.paidOn)===m&&(t.pay==="완료"||t.pay==="과오납"||+t.got)).reduce((a,t)=>a+(+t.got||tuAmt(t)),0);const ot=DB.costs.filter(c=>c.kind==="매출"&&mKey(c.date)===m).reduce((a,c)=>a+c.amount,0);const out=DB.costs.filter(c=>c.kind==="지출"&&mKey(c.date)===m).reduce((a,c)=>a+c.amount,0);return {id:"pf"+m,m,tu,ot,out,net:tu+ot-out,any:!!(tu||ot||out)}}),
   cols:[["달",x=>x.m],["수강료 결제",x=>x.any?WON(x.tu):"—"],["그 밖 매출",x=>x.any?WON(x.ot):"—"],["매출 합계",x=>x.any?WON(x.tu+x.ot):"—"],["지출",x=>x.any?WON(x.out):"—"],["손익",x=>x.any?(x.net<0?"!":"")+WON(x.net):"자료 없음"]],filters:[["이번 달",x=>x.m===curM()],["적자인 달",x=>x.net<0]],fields:[]},
@@ -2305,7 +2305,7 @@ Object.assign(LISTS,{
   rows:()=>{chargesSync();const a=[];const g={};DB.charges.filter(l=>!l.del&&l.paidOn).forEach(l=>{const b=l.bill||"x:"+l.item,k=l.paidOn+"|"+b,z=g[k]=g[k]||{d:l.paidOn,b,ids:new Set(),v:0};z.ids.add(l.billId||l.id);z.v+=+l.amount||0});Object.values(g).forEach(z=>a.push({d:z.d,name:`${z.b==="tuition"?"수강료":z.b==="bookfee"?"교재비":z.b.slice(2)} ${z.ids.size}건`,inn:z.v,out:0,how:z.b==="bookfee"?"카드":"계좌이체"}));DB.costs.forEach(c=>a.push({d:c.date,name:c.name,inn:c.kind==="매출"?c.amount:0,out:c.kind==="지출"?c.amount:0,how:c.how}));let bal=0;return a.sort((x,y)=>x.d<y.d?-1:x.d>y.d?1:0).map((x,i)=>{bal+=x.inn-x.out;return Object.assign(x,{id:"lh"+i,bal})})},
   cols:[["날짜",x=>D10(x.d)],["내용",x=>x.name],["수입",x=>x.inn?WON(x.inn):"—"],["지출",x=>x.out?WON(x.out):"—"],["잔액",x=>(x.bal<0?"!":"")+WON(x.bal)],["결제 수단",x=>x.how]],byMonth:x=>mKey(x.d),filters:[],fields:[]}
 });
-LISTS.legal_rcpt.form={name:"서식(원부 + 영수증)",desc:"한 건마다 한 쌍 · A4 세로에 두 쌍 · 도장",run:(rows,st)=>rcptPreview(rows)};LISTS.legal_rcpt.xlForm={name:(x,i)=>`${i+1} ${nmStu(x.t.studentId)}`,sheet:rcptSheet};TITLES.profit="손익 분석";TITLES.charges="청구 항목";TITLES.legal="법정 서류";TITLES.academy="학원 정보";NOTION.profit="손익 분석";NOTION.academy="매뉴얼";
+LISTS.legal_rcpt.form={name:"서식(원부 + 영수증)",desc:"한 건마다 한 쌍 · A4 세로에 두 쌍 · 도장",run:(rows,st)=>rcptPreview(rows)};LISTS.legal_rcpt.xlForm={name:(x,i)=>`${i+1} ${nmStu(x.t.studentId)}`,sheet:rcptSheet};TITLES.profit="결제 · 손익";TITLES.charges="청구 항목";TITLES.legal="법정 서류";TITLES.academy="학원 정보";NOTION.profit="결제 · 손익";NOTION.academy="매뉴얼";
 /* 카드 화면(E = 묶음 카드): 표·캘린더가 아닌 설정 화면. C 제목 줄 + 카드(폭 720)만, D 위 줄 없음 */
 function cardScreen(v,o){v.innerHTML=`<div class="top pg-ttl"><h1>${pgIc(o.scr)}${o.title}</h1>${tlinkBar(o.scr)}${o.help?HELP(o.help):""}${notionBtn(o.scr)}</div><div class="body"><div class="list cards">${o.boxes.map(b=>`<section class="cbox"><h3>${IC(b.icon,"l")}${b.title}${b.help?HELP(b.help):""}</h3>${b.rows.map(r=>`<div class="crow"><span class="cl">${r[0]}</span><span class="cv">${r[1]}</span><span class="ca">${r[2]||""}</span></div>`).join("")}</section>`).join("")}</div></div>`}
 const cbtn=(act,label,icon,cls)=>`<button type="button" class="btn sm ${cls||""}" data-cact="${act}">${icon?IC(icon,"s"):""}${label}</button>`;
@@ -4962,6 +4962,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del&&!z._virtual).
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="appdata.js?v=727"></script><script src="appsave.js?v=728"></script><script src="appview.js?v=727"></script><script src="livelesson.js?v=728"></script><script src="liveadmin.js?v=729"></script><script src="livebook.js?v=730"></script><script src="liveschool.js?v=727"></script><script src="live.js?v=732"></script><script src="liverefresh.js?v=731"></script><script src="livereq.js?v=732"></script>
+<script src="finance.js?v=734"></script><script src="appdata.js?v=734"></script><script src="appsave.js?v=734"></script><script src="appview.js?v=734"></script><script src="livelesson.js?v=734"></script><script src="liveadmin.js?v=734"></script><script src="livebook.js?v=734"></script><script src="liveschool.js?v=734"></script><script src="live.js?v=734"></script><script src="liverefresh.js?v=734"></script><script src="livereq.js?v=734"></script>
 </body>
 </html>
