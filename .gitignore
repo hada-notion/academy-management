@@ -9,3 +9,4 @@ __pycache__/
 # test outputs (admin-live-refresh.cjs writes here by default)
 tests/refresh-*.png
 tests/refresh-took.json
+tests/school-live-*.png

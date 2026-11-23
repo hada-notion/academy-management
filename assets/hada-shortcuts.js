@@ -6,7 +6,6 @@
 (() => {
 const ICONS={
  legal:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>',
- school:'<circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>',
  external:'<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',
  check:'<polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>',
  edit:'<path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>',
@@ -19,7 +18,6 @@ const ICONS={
 // 새 탭 메뉴는 넓은 화면에서 ↗와 이름, 태블릿 폭에서는 각자의 아이콘만 보인다. 휴대폰 폭(700px 이하)에서는 상단 바에 ☰만 두고 전부 사이드바로 옮긴다.
 const PAGES=[
  ['exam.html','시험 관리','award','학교·학년별 시험 범위와 일정 관리(준비 중)',false], // 화면을 만들면 false를 지운다
- ['school_search.html','학교 검색','school','나이스에서 학교를 찾아 Notion 학교 페이지와 연결(관리 앱으로 옮기는 중)',false],
  ['legal_documents.html','법정 서류','legal','출석부·원부·영수증 서식을 기간별로 조회하고 출력(관리 앱으로 옮기는 중)',false],
 ];
 const EXTERNAL=[

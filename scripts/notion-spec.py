@@ -19,7 +19,7 @@ import sys
 from pathlib import Path
 
 HOST = re.compile(r"[A-Za-z0-9-]+\.supabase\.co")
-# 학원마다 다른 GitHub Pages 주소(학교 검색·학생 페이지 링크 수식)
+# 학원마다 다른 GitHub Pages 주소(학교 검색 · 학생 페이지 링크 수식 — 학교 검색은 관리 앱 주소)
 UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 HEX32 = re.compile(r"[0-9a-f]{32}")
 PAGES = re.compile(r"https?://[A-Za-z0-9-]+\.github\.io/[A-Za-z0-9._-]+")
