@@ -170,5 +170,38 @@ for(const role of ['anon','authenticated']){
  for(const query of ['select * from public.hada_security_state','select * from public.hada_security_webhook_usage','select * from public.hada_security_webhook_checks','select * from public.hada_security_notion_links',"select public.hada_security_command('internal')"]){let denied=false;try{await db.query(query);}catch{denied=true;}ok(denied,true);}
  await db.exec('reset role');
 }
+// (v2.8.0, 261123 키 자동 등록) 외부 키: 값은 Vault에만, 표에는 있음 · 바꾼 날 · 확인 결과만, 서비스 역할만 부름.
+await db.exec("create view vault.decrypted_secrets as select id,name,secret as decrypted_secret from vault.secrets");
+await db.exec(fs.readFileSync('supabase/migrations/20261123090000_external_keys.sql','utf8'));
+{
+ const ext=fs.readFileSync('supabase/migrations/20261123090000_external_keys.sql','utf8').replace(/--[^\n]*/g,'').replace(/\bdo\s+update\b/gi,'do upsert');
+ const unsafeExt=[...ext.matchAll(/\b(delete\s+from|update)\s[^;]*;/gi)].map(m=>m[0]).filter(s=>!/\bwhere\b/i.test(s));
+ if(unsafeExt.length)throw new Error('external keys: DELETE/UPDATE without WHERE: '+unsafeExt.join(' | '));
+ const ek=async(action,data={})=>(await db.query('select public.hada_external_key($1,$2::jsonb) as result',[action,JSON.stringify(data)])).rows[0].result;
+ const FAKE='TEST-ONLY-FAKE-KEY-0000',FAKE2='TEST-ONLY-FAKE-KEY-1111';
+ ok(await ek('status'),{keys:{}});ok(await ek('read'),{keys:{}});
+ ok((await ek('set',{name:'NOTION_TOKEN',value:FAKE})).status,400);
+ for(const bad of [' '+FAKE,'short',FAKE+'\n','한글키값입니다아아',null,'x'.repeat(257)])ok((await ek('set',{name:'NEIS_API_KEY',value:bad})).status,400);
+ ok((await ek('set',{name:'NEIS_API_KEY',value:FAKE})).ok,true);
+ ok((await raw("select secret from vault.secrets where name='hada_ext_NEIS_API_KEY'"))[0].secret,FAKE);
+ const st=await ek('status');ok(Object.keys(st.keys),['NEIS_API_KEY']);ok(JSON.stringify(st).includes('FAKE'),false);ok(st.keys.NEIS_API_KEY.test_state,null);
+ ok(JSON.stringify(await raw('select * from public.hada_external_keys')).includes('FAKE'),false);
+ ok((await ek('tested',{name:'NEIS_API_KEY',state:'wrong'})).ok,true);ok((await ek('status')).keys.NEIS_API_KEY.test_state,'wrong');
+ ok((await ek('tested',{name:'NEIS_API_KEY',state:'bad'})).status,400);
+ ok((await ek('set',{name:'NEIS_API_KEY',value:FAKE2})).ok,true); // update keeps one Vault row, resets the check
+ ok((await raw("select count(*)::int as n from vault.secrets where name='hada_ext_NEIS_API_KEY'"))[0].n,1);
+ ok((await ek('status')).keys.NEIS_API_KEY.test_state,null);
+ ok((await ek('set',{name:'KAKAO_REST_KEY',value:FAKE})).ok,true);
+ ok(await ek('read'),{keys:{NEIS_API_KEY:FAKE2,KAKAO_REST_KEY:FAKE}});
+ ok((await ek('clear',{name:'KAKAO_REST_KEY'})).ok,true);
+ ok(await ek('read'),{keys:{NEIS_API_KEY:FAKE2}});ok((await raw("select count(*)::int as n from vault.secrets where name='hada_ext_KAKAO_REST_KEY'"))[0].n,0);
+ ok((await raw("select count(*)::int as n from vault.secrets where name='sync_queue_admin_key'"))[0].n,1); // other Vault secrets untouched
+ ok((await ek('nope',{name:'NEIS_API_KEY'})).status,400);
+ for(const role of ['anon','authenticated']){
+  await db.exec('set role '+role);
+  for(const query of ['select * from public.hada_external_keys',"select public.hada_external_key('read')","select public.hada_external_key('status')"]){let denied=false;try{await db.query(query);}catch{denied=true;}ok(denied,true);}
+  await db.exec('reset role');
+ }
+}
 await db.close();console.log(`PostgreSQL security checks passed: ${checks}`);
 })().catch(e=>{console.error(e);process.exit(1)});
