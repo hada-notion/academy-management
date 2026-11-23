@@ -89,7 +89,7 @@ const APPVIEW = {
 				schools: X.ids(p["학교"]), grades: X.ids(p["학년"]).map((id) => X.title("학년(학원) DB", id, "이름")).filter(Boolean), students: X.ids(p["학생"]),
 				// 날짜 시작~끝 = 노션 값 그대로(끝이 없으면 "")
 				start, end, who: X.id1(p["담당자"]),
-				stat: X.str(p["진행상태"]) || "시작 전", // 노션 진행상태 이름 그대로(시작 전 · 진행 중 · 미완료 · 완료) pub: !!p["학부모 공개"], memo: X.str(p["일정 안내 메모"]),
+				stat: X.str(p["완료"] ?? p["진행상태"]) || "시작 전", _statKey: "완료" in p ? "완료" : "진행상태", // 노션 진행상태 이름 그대로(시작 전 · 진행 중 · 완료). 칸 이름은 "진행상태" → "완료"(261124 대표) — 둘 다 읽음 pub: !!p["학부모 공개"], memo: X.str(p["일정 안내 메모"]),
 				classIds: X.ids(p["클래스"]), school: X.title("학교(학원) DB", X.id1(p["학교"]), "이름"), state: "saved",
 				_time: X.dt(p["날짜"]).length > 10 ? X.dt(p["날짜"]).slice(11) : "", _students: X.ids(p["학생"]), _neis: !!X.str(p["NEIS 동기화키"]),
 			}

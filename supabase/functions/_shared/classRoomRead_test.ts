@@ -175,6 +175,12 @@ Deno.test("copy reads match Notion reads for every switched action", () => withM
  same("class-records", await room.loadClassRecords("s1"), recs)
  assert(recs.records.length === 5 && !recs.records.some((r: any) => r.id === "rGone" || r.id === "recMk"), "class records: makeup session and deleted record left out")
  same("class-records makeup", await room.loadClassRecords("sMk"), await read.loadClassRecords("sMk"))
+ // (v2.8.0 학습생성결함 ②) 학습기록 메뉴: 기간 안 모든 수업(보강 포함)의 기록 — 수업 창을 열지 않아도
+ const rr = await read.loadRangeRecords("2026-10-01", "2026-10-31")
+ same("range-records", await room.loadRangeRecords("2026-10-01", "2026-10-31"), rr)
+ assert(rr.records.length === 6 && rr.records.some((r: any) => r.id === "recMk" && r.sessionId === "sMk") && !rr.records.some((r: any) => r.id === "rGone"), "range records: every session's record incl. makeup, deleted left out: " + JSON.stringify(rr.records.map((r: any) => r.id)))
+ assert(rr.records.find((r: any) => r.id === "recA")?.date === "2026-10-13" && rr.records.find((r: any) => r.id === "recA")?.classIds[0] === "cls", "range record carries session date and class")
+ same("range-records empty", await room.loadRangeRecords("2026-09-01", "2026-09-30"), await read.loadRangeRecords("2026-09-01", "2026-09-30"))
  const stats = await read.loadClassStats("s1", NOW)
  same("class-stats", await room.loadClassStats("s1", NOW), stats)
  assert(stats.month.counted === 4 && stats.homework.total === 3 && stats.tests.length === 2, "stats content is real: " + JSON.stringify(stats))

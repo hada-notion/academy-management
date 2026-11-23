@@ -248,16 +248,19 @@ Deno.test("books: owners and template grouping data", () => withMock(async () =>
 Deno.test("records: group book links the class, repeat returns the existing record", () => withMock(async (f) => {
  const r1 = await room.createRecords({ sessionId: "s1", kind: "학습", bookIds: ["group"] })
  const rec = f.created[0]; assert(r1.records[0].created && ids(rec, "등록") === "ra,rb" && ids(rec, "출석") === "aa,ab" && ids(rec, "교재") === "regular" && ids(rec, "과목") === "math")
- assert(rec.properties["학습"].title[0].text.content === "[학습] 개념원리 1-2 · 중1 B 10.13(화)" && rec.properties["보강"] === undefined && rec.properties["학습정보 수정일"])
+ assert(rec.properties["학습"].title[0].text.content === "[학습] 개념원리(중1 B) 10.13(화)" && rec.properties["보강"] === undefined && rec.properties["학습정보 수정일"])
  assert(ids(rec, "클래스") === "cls", "v2.8.0 item 81: the record carries the session's class")
  f.pages.s1.properties["학습기록"] = rel(rec.id)
  const r2 = await room.createRecords({ sessionId: "s1", kind: "학습", bookIds: ["group"] })
  assert(!r2.records[0].created && r2.records[0].id === rec.id && f.created.length === 1)
 }))
 Deno.test("records: template batch makes one record per student's own book", () => withMock(async (f) => {
+ // (v2.8.0 학습생성결함) 제목 = 노션 `[편집] 학습기록 이름`: "[구분] 진도교재 이름 MM.DD(요일)" — 개별 교재 이름("교재 · 학생 반")에 학생이 들어 있다
+ f.pages.indA.properties["진도교재"] = title("RPM 중학 수학 1-1 · 김하늘 중1 B")
  const r = await room.createRecords({ sessionId: "s1", kind: "과제", bookIds: ["indA", "indB"] })
  assert(r.records.length === 2 && f.created.map((p) => ids(p, "등록") + "/" + ids(p, "출석")).join() === "ra/aa,rb/ab")
- assert(f.created[0].properties["학습"].title[0].text.content === "[과제] RPM(김하늘) · 중1 B 10.13(화)")
+ assert(f.created[0].properties["학습"].title[0].text.content === "[과제] RPM 중학 수학 1-1 · 김하늘 중1 B 10.13(화)", f.created[0].properties["학습"].title[0].text.content)
+ assert(f.created[1].properties["학습"].title[0].text.content === "[과제] RPM(박서준) 10.13(화)")
 }))
 // (261123 출시 전 4번) 여러 줄 중 하나가 실패해도 나머지는 쓰고, 된 줄 · 안 된 줄을 함께 답한다.
 async function partial(fn: () => Promise<unknown>): Promise<any> {
@@ -307,7 +310,10 @@ Deno.test("update record: topic/range/content and title follow the rule", () => 
  const w = f.writes.at(-1)!.body.properties
  assert(w["주제"].rich_text[0].text.content === "실험 정리" && w["범위"].rich_text[0].text.content === "p.12-15" && w["학습"].title[0].text.content === "[학습] 실험 정리 · 중1 B 10.13(화)")
  await room.updateRecord({ recordId: id, bookId: "group" })
- const w2 = f.writes.at(-1)!.body.properties; assert(ids({ properties: w2 }, "진도교재") === "group" && w2["학습"].title[0].text.content === "[학습] 개념원리 1-2 · 중1 B 10.13(화)")
+ const w2 = f.writes.at(-1)!.body.properties; assert(ids({ properties: w2 }, "진도교재") === "group" && w2["학습"].title[0].text.content === "[학습] 개념원리(중1 B) 10.13(화)")
+ // 범위만 고쳐도(교재를 다시 보내도) 제목이 진도교재 이름 그대로 — 저장 뒤 학생 이름이 빠지지 않게(학생생성결함 기본동작시험 ②-참고)
+ await room.updateRecord({ recordId: id, bookId: "indA", range: "p.20-24" })
+ assert(f.writes.at(-1)!.body.properties["학습"].title[0].text.content === "[학습] RPM(김하늘) 10.13(화)")
 }))
 Deno.test("save attendance and activities: validated, stamped for the report sync", () => withMock(async (f) => {
  await room.saveAttendance([{ attendanceId: "ab", status: "🔴 결석", memo: "병결", comment: "다음 시간 보충해요" }])

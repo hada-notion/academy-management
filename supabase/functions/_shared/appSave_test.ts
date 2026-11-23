@@ -210,6 +210,8 @@ Deno.test("일정(2.8 2단계): 세부 구분·기록(내부용) 받고 구분�
 
 Deno.test("일정(홈 할 일 261124): 진행상태·담당자 받고, 그것만 바꾸면 리포트 맞추기 안 함", () => {
   checkAllowedProps(EV, { 진행상태: "완료", 담당자: [] })
+  checkAllowedProps(EV, { 완료: "완료" }) // 칸 이름을 "완료"로 바꾼 뒤
+  assertEquals(eventAffectsReport(EV, { 완료: "완료" }), false)
   assertEquals([eventAffectsReport(EV, { 진행상태: "완료" }), eventAffectsReport(EV, { 담당자: [] }), eventAffectsReport(EV, { 진행상태: "완료", 날짜: "2026-05-01" })], [false, false, true])
 })
 

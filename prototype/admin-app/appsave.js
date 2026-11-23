@@ -278,8 +278,8 @@ const APPSAVE = {
 			"숨김": !!r.hide, "학부모 공개": !!r.pub,
 			"클래스": X.rels(r.classIds), "학생": X.rels(r.students), "학교": X.rels(r.schools),
 			"학년": X.byNames("glevels", r.grades, "일정 학년"), // 학년 이름 → 학년(학원) DB id
-			// 홈 [할 일](261124): 진행상태(노션 이름 그대로) · 담당자(직원 한 명). 서버 EVENT_PROPS가 받음
-			"진행상태": X.str(r.stat), "담당자": X.rels(r.who ? [r.who] : []),
+			// 홈 [할 일](261124): 진행상태(노션 이름 그대로 — 칸 이름은 노션에 있는 것: 진행상태 또는 완료) · 담당자(직원 한 명). 서버 EVENT_PROPS가 받음
+			[r._statKey || "진행상태"]: X.str(r.stat), "담당자": X.rels(r.who ? [r.who] : []),
 		}),
 	},
 	// 시험(261123 시험 보강 — 서버 WRITE_DBS에 이미 열림, 칸 제한 없음). 노션에서 사람이 고치는 칸만 보낸다.
