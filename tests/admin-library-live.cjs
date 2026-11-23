@@ -88,6 +88,45 @@ const FOUND = [
     assert.deepEqual(sy.map((c) => c.body), [{ action: 'run', name: 'sync-copy', dbs: ['라이브러리(학원) DB'], full: true }], '등록 뒤 라이브러리 사본 맞추기');
     assert.deepEqual(errors, []); done.push('검색 등록'); await page.close();
   }
+  // 2-0) 즐겨찾기 [교재 가져오기] — 단추 주소의 코드를 가짜 교보문고 책 상세 · 검색 목록에서 실행하면 JSON이 복사되고, 앱 [가져온 정보 붙여넣기]가 한 권 · 여러 권을 올린다
+  {
+    const { page, calls, errors } = await open();
+    await page.evaluate(() => bookFindOpen()); await page.click('#lp [data-bt="k"]');
+    await page.waitForSelector('#lp #bfGrab'); await page.waitForSelector('#lp #bfPaste');
+    const href = await page.getAttribute('#lp #bfGrab', 'href');
+    assert.ok(href.startsWith('javascript:'), '즐겨찾기 단추 주소');
+    const code = decodeURIComponent(href.slice('javascript:'.length));
+    assert.ok(!/\/\/[^\n]*\n/.test(code.replace(/https?:\/\//g, '').replace(/'[^'\n]*\/\/[^'\n]*'/g, '')), '즐겨찾기 주소 안에 // 주석 없음');
+    await page.click('#lp #bfGrab'); await page.waitForFunction(() => /끌어다 놓은 뒤/.test(document.body.textContent)); // 앱 안에서 누르면 안내만
+    const ctx = page.context(); await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: origin });
+    const html1 = '<!doctype html><section><h3>기본정보</h3><table><tr><th>쪽수</th><td>200쪽</td></tr></table></section><section><h3>목차</h3><div>1. 수와 연산 8<br>2. 문자와 식 40</div></section><script type="application/ld+json">{"@type":"Book","name":"예시 북마크 책","isbn":"9791100000031","image":"https://contents.kyobobook.co.kr/sih/fit-in/458x0/pdt/9791100000031.jpg","publisher":{"name":"예시 출판"},"offers":{"price":13500}}</script><del>15,000원</del>';
+    const html2 = '<!doctype html><input type="checkbox" class="result_checkbox" checked data-pid="S000300000001" data-bid="9791100000048" data-name="예시 책 하나"><input type="checkbox" class="result_checkbox" checked data-pid="S000300000002" data-bid="9791100000055" data-name="예시 책 둘"><input type="checkbox" class="result_checkbox" data-pid="S000300000003" data-bid="9791100000062" data-name="체크 안 한 책">';
+    const kc = await b.newContext(); const kpages = { 'https://product.kyobobook.co.kr/detail/S000212399999': html1, 'https://search.kyobobook.co.kr/search?keyword=x': html2 };
+    await kc.route('**/*', (r) => { const h = kpages[r.request().url()]; return h ? r.fulfill({ contentType: 'text/html; charset=utf-8', body: h }) : r.abort(); });
+    const grab = async (url) => { const k = await kc.newPage(); k.on('dialog', (d) => d.dismiss()); await k.goto(url); await k.evaluate(code); await k.waitForTimeout(500); const t = await k.evaluate(() => navigator.clipboard.readText()); await k.close(); await page.evaluate((x) => navigator.clipboard.writeText(x), t); return t; };
+    for (const o of ['https://product.kyobobook.co.kr', 'https://search.kyobobook.co.kr']) await kc.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: o });
+    const one = JSON.parse(await grab('https://product.kyobobook.co.kr/detail/S000212399999'));
+    assert.equal(one.hada, 'book'); assert.equal(one.title, '예시 북마크 책'); assert.equal(one.isbn13, '9791100000031'); assert.equal(one.publisher, '예시 출판'); assert.equal(one.price, 15000); assert.equal(one.pages, 200); assert.match(one.toc, /1\. 수와 연산 8\n2\. 문자와 식 40/);
+    await page.click('#lp #bfPaste'); await page.waitForSelector('#lp [data-bf="0"]:checked');
+    assert.match(await page.textContent('#lp'), /예시 북마크 책/); assert.match(await page.textContent('#lp'), /단원 2개/);
+    await page.screenshot({ path: shots + 'lib-live-bookmark-one.png' });
+    await page.click('#lp #bfAdd'); await page.waitForFunction(() => !document.querySelector('#lp #bfQ'), null, { timeout: 10000 });
+    assert.deepEqual(tb(calls, 'parse')[0].body, { action: 'parse', text: one.toc });
+    assert.deepEqual(tb(calls, 'register-custom')[0].body, { action: 'register-custom', title: '예시 북마크 책', units: [{ name: '3. 도형', page: 70 }, { name: '1. 수와 연산', page: 8 }], kind: '교재', isbn13: '9791100000031', cover: 'https://contents.kyobobook.co.kr/sih/fit-in/458x0/pdt/9791100000031.jpg', price: 15000, publisher: '예시 출판' });
+    // 검색 목록에서 체크한 2권
+    const many = JSON.parse(await grab('https://search.kyobobook.co.kr/search?keyword=x'));
+    assert.equal(many.hada, 'books'); assert.equal(many.items.length, 2); assert.equal(many.items[0].pid, 'S000300000001');
+    await page.evaluate(() => bookFindOpen()); await page.click('#lp [data-bt="k"]'); await page.click('#lp #bfPaste');
+    await page.waitForSelector('#lp [data-bf="1"]:checked');
+    const kb = tb(calls, 'kyobo-book').map((c) => c.body.pid); assert.deepEqual(kb.slice(-2), ['S000300000001', 'S000300000002']);
+    await page.screenshot({ path: shots + 'lib-live-bookmark-many.png' });
+    const n0 = tb(calls, 'register-custom').length; await page.click('#lp #bfAdd'); await page.waitForFunction(() => !document.querySelector('#lp #bfQ'), null, { timeout: 10000 });
+    assert.equal(tb(calls, 'register-custom').length - n0, 2);
+    // 엉뚱한 글은 안내만
+    await page.evaluate(() => bookFindOpen()); await page.click('#lp [data-bt="k"]'); await page.evaluate(() => navigator.clipboard.writeText('{"a":1}')); await page.click('#lp #bfPaste');
+    await page.waitForFunction(() => /교보문고에서 가져온 정보가 아니에요/.test(document.querySelector('#lp').textContent));
+    assert.deepEqual(errors, []); done.push('북마크 단추·붙여넣기'); await page.close();
+  }
   // 2) 책 찾기 — 교보문고 주소: 상품번호 → kyobo-book → register-custom(교재명 · ISBN · 교보 표지 · 정가 · 선택지에 있는 출판사 · 단원)
   {
     const { page, calls, errors } = await open();
