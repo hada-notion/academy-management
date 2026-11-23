@@ -48,7 +48,7 @@ window.liveModeFor = function (search, hostname, protocol) {
   const MKW = gOn.has("P3b") && gOn.has("P3m"); window.LIVE_MKW = MKW;
   /* 시험 쓰기(칸 P2x — 화면 묶음 없음, P2와 함께 켤 때만, 261123 시험 보강): 켜면 시험 화면이 보기만에서 빠지고 저장 층(appsave tests · exams · grades)으로 노션에 씀 */
   const EXW = gOn.has("P2") && gOn.has("P2x"); window.LIVE_EXW = EXW;
-  const P2ON = gOn.has("P2"), RO = new Set([...GATES.P2, ...GATES.P3, ...GATES.P3b, "schools"].filter((s) => !(EVW && s === "events") && !(MKW && s === "makeup") && !(EXW && s === "exams"))); /* P3 수업은 걸음 1 = 보기만 */
+  const P2ON = gOn.has("P2"), RO = new Set([...GATES.P2, ...GATES.P3, ...GATES.P3b, "schools"].filter((s) => !(EVW && (s === "events" || s === "today" /* 261124 홈 할 일 [완료] = 일정 쓰기 */)) && !(MKW && s === "makeup") && !(EXW && s === "exams"))); /* P3 수업은 걸음 1 = 보기만 */
   window.liveRO = (s) => RO.has(s);
   /* (강사계정 · 대표 261123 "댓글허용이면 보기만") 강사가 댓글허용에만 든 메뉴의 화면은 보기만 칸과 같은 잠금으로(liveteacher.js가 넣음). 서버도 쓰기 403 */
   window.liveTeacherRo = new Set();

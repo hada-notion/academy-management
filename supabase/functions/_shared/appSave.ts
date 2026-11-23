@@ -46,7 +46,11 @@ export const isWriteDb = (v: unknown): v is WriteDb => typeof v === "string" && 
 export const EVENT_DB = "일정(학원) DB"
 // (2.8 2단계) 세부 구분·기록(내부용)을 받고, 구분은 받지 않는다(수식이 될 칸 — 앱은 읽기만, 앱서버 261118).
 // (2.8, 대표 261118) `잠금` 칸은 버림 — 받지 않고, 잠금 줄 날짜 거절도 없앴다(관리 앱이 학사 일정을 스스로 잠가 보여 줌).
-export const EVENT_PROPS = ["이름", "날짜", "세부 구분", "기록(내부용)", "숨김", "학부모 공개", "클래스", "학생", "학교", "학년"] as const
+// (2.8, 홈 다시 만들기 261124) 홈 [할 일]: 진행상태(완료로 바꾸면 홈에서 빠짐) · 담당자(직원 관계)도 받는다. 리포트에는 영향 없음(할일은 늘 비공개).
+export const EVENT_PROPS = ["이름", "날짜", "세부 구분", "기록(내부용)", "숨김", "학부모 공개", "클래스", "학생", "학교", "학년", "진행상태", "완료", "담당자"] as const
+// (261124 대표 "1안") 노션 진행상태 칸 이름을 "완료"로 바꾸는 동안 두 이름을 다 받는다(앱은 노션에 있는 이름으로 보냄)
+// 리포트에 보이는 데 영향이 없는 일정 칸(이것만 바꾸면 리포트 맞추기를 부르지 않음)
+const EVENT_NO_REPORT = new Set(["기록(내부용)", "진행상태", "완료", "담당자"])
 export const ROUTINE_DB = "루틴(학원) DB"
 // 루틴 체크 관계는 받지 않는다(체크는 수업 [루틴 체크 생성]이 만든다).
 export const ROUTINE_PROPS = ["이름", "클래스", "순서", "설명", "쉬기"] as const
@@ -143,9 +147,9 @@ export const saveDeps = {
 		})
 	},
 }
-// 리포트에 보이는 데 영향을 주는 일정 칸(기록(내부용)만 바꾼 것은 아님).
+// 리포트에 보이는 데 영향을 주는 일정 칸(기록(내부용) · 진행상태 · 담당자만 바꾼 것은 아님).
 export function eventAffectsReport(db: WriteDb, props: Record<string, unknown>): boolean {
-	return db === EVENT_DB && Object.keys(props ?? {}).some((k) => k !== "기록(내부용)")
+	return db === EVENT_DB && Object.keys(props ?? {}).some((k) => !EVENT_NO_REPORT.has(k))
 }
 export const MAX_CHANGES = 60
 
