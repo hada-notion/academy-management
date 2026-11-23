@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "jsr:@std/assert@1"
-import { handleRequest, kst, requestOf, hasRequestProp, REQUEST_PROP, RESULT_PROP, STATE_DONE, STATE_FAILED, STATE_RUNNING, type RequestDeps } from "./notionRequests.ts"
+import { handleRequest, kst, requestOf, hasRequestProp, sweepStaleRequests, REQUEST_PROP, RESULT_PROP, STATE_DONE, STATE_FAILED, STATE_RUNNING, type RequestDeps } from "./notionRequests.ts"
 import { applyOne, buildTargets, type Deps, type QueueItem, type Target } from "./notionEventsApply.ts"
 import { WEBHOOK_ROUTES } from "./webhookRoutes.ts"
 
@@ -99,6 +99,68 @@ Deno.test("처리하는 사이 새 요청이 들어오면 요청 칸은 그대�
 	assert(out.overwritten)
 	assertEquals(f.patches[1].props[REQUEST_PROP], undefined)
 	assertEquals(f.pages.get("p").properties[REQUEST_PROP].select.name, "attendance-delete")
+})
+
+// (261123 출시 전 2번) 처리 중을 쓴 뒤 다시 읽기·마지막 쓰기가 실패해도 처리 중에 멈추지 않는다.
+Deno.test("출시 전 2번: 다시 읽기가 실패해도 요청 칸을 결과로 마무리한다", async () => {
+	const f = fakeReq()
+	f.pages.set("p", rpage("p", { [REQUEST_PROP]: sel("session-record") }))
+	f.readPage = async () => { throw new Error("노션 줄 읽기 실패: 502") }
+	const out = await handleRequest(f.pages.get("p"), { id: "session-record", ids: ["session-record"] }, f)
+	assertEquals(out.state, STATE_DONE)
+	assertEquals(f.pages.get("p").properties[REQUEST_PROP].select.name, STATE_DONE, "처리 중에 남지 않음")
+})
+
+Deno.test("출시 전 2번: 마지막 쓰기가 한 번 실패하면 요청 칸만 다시 써서 처리 중을 끝낸다", async () => {
+	const f = fakeReq()
+	f.pages.set("p", rpage("p", { [REQUEST_PROP]: sel("session-record") }))
+	const orig = f.patch
+	let n = 0
+	f.patch = async (id, props) => { n++; if (n === 2) throw new Error("요청 칸 쓰기 실패: 504"); return await orig(id, props) }
+	const out = await handleRequest(f.pages.get("p"), { id: "session-record", ids: ["session-record"] }, f)
+	assertEquals(out.state, STATE_DONE)
+	assertEquals(f.pages.get("p").properties[REQUEST_PROP].select.name, STATE_DONE)
+})
+
+Deno.test("출시 전 2번: 넘기는 길이 예외를 던져도 처리 중에 멈추지 않고 실패로 끝난다", async () => {
+	const f = fakeReq()
+	f.pages.set("p", rpage("p", { [REQUEST_PROP]: sel("session-record") }))
+	f.forward = async () => { throw new Error("connection reset") }
+	const out = await handleRequest(f.pages.get("p"), { id: "session-record", ids: ["session-record"] }, f)
+	assertEquals(out.state, STATE_FAILED)
+	assertEquals(f.pages.get("p").properties[REQUEST_PROP].select.name, STATE_FAILED)
+})
+
+Deno.test("출시 전 2번 감시: 요청 칸 DB에서 15분 넘게 처리 중인 줄만 ⚠️ 실패로", async () => {
+	const now = Date.UTC(2026, 10, 23, 5, 0, 0)
+	const queries: { ds: string; filter: any }[] = [], patched: { id: string; props: any }[] = []
+	const out = await sweepStaleRequests({
+		sources: async () => ["dsa", "dsb"],
+		query: async (ds, filter) => { queries.push({ ds, filter }); return ds === "dsa" ? [{ id: "old1" }] : [] },
+		patch: async (id, props) => { patched.push({ id, props }) },
+		now: () => now,
+		log: () => {},
+	}, 15)
+	assertEquals(out, { recovered: 1, ids: ["old1"], sources: 2 })
+	assertEquals(queries.length, 2)
+	const f = queries[0].filter.and
+	assertEquals(f[0], { property: REQUEST_PROP, select: { equals: STATE_RUNNING } })
+	assertEquals(f[1], { timestamp: "last_edited_time", last_edited_time: { before: new Date(now - 15 * 60000).toISOString() } })
+	assertEquals(patched[0].props[REQUEST_PROP].select.name, STATE_FAILED)
+	assert(text(patched[0].props[RESULT_PROP]).includes("다시 눌러"), text(patched[0].props[RESULT_PROP]))
+})
+
+Deno.test("출시 전 2번 감시: 한 DB가 실패해도 나머지는 계속", async () => {
+	const patched: string[] = []
+	const out = await sweepStaleRequests({
+		sources: async () => ["bad", "ok"],
+		query: async (ds) => { if (ds === "bad") throw new Error("400 요청 칸 없음"); return [{ id: "x" }] },
+		patch: async (id) => { patched.push(id) },
+		now: () => Date.UTC(2026, 10, 23),
+		log: () => {},
+	})
+	assertEquals(patched, ["x"])
+	assertEquals(out.recovered, 1)
 })
 
 Deno.test("한국 시각", () => {

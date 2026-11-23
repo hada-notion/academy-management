@@ -259,6 +259,29 @@ Deno.test("records: template batch makes one record per student's own book", () 
  assert(r.records.length === 2 && f.created.map((p) => ids(p, "등록") + "/" + ids(p, "출석")).join() === "ra/aa,rb/ab")
  assert(f.created[0].properties["학습"].title[0].text.content === "[과제] RPM(김하늘) · 중1 B 10.13(화)")
 }))
+// (261123 출시 전 4번) 여러 줄 중 하나가 실패해도 나머지는 쓰고, 된 줄 · 안 된 줄을 함께 답한다.
+async function partial(fn: () => Promise<unknown>): Promise<any> {
+ try { await fn() } catch (e) { assert(e instanceof room.ClassRoomError && e.status === 502, "expected 502, got " + (e as Error).message); return e }
+ throw new Error("expected partial failure")
+}
+Deno.test("출시 전 4번: 출결 여러 명 중 한 명 실패 → 나머지는 노션에 쓰고 실패한 줄만 이유와 함께", () => withMock(async (f) => {
+ const e = await partial(() => room.saveAttendance([{ attendanceId: "aa", status: "🔴 결석" }, { attendanceId: "zz", status: "🔴 결석" }, { attendanceId: "ab", status: "🟢 출석" }]))
+ assert(f.pages.aa.properties["출석 상태"].select.name === "🔴 결석" && f.pages.ab.properties["출석 상태"].select.name === "🟢 출석", "others written")
+ assert(JSON.stringify(e.detail.savedIds.sort()) === '["aa","ab"]' && e.detail.saved === 2, JSON.stringify(e.detail))
+ assert(e.detail.failed.length === 1 && e.detail.failed[0].id === "zz" && e.detail.failed[0].error, JSON.stringify(e.detail.failed))
+ assert(/출결 3건 중 1건/.test(e.message), e.message)
+ const a = await partial(() => room.saveActivities([{ activityId: "hw1", submitted: true }, { activityId: "nope", submitted: true }]))
+ assert(a.detail.savedIds[0] === "hw1" && a.detail.failed[0].id === "nope")
+}))
+Deno.test("출시 전 4번: 교재 여러 권 기록 중 하나가 실패해도 앞 기록은 만든 채로 함께 답한다", () => withMock(async (f) => {
+ const base = globalThis.fetch
+ let n = 0
+ globalThis.fetch = (async (input: any, init: any = {}) => { if (String(input).endsWith("/pages") && init.method === "POST" && ++n === 2) return new Response(JSON.stringify({ message: "conflict" }), { status: 409 }); return base(input, init) }) as typeof fetch
+ const e = await partial(() => room.createRecords({ sessionId: "s1", kind: "과제", bookIds: ["indA", "indB"] }))
+ assert(f.created.length === 1 && e.detail.records.length === 1 && e.detail.records[0].created && e.detail.failed[0].id === "indB", JSON.stringify(e.detail))
+ // 하나도 못 만들면 예전처럼 그 오류
+ await rejects(() => room.createRecords({ sessionId: "s1", kind: "과제", topic: "x", registrationIds: ["rc"] }), 400)
+}))
 Deno.test("records: no book uses the topic; chosen students only", () => withMock(async (f) => {
  await room.createRecords({ sessionId: "s1", kind: "평가", topic: "단원 평가", registrationIds: ["rb"] })
  const rec = f.created[0]; assert(ids(rec, "등록") === "rb" && ids(rec, "출석") === "ab" && rec.properties["진도교재"] === undefined)

@@ -225,6 +225,18 @@ Deno.test("copy mode: saves update the copy before answering (the screen reads r
  assert(!("메모(내부용)" in f.pages.aa.properties) && f.pages.aa.properties["메모"].rich_text[0].text.content === "새 메모", "old-name academy keeps writing 메모")
 }))
 
+// (261123 출시 전 4번) 한 명이 실패해도 된 줄은 사본에도 — 화면이 바로 다시 읽어도 노션과 같은 값.
+Deno.test("출시 전 4번: 출결 여러 명 중 한 명 실패 → 된 줄은 사본에 반영, 502 + 실패한 줄", () => withMock(async (f) => {
+ Deno.env.set("CLASS_ROOM_SOURCE", "copy"); Deno.env.delete("CLASS_ROOM_COPY_WRITE")
+ let err: any = null
+ try { await room.saveAttendance([{ attendanceId: "aa", status: "🔴 결석", memo: "일부 실패 시험" }, { attendanceId: "zz", status: "🔴 결석" }]) } catch (e) { err = e }
+ assert(err instanceof room.ClassRoomError && err.status === 502 && (err as any).detail?.failed?.[0]?.id === "zz", String(err?.message))
+ const row = f.store.cr_attendance.get("aa")
+ assert(row.status === "🔴 결석" && row.memo === "일부 실패 시험", "saved row reached the copy: " + JSON.stringify(row))
+ const after: any = await read.handleClassRoomWithSource({ action: "session", sessionId: "s1" })
+ assert(after.students.find((s: any) => s.attendanceId === "aa").memo === "일부 실패 시험")
+}))
+
 Deno.test("v2.8.0 항목 62 renamed 메모(내부용): copy and Notion reads match, saves write the new name", () => withMock(async (f) => {
  const session = await read.loadSession("s1")
  same("session renamed", await room.loadSession("s1"), session)
