@@ -122,3 +122,83 @@ Deno.test('webhook DB links: new checklist names also find the old DB titles (v2
   assert(pickDbLink({'교재결제(학원)':u('e')},'청구결제(학원)')===u('e'));
   assert(pickDbLink({'진도교재(학원)':u('f')},'진도관리(학원)')===u('f'));
   assert(pickDbLink({},'청구서(학원)')==='');});
+// ---------- (v2.8.0, 261123 키 자동 등록) 외부 키: Vault 먼저 · 없으면 Secret, 값은 어디에도 안 나감 ----------
+{
+const ek=await import('./externalKeys.ts');
+const {neisRows}=await import('./neisSchool.ts');
+const {searchTitle}=await import('./bookSources.ts');
+const FAKE='TEST-ONLY-FAKE-KEY-0000',FAKE2='TEST-ONLY-FAKE-KEY-1111',ENVK='TEST-ONLY-SECRET-KEY-9999';
+// Vault 흉내: hada_external_key RPC만 받는다. 상대 서버(나이스 · 도서관 · 카카오)는 키에 따라 맞음/틀림을 돌려준다.
+function fakeServer(vault:Record<string,{value:string,changed_at:string,test_state?:string|null}>,opts:{down?:boolean,goodKey?:string}={}){
+  const seen:{url:string,body:string,auth:string}[]=[];
+  const fn=(async(input:any,init:any)=>{const url=String(input),body=String(init?.body??''),auth=String(init?.headers?.Authorization??'');seen.push({url,body,auth});
+    const j=(v:unknown,status=200)=>new Response(JSON.stringify(v),{status,headers:{'Content-Type':'application/json'}});
+    const good=opts.goodKey??'';
+    if(url.includes('/rpc/hada_external_key')){if(opts.down)return new Response('x',{status:404});const b=JSON.parse(body),d=b.p_data??{};
+      if(b.p_action==='read')return j({keys:Object.fromEntries(Object.entries(vault).map(([k,v])=>[k,v.value]))});
+      if(b.p_action==='status')return j({keys:Object.fromEntries(Object.entries(vault).map(([k,v])=>[k,{changed_at:v.changed_at,test_state:v.test_state??null,tested_at:null}]))});
+      if(b.p_action==='set'){vault[d.name]={value:d.value,changed_at:'2026-11-23T05:00:00Z'};return j({ok:true,changed_at:'2026-11-23T05:00:00Z'});}
+      if(b.p_action==='tested'){if(vault[d.name])vault[d.name].test_state=d.state;return j({ok:true,tested_at:'2026-11-23T05:00:01Z'});}
+      if(b.p_action==='clear'){delete vault[d.name];return j({ok:true});}
+      return j({error:'x',status:400});}
+    if(url.includes('/rpc/hada_security_command')){const b=JSON.parse(body);if(b.p_action==='profile')return j({password_hash:'x',changed_at:'2026-11-01T00:00:00Z',version:2,must_change:opts.goodKey==='MUST'});return j({ok:true});}
+    if(url.startsWith('https://open.neis.go.kr/')){const k=new URL(url).searchParams.get('KEY');return k===good?j({schoolInfo:[{head:[{list_total_count:1},{RESULT:{CODE:'INFO-000'}}]},{row:[{SCHUL_NM:'예시중학교'}]}]}):j({RESULT:{CODE:'ERROR-290',MESSAGE:'인증키가 유효하지 않습니다.'}});}
+    if(url.startsWith('https://www.nl.go.kr/')){const k=new URL(url).searchParams.get('cert_key');return k===good?j({docs:[]}):j({RESULT:'ERROR',ERR_CODE:'011',ERR_MESSAGE:'유효하지 않은 인증키 값입니다.'});}
+    if(url.startsWith('https://dapi.kakao.com/')){return auth===`KakaoAK ${good}`?j({documents:[]}):j({errorType:'AccessDeniedError',message:`wrong appKey(${auth.slice(8)}) format`},401);}
+    return j({},404);}) as typeof fetch;
+  return {fn,seen};
+}
+async function withServer(srv:{fn:typeof fetch},run:()=>Promise<void>){const old=fetch,logs:string[]=[];const oc={e:console.error,w:console.warn,l:console.log};
+  const cap=(...a:unknown[])=>{logs.push(a.map(String).join(' '));};console.error=cap;console.warn=cap;console.log=cap;
+  globalThis.fetch=srv.fn;ek.forgetExternalKeys();
+  try{await run();}finally{globalThis.fetch=old;console.error=oc.e;console.warn=oc.w;console.log=oc.l;ek.forgetExternalKeys();Deno.env.delete('ADMIN_SECURITY_ENABLED');for(const n of ek.EXTERNAL_KEYS)Deno.env.delete(n);}
+  return logs;}
+const noValue=(s:string)=>{for(const v of [FAKE,FAKE2,ENVK])assert(!s.includes(v),'value leaked: '+s.slice(0,200));assert(!/FAKE-KEY|SECRET-KEY/.test(s),'partial leak');};
+Deno.test('external key: Vault value first, Secret when Vault has none, Secret when the store is down',async()=>{
+  Deno.env.set('NEIS_API_KEY',ENVK);
+  const logs1=await withServer(fakeServer({NEIS_API_KEY:{value:FAKE,changed_at:'x'}}),async()=>{Deno.env.set('NEIS_API_KEY',ENVK);assert(await ek.externalKey('NEIS_API_KEY')===FAKE);assert(await ek.externalKeySource('NEIS_API_KEY')==='app');});
+  await withServer(fakeServer({}),async()=>{Deno.env.set('NEIS_API_KEY',ENVK);assert(await ek.externalKey('NEIS_API_KEY')===ENVK);assert(await ek.externalKeySource('NEIS_API_KEY')==='secret');assert(await ek.externalKey('KAKAO_REST_KEY')==='');});
+  const logs3=await withServer(fakeServer({},{down:true}),async()=>{Deno.env.set('NEIS_API_KEY',ENVK);assert(await ek.externalKey('NEIS_API_KEY')===ENVK);});
+  for(const l of [...logs1,...logs3])noValue(l);});
+Deno.test('external key: short cache, one store read per burst, a new key is used after the cache window',async()=>{
+  const vault:Record<string,any>={NL_CERT_KEY:{value:FAKE,changed_at:'x'}};const srv=fakeServer(vault);
+  await withServer(srv,async()=>{await Promise.all([ek.externalKey('NL_CERT_KEY'),ek.externalKey('KAKAO_REST_KEY'),ek.externalKey('NL_CERT_KEY')]);
+    assert(srv.seen.filter(s=>s.url.includes('hada_external_key')).length===1);
+    vault.NL_CERT_KEY.value=FAKE2;assert(await ek.externalKey('NL_CERT_KEY')===FAKE,'cached within window');
+    ek.forgetExternalKeys();assert(await ek.externalKey('NL_CERT_KEY')===FAKE2,'next request reads the new key');assert(ek.CACHE_MS<=5000);});});
+Deno.test('NEIS and book search use the Vault key on every path (Secret also set)',async()=>{
+  const srv=fakeServer({NEIS_API_KEY:{value:FAKE,changed_at:'x'},NL_CERT_KEY:{value:FAKE,changed_at:'x'},KAKAO_REST_KEY:{value:FAKE,changed_at:'x'}},{goodKey:FAKE});
+  await withServer(srv,async()=>{for(const n of ek.EXTERNAL_KEYS)Deno.env.set(n,ENVK);
+    const rows=await neisRows('schoolInfo',{SCHUL_NM:'예시'});assert(rows.length===1);
+    await searchTitle('예시 교재');
+    const ext=srv.seen.filter(s=>!s.url.includes('/rpc/'));
+    assert(ext.some(s=>new URL(s.url).searchParams.get('KEY')===FAKE));assert(ext.some(s=>new URL(s.url).searchParams.get('cert_key')===FAKE));assert(ext.some(s=>s.auth===`KakaoAK ${FAKE}`));
+    assert(!ext.some(s=>s.url.includes(ENVK)||s.auth.includes(ENVK)),'Secret must not be used when Vault has a key');});});
+Deno.test('NEIS and book search still work with Secret only (academies that never used the app keys)',async()=>{
+  const srv=fakeServer({},{goodKey:ENVK});
+  await withServer(srv,async()=>{for(const n of ek.EXTERNAL_KEYS)Deno.env.set(n,ENVK);
+    assert((await neisRows('schoolInfo',{SCHUL_NM:'예시'})).length===1);await searchTitle('예시 교재');
+    const ext=srv.seen.filter(s=>!s.url.includes('/rpc/'));assert(ext.length===3&&ext.every(s=>s.url.includes(ENVK)||s.auth.includes(ENVK)));});});
+Deno.test('admin keys: status, save -> wrong key, save -> ok, test, clear -> back to Secret; values never in responses or logs',async()=>{
+  const vault:Record<string,any>={};const srv=fakeServer(vault,{goodKey:FAKE2});const bodies:string[]=[];
+  const call=async(body:any)=>{const r=await handleAdminSecurity(request(body,'https://admin.example.test','test-session'));const t=await r.text();bodies.push(t);return {status:r.status,data:JSON.parse(t)};};
+  const logs=await withServer(srv,async()=>{Deno.env.set('ADMIN_SECURITY_ENABLED','true');Deno.env.set('KAKAO_REST_KEY',ENVK);
+    let s=await call({action:'keys-status'});assert(s.status===200);assert(s.data.keys.NEIS_API_KEY.app===false&&s.data.keys.KAKAO_REST_KEY.secret===true&&s.data.keys.NEIS_API_KEY.secret===false);
+    let r=await call({action:'key-set',name:'NEIS_API_KEY',value:FAKE});assert(r.status===200&&r.data.test==='wrong'&&r.data.changed_at);
+    assert(vault.NEIS_API_KEY.value===FAKE&&vault.NEIS_API_KEY.test_state==='wrong');
+    s=await call({action:'keys-status'});assert(s.data.keys.NEIS_API_KEY.app===true&&s.data.keys.NEIS_API_KEY.test_state==='wrong');
+    r=await call({action:'key-set',name:'NL_CERT_KEY',value:FAKE2});assert(r.data.test==='ok');
+    r=await call({action:'key-set',name:'KAKAO_REST_KEY',value:FAKE});assert(r.data.test==='wrong');
+    r=await call({action:'key-test',name:'KAKAO_REST_KEY'});assert(r.data.test==='wrong'&&r.data.source==='app');
+    r=await call({action:'key-clear',name:'KAKAO_REST_KEY'});assert(r.data.ok&&r.data.secret===true&&!vault.KAKAO_REST_KEY);
+    r=await call({action:'key-test',name:'KAKAO_REST_KEY'});assert(r.data.source==='secret'&&r.data.test==='wrong');
+    assert(await ek.externalKey('KAKAO_REST_KEY')===ENVK,'after clear the function uses the Secret again');
+    r=await call({action:'key-test',name:'NEIS_API_KEY'});assert(r.data.source==='app');
+    for(const bad of [{action:'key-set',name:'NOTION_TOKEN',value:FAKE},{action:'key-set',name:'NEIS_API_KEY',value:' '+FAKE},{action:'key-set',name:'NEIS_API_KEY',value:'short'},{action:'key-set',name:'NEIS_API_KEY',value:FAKE+'\n'},{action:'key-set',name:'NEIS_API_KEY'}]){const x=await call(bad);assert(x.status===400,JSON.stringify(bad).slice(0,40));}});
+  for(const t of [...bodies,...logs])noValue(t);});
+Deno.test('admin keys: blocked on the initial password and without a session; store down gives a plain message',async()=>{
+  await withServer(fakeServer({},{goodKey:'MUST'}),async()=>{Deno.env.set('ADMIN_SECURITY_ENABLED','true');const r=await handleAdminSecurity(request({action:'key-set',name:'NEIS_API_KEY',value:FAKE},'https://admin.example.test','s'));assert(r.status===409);noValue(await r.text());});
+  await withServer({fn:(async(input:any)=>String(input).includes('hada_security_command')?new Response(JSON.stringify({error:'다시 로그인해 주세요.',status:401})):new Response('{}')) as typeof fetch},async()=>{Deno.env.set('ADMIN_SECURITY_ENABLED','true');const r=await handleAdminSecurity(request({action:'keys-status'}));assert(r.status===401);});
+  const logs=await withServer(fakeServer({},{down:true}),async()=>{Deno.env.set('ADMIN_SECURITY_ENABLED','true');const r=await handleAdminSecurity(request({action:'key-set',name:'NEIS_API_KEY',value:FAKE},'https://admin.example.test','s'));assert(r.status===503);const t=await r.text();noValue(t);assert(/키 저장소/.test(t));});
+  for(const l of logs)noValue(l);});
+}

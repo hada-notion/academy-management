@@ -1,3 +1,4 @@
+import { externalKey } from "./externalKeys.ts"
 import { SCHOOL_EVENT, SCHOOL_EXAM, SCHOOL_BREAK, LEGACY_SCHOOL, LEGACY_SCHOOL_OPTION, categoryName, isExamName, isVacationName, KIND, DETAIL_PROP } from "./scheduleCategory.ts"
 // 학교별 행사 종류를 필터링하지 않는다. 모든 원본 행을 보존한다.
 export type NeisRow = Record<string, string | null>
@@ -30,8 +31,9 @@ export function textOf(page: any, name: string): string {
   return (p?.rich_text ?? p?.title ?? []).map((t: any) => t.plain_text ?? t.text?.content ?? "").join("")
 }
 export async function neisRows(service: "schoolInfo" | "SchoolSchedule", params: Record<string, string>): Promise<NeisRow[]> {
-  const key = Deno.env.get("NEIS_API_KEY")
-  if (!key) throw new Error("NEIS_API_KEY를 Supabase Secrets에 먼저 설정하세요.")
+  // 관리 앱 [관리자 설정]에서 넣은 키 먼저, 없으면 함수 Secret(_shared/externalKeys.ts).
+  const key = await externalKey("NEIS_API_KEY")
+  if (!key) throw new Error("나이스 키(NEIS_API_KEY)가 없습니다. 관리 앱 [관리자 설정] > 외부 키에 붙여 넣거나 Supabase Secrets에 넣어 주세요.")
   const rows: NeisRow[] = []
   for (let pIndex = 1; pIndex <= 100; pIndex++) {
     const url = new URL("https://open.neis.go.kr/hub/" + service)
