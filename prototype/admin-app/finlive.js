@@ -74,7 +74,7 @@
     try {
       const out = await post({ action: "save", changes: [change] }); const r = (out.results || [])[0] || {};
       if (!r.ok) { say(`${what}: 저장하지 못했어요 — ${r.conflict ? "노션에서 먼저 바뀐 줄이에요. 새로 받은 뒤 다시 해요" : r.error || "이유 없음"}`); return false; }
-      apply([r.row].concat(r.linked || [])); poke(); say(`${what}: 노션에 저장했어요`); if (close) close(); return true;
+      const rows = [r.row].concat(r.linked || []); say(`${what}: 노션에 저장했어요`); if (close) close(); setTimeout(() => { apply(rows); poke(); }, 80); /* 창이 열려 있으면 자동 갱신이 끼우기를 미루므로 닫은 뒤에 끼운다 */ return true;
     } catch (e) { say(`${what}: 저장하지 못했어요 — ${errText(e)}`); return false; }
   };
   const num = (v) => Math.round(Number(String(v).replace(/[^\d.-]/g, "")));
