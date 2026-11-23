@@ -35,7 +35,7 @@
       ["수강료 기간", () => nextM() + " (다음 달)"],
       ["해당월 수강료 생성 내역", (c) => { const n = enrolled(c).length, k = alive(DB.tuition).filter((t) => t.classId === c.id && t.month === nextM()).length; return `${mm(nextM())}월 ${k}/${n}${n && k >= n ? " ✅" : ""}`; }],
       ["실시간 처리 상태", () => "—"],
-      ["", (c) => btn("gen", c.id, "월 수강료 생성", c.qty ? "" : "disabled title=\"월간 수업 총량이 비어 있으면 만들지 않아요\"")]],
+      ["월 수강료 생성", (c) => btn("gen", c.id, "월 수강료 생성", c.qty ? "" : "disabled title=\"월간 수업 총량이 비어 있으면 만들지 않아요\"")]],
   });
   /* ③(노션 ② 자리) 다음 달 수강료 확인 — 수강료 DB, 청구기간 = 다음 달. 실제 수업량 · 청구금액 조정 · 사유 · 메모를 고친다 */
   LISTS.tuition_c = base(T, {
@@ -67,7 +67,7 @@
     help: "청구서는 클래스에서 시작해요. [교재비 생성]은 수강 중인 등록 가운데 청구서가 없는 학생마다 한 장씩 만들고(교재를 배부하지는 않아요), [기타경비 청구]는 한 번 받는 기타경비를 학생마다 청구해요. 안내문은 보내지 않아요.",
     cols: [["클래스명", (c) => c.name], ["학생수", (c) => enrolled(c).length + "명"],
       ["교재비 생성 여부", (c) => { const es = enrolled(c), miss = es.filter((e) => !alive(DB.bookfees).some((b) => b.studentId === e.studentId && b.classId === c.id)).length; return es.length ? (miss ? pill("yellow", `청구서 없는 학생 ${miss}명`) : pill("green", "모두 있음")) : "—"; }],
-      ["", (c) => btn("bill", c.id, "교재비 생성") + btn("etc", c.id, "기타경비 청구").slice(3)]],
+      ["교재비 생성 · 기타경비 청구", (c) => btn("bill", c.id, "교재비 생성") + btn("etc", c.id, "기타경비 청구").slice(3)]],
   });
   if (LISTS.bill_l) LISTS.bill_l = Object.assign({}, LISTS.bill_l, { title: "청구서", cols: [...LISTS.bill_l.cols.filter((c) => c[0] !== "결제"), ["결제금액", (x) => (x.paidOn ? WON(x.amount) : "—")], ["결제 상태", (x) => (x.paidOn ? "🟢결제 완료" : "!미납")]] });
 
@@ -87,7 +87,7 @@
     title: "결제 · 손익", fields: [], ro: true, rows: () => dueTu(), byMonth: (t) => t.month, empty: "이 달에 아직 다 안 낸 수강료가 없어요",
     help: "아직 다 안 낸 수강료예요. [결제]는 노션 수강료의 [결제] 버튼과 같아요 — 청구금액 + 매달 기타경비 금액 전액으로 결제 기록 한 줄을 만들고 이 수강료에 이어요. 일부만 받았거나 더 받았으면 결제 내역에서 금액을 고쳐요. 실제 결제나 알림톡은 하지 않아요.",
     note: (rows) => (rows.length ? `${rows.length}건 · 남은 ${WON(rows.reduce((a, t) => a + safe(() => tuAmt(t), 0) - (+t.got || 0), 0))}` : "다 냈어요"),
-    cols: [["결제 관리", (t) => (t.pay === "과오납" ? pill("orange", "🟠 과오납") : pill("red", "🔴 미납"))], ["청구명", (t) => tuName(t)], ["청구금액", (t) => WON(safe(() => tuFee(t), 0))], ["기타경비 금액", (t) => (etcSum(t) ? WON(etcSum(t)) : "—")], ["결제금액", (t) => (+t.got ? WON(+t.got) : "—")], ["결제 수단", (t) => t.how || "—"], ["", (t) => btn("pay", t.id, "결제")]],
+    cols: [["결제 관리", (t) => (t.pay === "과오납" ? pill("orange", "🟠 과오납") : pill("red", "🔴 미납"))], ["청구명", (t) => tuName(t)], ["청구금액", (t) => WON(safe(() => tuFee(t), 0))], ["기타경비 금액", (t) => (etcSum(t) ? WON(etcSum(t)) : "—")], ["결제금액", (t) => (+t.got ? WON(+t.got) : "—")], ["결제 수단", (t) => t.how || "—"], ["결제", (t) => btn("pay", t.id, "결제")]],
   });
   /* 청구서 납부 — 청구 항목 DB, 결제 상태가 결제 완료가 아닌 것(교습비 줄은 청구 항목이 아님) */
   LISTS.profit_q = base(LISTS.charges, {
@@ -95,7 +95,7 @@
     rows: () => { safe(() => chargesSync()); return alive(DB.charges).filter((x) => x.kind !== "교습비" && !x.paidOn); }, byMonth: (x) => x.month, empty: "이 달에 아직 다 안 낸 청구 줄이 없어요",
     help: "아직 다 안 낸 청구서 줄이에요(교재비 · 재료비 · 기타경비). [결제]는 청구 결제에 한 줄을 만들어요. 알림톡은 보내지 않아요.",
     note: (rows) => (rows.length ? `${rows.length}줄 · ${WON(rows.reduce((a, x) => a + (+x.amount || 0), 0))}` : "다 냈어요"),
-    cols: [["이름", (x) => `${stuName(x.studentId)} · ${x.name || x.item || ""}`], ["등록", (x) => clsName(x.classId)], ["청구 월", (x) => x.month || "—"], ["종류", (x) => x.kind], ["교재비 금액", (x) => WON(x.amount)], ["결제금액", () => "—"], ["", (x) => btn("cpay", x.id, "결제")]],
+    cols: [["이름", (x) => `${stuName(x.studentId)} · ${x.name || x.item || ""}`], ["등록", (x) => clsName(x.classId)], ["청구 월", (x) => x.month || "—"], ["종류", (x) => x.kind], ["교재비 금액", (x) => WON(x.amount)], ["결제금액", () => "—"], ["결제", (x) => btn("cpay", x.id, "결제")]],
   });
   /* 결제 내역 — 결제 DB 이번 달, 구분 필터. [＋ 결제 줄]로 지출 · 청구서 결제 매출을 넣는다 */
   LISTS.profit_c = base(C, {
