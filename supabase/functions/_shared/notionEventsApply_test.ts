@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "jsr:@std/assert@1"
-import { applyOne, buildTargets, drainEvents, eventDataSource, ownBotOnly, retryDelaySec, sameRow, type Deps, type QueueItem, type Target } from "./notionEventsApply.ts"
+import { applyOne, buildTargets, drainEvents, targetsFromJson, targetsToJson, eventDataSource, ownBotOnly, retryDelaySec, sameRow, type Deps, type QueueItem, type Target } from "./notionEventsApply.ts"
 
 // 시험 값만(실제 노션 id 아님)
 const BOT = "bot-0000-1111"
@@ -169,4 +169,25 @@ Deno.test("처리기: 실패는 retry로 남고 다음 간격이 붙음", async 
 	assertEquals(out.results, { "error→retry": 1 })
 	assertEquals(f.finished[0].p_ok, false); assertEquals(f.finished[0].p_retry_sec, 30)
 	assertEquals(f.queue.get("p1").status, "retry")
+})
+
+Deno.test("찾은 목록은 JSON으로 저장했다가 그대로 되살린다", () => {
+	const back = targetsFromJson(JSON.parse(JSON.stringify(targetsToJson(map))))
+	assertEquals([...back.entries()], [...map.entries()])
+	assertEquals(targetsFromJson(null).size, 0)
+})
+
+Deno.test("모르는 데이터 소스면 목록이 오래됐을 때만 다시 찾아 본다", async () => {
+	const f = fake()
+	const NEW_DS = "ds-new-0001"
+	f.notion.set("p1", page("p1", "새 DB 줄", NEW_DS))
+	let asked = 0
+	f.targetsFresh = async () => { asked++; return null }
+	assertEquals((await applyOne(item("p1", "page.created", { data_source_id: NEW_DS }), f)).result, "skip:no-copy")
+	assertEquals(asked, 1)
+	const grown = new Map(map); grown.set(NEW_DS.replace(/-/g, ""), { kind: "app", db: "과목(학원) DB" as any })
+	f.targetsFresh = async () => { asked++; return grown }
+	assertEquals((await applyOne(item("p1", "page.created", { data_source_id: NEW_DS }), f)).result, "upserted")
+	assertEquals((await applyOne(item("p1", "page.content_updated", { data_source_id: NEW_DS }), f)).result, "skip:event")
+	assertEquals(asked, 2, "본문만 바뀐 이벤트는 목록도 보지 않음")
 })
