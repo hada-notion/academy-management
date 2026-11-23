@@ -1,8 +1,9 @@
 // 관리 앱 관리자 설정 실제 연결(261123) — 가짜 서버로만. 실제 자료 모드(?live=1)에서 관리자 설정 화면이
-// admin_settings.html과 같은 서버 동작(admin-security · clear-example-data)을 같은 값으로 부르는지, app-api admin-status 값이 보이는지.
+// 옛 관리자 설정 웹 화면과 같은 서버 동작(admin-security · clear-example-data)을 같은 값으로 부르는지, app-api admin-status 값이 보이는지.
+// 261123: 옛 웹 화면은 없앰 — 웹 화면으로 가는 단추가 없는지, 첫 설치 초기 비밀번호를 앱 로그인 창에서 바로 바꾸는지도 본다.
 // 사용: ROOT=<저장소 폴더> node check-admin-settings-live.cjs   (캡처는 SHOTS 폴더, 기본 이 폴더)
 const { chromium } = require('playwright'), http = require('http'), fs = require('fs'), path = require('path'), assert = require('node:assert/strict');
-const root = process.env.ROOT || 'C:/Users/admin/hada/dev/project1', shots = (process.env.SHOTS || __dirname) + '/';
+const root = process.env.ROOT || path.resolve(__dirname, '..'), shots = (process.env.SHOTS || __dirname) + '/';
 const types = { '.js': 'application/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.html': 'text/html' };
 const H = 'https://twczhsxybkcvjkdfdxvs.supabase.co/functions/v1/';
 const SUBS = {
@@ -70,6 +71,7 @@ const CLEAR_STATUS = { workspace: '하다 예시 학원', canStart: true, flag: 
     assert.match(t, /로그인됨/); assert.match(t, /마지막으로 바꾼 날 2026\. 10\. 1\./); assert.match(t, /하다 학원관리 v2\.0/); assert.match(t, /아직 비우지 않았어요/);
     assert.match(t, { on: /켜짐/, waiting: /확인 대기/, off: /꺼짐/, none: /준비 전/, down: /끊김/ }[s]);
     if (s === 'down') { assert.match(t, /2개를 웹훅으로 받지 못했어요/); assert.match(t, /5분마다/); assert.match(t, /Active/); }
+    assert.doesNotMatch(t, /옛 웹훅 키|관리자 설정 화면|옛 방식/, '웹 화면으로 가는 줄 없음'); assert.equal(await page.locator('[data-ladm=web]').count(), 0, '웹 화면 단추 없음');
     if (s === 'on' && v !== 'a') { assert.match(t, /최근 24시간 42건/); assert.match(t, /2건 처리 중/); assert.match(t, /1건 다시 맞추는 중/); }
     assert.ok(calls.filter((c) => c.fn !== 'app-api' || c.action === 'admin-status').every((c) => c.key === 'sess-1'), '모든 부름에 관리자 세션');
     await checkLayout(page, v + s); await page.screenshot({ path: shots + `admin-live-${v}-${s}.png`, fullPage: true });
@@ -122,6 +124,39 @@ const CLEAR_STATUS = { workspace: '하다 예시 학원', canStart: true, flag: 
     assert.equal(await page.locator('[data-ladm=relogin]').count(), 1);
     await page.screenshot({ path: shots + 'admin-live-fail.png', fullPage: true });
     assert.deepEqual(errors, []); done.push('실패'); await page.close();
+  }
+  // 6) 첫 설치: 초기 비밀번호로 로그인 → 서버 409(설정용만) → 새 비밀번호 창 → scope settings 로그인 · change · 새 비밀번호로 로그인 → 노션 자료
+  {
+    const page = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    const calls = [], errors = [], logs = [];
+    page.on('pageerror', (e) => errors.push(e.message)); page.on('console', (m) => logs.push(m.text()));
+    const reply = (route, status, data) => route.fulfill({ status, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify(data) });
+    await page.route(H + '**', async (route) => {
+      const req = route.request(); if (req.method() === 'OPTIONS') return reply(route, 200, {});
+      const fn = req.url().slice(H.length).split('?')[0], q = req.postDataJSON() || {}, key = req.headers()['x-admin-key'];
+      calls.push({ fn, action: q.action, key, body: q });
+      if (fn === 'admin-security' && q.action === 'login') {
+        if (q.password === '0000') return q.scope === 'settings' ? reply(route, 200, { session: 'sess-0', must_change: true }) : reply(route, 409, { error: '초기 비밀번호 상태입니다. 관리자 설정 페이지에서 비밀번호를 먼저 변경해 주세요.' });
+        if (q.password === 'first-pass-1') return reply(route, 200, { session: 'sess-1', must_change: false });
+        return reply(route, 401, { error: '비밀번호가 올바르지 않습니다.' });
+      }
+      if (fn === 'admin-security' && q.action === 'change') return key === 'sess-0' && q.current_password === '0000' ? reply(route, 200, { ok: true }) : reply(route, 401, { error: '세션이 만료되었습니다.' });
+      if (fn === 'app-api') return reply(route, 200, q.action === 'list' ? { ok: true, db: q.db, at: new Date().toISOString(), rows: [] } : { ok: true, dbs: {} });
+      return reply(route, 200, { ok: true });
+    });
+    await page.goto(`${origin}/prototype/admin-app/hada-admin.html?live=1`);
+    await page.waitForSelector('#lvpw', { timeout: 15000 }); await page.fill('#lvpw', '0000'); await page.click('.dlg #co');
+    await page.waitForSelector('#lvnp1', { timeout: 10000 });
+    await page.fill('#lvnp1', 'first-pass-1'); await page.fill('#lvnp2', 'first-pass-X'); await page.click('.dlg #co');
+    assert.match(await page.textContent('#lvnerr'), /확인 값이 달라요/);
+    await page.fill('#lvnp2', 'first-pass-1'); await page.screenshot({ path: shots + 'admin-live-first-pw.png' }); await page.click('.dlg #co');
+    await page.waitForFunction(() => window.LIVE && window.LIVE.loaded, null, { timeout: 30000 });
+    const lg = calls.filter((c) => c.action === 'login').map((c) => [c.body.password === '0000' ? 'init' : 'new', c.body.scope || '']);
+    assert.deepEqual(lg, [['init', ''], ['init', 'settings'], ['new', '']]);
+    const ch = calls.filter((c) => c.action === 'change'); assert.equal(ch.length, 1); assert.equal(ch[0].key, 'sess-0'); assert.deepEqual(Object.keys(ch[0].body).sort(), ['action', 'current_password', 'new_password']);
+    assert.equal(await page.evaluate(() => sessionStorage.getItem('hada_admin_browser_session_v1')), 'sess-1');
+    assert.ok(!logs.some((l) => /first-pass-1/.test(l)), '콘솔에 비밀번호 없음');
+    assert.deepEqual(errors, []); done.push('첫 설치 비밀번호'); await page.close();
   }
   console.log('관리자 설정 실제 연결 통과:', done.join(', '));
   await b.close(); server.close();

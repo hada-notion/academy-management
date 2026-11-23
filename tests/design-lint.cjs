@@ -3,7 +3,7 @@
 // Run: node tests/design-lint.cjs   (no dependencies)
 const fs=require('fs');
 // Pages converted to the shared tokens. Add a page here when it moves to assets/hada-ui.css.
-const PAGES=['admin_settings.html','attendance_kiosk.html','school_search.html','library.html','legal_documents.html','class_room.html'];
+const PAGES=['attendance_kiosk.html','school_search.html','legal_documents.html','class_room.html'];
 const SHARED='assets/hada-ui.css',TOKENS='assets/hada-tokens.css';
 const errors=[];
 function cssOf(file){
@@ -46,7 +46,7 @@ for(const file of [TOKENS,SHARED,...PAGES])check(file);
 // Order matters: hada-ui.css imports hada-tokens.css, so its own version is computed after its import is updated.
 const crypto=require('crypto');
 const FIX=process.argv.includes('--fix');
-const VERSIONED=[['assets/hada-tokens.css',['assets/hada-ui.css']],['assets/hada-ui.css',PAGES],['assets/hada-shortcuts.js',PAGES],['admin_auth.js',PAGES],['admin_settings.js',PAGES],['class_room.js',PAGES],
+const VERSIONED=[['assets/hada-tokens.css',['assets/hada-ui.css']],['assets/hada-ui.css',PAGES],['assets/hada-shortcuts.js',PAGES],['admin_auth.js',PAGES],['class_room.js',PAGES],
   // 학부모 리포트는 공용 스타일 대상(PAGES)이 아니지만 스크립트는 같은 방식으로 버전을 붙여, 고친 내용이 휴대폰에 바로 내려가게 한다.
   ['student_report_part1.js',['student_report.html']],['student_report_part2.js',['student_report.html']]];
 const version=file=>crypto.createHash('sha256').update(fs.readFileSync(file,'utf8').replace(/\r\n/g,'\n')).digest('hex').slice(0,8);

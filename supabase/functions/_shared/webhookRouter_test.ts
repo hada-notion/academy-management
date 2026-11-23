@@ -1,19 +1,21 @@
-// 웹훅 길잡이 시험: 연결표가 관리자 설정 체크리스트와 같은지, 동작 ID를 제대로 뽑는지, 기존 함수로 그대로 넘기는지.
+// 웹훅 길잡이 시험: 연결표 모양, 동작 ID를 제대로 뽑는지, 기존 함수로 그대로 넘기는지.
 import { WEBHOOK_ROUTES, resolveActions, routeById, targetUrl } from "./webhookRoutes.ts"
 import { handleRouter, processRouterRetryItem, ROUTER_MISS_TARGET, ROUTER_RETRY_TARGET, type RouterDeps } from "./webhookRouter.ts"
 
 function assert(cond: unknown, msg = "assertion failed"): asserts cond { if (!cond) throw new Error(msg) }
 const eq = (a: unknown, b: unknown, msg?: string) => assert(JSON.stringify(a) === JSON.stringify(b), `${msg ?? ""} ${JSON.stringify(a)} !== ${JSON.stringify(b)}`)
 
-Deno.test("연결표 = 관리자 설정 웹훅 체크리스트(ID·함수·경로·순서)", async () => {
-  const js = await Deno.readTextFile(new URL("../../../admin_settings.js", import.meta.url))
-  const block = js.slice(js.indexOf("const CHECKLIST=["), js.indexOf("function route("))
-  const items = [...block.matchAll(/\['([a-z0-9-]+)','[^']*',(BUTTON|AUTO),route\('([a-z-]+)'\)(,(\{[^\n]*?)\])?/g)].map((m) => {
-    const path = /path:'([^']*)'/.exec(m[5] ?? "")
-    return [m[1], m[3], path ? path[1] : ""]
-  })
-  eq(WEBHOOK_ROUTES.map((r) => [r.id, r.fn, r.path]), items, "routes")
+// 261123: 옛 관리자 설정 웹 화면(체크리스트 원본)을 없앰 — 연결표가 원본. ID 고유 · 형식, 함수 · DB 라벨 · 종류가 빈 칸 없음, 경로는 비거나 ? · /로 시작.
+Deno.test("연결표: ID 고유 · 형식, 함수 · DB · 종류 · 경로", () => {
+  assert(WEBHOOK_ROUTES.length >= 30, "rows")
   assert(new Set(WEBHOOK_ROUTES.map((r) => r.id)).size === WEBHOOK_ROUTES.length, "ids unique")
+  for (const r of WEBHOOK_ROUTES) {
+    assert(/^[a-z0-9-]{1,64}$/.test(r.id), "id " + r.id)
+    assert(/^[a-z-]+$/.test(r.fn), "fn " + r.id)
+    assert(/\(학원\)$/.test(r.db), "db " + r.id)
+    assert(r.kind === "button" || r.kind === "automation", "kind " + r.id)
+    assert(r.path === "" || /^[?/]/.test(r.path), "path " + r.id)
+  }
 })
 
 Deno.test("동작 ID: 헤더·수식(wait 배열·문자열)·중복·모르는 ID", () => {
@@ -172,32 +174,4 @@ Deno.test("워커 다시 넘기기: 지금 서버 키로 본문 그대로, 실�
 
 Deno.test("GET은 405", async () => {
   eq((await handleRouter(new Request("https://x/functions/v1/notion-router"), deps())).status, 405)
-})
-
-// (v2.8.0 항목 80) 체크리스트 괄호가 어긋나 항목이 DB 묶음 밖으로 떨어지면(예: class-etc-charge) ID 대조는 통과해도 화면 카드가 깨진다.
-// 모든 항목이 [DB 이름, [항목…]] 안(깊이 3)에 있고, 그 DB 이름이 연결표 db 라벨과 같은지 본다.
-Deno.test("체크리스트: 모든 항목이 DB 묶음 안, 묶음 이름 = 연결표 db", async () => {
-  const js = await Deno.readTextFile(new URL("../../../admin_settings.js", import.meta.url))
-  const start = js.indexOf("const CHECKLIST=[") + "const CHECKLIST=".length
-  const end = js.indexOf("function route(")
-  let depth = 0, group = ""
-  const seen: [string, string][] = []
-  for (let i = start; i < end; i++) {
-    const ch = js[i]
-    if (ch === "'") {
-      let j = i + 1
-      while (j < end && js[j] !== "'") j += js[j] === "\\" ? 2 : 1
-      const text = js.slice(i + 1, j)
-      if (depth === 2 && js[i - 1] === "[") group = text
-      if (depth === 4 && js[i - 1] === "[" && /^[a-z0-9-]+$/.test(text) && /^,'[^']*',(BUTTON|AUTO),/.test(js.slice(j + 1, j + 40))) seen.push([text, group])
-      if (depth !== 4 && js[i - 1] === "[" && /^[a-z0-9-]+$/.test(text) && /^,'[^']*',(BUTTON|AUTO),/.test(js.slice(j + 1, j + 40))) throw new Error(`항목 ${text}가 DB 묶음 밖(깊이 ${depth})`)
-      i = j
-      continue
-    }
-    if (ch === "[") depth++
-    else if (ch === "]") depth--
-    if (depth === 0) break
-  }
-  eq(seen.map(([id]) => id), WEBHOOK_ROUTES.map((r) => r.id), "items")
-  eq(seen.map(([, g]) => g), WEBHOOK_ROUTES.map((r) => r.db), "db labels")
 })
