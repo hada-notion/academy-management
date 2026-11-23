@@ -230,8 +230,8 @@ async function setCursor(table: CopyTable, at: string): Promise<void> {
 }
 
 // ---------- 표별 Notion 읽기 ----------
-const DS: Record<CopyTable, string> = { cr_sessions: DS_CLASS_SESSION, cr_attendance: DS_ATTENDANCE, cr_records: DS_LEARNING_RECORD, cr_activities: DS_STUDY_ACTIVITY }
-async function toRows(table: CopyTable, pages: Page[]): Promise<Row[]> {
+export const DS: Record<CopyTable, string> = { cr_sessions: DS_CLASS_SESSION, cr_attendance: DS_ATTENDANCE, cr_records: DS_LEARNING_RECORD, cr_activities: DS_STUDY_ACTIVITY }
+export async function toRows(table: CopyTable, pages: Page[]): Promise<Row[]> {
 	if (table === "cr_sessions") return await toSessionRows(pages)
 	if (table === "cr_records") return await toRecordRows(pages)
 	return pages.map(table === "cr_attendance" ? attendanceRow : activityRow)
