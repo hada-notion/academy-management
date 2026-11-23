@@ -120,15 +120,17 @@ const FIX = {
     await page.evaluate((id) => { activeTab.state.sel = id; render(); }, SID(1));
     assert.match(await page.textContent('.panel .lr-note.run'), /노션 요청 처리 중/);
     await page.screenshot({ path: shots + 'refresh-4-running.png' });
-    notion(1, { 요청: '⚠️ 실패', '요청 결과': '⚠️ 실패 · 알림톡 설정에 템플릿이 없어요' }); signal();
+    notion(1, { 요청: '⚠️ 실패', '요청 결과': '⚠️ 실패 · 알림톡 설정에 템플릿이 없어요 · 11/23 13:01:11' }); signal();
     await page.waitForFunction(() => /요청 실패/.test(document.querySelector('#view').textContent.replace(/\s+/g, ' ')), null, { timeout: 10000 });
     assert.match(await page.textContent('.panel .lr-note.fail'), /알림톡 설정에 템플릿이 없어요/);
     await page.screenshot({ path: shots + 'refresh-5-failed.png' });
+    assert.match(await page.textContent('#syncAt'), /자동 갱신 켜짐 · 마지막 받음 [0-9]{2}:[0-9]{2}/);
     await page.evaluate(() => { openScreen('today'); });
     await page.waitForFunction(() => document.querySelector('[data-lrreq=fail]'), null, { timeout: 10000 });
     await page.screenshot({ path: shots + 'refresh-6-home.png' });
     await page.click('[data-lrreq=fail]');
     const m = await page.textContent('#modalRoot'); assert.match(m, /학생 · 예시 학생 가/); assert.match(m, /알림톡 설정에 템플릿이 없어요/);
+    assert.ok(!/13:01:11/.test(m), '글 끝 시각은 걷어내고 한 번만'); 
     assert.equal(await page.locator('#modalRoot a[href^="https://www.notion.so/"]').count(), 1);
     await page.screenshot({ path: shots + 'refresh-7-list.png' });
     assert.deepEqual(errors, []); done.push('요청 상태'); await page.close();
