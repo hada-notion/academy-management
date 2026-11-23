@@ -87,7 +87,7 @@ Deno.test("넘기기 실패(5xx·네트워크)는 다시 넘기기 대기열에 
 	const out = await handleRequest(f.pages.get("p"), { id: "menu-bulk-classes", ids: ["menu-bulk-classes"] }, f)
 	assertEquals(out.state, STATE_FAILED)
 	assertEquals(f.retries, ["menu-bulk-classes"])
-	assert(text(f.patches[1].props[RESULT_PROP]).includes("자동으로 다시 넘김"))
+	assert(text(f.patches[1].props[RESULT_PROP]).includes("자동으로 다시 넘기"))
 })
 
 Deno.test("처리하는 사이 새 요청이 들어오면 요청 칸은 그대로(결과만 씀)", async () => {
@@ -177,4 +177,92 @@ Deno.test("처리기: 휴지통 줄의 요청은 넘기지 않는다", async () 
 	f.notion.set("m1", { ...rpage("m1", { [REQUEST_PROP]: sel("menu-bulk-classes") }, DS_REQ), in_trash: true })
 	await applyOne(qi("m1", DS_REQ), deps)
 	assertEquals(f.handled, [])
+})
+
+// ---------- (261123) 실패 이유를 읽을 말로 · 성공 안내 · 구독 끊김 대조 ----------
+import { cleanReason, readableReason } from "./notionRequests.ts"
+import { stableJson, watchItems, watchPoll, MissingWatch, type WatchItem } from "./notionSubscriptionWatch.ts"
+import { healthFrom, subscriptionState } from "./notionSubscriptionStatus.ts"
+
+const RAW_CACHE = "report_cache에 registration_id=00000000-0000-4000-8000-000000000001 행이 없어 링크 상태를 갱신하지 못했습니다. sync-report-cache로 먼저 캐시를 생성한 뒤 다시 시도하세요."
+const unreadable = (s: string) => /[0-9a-f]{8}-[0-9a-f]{4}|report_cache|sync-|registration_id|HTTP|Error/.test(s)
+
+Deno.test("읽을 말: 이유 원문 3종 이상 — 내부 id · 함수 · 표 이름 · 영문 오류가 남지 않는다", () => {
+	const cases: [number, string, boolean][] = [
+		[500, RAW_CACHE, true],
+		[401, '인증 실패', false],
+		[0, "The signal has been aborted", true],
+		[503, "", true],
+		[400, "보고서 구분이 비어 있습니다 (page 00000000000040008000000000000001)", false],
+		[400, "body failed validation: body.properties.이름.title should be defined", false],
+		[422, "Something went wrong", false],
+		[404, "Not Found", false],
+		[409, "이미 처리 중입니다 (lock generate_classes)", false],
+	]
+	for (const [st, raw, retry] of cases) {
+		const say = readableReason(st, raw, retry)
+		assert(!unreadable(say), `${raw} → ${say}`)
+		assert(/[가-힣]/.test(say), say)
+	}
+	assert(readableReason(500, RAW_CACHE, true).includes("[학생 페이지 동기화]"))
+	assert(readableReason(503, "", true).includes("자동으로 다시 넘기"))
+	assertEquals(readableReason(400, "보고서 구분이 비어 있습니다 (page 00000000000040008000000000000001)", false), "보고서 구분이 비어 있습니다")
+	assert(readableReason(422, "Something went wrong", false).includes("관리자에게"))
+	assertEquals(cleanReason("연락처가 없습니다: student_phone (HTTP 400)"), "연락처가 없습니다")
+})
+
+Deno.test("실패 칸: 동작 이름 — 읽을 말, 원문은 서버 기록에만", async () => {
+	const f = fakeReq(400, '{"error":"수업일시가 비어 있습니다. registration_id=00000000-0000-4000-8000-000000000001"}')
+	const logs: string[] = []; f.log = (m) => logs.push(m)
+	f.pages.set("p", rpage("p", { [REQUEST_PROP]: sel("class-report-create") }))
+	await handleRequest(f.pages.get("p"), { id: "class-report-create", ids: ["class-report-create"] }, f)
+	const t = text(f.patches[1].props[RESULT_PROP])
+	assert(t.startsWith(`${STATE_FAILED} · 보고서 생성 — 수업일시가 비어 있습니다`), t)
+	assert(!unreadable(t), t)
+	assert(logs.some((l) => l.includes("registration_id=")), "원문은 기록에")
+})
+
+Deno.test("성공 안내(note)는 완료 뒤에 붙는다 — 리포트 없는 등록의 링크 재발급", async () => {
+	const f = fakeReq(200, '{"ok":true,"note":"학부모 리포트가 아직 없어 노션에 새 링크만 적었어요","cache":"none"}')
+	f.pages.set("p", rpage("p", { [REQUEST_PROP]: sel("reg-link-regenerate") }))
+	const out = await handleRequest(f.pages.get("p"), { id: "reg-link-regenerate", ids: ["reg-link-regenerate"] }, f)
+	assertEquals(out.state, STATE_DONE)
+	assert(text(f.patches[1].props[RESULT_PROP]).endsWith("· 학부모 리포트가 아직 없어 노션에 새 링크만 적었어요"))
+})
+
+Deno.test("대조: 키 순서가 달라도 같은 값", () => {
+	assertEquals(stableJson({ b: 1, a: [{ y: 2, x: null }] }), stableJson({ a: [{ x: null, y: 2 }], b: 1 }))
+})
+
+Deno.test("대조: 사본과 값이 다르고 2분 지난 줄만 — 같은 값(웹훅이 먼저 맞춤 · 본문만 고침)과 방금 고친 줄은 빼고", () => {
+	const now = Date.parse("2026-11-23T03:20:00Z")
+	const row = (id: string, v: string, at: string) => ({ id, props: { 이름: v }, notion_edited_at: at })
+	const rows = [row("a", "새 값", "2026-11-23T03:10:00Z"), row("b", "같음", "2026-11-23T03:10:00Z"), row("c", "새 값", "2026-11-23T03:19:00Z"), row("d", "새 줄", "2026-11-23T03:12:00Z")]
+	const pages = [rpage("a", { [REQUEST_PROP]: sel("reg-report-sync") }, "ds-1"), rpage("b", {}), rpage("c", {}), rpage("d", {}, "ds-2")]
+	const items = watchItems(rows, pages, [{ id: "a", props: { 이름: "옛 값" } }, { id: "b", props: { 이름: "같음" } }, { id: "c", props: { 이름: "옛 값" } }], now)
+	assertEquals(items, [
+		{ page_id: "a", edited_at: "2026-11-23T03:10:00.000Z", ds: "ds-1", request: true },
+		{ page_id: "d", edited_at: "2026-11-23T03:12:00.000Z", ds: "ds-2", request: false },
+	])
+})
+
+Deno.test("대조: 서버 함수가 없으면 건너뜀, 사본을 못 읽은 DB는 빼고 보냄", async () => {
+	const now = Date.parse("2026-11-23T03:20:00Z")
+	const sent: WatchItem[][] = []
+	const deps = { existing: async () => [], now: () => now, report: async (items: WatchItem[]) => { sent.push(items); return { state: "ok", missed: 0, total: 0, queued: 0 } } }
+	const r1 = [{ id: "a", props: { x: 1 }, notion_edited_at: "2026-11-23T03:00:00Z" }]
+	await watchPoll([{ rows: r1, pages: [], existing: [] }, { rows: r1, pages: [], existing: null }], deps)
+	assertEquals(sent[0].length, 1)
+	const skipped = await watchPoll([], { ...deps, report: async () => { throw new MissingWatch() } })
+	assertEquals(skipped, { skipped: "표 없음" })
+})
+
+Deno.test("구독 상태: 끊김 감지가 down이면 이벤트가 있었어도 down", () => {
+	const base = { tables: true, tokenAt: "t", lastEventAt: "e", lastEventType: null, events24h: 1, rejectedAt: null, pending: 0, failed: 0 }
+	const h = healthFrom({ state: "down", since: "2026-11-23T03:00:00Z", reason: "놓침", missed: "2", poll_min: 5, simulate_until: "2026-11-23T04:00:00Z" }, Date.parse("2026-11-23T03:30:00Z"))!
+	assertEquals(h.missed, 2); assertEquals(h.pollMin, 5); assert(h.simulating)
+	assertEquals(subscriptionState({ ...base, health: h }), "down")
+	assertEquals(subscriptionState({ ...base, health: { ...h, state: "ok" } }), "on")
+	assertEquals(subscriptionState({ ...base, health: null }), "on")
+	assertEquals(healthFrom(undefined), null)
 })

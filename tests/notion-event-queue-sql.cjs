@@ -93,5 +93,66 @@ assert.equal(await one("select count(*)::int from public.notion_event_ids where 
 assert.equal(await one('select count(*)::int from public.notion_webhook_events'),1);
 const grants=await one("select count(*)::int from information_schema.routine_privileges where (routine_name like 'notion_event%') and grantee in ('anon','authenticated','PUBLIC')");
 assert.equal(grants,0,'anon · authenticated는 부르지 못함');
-console.log('Notion event queue migration passed: once per event id, merge per page, seq guard, single lease, retry→failed, drain only when due, polling 15 min, prune, no anon grants');
+
+// ---------- (261123) 구독 끊김 감지 20261123060000 ----------
+const watch=fs.readFileSync('supabase/migrations/20261123060000_notion_subscription_watch.sql','utf8');
+await db.exec(watch);await db.exec(watch); // 다시 적용해도 같다
+const H=async()=>(await q('select state,missed,poll_min from public.notion_subscription_health where id=1'))[0];
+const ev=(page,kind='event')=>db.query("insert into public.notion_webhook_events(kind,entity_id,event_type,received_at) values($1,$2,'page.properties_updated',clock_timestamp())",[kind,page]);
+const rep=(items)=>one('select public.notion_subscription_poll_report($1::jsonb,2)',[JSON.stringify(items)]);
+const ago=m=>new Date(Date.now()-m*60000).toISOString();
+assert.deepEqual(await H(),{state:'ok',missed:0,poll_min:15},'구독 확인된 서버: 15분 기록');
+// 정상: 대조할 줄이 없으면 그대로
+assert.deepEqual(await rep([]),{state:'ok',missed:0,total:0,queued:0});
+// 이벤트를 받은 줄(고친 뒤 받음)은 놓친 줄이 아니다 — 하이픈 있든 없든
+await ev('aaaaaaaa-0000-4000-8000-000000000001');
+assert.equal((await rep([{page_id:'aaaaaaaa000040008000000000000001',edited_at:ago(1),ds:'ds-1',request:false}])).missed,0);
+// 놓친 줄 1개: 아직 정상(헛경보 막기), 폴링 15분 그대로
+assert.deepEqual(await rep([{page_id:'m1',edited_at:ago(5),ds:'ds-1',request:false}]),{state:'ok',missed:1,total:1,queued:0});
+assert.equal(await sched('app-copy-incremental'),'*/15 * * * *');
+// 이벤트가 하나라도 오면 쌓인 수를 비운다(구독은 살아 있음 — 노션이 한 건만 빠뜨림)
+await ev('other');
+assert.equal((await H()).missed,0);
+// 이벤트 없이 놓친 줄 2개 → 끊김 + 폴링 5분(두 예약 모두), 요청 있는 줄은 대기열로
+const down=await rep([{page_id:'m2',edited_at:ago(6),ds:'ds-1',request:true},{page_id:'m3',edited_at:ago(4),ds:'ds-1',request:false}]);
+assert.deepEqual(down,{state:'down',missed:2,total:2,queued:1});
+assert.equal(await sched('app-copy-incremental'),'*/5 * * * *');
+assert.equal(await sched('class-room-copy-incremental'),'*/5 * * * *');
+assert.match(await one("select command from cron.job where jobname='app-copy-incremental'"),/"mode":"app","step":"incremental"/,'부르는 본문 그대로');
+assert.equal(await one("select status from public.notion_event_queue where page_id='m2'"),'pending','끊긴 동안 요청은 폴링이 대기열에');
+assert.match(await one("select reason from public.notion_subscription_health"),/2개/);
+// 끊긴 동안 또 놓쳐도 끊김 그대로(폴링 5분 그대로, 기록 한 번)
+await rep([{page_id:'m4',edited_at:ago(3),ds:'ds-1',request:false}]);
+assert.equal((await H()).state,'down');
+assert.equal(await one("select count(*)::int from public.notion_subscription_log where event='down'"),1);
+// 이벤트가 다시 오면 되돌아옴 → 15분
+await ev('back');
+assert.deepEqual(await H(),{state:'ok',missed:0,poll_min:15});
+assert.equal(await sched('app-copy-incremental'),'*/15 * * * *');
+assert.equal(await sched('class-room-copy-incremental'),'*/15 * * * *');
+assert.deepEqual((await q("select event from public.notion_subscription_log order by id")).map(r=>r.event),['down','poll','ok','poll']);
+// 꺼짐 흉내: 받은 이벤트는 거절로 적고 대기열에 넣지 않는다(폴링 요청은 넣음), 되돌아오지도 않는다
+assert.equal(await one('select public.notion_subscription_simulate(10)'),'on');
+await ev('sim-page');
+assert.equal(await one("select kind from public.notion_webhook_events where entity_id='sim-page'"),'rejected');
+assert.match(await one("select reason from public.notion_webhook_events where entity_id='sim-page'"),/꺼짐 흉내/);
+assert.equal(await enq('sim-e1','sim-page','page.properties_updated','2026-11-23T02:00:00Z'),'dropped');
+assert.equal(await one('select public.notion_event_enqueue(null,$1,$2,$3,now(),false,0)',['poll-page','ds-1','page.properties_updated']),'queued');
+await rep([{page_id:'s1',edited_at:ago(5),ds:'ds-1',request:false},{page_id:'s2',edited_at:ago(5),ds:'ds-1',request:false}]);
+assert.equal((await H()).state,'down','흉내 중 끊김 감지');
+assert.equal(await sched('app-copy-incremental'),'*/5 * * * *');
+await ev('sim-page2');
+assert.equal((await H()).state,'down','흉내 중 이벤트로는 되돌아오지 않음');
+assert.equal(await one('select public.notion_subscription_simulate(0)'),'off');
+await ev('after-sim');
+assert.equal((await H()).state,'ok');assert.equal(await sched('app-copy-incremental'),'*/15 * * * *');
+// 구독이 없는 서버: 끊김을 세도 폴링은 바꾸지 않는다
+await db.exec('delete from public.notion_webhook_tokens');
+assert.equal(await one('select public.notion_subscription_poll_set(5)'),'no-subscription');
+await rep([{page_id:'n1',edited_at:ago(5)},{page_id:'n2',edited_at:ago(5)}]);
+assert.equal((await H()).state,'ok','구독 없으면 끊김으로 보지 않음');
+assert.equal(await sched('app-copy-incremental'),'*/15 * * * *');
+const g2=await one("select count(*)::int from information_schema.routine_privileges where routine_name like 'notion_subscription%' and grantee in ('anon','authenticated','PUBLIC')");
+assert.equal(g2,0,'끊김 감지 함수도 anon · authenticated는 못 부름');
+console.log('Notion event queue migration passed: once per event id, merge per page, seq guard, single lease, retry→failed, drain only when due, polling 15 min, prune, no anon grants; subscription watch: down after 2 missed rows, poll 5↔15, recover on event, simulate, no-subscription untouched');
 })().catch(e=>{console.error(e);process.exit(1)});

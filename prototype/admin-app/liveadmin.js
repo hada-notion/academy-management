@@ -61,6 +61,7 @@
   /* 노션 연동 구독 상태 → [표 글, 색, 설명] */
   function subLine(sub) {
     if (!sub) return null;
+    if (sub.state === "down") { const h = sub.health || {}; return ["끊김", "r", `${h.reason || "노션에서 고친 줄을 웹훅으로 받지 못했어요"}${h.since ? ` · ${dt(h.since)}부터` : ""} — 그동안 ${h.pollMin || 5}분마다 맞춰요. 노션 연동 설정 Webhooks에서 구독이 Active인지 확인해요(다음 변경을 받으면 저절로 돌아와요)${h.simulating ? " · 시험(꺼짐 흉내) 중" : ""}`]; }
     if (sub.state === "on") return ["켜짐", "g", `마지막으로 받은 변경 ${dt(sub.lastEventAt)}(${ago(sub.lastEventAt)}) · 최근 24시간 ${sub.events24h.toLocaleString()}건`];
     if (sub.state === "waiting") return ["확인 대기", "w", `노션이 ${dt(sub.tokenAt)}에 확인 요청을 보냈어요 — 노션 연동 설정에서 [Verify]를 마치면 켜져요`];
     if (sub.state === "off") return ["꺼짐", "", "노션 연동 설정에서 구독을 만들면 노션에서 고친 것이 바로 앱에 들어와요(없어도 15분마다 맞춰요)"];
@@ -72,7 +73,8 @@
     const l = subLine(sub);
     if (!l) return [["상태", '<span class="tag r">확인 못 함</span>', btn("refresh", "다시 확인", "rotc")]];
     const rows = [["상태", `${tag(l[1], l[0])} <span class="hint">${esc(l[2])}</span>`, ""]];
-    if (sub.state === "on" || sub.state === "waiting") rows.push(["반영 대기", sub.pending || sub.failed ? `${sub.pending ? `${sub.pending.toLocaleString()}건 처리 중` : ""}${sub.pending && sub.failed ? " · " : ""}${sub.failed ? `<span class="tag w">${sub.failed.toLocaleString()}건 다시 맞추는 중</span>` : ""}` : '<span class="hint">없음 — 받은 변경을 모두 앱에 넣었어요</span>', ""]);
+    if (sub.health && sub.health.pollMin) rows.push(["앱 사본 폴링", `${sub.health.pollMin}분마다 <span class="hint">${sub.health.pollMin === 5 ? "구독이 끊긴 동안 짧게 — 돌아오면 15분" : "구독이 받쳐 주는 동안 안전망"}${sub.health.lastReportAt ? ` · 마지막 대조 ${esc(dt(sub.health.lastReportAt))}` : ""}</span>`, ""]);
+    if (sub.state === "on" || sub.state === "waiting" || sub.state === "down") rows.push(["반영 대기", sub.pending || sub.failed ? `${sub.pending ? `${sub.pending.toLocaleString()}건 처리 중` : ""}${sub.pending && sub.failed ? " · " : ""}${sub.failed ? `<span class="tag w">${sub.failed.toLocaleString()}건 다시 맞추는 중</span>` : ""}` : '<span class="hint">없음 — 받은 변경을 모두 앱에 넣었어요</span>', ""]);
     if (sub.rejectedAt) rows.push(["거절한 요청", `<span class="tag w">${esc(dt(sub.rejectedAt))}</span> <span class="hint">서명이 맞지 않아 받지 않았어요 — 구독을 다시 만들었다면 확인 토큰을 새로 넣어요</span>`, ""]);
     return rows;
   }

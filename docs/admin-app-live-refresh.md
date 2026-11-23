@@ -32,6 +32,7 @@
 
 - 표 줄: 대기 · 처리 중 · 실패 알약. 창 위: 상태 + 결과 글 + 시각.
 - 홈 입력 점검: "노션 요청 실패" · "오래 걸리는 요청" 줄 → 누르면 목록(DB · 줄 이름 · 이유 · [노션에서 열기]).
+- 홈 입력 점검 "노션 연동 구독 끊김"(261123): `changes` 응답의 `subscription`(끊김 감지 한 줄, [notion-webhook-sync.md](notion-webhook-sync.md) "구독 끊김 알아채기")이 `down`이면 한 줄 → 누르면 안내 창(이유 · 지금 몇 분마다 맞추는지 · 할 일). 돌아오면 저절로 사라진다.
 
 ## 되돌리는 법
 
@@ -42,5 +43,5 @@
 
 - `tests/app-live-refresh-sql.cjs`(PGlite, 가짜 `realtime.send`): 값이 바뀐 줄만 신호 · 신호에 값 없음 · 지운 줄 기록과 정리 · 신호 실패에도 쓰기 · realtime 없어도 동작 · 잠금.
 - `supabase/functions/_shared/appChanges_test.ts`: 입력 확인 · 겹쳐 읽기 · many.
-- `tests/admin-live-refresh.cjs`(Playwright, 가짜 서버 · 가짜 Realtime): 신호 → 그 줄만 바뀜(3번, 걸린 시간) · 작성 중 보호와 [노션 값 불러오기] · 요청 처리 중 → 실패(표 · 창 · 홈 목록) · 끊김 → 다시 붙고 놓친 것 · 지운 줄 · `refresh=0`.
+- `tests/admin-live-refresh.cjs`(Playwright, 가짜 서버 · 가짜 Realtime): 신호 → 그 줄만 바뀜(3번, 걸린 시간) · 작성 중 보호와 [노션 값 불러오기] · 요청 처리 중 → 실패(표 · 창 · 홈 목록) · 구독 끊김 경고 → 안내 창 → 돌아오면 사라짐 · 끊김 → 다시 붙고 놓친 것 · 지운 줄 · `refresh=0`.
   - 사용: `ROOT=<저장소> SHOTS=<캡처 폴더> NODE_PATH=<playwright 있는 node_modules> node tests/admin-live-refresh.cjs`

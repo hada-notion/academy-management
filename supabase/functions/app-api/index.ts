@@ -2,7 +2,7 @@
 // (adminSecurity.ts SECURITY_BROWSER_ROUTES). 읽기는 Supabase 복사본(app_rows)만, 쓰기(save)는 Notion에 먼저 쓴다.
 // body:
 //   { action: "list", db: "학생(학원) DB", since?: ISO } — 그 DB 줄 전체(since가 있으면 그 뒤 동기화된 줄만)
-//   { action: "changes", since: ISO|null, dbs: [...] } — (261123 자동 갱신) since 뒤 바뀐 줄 · 지운 줄(_shared/appChanges.ts). 노션은 안 부름
+//   { action: "changes", since: ISO|null, dbs: [...] } — (261123 자동 갱신) since 뒤 바뀐 줄 · 지운 줄(_shared/appChanges.ts) + subscription(구독 끊김 감지 한 줄). 노션은 안 부름
 //   { action: "status" } — DB마다 줄 수 · 마지막 동기화(앱 자료 상태)
 //   { action: "admin-status" } — 관리자 설정(261123): 노션 연결(최상위 제목 · 마지막 동기화) + 노션 연동 구독 상태(_shared/notionSubscriptionStatus.ts)
 //   { action: "save", changes: [{ op: "create"|"update", db, id?, tmp?, edited?, props }] } — (항목 75) 입력 범위 DB만 Notion에 먼저 쓰고
@@ -12,7 +12,7 @@ import { CORS_HEADERS, requireAdminKey } from "../_shared/adminShared.ts"
 import { APP_DBS, isAppDb, listApp, statusApp, warmSources, syncCopy, lastSyncedAt, rootTitle, NotionBusyError } from "../_shared/appCopy.ts"
 import { checkChanges, saveChanges, runGenerateClasses, writeOptions, SaveError } from "../_shared/appSave.ts"
 import { appChanges, checkChangesInput, ChangesInputError } from "../_shared/appChanges.ts"
-import { subscriptionStatus } from "../_shared/notionSubscriptionStatus.ts"
+import { subscriptionStatus, healthOf } from "../_shared/notionSubscriptionStatus.ts"
 
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store" } })
@@ -43,7 +43,9 @@ Deno.serve(async (req: Request) => {
     // 열린 화면 자동 갱신(261123): Realtime 신호 · 60초 따라잡기 때. 사본만 읽는다.
     if (body?.action === "changes") {
       const { since, dbs } = checkChangesInput(body)
-      return json(await appChanges(since, dbs))
+      // (261123) 구독 끊김도 함께 — 홈 입력 점검이 경고를 띄운다(표 한 줄 읽기, 실패해도 바뀐 줄은 그대로 돌려줌).
+      const [changes, health] = await Promise.all([appChanges(since, dbs), healthOf().catch(() => null)])
+      return json({ ...changes, subscription: health })
     }
     if (body?.action === "status") { const dbs = await statusApp(); const [syncedAt, title] = await Promise.all([lastSyncedAt(), rootTitle()]); return json({ ok: true, dbs, syncedAt, rootTitle: title }) }
     // 관리자 설정 칸(261123): 노션 연결 확인 + 연동 구독 상태. 노션 연결은 최상위 페이지 제목을 실제로 읽어 본다(못 읽으면 null).

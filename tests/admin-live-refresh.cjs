@@ -37,7 +37,7 @@ const FIX = {
         if (q.action === 'changes') {
           const from = q.since ? Date.parse(q.since) - 15000 : Infinity;
           const rows = [...S.rows.values()].filter((r) => Date.parse(r.synced_at) > from).map((r) => ({ ...r, db: '학생(학원) DB' }));
-          return reply(route, 200, { ok: true, now: iso(), rows, gone: S.gone.filter((g) => Date.parse(g.at) > from).map(({ id, db }) => ({ id, db })), crAt: null });
+          return reply(route, 200, { ok: true, now: iso(), rows, gone: S.gone.filter((g) => Date.parse(g.at) > from).map(({ id, db }) => ({ id, db })), crAt: null, subscription: S.sub || null });
         }
         if (q.action === 'options') return reply(route, 200, { ok: true, dbs: {} });
         if (q.action === 'status') return reply(route, 200, { ok: true, dbs: [], syncedAt: iso(-60000), rootTitle: '하다 학원관리 v2.0' });
@@ -132,6 +132,25 @@ const FIX = {
     assert.equal(await page.locator('#modalRoot a[href^="https://www.notion.so/"]').count(), 1);
     await page.screenshot({ path: shots + 'refresh-7-list.png' });
     assert.deepEqual(errors, []); done.push('요청 상태'); await page.close();
+  }
+  // ③-2 (261123) 노션 연동 구독 끊김: 홈 입력 점검 경고 → 안내 창 → 되돌아오면 사라짐
+  {
+    const { page, S, signal, errors } = await open();
+    await page.waitForFunction(() => window.LR_STATE && window.LR_STATE.joined, null, { timeout: 10000 });
+    await page.evaluate(() => { openScreen('today'); });
+    S.sub = { state: 'down', since: iso(-12 * 60000), reason: '노션에서 고친 줄 2개를 웹훅으로 받지 못했어요(폴링이 찾음)', missed: 2, pollMin: 5, lastReportAt: iso(-60000), simulating: true };
+    signal();
+    await page.waitForFunction(() => document.querySelector('[data-lrreq=sub]'), null, { timeout: 10000 });
+    assert.match(await page.textContent('[data-lrreq=sub]'), /노션 연동 구독 끊김/);
+    await page.screenshot({ path: shots + 'refresh-8-sub-down.png' });
+    await page.click('[data-lrreq=sub]');
+    const m = await page.textContent('#modalRoot'); assert.match(m, /5분마다/); assert.match(m, /2개를 웹훅으로 받지 못했어요/); assert.match(m, /Active/); assert.match(m, /꺼짐 흉내/);
+    await page.screenshot({ path: shots + 'refresh-9-sub-modal.png' });
+    await page.click('#lrClose');
+    S.sub = { state: 'ok', since: null, reason: null, missed: 0, pollMin: 15, lastReportAt: iso(), simulating: false };
+    signal();
+    await page.waitForFunction(() => !document.querySelector('[data-lrreq=sub]'), null, { timeout: 10000 });
+    assert.deepEqual(errors, []); done.push('구독 끊김 경고'); await page.close();
   }
   // ④ 연결 끊김 → 다시 붙음 → 놓친 것 따라잡음 ⑤ 지운 줄
   {

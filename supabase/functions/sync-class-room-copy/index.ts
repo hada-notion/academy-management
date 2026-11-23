@@ -14,6 +14,7 @@ import { COPY_TABLES, isCopyTable, reconcileTable, incrementalTable, syncClassOf
 import { reconcileLibrary } from "../_shared/libraryCopy.ts"
 import { textbookSources } from "../_shared/textbookSearch.ts"
 import { drainEvents, liveDeps } from "../_shared/notionEventsApply.ts"
+import { liveWatchDeps, watchPoll, type ExistingRow } from "../_shared/notionSubscriptionWatch.ts"
 import { APP_DBS, isAppDb, reconcileApp, incrementalApp, reconcileNext, nextUnfilled } from "../_shared/appCopy.ts"
 
 const json = (data: unknown, status = 200) =>
@@ -62,8 +63,12 @@ Deno.serve(async (req: Request) => {
       }
       if (body.step === "incremental") {
         const results = []
-        for (const db of APP_DBS) { const r = await incrementalApp(db); if (r) results.push(r) }
-        return json({ ok: true, mode: "app", step: "incremental", results, ms: Date.now() - startedAt })
+        // (261123) 구독 끊김 대조: 사본에 넣기 전 값과 견줘 웹훅이 놓친 줄을 센다(_shared/notionSubscriptionWatch.ts).
+        const batches: { rows: any[]; pages: any[]; existing: ExistingRow[] | null }[] = []
+        const before = async (_db: string, rows: any[], pages: any[]) => { batches.push({ rows, pages, existing: await liveWatchDeps.existing(rows.map((r) => r.id)) }) }
+        for (const db of APP_DBS) { const r = await incrementalApp(db, before); if (r) results.push(r) }
+        const watch = await watchPoll(batches, liveWatchDeps).catch((e) => ({ error: (e as Error).message }))
+        return json({ ok: true, mode: "app", step: "incremental", results, watch, ms: Date.now() - startedAt })
       }
       if (body.step === "reconcile-next") return json({ ok: true, mode: "app", step: "reconcile-next", results: [await reconcileNext()], ms: Date.now() - startedAt })
       return json({ error: 'app의 step은 "fill", "incremental", "reconcile-next" 중 하나여야 합니다.' }, 400)

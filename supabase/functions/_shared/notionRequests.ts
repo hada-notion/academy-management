@@ -61,7 +61,7 @@ export function kst(ms: number): string {
 const names = (ids: string[]) => ids.map((id) => routeById(id)?.name.replace(/^\[웹훅\]\s*/, "") ?? id).join(" · ")
 const clip = (s: string, n = 300) => (s.length > n ? s.slice(0, n - 1) + "…" : s)
 
-export type ForwardResult = { id: string; status: number; error?: string; retry?: boolean }
+export type ForwardResult = { id: string; status: number; error?: string; retry?: boolean; note?: string }
 
 export interface RequestDeps {
 	patch(pageId: string, props: Record<string, unknown>): Promise<void>
@@ -89,6 +89,47 @@ function reasonOf(text: string | undefined): string {
 	}
 }
 
+// 함수가 성공하면서 남긴 안내(note, 사람 말 한 줄) — 예: 링크 재발급인데 리포트가 아직 없음.
+function noteOf(text: string | undefined): string {
+	if (!text) return ""
+	try { const j = JSON.parse(text); return typeof j?.note === "string" ? clip(j.note.trim(), 160) : "" } catch { return "" }
+}
+
+// ---------- 실패 이유 → 학원 사람이 읽을 말 (261123) ----------
+// 순서대로 처음 맞는 것. 원문은 함수 로그에 남기고, 칸에는 "무엇이 · 어떻게"만.
+const KNOWN: [RegExp, string][] = [
+	[/report_cache.*없|캐시를 생성/, "학부모 리포트가 아직 만들어지지 않았어요. 반의 [학생 페이지 동기화]를 먼저 누른 뒤 다시 눌러 주세요"],
+	[/인증 실패|x-admin-key|unauthorized|forbidden/i, "서버 연결 키가 맞지 않아요. 관리 앱 관리자 설정 → 연결에서 서버 상태를 확인해 주세요"],
+	[/rate.?limit|429|too many/i, "노션이 잠시 요청을 막았어요(한도). 1~2분 뒤 다시 눌러 주세요"],
+	[/이미 (처리|진행|실행) 중|잠겨|lock/i, "같은 일이 이미 처리 중이에요. 1~2분 뒤 결과를 보고, 그대로면 다시 눌러 주세요"],
+	[/timed? ?out|timeout|aborted|시간 초과/i, "서버가 25초 안에 답하지 않았어요. 몇 분 뒤 이 줄의 상태 칸을 보고, 그대로면 다시 눌러 주세요"],
+	[/could not find|object_not_found|찾을 수 없|없는 페이지|404/i, "연결된 노션 줄을 찾지 못했어요. 지웠거나 연동에 공유되지 않은 줄인지 확인해 주세요"],
+	[/validation|body failed|올바르지 않|형식/i, "줄에 들어간 값 형식이 맞지 않아요. 비었거나 잘못 고른 칸이 없는지 확인해 주세요"],
+]
+// 사람이 읽을 수 없는 조각(내부 id · 함수 · 표 이름 · 영문 코드)을 걷어낸다.
+export function cleanReason(raw: string): string {
+	return raw
+		.replace(/\([^()가-힣]*\)/g, "") // 한글 없는 괄호 덩어리(page …, lock …, HTTP 400)
+		.replace(/[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}/gi, "")
+		.replace(/\b[a-z][a-z0-9]*(?:[_-][a-z0-9]+)+(?:=\S*)?/gi, "")
+		.replace(/\b(?:HTTP|status|error|Error)\s*:?\s*\d*/g, "")
+		.replace(/[()\[\]{}"']/g, " ")
+		.replace(/\s+([.,:;])/g, "$1").replace(/\s+/g, " ").replace(/^[\s.,:;·-]+|[\s,:;·-]+$/g, "").trim()
+}
+const hasHangul = (s: string) => /[가-힣]/.test(s)
+export function readableReason(status: number, raw: string, retried: boolean): string {
+	for (const [re, say] of KNOWN) if (re.test(raw)) return retried ? `${say} (서버가 몇 분 안에 자동으로 한 번 더 넘겨요)` : say
+	if (status === 0 || status >= 500) {
+		return retried
+			? "서버가 잠깐 처리하지 못해 자동으로 다시 넘기고 있어요(최대 3번). 10분 뒤에도 실패면 다시 누르고, 계속되면 관리자에게 알려 주세요"
+			: "서버가 잠깐 처리하지 못했어요. 1~2분 뒤 다시 눌러 주세요"
+	}
+	if (status === 404) return "서버에 이 기능이 아직 없어요(업데이트가 필요해요). 관리자에게 알려 주세요"
+	const c = cleanReason(raw)
+	if (hasHangul(c)) return clip(c, 160)
+	return `서버가 요청을 받지 않았어요(${status}). 관리자에게 알려 주세요`
+}
+
 export type RequestOutcome = { state: typeof STATE_DONE | typeof STATE_FAILED; ids: string[]; results: ForwardResult[]; ms: number; overwritten: boolean }
 
 // 줄 하나의 요청 처리. page = 방금 다시 읽은 페이지(노션 API 모양 그대로).
@@ -107,6 +148,9 @@ export async function handleRequest(page: Page, req: { id: string; ids: string[]
 			try { await deps.enqueueRetry(id, page.id, body, out.error); out.retry = true } catch (err) { deps.log(`[notionRequests] 다시 넘기기 넣기 실패 ${id}: ${(err as Error).message}`) }
 		} else if (r.status >= 400) {
 			out.error = reasonOf(r.text) || `HTTP ${r.status}`
+		} else {
+			const n = noteOf(r.text)
+			if (n) out.note = n
 		}
 		return out
 	}))
@@ -114,8 +158,13 @@ export async function handleRequest(page: Page, req: { id: string; ids: string[]
 	const state = failed.length ? STATE_FAILED : STATE_DONE
 	const ms = deps.now() - t0
 	const sec = (ms / 1000).toFixed(1)
-	const why = failed.map((r) => `${names([r.id])}: ${r.error}${r.retry ? " (서버가 자동으로 다시 넘김, 결과는 자동화 로그)" : ""}`).join(" / ")
-	const resultText = state === STATE_DONE ? `${STATE_DONE} · ${label} · ${sec}초 · ${kst(deps.now())}` : `${STATE_FAILED} · ${why} · ${kst(deps.now())}`
+	// (261123) 학원 사람이 읽을 말: 무엇이 안 됐고 어떻게 하면 되는지. 내부 id · 함수 이름 · 영문 오류 원문은 서버 기록(log)에만.
+	for (const r of failed) deps.log(`[notionRequests] ${page.id.slice(-6)} ${r.id} 실패 원문 ${r.status}: ${clip(r.error ?? "", 400)}`)
+	const why = failed.map((r) => `${names([r.id])} — ${readableReason(r.status, r.error ?? "", !!r.retry)}`).join(" / ")
+	const notes = results.map((r) => r.note).filter(Boolean)
+	const resultText = state === STATE_DONE
+		? `${STATE_DONE} · ${label} · ${sec}초 · ${kst(deps.now())}${notes.length ? ` · ${notes.join(" / ")}` : ""}`
+		: `${STATE_FAILED} · ${why} · ${kst(deps.now())}`
 	// 그 사이 새 요청이 들어왔으면 요청 칸은 그대로 두고 결과만.
 	const now = await deps.readPage(page.id)
 	const cur = propText(now?.properties?.[REQUEST_PROP]).trim()

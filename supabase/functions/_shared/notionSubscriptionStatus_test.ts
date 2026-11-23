@@ -2,7 +2,7 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts"
 import { parseCount, subscriptionState, type SubscriptionFacts } from "./notionSubscriptionStatus.ts"
 
-const base: SubscriptionFacts = { tables: true, tokenAt: null, lastEventAt: null, lastEventType: null, events24h: 0, rejectedAt: null, pending: 0, failed: 0 }
+const base: SubscriptionFacts = { tables: true, tokenAt: null, lastEventAt: null, lastEventType: null, events24h: 0, rejectedAt: null, pending: 0, failed: 0, health: null }
 
 Deno.test("구독 상태: 표 없음 → none, 아무것도 없음 → off, 토큰만 → waiting, 이벤트 → on", () => {
 	assertEquals(subscriptionState({ ...base, tables: false }), "none")

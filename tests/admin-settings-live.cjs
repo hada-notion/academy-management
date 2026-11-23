@@ -9,6 +9,8 @@ const SUBS = {
   on: { tables: true, state: 'on', tokenAt: '2026-11-23T01:00:00Z', lastEventAt: new Date(Date.now() - 7 * 60000).toISOString(), lastEventType: 'page.properties_updated', events24h: 42, rejectedAt: null, pending: 2, failed: 1 },
   waiting: { tables: true, state: 'waiting', tokenAt: '2026-11-23T01:00:00Z', lastEventAt: null, lastEventType: null, events24h: 0, rejectedAt: null, pending: 0, failed: 0 },
   off: { tables: true, state: 'off', tokenAt: null, lastEventAt: null, lastEventType: null, events24h: 0, rejectedAt: null, pending: 0, failed: 0 },
+  down: { tables: true, state: 'down', tokenAt: '2026-11-23T01:00:00Z', lastEventAt: new Date(Date.now() - 40 * 60000).toISOString(), lastEventType: 'page.properties_updated', events24h: 42, rejectedAt: null, pending: 0, failed: 0,
+    health: { state: 'down', since: new Date(Date.now() - 12 * 60000).toISOString(), reason: '노션에서 고친 줄 2개를 웹훅으로 받지 못했어요(폴링이 찾음)', missed: 2, pollMin: 5, lastReportAt: new Date(Date.now() - 60000).toISOString(), simulating: false } },
   none: { tables: false, state: 'none', tokenAt: null, lastEventAt: null, lastEventType: null, events24h: 0, rejectedAt: null, pending: 0, failed: 0 },
 };
 const CLEAR_STATUS = { workspace: '하다 예시 학원', canStart: true, flag: null, keep: ['알림톡 설정(학원) DB', '과목(학원) DB'], missing: [], unknown: ['메모 DB'],
@@ -62,11 +64,12 @@ const CLEAR_STATUS = { workspace: '하다 예시 학원', canStart: true, flag: 
     const cut = await page.evaluate(() => [...document.querySelectorAll('#view .crow .ca .btn')].filter((x) => x.scrollWidth > x.clientWidth + 1).map((x) => x.textContent)); assert.deepEqual(cut, [], name + ': 단추 글자 잘림');
   };
   // 1) 시안 a · b · c × 구독 켜짐, 그리고 b × 확인 대기 · 꺼짐 · 준비 전
-  for (const [v, s] of (process.env.ONLY ? [] : [['a', 'on'], ['b', 'on'], ['c', 'on'], ['b', 'waiting'], ['b', 'off'], ['b', 'none']])) {
+  for (const [v, s] of (process.env.ONLY ? [] : [['a', 'on'], ['b', 'on'], ['c', 'on'], ['b', 'waiting'], ['b', 'off'], ['b', 'none'], ['b', 'down']])) {
     const { page, calls, errors } = await open(v, s);
     const t = await page.textContent('#view');
     assert.match(t, /로그인됨/); assert.match(t, /마지막으로 바꾼 날 2026\. 10\. 1\./); assert.match(t, /하다 학원관리 v2\.0/); assert.match(t, /아직 비우지 않았어요/);
-    assert.match(t, { on: /켜짐/, waiting: /확인 대기/, off: /꺼짐/, none: /준비 전/ }[s]);
+    assert.match(t, { on: /켜짐/, waiting: /확인 대기/, off: /꺼짐/, none: /준비 전/, down: /끊김/ }[s]);
+    if (s === 'down') { assert.match(t, /2개를 웹훅으로 받지 못했어요/); assert.match(t, /5분마다/); assert.match(t, /Active/); }
     if (s === 'on' && v !== 'a') { assert.match(t, /최근 24시간 42건/); assert.match(t, /2건 처리 중/); assert.match(t, /1건 다시 맞추는 중/); }
     assert.ok(calls.filter((c) => c.fn !== 'app-api' || c.action === 'admin-status').every((c) => c.key === 'sess-1'), '모든 부름에 관리자 세션');
     await checkLayout(page, v + s); await page.screenshot({ path: shots + `admin-live-${v}-${s}.png`, fullPage: true });
