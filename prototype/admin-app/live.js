@@ -46,7 +46,9 @@ window.liveModeFor = function (search, hostname, protocol) {
   const EVW = gOn.has("P2") && gOn.has("P2e"); window.LIVE_EVW = EVW;
   /* 보강 쓰기(칸 P3m — 화면 묶음 없음, 보강 화면 칸 P3b와 함께 켤 때만, 261119 담당 (가)): 켜면 보강 화면이 보기만에서 빠지고 [저장]이 서버 보강 동작(livelesson.js liveMakeupSave)으로 */
   const MKW = gOn.has("P3b") && gOn.has("P3m"); window.LIVE_MKW = MKW;
-  const P2ON = gOn.has("P2"), RO = new Set([...GATES.P2, ...GATES.P3, ...GATES.P3b, "schools"].filter((s) => !(EVW && s === "events") && !(MKW && s === "makeup"))); /* P3 수업은 걸음 1 = 보기만 */
+  /* 시험 쓰기(칸 P2x — 화면 묶음 없음, P2와 함께 켤 때만, 261123 시험 보강): 켜면 시험 화면이 보기만에서 빠지고 저장 층(appsave tests · exams · grades)으로 노션에 씀 */
+  const EXW = gOn.has("P2") && gOn.has("P2x"); window.LIVE_EXW = EXW;
+  const P2ON = gOn.has("P2"), RO = new Set([...GATES.P2, ...GATES.P3, ...GATES.P3b, "schools"].filter((s) => !(EVW && s === "events") && !(MKW && s === "makeup") && !(EXW && s === "exams"))); /* P3 수업은 걸음 1 = 보기만 */
   window.liveRO = (s) => RO.has(s);
   window.liveScr = (t) => (t && t.screen === "timetable" && t.state && t.state.view === "lesson" ? "lesson" : t ? t.screen : "");
   let roBase = null, roScreen = null, roBusy = false;
@@ -69,9 +71,9 @@ window.liveModeFor = function (search, hostname, protocol) {
   const roCss = document.createElement("style");
   roCss.textContent = ".live-ro #view [data-gdel]{display:none!important}.ro-note{margin:0 0 10px;padding:8px 10px;border-radius:8px;background:#FFF6DA;color:#3A3226;font-size:13px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ro-note a{color:inherit;font-weight:600;text-decoration:underline}.ro-line{margin:-2px 0 8px;padding:0 4px;font-size:12px;color:#8A8378}";
   document.head.appendChild(roCss);
-  /* 보기 전용 화면 안내(261119 대표 "보기 중심인 화면에만 안내, 나머지는 다 사용 가능"): 시험 · 수강료 · 청구서 · 손익 분석 · 법정 서류만 제목 줄 아래 작은 회색 한 줄(토스트 아님 · 닫기 없음).
+  /* 보기 전용 화면 안내(261119 대표 "보기 중심인 화면에만 안내, 나머지는 다 사용 가능"): 수강료 · 청구서 · 손익 분석 · 법정 서류만(시험은 261123 쓰기 칸 P2x로 열림) 제목 줄 아래 작은 회색 한 줄(토스트 아님 · 닫기 없음).
      어느 화면인지는 이 목록 한 곳이 기준 — 목록에 없는 화면(수업 · 일정 · 학생 · 클래스 · 등록 …)에는 보기만 칸이어도 안 뜬다 */
-  const RO_NOTE_SCREENS = new Set(["exams", "tuition", "bill", "bookfees", "charges", "etcs", "profit", "costs", "legal", "schools", "records", "reports", "completion", "letters", "files", "alims"]);
+  const RO_NOTE_SCREENS = new Set(["tuition", "bill", "bookfees", "charges", "etcs", "profit", "costs", "legal", "schools", "records", "reports", "completion", "letters", "files", "alims"]);
   const RO_NOTE_TEXT = "이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요";
   /* 261119 대표("라이브러리 [+] · [연필]이 막혀 있다"): [+] · [연필]이 꺼진 화면은 이유를 한 줄로 — 라이브러리 · 학교는 노션 버튼이 서버 동작(교재 단원 · 학교 코드)까지 해서 앱에서 직접 추가하지 않음 */
   const RO_FIN_NOTE = "결제 · 청구는 이 화면의 단추로 노션에 써요 — 그 밖은 노션에서 고쳐요"; const RO_NOTE_BY = { tuition: RO_FIN_NOTE, bill: RO_FIN_NOTE, profit: RO_FIN_NOTE, schools: "학교 추가 · 학교 코드는 [학교 검색]으로 해요 — 이름 · 기간은 노션에서 고쳐요" };
