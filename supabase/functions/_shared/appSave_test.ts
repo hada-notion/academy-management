@@ -7,6 +7,14 @@ const { toNotionProps, checkChanges, saveChanges, runGenerateClasses, writeOptio
 const refreshed: string[] = []
 saveDeps.refreshReport = (id: string) => { refreshed.push(id) }
 
+// (재무 2바퀴) 결제 · 청구 결제 · 청구 항목 칸 형식 — 칸 형식도 10분 기억되고 선택지 목록 시험이 먼저 읽으므로 여기서 한 번 정한다.
+const opts = (...n: string[]) => ({ options: n.map((name) => ({ name })) })
+const PAY_SCHEMA = {
+  결제: { type: "title" }, "결제 금액": { type: "number" }, 결제일: { type: "date" }, 구분: { type: "select", select: opts("지출", "매출") },
+  "결제 수단": { type: "select", select: opts("현금", "카드", "계좌이체", "기타") }, 기타경비: { type: "number" }, 비고: { type: "rich_text" }, 손익: { type: "formula" }, 수강료: { type: "relation" },
+}
+const IPAY_SCHEMA = { 이름: { type: "title" }, "결제 금액": { type: "number" }, "결제 방법": { type: "select", select: opts("계좌이체", "현금", "카드", "기타") }, 결제일: { type: "date" }, 교재배부: { type: "relation" }, 결제상태: { type: "rollup" } }
+
 // DB 찾기 결과는 10분 동안 기억되므로(아래 시험들도 같은 목록을 씀) 이 시험이 가장 먼저 Notion 검색을 흉내 낸다.
 Deno.test("선택지 목록: 쓸 수 있는 DB의 고르기 칸만, 웹훅 칸 · 읽기 전용 DB는 없음", async () => {
   globalThis.fetch = (async (input: Request | URL | string) => {
@@ -16,7 +24,10 @@ Deno.test("선택지 목록: 쓸 수 있는 DB의 고르기 칸만, 웹훅 칸 �
       { id: "ds-stu", title: [{ plain_text: "학생(학원) DB" }] }, { id: "ds-en", title: [{ plain_text: "등록(학원) DB" }] },
       { id: "ds-lib", title: [{ plain_text: "라이브러리(학원) DB" }] }, { id: "ds-tu", title: [{ plain_text: "수강료(학원) DB" }] },
       { id: "ds-ev", title: [{ plain_text: "일정(학원) DB" }] }, { id: "ds-tt", title: [{ plain_text: "시간표(학원) DB" }] },
-      { id: "ds-pay", title: [{ plain_text: "결제(학원) DB" }] }], has_more: false }) // 결제 DB: 아래 record-payment 시험(DB 찾기는 10분 기억)
+      { id: "ds-pay", title: [{ plain_text: "결제(학원) DB" }] }, { id: "ds-item", title: [{ plain_text: "청구 항목(학원) DB" }] },
+      { id: "ds-ipay", title: [{ plain_text: "청구 결제(학원) DB" }] }], has_more: false }) // 결제 · 청구 결제 · 청구 항목: 아래 record-payment 시험(DB 찾기는 10분 기억)
+    if (url.includes("/v1/data_sources/ds-pay")) return ok({ properties: PAY_SCHEMA })
+    if (url.includes("/v1/data_sources/ds-ipay")) return ok({ properties: IPAY_SCHEMA })
     if (url.includes("/v1/data_sources/ds-lib")) return ok({ properties: {
       교재명: { type: "title" }, 시리즈: { type: "select", select: { options: [{ name: "쎈" }, { name: "개념원리" }] } },
       "교재 유형": { type: "multi_select", multi_select: { options: [{ name: "개념" }] } }, "웹훅 버튼": { type: "select", select: { options: [{ name: "x" }] } } } })
@@ -75,14 +86,14 @@ Deno.test("tmp 관계는 앞에서 만든 id로", () => {
 })
 
 Deno.test("저장 요청 검사: 빈 목록 · 많은 줄 · 쓸 수 없는 DB · id 없는 고치기 · 허용 밖 DB 지우기 없음", () => {
-  for (const bad of [[], Array(61).fill({ op: "create", db: "학생(학원) DB", props: {} }), [{ op: "create", db: "결제(학원) DB", props: {} }],
+  for (const bad of [[], Array(61).fill({ op: "create", db: "학생(학원) DB", props: {} }), [{ op: "create", db: "출석(학원) DB", props: {} }],
     [{ op: "update", db: "학생(학원) DB", props: {} }], [{ op: "delete", db: "일정(학원) DB", id: ID }], [{ op: "bogus", db: "학생(학원) DB" }]])
     assertThrows(() => checkChanges(bad), SaveError)
   assertEquals(checkChanges([{ op: "create", db: "등록(학원) DB", tmp: "tmp:e1", props: {} }]).length, 1)
-  assertEquals([isWriteDb("시간표(학원) DB"), isWriteDb("결제(학원) DB")], [true, false])
-  // (261119) 시험 화면 입력은 쓰기. (재무 서버 261123) 재무는 수강료 · 기타경비 · 청구서 · 청구 항목만 쓰기, 결제 · 청구 결제는 save로 열지 않음
+  assertEquals([isWriteDb("시간표(학원) DB"), isWriteDb("출석(학원) DB")], [true, false])
+  // (261119) 시험 화면 입력은 쓰기. (재무 서버 261123) 재무는 수강료 · 기타경비 · 청구서 · 청구 항목만 쓰기, (2바퀴) 결제 · 청구 결제도 쓰기(칸 규칙은 PAYMENT_RULES)
   assertEquals(["시험(학원) DB", "시험정보(학원) DB", "성적(학원) DB"].map(isWriteDb), [true, true, true])
-  assertEquals(["수강료(학원) DB", "결제(학원) DB", "청구 결제(학원) DB", "청구 항목(학원) DB", "기타경비(학원) DB", "청구서(학원) DB"].map(isWriteDb), [true, false, false, true, true, true])
+  assertEquals(["수강료(학원) DB", "결제(학원) DB", "청구 결제(학원) DB", "청구 항목(학원) DB", "기타경비(학원) DB", "청구서(학원) DB"].map(isWriteDb), [true, true, true, true, true, true])
   assertEquals(checkChanges([{ op: "create", db: "성적(학원) DB", props: {} }]).length, 1)
   assertThrows(() => checkChanges([{ op: "delete", db: "성적(학원) DB", id: ID, props: {} }]), SaveError)
 })
@@ -278,7 +289,30 @@ Deno.test("재무 쓰기: 사람이 고치는 칸만, 수식 칸 거절, 수강�
   assertThrows(() => checkAllowedProps("청구서(학원) DB", { "총 금액": 1 }), SaveError)
   // 수식 칸은 칸 형식 검사로도 거절(이중 방어)
   assertThrows(() => toNotionProps({ 청구금액: 1 }, { 청구금액: { type: "formula" } }), SaveError)
-  assertEquals(Object.keys(FINANCE_PROPS).length, 4)
+  assertEquals(Object.keys(FINANCE_PROPS).length, 6)
+})
+
+Deno.test("재무 2바퀴 결제 줄: 결제 내역 줄 만들기(구분 · 결제 수단 필수) · 결제 줄 고치기(금액 · 수단 · 결제일 · 비고만) · 청구 결제는 고치기만", () => {
+  const P = "결제(학원) DB", IP = "청구 결제(학원) DB"
+  checkAllowedProps(P, { 결제: "11월 예시 교구", "결제 금액": 50000, 결제일: "2026-11-23", 구분: "지출", "결제 수단": "카드" }, "create")
+  checkAllowedProps(P, { 결제: "11월 청구서 결제 합계", "결제 금액": 15000, 결제일: "2026-11-30", 구분: "매출", "결제 수단": "현금", 비고: "청구서" }, "create")
+  for (const miss of ["구분", "결제 수단", "결제 금액", "결제일", "결제"]) {
+    const row: Record<string, unknown> = { 결제: "x", "결제 금액": 1000, 결제일: "2026-11-23", 구분: "지출", "결제 수단": "현금" }
+    delete row[miss]
+    assertThrows(() => checkAllowedProps(P, row, "create"), SaveError, "꼭 채울")
+  }
+  assertThrows(() => checkAllowedProps(P, { 결제: "x", "결제 금액": 1000, 결제일: "2026-11-23", 구분: "매출", "결제 수단": "현금", 수강료: [ID] }, "create"), SaveError, "쓰지 않는 칸")
+  checkAllowedProps(P, { "결제 금액": 200000, "결제 수단": "현금", 결제일: "2026-11-22", 비고: "일부" })
+  for (const bad of [{ 구분: "지출" }, { 결제: "새 이름" }, { 수강료: [ID] }, { 손익: 1 }]) assertThrows(() => checkAllowedProps(P, bad), SaveError)
+  for (const bad of [{ "결제 수단": "" }, { "결제 금액": 0 }, { "결제 금액": -1 }, { "결제 금액": 1.5 }, { 결제일: "" }]) assertThrows(() => checkAllowedProps(P, bad), SaveError)
+  checkAllowedProps(IP, { "결제 금액": 10000, "결제 방법": "카드", 결제일: "2026-11-23" })
+  checkAllowedProps(IP, { "결제 방법": "" }) // 노션 버튼도 결제 방법을 비워 두므로 비울 수 있음
+  assertThrows(() => checkAllowedProps(IP, { "결제 금액": 1000, 교재배부: [ID] }, "create"), SaveError, "청구 항목 [결제]")
+  assertThrows(() => checkAllowedProps(IP, { 교재배부: [ID] }), SaveError)
+  // 고르기 값은 노션 선택지에서만(청구 결제 결제 방법 4개)
+  const ipay = { "결제 방법": { type: "select", options: ["계좌이체", "현금", "카드", "기타"] } }
+  toNotionProps({ "결제 방법": "기타" }, ipay)
+  assertThrows(() => toNotionProps({ "결제 방법": "상품권" }, ipay), SaveError, "선택지")
 })
 
 Deno.test("요청 칸: 그 DB의 동작 ID만 · 고치기만, 안내문 전송 둘 · 삭제 · 상태 값은 거절", () => {
@@ -294,28 +328,32 @@ Deno.test("요청 칸: 그 DB의 동작 ID만 · 고치기만, 안내문 전송 
   checkRequestProp("클래스(학원) DB", { 이름: "x" }, "create") // 요청 칸 없으면 그대로
 })
 
-// ---------- (재무 서버 261123) 결제 기록 record-payment(_shared/appPayment.ts) ----------
-// 노션 수강료 [결제]와 같은 결제 줄 · 부분 결제 · 같은 요청 id 한 번 · 지출 · 입력 검사. 결제 관리는 노션 수식처럼 가짜 Notion이 계산한다.
-// (CI 목록이 이 파일을 돌리므로 여기에 둔다. DB 찾기는 맨 위 시험의 검색 결과 — 수강료 ds-tu · 결제 ds-pay — 를 그대로 쓴다.)
+
+// ---------- (재무 서버 261123 · 2바퀴) [결제] record-payment(_shared/appPayment.ts) ----------
+// 노션 [결제] 버튼 둘(수강료 → 결제(학원), 청구 항목 → 청구 결제(학원))과 같은 결제 줄 · 전액만(금액 거절) · 같은 요청 id 한 번 · 입력 검사.
+// 결제 관리 · 결제 상태는 노션 수식처럼 가짜 Notion이 계산한다. 일부 · 초과는 결제 줄 고치기(save)로 — 위 PAYMENT_RULES 시험.
+// (CI 목록이 이 파일을 돌리므로 여기에 둔다. DB 찾기 · 칸 형식은 맨 위 시험의 결과를 그대로 쓴다.)
 const { checkPaymentInput, paymentProps, recordPayment, paymentDeps, kstToday } = await import("./appPayment.ts")
 paymentDeps.sleep = () => Promise.resolve()
 
-const TU = "11111111111111111111111111111111", OTHER = "22222222222222222222222222222222"
+const TU = "11111111111111111111111111111111", OTHER = "22222222222222222222222222222222", IT = "33333333333333333333333333333333"
 const TODAY = kstToday()
 
-// 가짜 노션: 수강료 하나(청구금액 270,000 + 기타경비 금액 15,000), 결제 줄 목록. 결제 관리 = 노션 수식과 같은 규칙.
+// 가짜 노션: 수강료 하나(청구금액 270,000 + 기타경비 금액 15,000), 청구 항목 하나(교재비 금액 15,000), 결제 줄 목록.
 function world(opts: { lagReads?: number; createFails?: number } = {}) {
   const payments: any[] = []
   const reqs = new Map<string, any>()
   const copies: any[] = []
   let lag = opts.lagReads ?? 0, creates = 0
-  const tuitionPage = () => {
-    const mine = payments.filter((p) => p.properties["수강료"].relation.some((r: any) => r.id === TU))
+  const mineOf = (link: string, id: string) => {
+    const mine = payments.filter((p) => (p.properties[link]?.relation ?? []).some((r: any) => r.id === id))
     const shown = lag > 0 ? mine.slice(0, -1) : mine
     if (lag > 0) lag--
-    const sum = shown.reduce((a, p) => a + p.properties["결제 금액"].number, 0)
-    const due = 270000 + 15000
-    const state = shown.length === 0 ? "🔴미납" : sum === due ? "🟢결제 완료" : sum < due ? "🔴미납" : "🟠과오납"
+    return { shown, sum: shown.reduce((a, p) => a + p.properties["결제 금액"].number, 0) }
+  }
+  const tuitionPage = () => {
+    const { shown, sum } = mineOf("수강료", TU), due = 270000 + 15000
+    const state = shown.length === 0 ? "🔴미납" : sum === due ? "🟢 결제 완료" : sum < due ? "🔴미납" : "🟠과오납"
     return {
       id: TU, parent: { type: "data_source_id", data_source_id: "ds-tu" }, in_trash: false, last_edited_time: "2026-11-23T00:00:00.000Z",
       properties: {
@@ -328,27 +366,36 @@ function world(opts: { lagReads?: number; createFails?: number } = {}) {
       },
     }
   }
+  const itemPage = () => {
+    const { shown, sum } = mineOf("교재배부", IT)
+    return {
+      id: IT, parent: { type: "data_source_id", data_source_id: "ds-item" }, in_trash: false, last_edited_time: "2026-11-23T00:00:00.000Z",
+      properties: {
+        이름: { type: "title", title: [{ plain_text: "예시학생 모의고사비 청구서 (중등 모의고사비)" }] },
+        "교재비 금액": { type: "formula", formula: { type: "number", number: 15000 } },
+        "결제 상태": { type: "formula", formula: { type: "string", string: sum >= 15000 ? "🟢결제 완료" : "🔴미납" } },
+        결제금액: { type: "rollup", rollup: { type: "number", number: sum } },
+        교재결제: { type: "relation", relation: shown.map((p) => ({ id: p.id })) },
+      },
+    }
+  }
   globalThis.fetch = (async (input: Request | URL | string, init?: RequestInit) => {
     const url = String(input), method = init?.method ?? "GET", body = init?.body ? JSON.parse(String(init.body)) : undefined
     const ok = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } })
-    if (url.includes("/v1/search")) return ok({ results: [{ id: "ds-tu", title: [{ plain_text: "수강료(학원) DB" }] }, { id: "ds-pay", title: [{ plain_text: "결제(학원) DB" }] }], has_more: false })
-    if (url.includes("/v1/data_sources/ds-pay")) return ok({ properties: {
-      결제: { type: "title" }, "결제 금액": { type: "number" }, 결제일: { type: "date" }, 구분: { type: "select", select: { options: [{ name: "지출" }, { name: "매출" }] } },
-      "결제 수단": { type: "select", select: { options: [{ name: "현금" }, { name: "카드" }, { name: "계좌이체" }, { name: "기타" }] } },
-      기타경비: { type: "number" }, 비고: { type: "rich_text" }, 손익: { type: "formula" }, 수강료: { type: "relation" } } })
     if (url.endsWith(`/v1/pages/${TU}`)) return ok(tuitionPage())
+    if (url.endsWith(`/v1/pages/${IT}`)) return ok(itemPage())
     if (url.includes("/v1/pages/") && method === "GET") { const p = payments.find((x) => url.endsWith(x.id)); return p ? ok(p) : ok({ message: "nf" }, 404) }
     if (url.endsWith("/v1/pages") && method === "POST") {
       creates++
       if (opts.createFails && creates <= opts.createFails) return ok({ message: "validation" }, 400)
       const id = `${String(payments.length + 1).padStart(8, "0")}aaaaaaaaaaaaaaaaaaaaaaaa`
-      const pr = body.properties
-      const page = { id, icon: body.icon, parent: body.parent, last_edited_time: "2026-11-23T00:00:00.000Z", properties: {
-        결제: { type: "title", title: pr["결제"].title.map((t: any) => ({ plain_text: t.text.content })) },
-        "결제 금액": { type: "number", number: pr["결제 금액"].number }, 결제일: { type: "date", date: pr["결제일"].date },
-        구분: { type: "select", select: pr["구분"].select }, "결제 수단": { type: "select", select: pr["결제 수단"]?.select ?? null },
-        비고: { type: "rich_text", rich_text: (pr["비고"]?.rich_text ?? []).map((t: any) => ({ plain_text: t.text.content })) },
-        수강료: { type: "relation", relation: pr["수강료"]?.relation ?? [] } } }
+      const props: Record<string, any> = {}
+      for (const [k, v] of Object.entries<any>(body.properties)) {
+        if (v.title) props[k] = { type: "title", title: v.title.map((t: any) => ({ plain_text: t.text.content })) }
+        else if (v.rich_text) props[k] = { type: "rich_text", rich_text: v.rich_text.map((t: any) => ({ plain_text: t.text.content })) }
+        else props[k] = { type: Object.keys(v)[0], ...v }
+      }
+      const page = { id, icon: body.icon, parent: body.parent, last_edited_time: "2026-11-23T00:00:00.000Z", properties: props }
       payments.push(page)
       return ok(page)
     }
@@ -365,76 +412,84 @@ function world(opts: { lagReads?: number; createFails?: number } = {}) {
   return { payments, reqs, copies }
 }
 
-Deno.test("입력 검사: 요청 id · 수강료 id · 금액 · 날짜 · 종류", () => {
+Deno.test("입력 검사: 요청 id · 대상 줄 하나(수강료 또는 청구 항목) · 금액은 거절(전액만) · 지출은 save로 · 날짜", () => {
   const base = { requestId: "req-00000001", tuitionId: TU }
-  assertEquals(checkPaymentInput(base), { requestId: "req-00000001", kind: "매출", tuitionId: TU, amount: undefined, date: TODAY, method: undefined, memo: undefined })
-  for (const bad of [{ ...base, requestId: "x" }, { requestId: "req-00000001" }, { ...base, amount: 0 }, { ...base, amount: 1.5 }, { ...base, amount: -100 },
-    { ...base, amount: 200_000_000 }, { ...base, date: "2026/11/23" }, { ...base, kind: "환불" }, { requestId: "req-00000001", kind: "지출", amount: 1000 }, { requestId: "req-00000001", kind: "지출", name: "예시 교구" }])
+  assertEquals(checkPaymentInput(base), { requestId: "req-00000001", target: "tuition", targetId: TU, date: TODAY, method: undefined, memo: undefined })
+  assertEquals(checkPaymentInput({ requestId: "req-00000001", itemId: IT, method: "카드" }), { requestId: "req-00000001", target: "item", targetId: IT, date: TODAY, method: "카드", memo: undefined })
+  assertThrows(() => checkPaymentInput({ ...base, amount: 60000 }), SaveError, "전액")
+  assertThrows(() => checkPaymentInput({ requestId: "req-00000001", kind: "지출", name: "예시 교구", amount: 1000 }), SaveError, "save")
+  for (const bad of [{ ...base, requestId: "x" }, { requestId: "req-00000001" }, { ...base, itemId: IT }, { ...base, date: "2026/11/23" }, { ...base, tuitionId: "abc" },
+    { requestId: "req-00000001", itemId: IT, memo: "비고 칸 없음" }])
     assertThrows(() => checkPaymentInput(bad), SaveError)
+  assertEquals(checkPaymentInput({ ...base, kind: "매출", amount: "" }).target, "tuition") // 1바퀴 호출 모양(kind 매출 · 빈 금액)은 그대로 받음
 })
 
-Deno.test("결제 줄 속성 = 노션 [결제] 버튼과 같음(제목 · 금액 = 청구금액 + 기타경비 금액 · 오늘 · 매출 · 수강료)", () => {
+Deno.test("결제 줄 속성 = 노션 [결제] 버튼과 같음(수강료: 제목 · 청구금액 + 기타경비 금액 · 오늘 · 매출 / 청구 항목: 교재비 금액 · 교재배부 · 오늘)", () => {
   const tu = { properties: { 청구명: { title: [{ plain_text: "예시학생 수학A 11월" }] }, 청구금액: { formula: { number: 270000 } }, "기타경비 금액": { formula: { number: 15000 } } } }
   assertEquals(paymentProps(checkPaymentInput({ requestId: "req-00000001", tuitionId: TU }), tu), { 결제: "예시학생 수학A 11월 결제", "결제 금액": 285000, 결제일: TODAY, 구분: "매출", 수강료: [TU] })
-  assertEquals(paymentProps(checkPaymentInput({ requestId: "req-00000001", tuitionId: TU, amount: 110000, date: "2026-11-20", method: "계좌이체", memo: "1차" }), tu),
-    { 결제: "예시학생 수학A 11월 결제", "결제 금액": 110000, 결제일: "2026-11-20", 구분: "매출", 수강료: [TU], "결제 수단": "계좌이체", 비고: "1차" })
+  assertEquals(paymentProps(checkPaymentInput({ requestId: "req-00000001", tuitionId: TU, date: "2026-11-20", method: "계좌이체", memo: "1차" }), tu),
+    { 결제: "예시학생 수학A 11월 결제", "결제 금액": 285000, 결제일: "2026-11-20", 구분: "매출", 수강료: [TU], "결제 수단": "계좌이체", 비고: "1차" })
+  const item = { properties: { "교재비 금액": { formula: { number: 15000 } } } }
+  assertEquals(paymentProps(checkPaymentInput({ requestId: "req-00000001", itemId: IT }), item), { "결제 금액": 15000, 결제일: TODAY, 교재배부: [IT] })
+  assertThrows(() => paymentProps(checkPaymentInput({ requestId: "req-00000001", itemId: IT }), { properties: {} }), SaveError, "금액")
 })
 
-Deno.test("결제 기록: 노션 줄 하나(💵) · 수강료 다시 읽어 결제 관리를 돌려줌 · 사본 둘 반영", async () => {
+Deno.test("수강료 [결제]: 노션 줄 하나(💵) · 전액 · 수강료 다시 읽어 결제 관리를 돌려줌 · 사본 둘 반영", async () => {
   const w = world()
-  const r = await recordPayment(checkPaymentInput({ requestId: "req-full-0001", tuitionId: TU }))
+  const r = await recordPayment(checkPaymentInput({ requestId: "req-full-0001", tuitionId: TU, method: "현금" }))
   assertEquals(w.payments.length, 1)
-  assertEquals(w.payments[0].icon, { type: "emoji", emoji: "💵" })
-  assertEquals([r.duplicate, r.tuition?.["결제 관리"], r.tuition?.["결제금액"], r.tuition?.["관련 결제"]], [false, "🟢결제 완료", 285000, [w.payments[0].id]])
+  assertEquals([w.payments[0].icon, w.payments[0].properties["결제 금액"].number, w.payments[0].properties["결제 수단"].select.name], [{ type: "emoji", emoji: "💵" }, 285000, "현금"])
+  assertEquals([r.duplicate, r.tuition?.["결제 관리"], r.tuition?.["결제금액"], r.tuition?.["관련 결제"], r.item, r.payment.db], [false, "🟢 결제 완료", 285000, [w.payments[0].id], null, "결제(학원) DB"])
   assertEquals(w.copies.map((c) => c.db), ["결제(학원) DB", "수강료(학원) DB"])
-  assertEquals(w.reqs.get("req-full-0001").state, "done")
+  assertEquals([w.reqs.get("req-full-0001").state, w.reqs.get("req-full-0001").kind, w.reqs.get("req-full-0001").amount], ["done", "매출", 285000])
 })
 
-Deno.test("부분 결제 두 번: 미납 → 완료, 더 내면 과오납", async () => {
+Deno.test("청구 항목 [결제]: 청구 결제 줄 하나(아이콘 없음 · 제목 없음) · 교재비 금액 · 결제 방법 · 결제 상태를 돌려줌", async () => {
   const w = world()
-  const a = await recordPayment(checkPaymentInput({ requestId: "req-part-0001", tuitionId: TU, amount: 175000, method: "카드" }))
-  assertEquals([a.tuition?.["결제 관리"], a.tuition?.["결제금액"]], ["🔴미납", 175000])
-  const b = await recordPayment(checkPaymentInput({ requestId: "req-part-0002", tuitionId: TU, amount: 110000, method: "현금" }))
-  assertEquals([b.tuition?.["결제 관리"], b.tuition?.["결제금액"]], ["🟢결제 완료", 285000])
-  const c = await recordPayment(checkPaymentInput({ requestId: "req-part-0003", tuitionId: TU, amount: 1000 }))
-  assertEquals(c.tuition?.["결제 관리"], "🟠과오납")
-  assertEquals(w.payments.length, 3)
+  const r = await recordPayment(checkPaymentInput({ requestId: "req-item-0001", itemId: IT, method: "카드" }))
+  const p = w.payments[0]
+  assertEquals([w.payments.length, p.icon, p.parent.data_source_id, "이름" in p.properties, p.properties["결제 금액"].number, p.properties["결제 방법"].select.name, p.properties["교재배부"].relation],
+    [1, undefined, "ds-ipay", false, 15000, "카드", [{ id: IT }]])
+  assertEquals([r.tuition, r.item?.["결제 상태"], r.item?.["결제금액"], r.item?.["교재결제"], r.payment.db], [null, "🟢결제 완료", 15000, [p.id], "청구 결제(학원) DB"])
+  assertEquals(w.copies.map((c) => c.db), ["청구 결제(학원) DB", "청구 항목(학원) DB"])
+  // 같은 id 다시 → 같은 줄, 다른 대상(수강료)에 같은 id → 거절
+  const again = await recordPayment(checkPaymentInput({ requestId: "req-item-0001", itemId: IT, method: "카드" }))
+  assertEquals([w.payments.length, again.duplicate, again.payment.id], [1, true, p.id])
+  await assertRejects(() => recordPayment(checkPaymentInput({ requestId: "req-item-0001", tuitionId: TU })), SaveError, "다른 결제")
+  // 결제 방법이 노션 선택지에 없으면 노션에 쓰기 전에 거절(자리도 잡지 않음)
+  await assertRejects(() => recordPayment(checkPaymentInput({ requestId: "req-item-0002", itemId: IT, method: "상품권" })), SaveError, "선택지")
+  assertEquals(w.reqs.has("req-item-0002"), false)
 })
 
 Deno.test("같은 요청 id 두 번(차례로 · 동시에): 결제 줄은 하나", async () => {
   const w = world()
-  const input = checkPaymentInput({ requestId: "req-dup-00001", tuitionId: TU, amount: 50000 })
+  const input = checkPaymentInput({ requestId: "req-dup-00001", tuitionId: TU })
   const first = await recordPayment(input)
   const again = await recordPayment(input)
   assertEquals([w.payments.length, again.duplicate, again.payment.id], [1, true, first.payment.id])
   const w2 = world()
-  const twin = checkPaymentInput({ requestId: "req-dup-00002", tuitionId: TU, amount: 50000 })
+  const twin = checkPaymentInput({ requestId: "req-dup-00002", tuitionId: TU })
   const both = await Promise.allSettled([recordPayment(twin), recordPayment(twin)])
   assertEquals(w2.payments.length, 1)
   assertEquals(both.filter((x) => x.status === "fulfilled").length >= 1, true)
-  // 같은 id를 다른 수강료에 쓰면 거절
   await assertRejects(() => recordPayment(checkPaymentInput({ requestId: "req-dup-00002", tuitionId: OTHER })), SaveError, "다른 결제")
 })
 
-Deno.test("노션 롤업이 늦으면 관련 결제에 새 줄이 보일 때까지 다시 읽음", async () => {
+Deno.test("노션 롤업이 늦으면 관계 칸에 새 줄이 보일 때까지 다시 읽음", async () => {
   const w = world({ lagReads: 2 })
   const r = await recordPayment(checkPaymentInput({ requestId: "req-lag-00001", tuitionId: TU }))
-  assertEquals([w.payments.length, r.tuition?.["결제 관리"]], [1, "🟢결제 완료"])
+  assertEquals([w.payments.length, r.tuition?.["결제 관리"]], [1, "🟢 결제 완료"])
 })
 
-Deno.test("노션이 거절(4xx)하면 자리를 비워 같은 id로 다시 기록 가능", async () => {
+Deno.test("노션이 거절(4xx)하면 자리를 비워 같은 id로 다시 기록 가능 · 다른 DB 줄은 거절", async () => {
   const w = world({ createFails: 1 })
   const input = checkPaymentInput({ requestId: "req-fail-0001", tuitionId: TU })
   await assertRejects(() => recordPayment(input), SaveError)
   assertEquals(w.reqs.has("req-fail-0001"), false)
   await recordPayment(input)
   assertEquals(w.payments.length, 1)
-})
-
-Deno.test("다른 DB 줄 · 지출 한 줄", async () => {
-  const w = world()
+  const w2 = world()
   await assertRejects(() => recordPayment(checkPaymentInput({ requestId: "req-other-001", tuitionId: OTHER })), SaveError)
-  assertEquals(w.reqs.size, 0)
-  const r = await recordPayment(checkPaymentInput({ requestId: "req-spend-001", kind: "지출", name: "예시 교구 구입", amount: 30000, method: "카드" }))
-  assertEquals([r.tuition, w.payments[0].properties["구분"].select.name, w.payments[0].properties["수강료"].relation], [null, "지출", []])
+  await assertRejects(() => recordPayment(checkPaymentInput({ requestId: "req-other-002", itemId: TU })), SaveError, "청구 항목(학원) DB의 줄이 아니에요")
+  assertEquals(w2.reqs.size, 0)
 })

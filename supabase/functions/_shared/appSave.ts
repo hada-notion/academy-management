@@ -33,9 +33,11 @@ export const WRITE_DBS = [
 	"시험(학원) DB", "시험정보(학원) DB", "성적(학원) DB",
 	// (2.8, 담당 261119) 앱 클래스 창 [루틴] 탭: 앱이 쓰는 칸만(ROUTINE_PROPS). 지우기는 열지 않음 — 쉬기로 끄거나 노션 [삭제].
 	"루틴(학원) DB",
-	// (2.8, 재무 서버 261123) 재무 입력: 노션에서 사람이 고치는 칸만(FINANCE_PROPS). 결제 · 청구 결제 DB는 save로 열지 않는다 —
-	// 결제는 노션 수강료 [결제]와 같은 일을 하는 서버 동작(app-api "record-payment", _shared/appPayment.ts)으로만 만든다.
-	"수강료(학원) DB", "기타경비(학원) DB", "청구서(학원) DB", "청구 항목(학원) DB",
+	// (2.8, 재무 서버 261123) 재무 입력: 노션에서 사람이 고치는 칸만(FINANCE_PROPS).
+	// (2바퀴, 노션 재무 2안) 결제 · 청구 결제 DB도 연다 — [결제](수강료 · 청구 항목 줄에서 전액 한 줄)는 서버 동작(app-api "record-payment",
+	// _shared/appPayment.ts)이 만들고, 일부 · 초과는 그 줄을 고치기(update)로, 지출 · "청구서 결제 합계" 같은 결제 내역 줄은 결제 DB 만들기로
+	// (PAYMENT_RULES — 구분 · 결제 수단 필수, 법정 서류 현금출납부가 결제 수단 = 현금 · 구분 = 지출로 읽음). 청구 결제 줄은 만들기 없음(교재배부 연결은 [결제]만).
+	"수강료(학원) DB", "기타경비(학원) DB", "청구서(학원) DB", "청구 항목(학원) DB", "결제(학원) DB", "청구 결제(학원) DB",
 ] as const
 export type WriteDb = typeof WRITE_DBS[number]
 export const isWriteDb = (v: unknown): v is WriteDb => typeof v === "string" && (WRITE_DBS as readonly string[]).includes(v)
@@ -56,19 +58,49 @@ export const FINANCE_PROPS = {
 	// 청구서: 새 청구서(이름 · 등록) → [담기]는 `요청` = cart-progress-book. 안내문 전송(cart-notice)은 받지 않음(아래 요청 검사).
 	"청구서(학원) DB": ["이름", "등록", "요청"],
 	"청구 항목(학원) DB": ["교재비 수기입력", "배부일"],
+	// 결제 줄: 만들기는 아래 칸 전부(수강료 연결은 받지 않음 — 수강료 결제는 [결제]로), 고치기는 PAYMENT_RULES.update만.
+	"결제(학원) DB": ["결제", "결제 금액", "결제일", "구분", "결제 수단", "비고"],
+	"청구 결제(학원) DB": ["결제 금액", "결제 방법", "결제일"],
 } as const
+// (2바퀴) 결제 줄 규칙: 고칠 수 있는 칸(그 밖은 만들 때만), 만들 때 꼭 채울 칸(빈 값 거절), 보내면 빈 값이 될 수 없는 칸.
+export const PAYMENT_RULES: Record<string, { update: readonly string[]; required: readonly string[]; noEmpty: readonly string[] }> = {
+	"결제(학원) DB": { update: ["결제 금액", "결제 수단", "결제일", "비고"], required: ["결제", "결제 금액", "결제일", "구분", "결제 수단"], noEmpty: ["결제", "결제 금액", "결제일", "구분", "결제 수단"] },
+	"청구 결제(학원) DB": { update: ["결제 금액", "결제 방법", "결제일"], required: [], noEmpty: ["결제 금액", "결제일"] },
+}
+export const MAX_PAYMENT_AMOUNT = 100_000_000
+const blank = (v: unknown) => v === undefined || v === null || (typeof v === "string" && v.trim() === "") || (Array.isArray(v) && !v.length)
+function checkPaymentRow(db: string, props: Record<string, unknown>, op: "create" | "update"): void {
+	const rule = PAYMENT_RULES[db]
+	if (!rule) return
+	const keys = Object.keys(props ?? {})
+	if (op === "update") {
+		const bad = keys.filter((k) => !rule.update.includes(k))
+		if (bad.length) throw new SaveError(400, `${db} 줄에서 고치지 않는 칸: ${bad.join(", ")} (고칠 수 있는 칸: ${rule.update.join(" · ")})`)
+	} else {
+		const miss = rule.required.filter((k) => blank(props[k]))
+		if (miss.length) throw new SaveError(400, `${db} 줄을 만들 때 꼭 채울 칸: ${miss.join(", ")}`)
+	}
+	const empty = keys.filter((k) => rule.noEmpty.includes(k) && blank(props[k]))
+	if (empty.length) throw new SaveError(400, `빈 값으로 둘 수 없는 칸: ${empty.join(", ")}`)
+	if (keys.includes("결제 금액")) {
+		const n = Number(props["결제 금액"])
+		if (!Number.isInteger(n) || n <= 0 || n > MAX_PAYMENT_AMOUNT) throw new SaveError(400, `결제 금액은 1원 이상 ${MAX_PAYMENT_AMOUNT.toLocaleString("ko-KR")}원 이하 정수예요.`)
+	}
+}
 const ONLY_PROPS: Partial<Record<WriteDb, ReadonlySet<string>>> = {
 	[EVENT_DB]: new Set(EVENT_PROPS), [ROUTINE_DB]: new Set(ROUTINE_PROPS),
 	...Object.fromEntries(Object.entries(FINANCE_PROPS).map(([db, p]) => [db, new Set<string>(p)])),
 }
-export const NO_CREATE_DBS: readonly string[] = ["수강료(학원) DB", "청구 항목(학원) DB"]
+export const NO_CREATE_DBS: readonly string[] = ["수강료(학원) DB", "청구 항목(학원) DB", "청구 결제(학원) DB"]
 export function checkAllowedProps(db: WriteDb, props: Record<string, unknown>, op: "create" | "update" = "update"): void {
+	if (op === "create" && db === "청구 결제(학원) DB") throw new SaveError(400, "청구 결제 줄은 청구 항목 [결제](app-api record-payment, itemId)로 만들어요 — 교재배부 연결까지 함께.")
 	if (op === "create" && NO_CREATE_DBS.includes(db)) throw new SaveError(400, `${db} 줄은 앱에서 만들지 않아요 — 클래스 [월 수강료 생성] · 청구서 [담기] 같은 동작으로 만들어요.`)
 	checkRequestProp(db, props, op)
 	const only = ONLY_PROPS[db]
 	if (!only) return
 	const bad = Object.keys(props ?? {}).filter((k) => !only.has(k))
 	if (bad.length) throw new SaveError(400, `앱에서 ${db}에 쓰지 않는 칸: ${bad.join(", ")}`)
+	checkPaymentRow(db, props, op)
 }
 
 // ---------- `요청` 칸(앱 → 서버 동작) ----------
