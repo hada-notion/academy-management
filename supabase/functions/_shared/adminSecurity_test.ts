@@ -256,6 +256,9 @@ Deno.test('admin keys: blocked on the initial password and without a session; st
     const st=await clear({action:'state'});const sd=await st.json();assert(st.status===200&&sd.canStart===true&&sd.flag===null,JSON.stringify(sd));
     const bad=await clear({action:'start',workspace:'다른 이름',dbs:['출석(학원) DB']});assert(bad.status===400&&w.writes.length===0&&w.queued.length===0);
     const ok=await clear({action:'start',workspace:FAKE_WS,dbs:['출석(학원) DB']});const od=await ok.json();assert(ok.status===200&&od.state==='running'&&w.queued.length===1,JSON.stringify(od));
+    // (261123 안A) 0000은 고르지 못한다: 출석 하나만 보내도 비울 DB 전부(남기는 칸 keep 없음), state · status는 full:true
+    assert(Array.isArray(od.keep)&&od.keep.length===0,'0000 start keeps nothing: '+JSON.stringify(od.keep));assert(sd.full===true);
+    const fs0=await (await clear({action:'status'})).json();assert(fs0.full===true,JSON.stringify(fs0));
     const stop=await clear({action:'stop'});assert(stop.status===200&&(await stop.json()).flag.state==='stopped');
     assert(w.rpc.includes('profile'));});}});
   Deno.test({...opts,name:'0000 session: no other route or admin action opens',fn:()=>{const w=world();return withWorld(w,async()=>{
@@ -273,7 +276,10 @@ Deno.test('admin keys: blocked on the initial password and without a session; st
       // 64자리 hex가 아닌 값은 서버에 묻지도 않는다(profile은 KIOSK · 'c'… 두 번만).
       assert(w.rpc.filter(a=>a==='profile').length===2,w.rpc.join());});
     // 비밀번호를 정한 뒤(must_change=false): 0000 길은 닫히고 보통 관리자 세션 규칙만 남는다.
-    const after=world({mustChange:false});await withWorld(after,async()=>{const r=new Request('https://mock.supabase.co/functions/v1/clear-example-data');assert(!await authorizeInitialSetup(r,INIT));assert((await clear({action:'state'},KIOSK)).status===401);assert((await clear({action:'state'})).status===200);});
+    const after=world({mustChange:false});await withWorld(after,async()=>{const r=new Request('https://mock.supabase.co/functions/v1/clear-example-data');assert(!await authorizeInitialSetup(r,INIT));assert((await clear({action:'state'},KIOSK)).status===401);const st=await (await clear({action:'state'})).json();assert(st.full===false);
+      // 새 비밀번호로 로그인한 관리자는 지금처럼 고른다(출석만 → 나머지는 keep)
+      const ok=await (await clear({action:'start',workspace:FAKE_WS,dbs:['출석(학원) DB']})).json();assert(ok.keep.length>0&&!ok.keep.includes('출석(학원) DB'),JSON.stringify(ok.keep));
+      assert((await (await clear({action:'status'})).json()).full===undefined);});
     Deno.env.delete('ADMIN_SECURITY_ENABLED');assert(!await authorizeInitialSetup(new Request('https://mock.supabase.co/functions/v1/clear-example-data'),INIT));}});
   Deno.test({...opts,name:'after one finished clear (done) or on a running academy (locked), start is refused for 0000 and for a changed password',fn:async()=>{
     for(const state of ['done','locked']){

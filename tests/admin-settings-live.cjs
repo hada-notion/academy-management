@@ -182,7 +182,7 @@ const CLEAR_STATUS = { workspace: '하다 예시 학원', canStart: true, flag: 
       if (fn === 'clear-example-data') {
         if (mode === 'old' || key !== 'sess-0') return reply(route, 401, { error: '인증 실패' });
         if (q.action === 'state') return reply(route, 200, { flag: clearState, canStart: can(), updatedAt: '2026-11-23T05:00:00Z' });
-        if (q.action === 'status') return reply(route, 200, { ...CLEAR_STATUS, flag: clearState, canStart: can() });
+        if (q.action === 'status') return reply(route, 200, { ...CLEAR_STATUS, flag: clearState, canStart: can(), full: true });
         if (q.action === 'start') { if (q.workspace !== CLEAR_STATUS.workspace) return reply(route, 400, { error: '워크스페이스 이름이 맞지 않습니다.' }); clearState = { state: 'running', done: 10, total: 75 }; setTimeout(() => { clearState = { state: 'done', done: 75, total: 75, finishedAt: '2026-11-23T05:10:00Z' }; }, 1500); return reply(route, 200, clearState); }
       }
       return reply(route, 403, { error: '0000 세션으로 부르면 안 되는 곳' });
@@ -199,6 +199,8 @@ const CLEAR_STATUS = { workspace: '하다 예시 학원', canStart: true, flag: 
       assert.equal(await page.isVisible('#lvclrgo'), true); assert.match(await page.textContent('#lvclr'), /아직 비우지 않았어요[\s\S]*한 번 끝나면 잠겨/);
       await page.screenshot({ path: shots + 'admin-live-0000-open.png' });
       await page.click('#lvclrgo'); await page.waitForSelector('.dlg .la-clear', { timeout: 15000 });
+      // (261123 안A) 0000이면 고르기 칸이 모두 체크 · 잠김(선택 DB였던 라이브러리도), 안내 한 줄
+      assert.equal(await page.locator('.dlg [data-ladb]:not(:checked)').count(), 0); assert.equal(await page.locator('.dlg [data-ladb]:not([disabled])').count(), 0); assert.match(await page.textContent('#lafull'), /고를 수 없어요/);
       await page.fill('#laws', CLEAR_STATUS.workspace); await page.screenshot({ path: shots + 'admin-live-0000-clear.png' });
       await page.click('.dlg #co'); await page.waitForFunction(() => /비웠어요[\s\S]*잠겼어요/.test(document.querySelector('.dlg').textContent), null, { timeout: 15000 });
       await page.click('.dlg #cc'); await page.waitForSelector('#lvnp1', { timeout: 10000 });
@@ -209,6 +211,7 @@ const CLEAR_STATUS = { workspace: '하다 예시 학원', canStart: true, flag: 
       assert.ok(calls.some((c) => c.action === 'logout' && c.key === 'sess-0'), '취소 = 0000 세션 로그아웃');
       assert.equal(calls.filter((c) => c.action === 'change').length, 0, '비밀번호는 바꾸지 않음');
       assert.deepEqual(calls.filter((c) => c.fn === 'clear-example-data' && c.action === 'start').map((c) => c.key), ['sess-0']);
+      assert.equal(calls.find((c) => c.action === 'start').body.dbs.length, CLEAR_STATUS.dbs.length, '고른 것 없이 전부 보냄');
     }
     const settingsLogins = calls.filter((c) => c.action === 'login' && c.body.scope === 'settings').length;
     assert.ok(settingsLogins <= (mode === 'open' ? 2 : 1), '설정용 로그인은 창을 열 때 한 번(돌아올 때 다시 쓰기) — ' + settingsLogins);
