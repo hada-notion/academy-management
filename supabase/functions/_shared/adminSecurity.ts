@@ -13,12 +13,15 @@ export const SECURITY_WEBHOOK_ROUTES = new Set([
   'notion-router',
 ]);
 // Only routes a logged-in admin page actually calls (kiosk, legal documents, school/textbook search). Notion-only
-// functions such as toggle-report-link and sync-school-calendar take the webhook key, never a browser session,
+// functions such as toggle-report-link take the webhook key, never a browser session (sync-school-calendar also takes an admin browser session since v2.8.0 item 112),
 // so a leaked browser session cannot reach them (v2.5.51).
 export const SECURITY_BROWSER_ROUTES = new Set([
   'list-students','kiosk-checkin','get-legal-document-data','school-api','textbook-api','class-room','clear-example-data',
   // (v2.8.0 항목 74) 관리 앱 읽기: 복사본(app_rows) 목록만 돌려준다. Notion에 쓰지 않는다.
   'app-api',
+  // (v2.8.0 항목 112, 261123) 관리 앱 [학교 › 학사일정 가져오기]: 노션 학교 버튼과 같은 start를 관리자 로그인으로 부른다.
+  // 관리자 세션(admin)만 — 키오스크 세션은 아래 kind 'kiosk' 규칙이라 여전히 못 부른다. 웹훅 키로 부르는 노션 버튼도 그대로.
+  'sync-school-calendar',
 ]);
 export function securityEnabled(): boolean { return Deno.env.get('ADMIN_SECURITY_ENABLED') === 'true'; }
 export class SecurityError extends Error {
