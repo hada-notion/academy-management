@@ -2,7 +2,11 @@
 //
 // (v2.8.0 항목 72, 11/16 사용자) 클래스 [기타경비 청구] → sync-textbook-distribution/class-etc/queue → 큐 "class-etc".
 // 클래스 `기타경비`(옛 이름 `기타경비(매달)`)에 붙인 기타경비 중 받는 방식이 "한 번"인 것을, 그 반을 지금 다니는 등록마다
-// 청구서 한 장("YY.MM 등록 이름 + 기타경비 항목 + 청구서", 예: 26.12 홍재원 고1 수학 모의고사비 청구서)과 청구 항목 한 줄로 만든다.
+// 청구서 한 장("등록 이름 + 기타경비 항목 + 청구서", 예: 홍재원 고1 수학 모의고사비 청구서)과 청구 항목 한 줄로 만든다.
+// (재무 서버 2바퀴 261123) 이름은 노션 이름 자동화와 똑같이 쓴다 — 청구서 "[편집] 교재비 이름" = 등록 + " " + 구분 + " 청구서",
+// 청구 항목 "[편집] 교재배부 이름" = 청구서 이름 + " (" + 기타경비 이름 + ")". 예전엔 서버가 "YY.MM "을 앞에 붙여 청구서를 만들고
+// 자동화가 그것을 지워 다시 썼는데, 청구 항목 자동화가 그 사이 어느 쪽 이름을 읽느냐에 따라 줄마다 이름이 달랐다(원본 예시 261123).
+// 같은 이름이라 달이 다른 청구서와 헷갈리지 않게, 이미 있는 청구서는 그 안 줄이 모두 이번 달 줄일 때(또는 빈 청구서)만 다시 쓴다.
 // 청구서 한 장 = 한 종류(항목 71). 같은 달 · 같은 등록 · 같은 기타경비 줄이 이미 있으면 건너뛰어 두 번 눌러도 한 번만.
 // 금액은 청구 항목 `교재비 금액` 수식이 기타경비 `신고 금액`을 쓴다(수기입력이 비면). 안내는 청구서 [안내문 전송] — 템플릿 "기타경비 안내".
 import { anyTitleText, createPage, getPage, mapWithConcurrency, queryAllPages, relIds, todaySeoulDate, updatePageProperties } from "./notionClient.ts"
@@ -49,6 +53,8 @@ export async function processClassEtcChargeQueueItem(payload: { classId: string 
 		const etcs = (await Promise.all(etcIds.map((id) => d.getPage(id).catch(() => null)))).filter((e) => alive(e) && sel(e, "받는 방식") === ETC_ONCE)
 		if (!etcs.length) return void await fail("이 반에 붙인 기타경비 중 받는 방식이 '한 번'인 것이 없습니다.")
 		const today = d.today(), monthStart = `${today.slice(0, 7)}-01`, yymm = `${today.slice(2, 4)}.${today.slice(5, 7)}`
+		// 이 청구서의 살아 있는 줄이 모두 이번 달 줄인가(빈 청구서 포함) — 다른 달 청구서에 이번 달 줄을 담지 않게.
+		const onlyThisMonth = (cart: any, lines: any[]) => lines.filter((l: any) => alive(l) && relIds(l?.properties?.["교재비"]).some((x: string) => key(x) === key(cart.id))).every((l: any) => dateStart(l, "청구 월") === monthStart)
 		const regs = (await d.queryAllPages(DS_REGISTRATION(), { property: "클래스", relation: { contains: classId } })).filter((r: any) => activeToday(r, today))
 		if (!regs.length) return void await fail("오늘 이 반을 다니는 학생이 없습니다.")
 		let made = 0
@@ -60,15 +66,15 @@ export async function processClassEtcChargeQueueItem(payload: { classId: string 
 				const already = lines.some((l: any) => alive(l) && dateStart(l, "청구 월") === monthStart && relIds(l?.properties?.["기타경비"]).some((x: string) => key(x) === key(etc.id)))
 				if (already) continue
 				const item = sel(etc, "기타경비 항목") || "기타경비"
-				const title = `${yymm} ${regTitle} ${item} 청구서`
-				let cart = carts.find((c: any) => alive(c) && anyTitleText(c).trim() === title)
+				const title = `${regTitle} ${item} 청구서`, legacy = `${yymm} ${title}`
+				let cart = carts.find((c: any) => alive(c) && [title, legacy].includes(anyTitleText(c).trim()) && onlyThisMonth(c, lines))
 				if (!cart) {
 					const configRow = await d.configRow("기타경비").catch(() => null)
 					cart = await d.createPage(DS_CART(), { 이름: { title: [{ text: { content: title } }] }, 등록: { relation: [{ id: reg.id }] }, ...(configRow ? { "알림톡 설정": { relation: [{ id: configRow }] } } : {}) })
 					carts.push(cart)
 				}
 				await d.createPage(DS_LINE(), {
-					이름: { title: [{ text: { content: anyTitleText(etc).trim() || item } }] },
+					이름: { title: [{ text: { content: `${title} (${anyTitleText(etc).trim() || item})` } }] },
 					등록: { relation: [{ id: reg.id }] },
 					기타경비: { relation: [{ id: etc.id }] },
 					종류: { select: { name: "기타경비" } },

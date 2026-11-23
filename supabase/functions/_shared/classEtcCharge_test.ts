@@ -37,10 +37,10 @@ Deno.test("항목 72 기타경비 청구: 한 번인 것만, 오늘 다니는 �
 	try {
 		await processClassEtcChargeQueueItem({ classId: "cls" })
 		const carts = calls.created.filter((c) => c.db === "carts"), lines = calls.created.filter((c) => c.db === "lines")
-		eq(carts.map((c) => c.props["이름"].title[0].text.content), ["26.12 홍재원 고1 수학 모의고사비 청구서"])
+		eq(carts.map((c) => c.props["이름"].title[0].text.content), ["홍재원 고1 수학 모의고사비 청구서"]) // (2바퀴) 노션 이름 자동화와 같은 이름
 		eq(lines.length, 1)
 		const l = lines[0].props
-		eq([l["이름"].title[0].text.content, l["기타경비"].relation[0].id, l["종류"].select.name, l["기타경비 항목"].select.name, l["청구 월"].date.start, l["교재비"].relation[0].id], ["고등 모의고사비", "eonce", "기타경비", "모의고사비", "2026-12-01", "carts-1"])
+		eq([l["이름"].title[0].text.content, l["기타경비"].relation[0].id, l["종류"].select.name, l["기타경비 항목"].select.name, l["청구 월"].date.start, l["교재비"].relation[0].id], ["홍재원 고1 수학 모의고사비 청구서 (고등 모의고사비)", "eonce", "기타경비", "모의고사비", "2026-12-01", "carts-1"])
 	} finally { restore() }
 })
 
@@ -84,4 +84,21 @@ Deno.test("항목 80 기타경비 청구: 새 청구서에 표시용 알림톡 �
 Deno.test("항목 80 청구서 종류 → 알림톡 설정 행(안내문 전송과 같은 고르기)", async () => {
 	const { cartConfigCategory } = await import("./adminShared.ts")
 	eq(["교재비", "재료비", "기타경비", ""].map(cartConfigCategory), ["교재비 안내", "재료비 안내", "기타경비 안내", "교재비 안내"])
+})
+
+Deno.test("재무 2바퀴: 이미 있는 청구서는 이번 달 줄만 있을 때(빈 것 포함)만 다시 씀 — 지난달 같은 이름 청구서에는 담지 않음", async () => {
+	const oldCart = { id: "cart-old", properties: { 이름: title("홍재원 고1 수학 모의고사비 청구서") } }
+	const oldLine = { id: "l-old", properties: { "청구 월": date("2026-11-01"), 기타경비: rel("eother"), 교재비: rel("cart-old") } }
+	let t = fake(pages, [oldLine], [oldCart])
+	try {
+		await processClassEtcChargeQueueItem({ classId: "cls" })
+		eq(t.calls.created.filter((c) => c.db === "carts").length, 1) // 새 청구서
+	} finally { t.restore() }
+	const empty = { id: "cart-empty", properties: { 이름: title("26.12 홍재원 고1 수학 모의고사비 청구서") } } // 예전 이름 · 빈 청구서
+	t = fake(pages, [], [empty])
+	try {
+		await processClassEtcChargeQueueItem({ classId: "cls" })
+		eq(t.calls.created.filter((c) => c.db === "carts").length, 0)
+		eq(t.calls.created.find((c) => c.db === "lines")!.props["교재비"].relation[0].id, "cart-empty")
+	} finally { t.restore() }
 })

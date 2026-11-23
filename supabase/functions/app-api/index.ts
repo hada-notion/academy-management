@@ -7,8 +7,9 @@
 //   { action: "admin-status" } — 관리자 설정(261123): 노션 연결(최상위 제목 · 마지막 동기화) + 노션 연동 구독 상태(_shared/notionSubscriptionStatus.ts)
 //   { action: "save", changes: [{ op: "create"|"update", db, id?, tmp?, edited?, props }] } — (항목 75) 입력 범위 DB만 Notion에 먼저 쓰고
 //       복사본에 반영. 줄마다 성공 · 실패 · 충돌을 돌려준다. 지우기는 없다. 로직은 _shared/appSave.ts.
-//   { action: "record-payment", requestId, tuitionId, amount?, date?, method?, memo? } — (재무 서버 261123) 노션 수강료 [결제]와 같은
-//       결제 줄(매출)을 만들고 수강료를 다시 읽어 결제 관리 · 결제금액을 돌려준다. 같은 requestId는 한 번만. kind "지출"은 name · amount.
+//   { action: "record-payment", requestId, tuitionId | itemId, date?, method?, memo? } — (재무 서버 261123 · 2바퀴) 노션 [결제] 버튼과 같은
+//       결제 줄 하나(전액): tuitionId = 수강료 [결제] → 결제(학원) 매출 줄, itemId = 청구 항목 [결제] → 청구 결제(학원) 줄. 그 줄을 다시 읽어
+//       결제 관리 / 결제 상태 · 결제금액을 돌려준다. 같은 requestId는 한 번만. 금액(amount)은 받지 않음 — 일부 · 초과 · 지출 줄은 save.
 //       로직은 _shared/appPayment.ts. 실제 결제 · 발송은 없음.
 //   { action: "end-preview", id, endDate? } — (261123 종료 처리) 등록 [종료 처리] 확인 창 숫자: 이 종료일(없으면 등록 종료일 · 오늘)이면
 //       빠질 앞으로 수업의 날짜들. 읽기만. 실제 종료는 등록 `요청` = reg-end-cleanup(save) — 같은 거름(_shared/registrationEnd.ts).
