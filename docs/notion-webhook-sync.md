@@ -12,7 +12,7 @@
 3. 응답한 뒤 뒤에서 처리기(`_shared/notionEventsApply.ts` `drainEvents`)가 돈다. 처리기는 **한 번에 하나**(`notion_event_worker` 임대).
    - 그 줄을 노션에서 다시 읽는다(이벤트에는 값이 없음). 휴지통 · 보관 · 404면 모든 사본에서 지우고, 아니면 그 DB의 사본에 넣는다. 되살림도 다시 읽어 넣는다.
    - 순서가 뒤섞여 와도 언제나 "노션 지금 값"으로 맞춘다. 처리 중 같은 줄에 새 이벤트가 오면(`seq`) 다시 처리한다.
-   - 사본에 없는 DB의 이벤트, 본문만 바뀐 이벤트(`page.content_updated`)는 노션을 읽지 않는다.
+   - 사본에 없는 DB의 이벤트는 노션을 읽지 않는다. 본문만 바뀐 이벤트(`page.content_updated`)는 구독하지 않는다.
    - 어느 데이터 소스가 어느 사본인지(DB 이름 찾기, 노션 수십 번)는 표 `notion_event_targets`에 1시간 기억한다. 모르는 데이터 소스가 오면 10분 지난 목록일 때만 다시 찾는다.
    - 메아리: 작성자가 이 학원 연동뿐이고 그 줄 사본이 이벤트 뒤에 이미 고쳐졌으면(앱 저장이 바로 반영) 읽지 않는다(`echo`). 다시 읽은 값이 사본과 같으면 쓰지 않는다(`same`).
    - 노션 한도: 부른 횟수 × 400ms보다 빨리 다음 줄로 가지 않는다(초당 2.5회 이하).
@@ -70,8 +70,8 @@ select status, count(*) from public.notion_event_queue group by status;
 
 ## 구독 새로 만들어 확인 토큰 바꾸기 (대표가 노션 · Supabase 화면에서)
 시험 때 확인 토큰 값이 대화에 한 번 보였다. 실사용 전에 바꾼다. 값은 어디에도 적지 않는다.
-1. 노션 연동 설정 → 원본 내부 연동 → Webhooks → **+ Create a subscription**. URL은 지금 구독과 같은 `…/functions/v1/notion-events`, API version `2025-09-03`.
-   이벤트: `page.created` · `page.properties_updated` · `page.deleted` · `page.undeleted` · `page.moved`(데이터 소스 이벤트는 고르지 않아도 됨 — 오지 않거나 쓰지 않음).
+1. 노션 연동 설정 → 원본 내부 연동 → Webhooks → **+ Create a subscription**. URL은 지금 구독과 같은 `…/functions/v1/notion-events`, API version `2026-03-11`.
+   이벤트: `page.created` · `page.properties_updated` · `page.deleted` · `page.undeleted` · `page.moved`(이 5개만. `page.content_updated`·`data_source.*`는 고르지 않는다).
 2. 확인 토큰이 함수로 온다. SQL Editor에서 `select id, token from public.notion_webhook_tokens order by id desc limit 1;` → 값 복사 → 노션 **Verify** → Active.
 3. 새 구독으로 오는지 본다: 원본 시험 줄 하나를 고친 뒤
    `select id, received_at, token_id, event_type from public.notion_webhook_events where kind='event' order by id desc limit 3;` — `token_id`가 2번의 id면 된다.
