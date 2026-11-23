@@ -1,5 +1,5 @@
 /* 실제 자료 모드의 라이브러리(261123 대표 "모든걸 앱에서" — 옛 라이브러리 웹 화면에만 있던 것을 옮김). 서버 textbook-api는 그대로 부른다(live.js liveBookApi).
-   - 책 찾기(오른쪽 창): [검색] search(국립중앙도서관 · 카카오, ISBN이면 그 책) → 고르면 detail(목차 → 단원 후보) → register(ISBN · 교보문고 표지)
+   - 책 찾기(오른쪽 창): [검색] search(국립중앙도서관, ISBN이면 그 책) → 고르면 detail(목차 → 단원 후보) → register(ISBN · 교보문고 표지)
                          [교보문고] 책 주소의 상품번호 → kyobo-book(교재명 · ISBN · 정가 · 출판사 · 목차) → register-custom. ISBN만 붙이면 search(ISBN)
                          [직접 등록] 지금 등록 창(live.js liveBookRegisterOpen)
    - 단원(교재 창 [단원] 탭): units로 받아 보이고, [단원 고치기] 창에서 이름 · 시작 고치기 · 삭제 · 추가 · 목차 붙여넣기(parse) → edit-units 한 번에(바로 노션)
@@ -26,7 +26,7 @@ function lbFindHtml(st) {
   const F = st.bfind, T = F.T, n = F.picks.length;
   const has = (x) => x.registered || DB.books.some((b) => !b.del && x.isbn13 && b.isbn === x.isbn13);
   const row = (x, i) => `<label class="bfr ${has(x) ? "dis" : ""}"><input type="checkbox" data-bf="${i}" ${F.picks.includes(i) ? "checked" : ""} ${has(x) || F.busy ? "disabled" : ""}><span class="bfc">${x.cover ? `<img class="bkimg" alt="" referrerpolicy="no-referrer" src="${esc(x.cover)}" data-alt="${esc(x.altCover || "")}">` : '<span class="bkph"><i>표지 없음</i></span>'}</span><span class="bft"><b>${esc(x.title)}</b><span class="hint">${esc([x.publisher, x.author, x.price ? WON(x.price) : "", x.units ? `단원 ${x.units}개` : ""].filter(Boolean).join(" · "))}</span><span class="hint">${x.isbn13 ? "ISBN " + esc(x.isbn13) : "ISBN 없음"}${has(x) ? " · 이미 라이브러리에 있어요" : ""}</span></span></label>`;
-  const list = F.res.length ? `<div class="bfl">${F.res.map(row).join("")}</div>` : `<div class="hint bfe">${esc(F.msg || (T === "s" ? "책 이름 · 출판사 · ISBN으로 찾아요(국립중앙도서관 · 카카오). 예: 쎈 중등 수학" : "교보문고 책 상세 주소를 붙여 넣고 [가져오기]를 눌러요. ISBN 13자리도 돼요."))}</div>`;
+  const list = F.res.length ? `<div class="bfl">${F.res.map(row).join("")}</div>` : `<div class="hint bfe">${esc(F.msg || (T === "s" ? "책 이름 · 출판사 · ISBN으로 찾아요(국립중앙도서관). 예: 쎈 중등 수학" : "교보문고 책 상세 주소를 붙여 넣고 [가져오기]를 눌러요. ISBN 13자리도 돼요."))}</div>`;
   const body = T === "m"
     ? `<div class="hint">찾아도 없는 책 · 자체 교재는 직접 적어 등록해요(교재명 · 출판사 · 시리즈 · 가격 · 분량 · ISBN · 단원).</div><div class="row"><button class="btn" id="bfM">${IC("plus", "s")}직접 등록</button></div>`
     : `<div class="bfq">${T === "s" ? `<span class="searchbox">${IC("search")}<input class="inp" id="bfQ" placeholder="책 이름 · 출판사 · ISBN" value="${esc(F.q)}" autocomplete="off"></span>` : `<textarea class="inp bfta" id="bfQ" placeholder="교보문고 책 주소 또는 ISBN을 붙여 넣으세요(Ctrl+V)">${esc(F.q)}</textarea>`}<button class="btn" id="bfGo" ${F.busy ? "disabled" : ""}>${T === "s" ? "검색" : "가져오기"}</button></div>${F.busy ? `<div class="hint">${esc(F.busy)}</div>` : ""}${list}${F.res.length && F.msg ? `<div class="hint warn">${esc(F.msg)}</div>` : ""}`;
