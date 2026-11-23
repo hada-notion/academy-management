@@ -269,3 +269,38 @@ Deno.test("구독 상태: 끊김 감지가 down이면 이벤트가 있었어도 
 	assertEquals(subscriptionState({ ...base, health: null }), "on")
 	assertEquals(healthFrom(undefined), null)
 })
+
+// ---------- (261123 원본 실측) 바로 답한 함수가 줄을 ⚠️ 오류로 끝내면 요청도 실패 ----------
+import { rowErrorOf } from "./notionRequests.ts"
+const txt = (s: string) => ({ type: "rich_text", rich_text: s ? [{ plain_text: s, text: { content: s } }] : [] })
+const dt = (iso: string | null) => ({ type: "date", date: iso ? { start: iso } : null })
+
+Deno.test("줄 오류: 시험 기간 연결이 200으로 답하고 줄을 ⚠️ 오류로 끝내면 ⚠️ 실패 + 마지막 오류", async () => {
+	const f = fakeReq(200, '{"pageId":"p","ok":false}')
+	f.pages.set("p", rpage("p", { [REQUEST_PROP]: sel("exam-period-link"), 상태: sel(""), "마지막 오류": txt("") }))
+	const orig = f.forward
+	f.forward = async (r, b) => { Object.assign(f.pages.get("p").properties, { 상태: sel("⚠️ 오류"), "마지막 오류": txt("학교와 시험을 먼저 고르세요.") }); return await orig(r, b) }
+	const out = await handleRequest(structuredClone(f.pages.get("p")), { id: "exam-period-link", ids: ["exam-period-link"] }, f)
+	assertEquals(out.state, STATE_FAILED)
+	assertEquals(f.pages.get("p").properties[REQUEST_PROP].select.name, STATE_FAILED)
+	assert(text(f.patches[1].props[RESULT_PROP]).startsWith(`${STATE_FAILED} · 시험 기간 연결 — 학교와 시험을 먼저 고르세요.`), text(f.patches[1].props[RESULT_PROP]))
+})
+
+Deno.test("줄 오류: 큐에 넣고 202로 답한 함수는 아직 결과 전이라 완료(접수)", async () => {
+	const f = fakeReq(202)
+	f.pages.set("p", rpage("p", { [REQUEST_PROP]: sel("class-report-create"), 상태: sel("⚠️ 오류"), "마지막 오류": txt("옛 오류") }))
+	const out = await handleRequest(structuredClone(f.pages.get("p")), { id: "class-report-create", ids: ["class-report-create"] }, f)
+	assertEquals(out.state, STATE_DONE)
+})
+
+Deno.test("줄 오류: 이번 요청 전부터 있던 같은 ⚠️ 오류는 보지 않고, 처리 시작 시각이 접수 뒤면 봄", () => {
+	const t0 = Date.parse("2026-11-23T03:38:20Z")
+	const before = rpage("p", { 상태: sel("⚠️ 오류"), "마지막 오류": txt("보고서 구분이 비어 있습니다"), "처리 시작 시각": dt("2026-11-22T01:00:00Z") })
+	assertEquals(rowErrorOf(structuredClone(before), before, t0), "", "옛 오류 그대로")
+	const rerun = structuredClone(before); rerun.properties["처리 시작 시각"] = dt("2026-11-23T03:38:00.000Z")
+	assertEquals(rowErrorOf(rerun, before, t0), "보고서 구분이 비어 있습니다", "같은 오류라도 이번에 다시 돎")
+	const changed = structuredClone(before); changed.properties["마지막 오류"] = txt("시간표가 없습니다 (page 00000000000040008000000000000001)")
+	assertEquals(rowErrorOf(changed, before, t0), "시간표가 없습니다")
+	assertEquals(rowErrorOf(rpage("p", { 상태: sel("✅ 완료") }), null, t0), "")
+	assertEquals(rowErrorOf(rpage("p", { 상태: sel("⚠️ 오류"), "마지막 오류": txt("Error: x_y") }), null, t0), "줄의 [마지막 오류]를 보고 고친 뒤 다시 눌러 주세요")
+})
