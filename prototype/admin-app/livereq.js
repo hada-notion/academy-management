@@ -154,7 +154,7 @@ function lqEndAsk(e) {
   const today = typeof TODAY === "string" ? TODAY : new Date().toISOString().slice(0, 10);
   let day = e.end || today, seq = 0, ready = false;
   const body = `<div><b>${lqEsc(nmStu(e.studentId))}</b> · ${lqEsc(nmCls(e.classId))}</div><div class="hfh" id="lqEndD"></div>
-<ul class="askl"><li id="lqEndN">빠지는 수업을 세고 있어요…</li><li>시간표 연결이 풀리고, 시작하지 않은 교재는 정리돼요</li><li>학생 · 등록 · 지난 출결 기록은 그대로 남아요</li></ul>
+<ul class="askl"><li id="lqEndN">빠지는 수업을 세고 있어요…</li><li>시간표 연결이 풀리고, 시작하지 않은 교재는 정리돼요</li><li>학생 · 등록 · 종료일까지의 출결 기록은 그대로 남아요</li></ul>
 <div class="hint">노션 등록 [종료 처리]와 같아요 — 되돌리는 기능이 없어요. 바로 노션에 반영돼요.</div>`;
   askRun("이 등록을 종료할까요?", body, "종료 처리", () => {
     if (!ready) { toast("빠지는 수업을 세는 중이에요 — 잠시 뒤 다시 눌러요"); return; }

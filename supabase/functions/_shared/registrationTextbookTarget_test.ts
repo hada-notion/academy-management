@@ -261,3 +261,6 @@ Deno.test("v2.6.10 로그용 본문 요약은 값을 남기지 않는다", async
  const text = describeBody({ adminKey: "secret-value", data: { id: "11111111111141118111111111111111", properties: { "학생 연락처": { phone_number: "010-0000-0001" } } } })
  assert(text.includes("pageId=11111111111141118111111111111111") && text.includes("keys=[adminKey,data]") && !text.includes("secret-value") && !text.includes("010-0000-0001"), text)
 })
+
+// (v2.8.0, 261123 종료 처리) 종료 처리 수업 단계 시험 — CI 시험 목록(.github)에 따로 없어 여기서 함께 돈다.
+await import("./registrationEnd_test.ts")
