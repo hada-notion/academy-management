@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리 앱 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3C%2Fsvg%3E">
-<link rel="stylesheet" href="hada-tokens.css?v=742">
-<link rel="stylesheet" href="app.css?v=756">
+<link rel="stylesheet" href="hada-tokens.css?v=760">
+<link rel="stylesheet" href="app.css?v=761">
 <link rel="stylesheet" href="pick.css?v=742">
-<link rel="stylesheet" href="field.css?v=742">
+<link rel="stylesheet" href="field.css?v=755">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -20,7 +20,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=742"><script src="hada-rules.js?v=742"></script><script src="help.js?v=742"></script><script src="alim-preview.js?v=742"></script><script src="pick.js?v=742"></script><script src="field.js?v=742"></script><script src="panel.js?v=750"></script>
+<link rel="stylesheet" href="alim.css?v=742"><script src="hada-rules.js?v=742"></script><script src="help.js?v=760"></script><script src="alim-preview.js?v=742"></script><script src="pick.js?v=742"></script><script src="field.js?v=742"></script><script src="panel.js?v=750"></script>
 <script>
 "use strict";
 
@@ -52,14 +52,7 @@ document.addEventListener("focusout",e=>{const tx=e.target;if(!(tx.classList&&tx
 document.addEventListener("keydown",e=>{const tx=e.target;if(!(tx.classList&&tx.classList.contains("dtxt")))return;if(e.key==="Enter"){e.preventDefault();tx.blur()}else if(e.key==="Escape"){e.stopPropagation();tx.value=dShow(tx.nextElementSibling.value);dClose();tx.blur()}},true);
 document.addEventListener("input",e=>{const tx=e.target;if(tx.classList&&tx.classList.contains("dtxt")&&dPop){const v=dParse(tx.value,!!tx.nextElementSibling.dataset.t);if(v){dOpen(tx)}}});
 addEventListener("scroll",e=>{if(dPop&&!(e.target&&e.target.closest&&e.target.closest(".dpop")))dClose()},true);
-// (?) 도움말: 화면 밖으로 안 나가게 떠 있는 말풍선
-document.addEventListener("mouseover",e=>{const q=e.target.closest&&e.target.closest(".qhelp");if(q)showTip(q)});
-document.addEventListener("mouseout",e=>{const q=e.target.closest&&e.target.closest(".qhelp");if(q&&!q.contains(e.relatedTarget))hideTip()});
-document.addEventListener("focusin",e=>{if(e.target.classList&&e.target.classList.contains("qhelp"))showTip(e.target)});
-document.addEventListener("focusout",e=>{if(e.target.classList&&e.target.classList.contains("qhelp"))hideTip()});
-function showTip(q){hideTip();const t=document.createElement("div");t.id="qtip";t.textContent=q.dataset.help;document.body.appendChild(t);const r=q.getBoundingClientRect(),w=t.offsetWidth,h=t.offsetHeight;let x=Math.max(8,Math.min(r.left-8,innerWidth-w-8)),y=r.bottom+6;if(y+h>innerHeight-8)y=r.top-h-6;t.style.left=x+"px";t.style.top=y+"px"}
-function hideTip(){const t=document.getElementById("qtip");if(t)t.remove()}
-function HELP(t){return `<span class="qhelp" tabindex="0" role="note" aria-label="${esc(t)}" data-help="${esc(t)}">${IC("help")}</span>`}
+// (?) 도움말 부품(HELP · 말풍선 · 도움말 창 · 구역당 하나로 합치기)은 help.js 한 곳
 /* ================= 데이터 (가짜 학원) ================= */
 const DAYS=["월","화","수","목","금","토","일"];
 const uid=(p)=>p+Math.random().toString(36).slice(2,8);
@@ -422,7 +415,8 @@ function pheadVar(){if(PHEAD_RO)PHEAD_RO.disconnect()/* 다시 그리면 머리�
   if(window.ResizeObserver){if(!PHEAD_RO)PHEAD_RO=new ResizeObserver(es=>es.forEach(e=>{const p=e.target.closest(".panel");if(p&&e.target.isConnected)p.style.setProperty("--phead-h",e.target.offsetHeight+"px")}));PHEAD_RO.observe(h)}})}
 /* 261119 대표: 화면 본문에 깔린 안내 글(긴 .hint)은 그 상자 제목 옆 (?) 아이콘 속으로 — 제목 줄이 없으면 그대로 둠 */
 function helpify(){document.querySelectorAll("#view .box>.hint,.panel .box>.hint,.panel .pbody>.box .hint").forEach(el=>{if(el.className.trim()!=="hint"||el.children.length||el.id||el.closest(".actions,.modal,table,.hp,.tdr,.dcard,.hfh,.hf"))return;const tx=el.textContent.trim();if(tx.length<16)return;const box=el.parentElement.closest(".box");const hd=box&&box.querySelector(":scope>h3");if(!hd)return;const old=hd.querySelector(".qhelp");if(old){const m=(old.dataset.help||"")+" "+tx;old.dataset.help=m;old.setAttribute("aria-label",m)}else{const sp=hd.querySelector(".sp");const html=HELP(tx);sp?sp.insertAdjacentHTML("beforebegin",html):hd.insertAdjacentHTML("beforeend",html)}el.remove()});
-  /* 제목 옆 설명 글(h3 small)도 (?) 속으로 */document.querySelectorAll("#view .box>h3>small,.panel .box>h3>small").forEach(sm=>{if(sm.children.length||sm.className)return;const tx=sm.textContent.trim();if(tx.length<12)return;const hd=sm.parentElement;if(hd.querySelector(".qhelp")){const q=hd.querySelector(".qhelp");const m=(q.dataset.help||"")+" "+tx;q.dataset.help=m;q.setAttribute("aria-label",m)}else sm.insertAdjacentHTML("afterend",HELP(tx));sm.remove()})}
+  /* 제목 옆 설명 글(h3 small)도 (?) 속으로 */document.querySelectorAll("#view .box>h3>small,.panel .box>h3>small").forEach(sm=>{if(sm.children.length||sm.className)return;const tx=sm.textContent.trim();if(tx.length<12)return;const hd=sm.parentElement;if(hd.querySelector(".qhelp")){const q=hd.querySelector(".qhelp");const m=(q.dataset.help||"")+" "+tx;q.dataset.help=m;q.setAttribute("aria-label",m)}else sm.insertAdjacentHTML("afterend",HELP(tx));sm.remove()});
+  /* 구역당 (?) 하나(help.js helpMerge) */helpMerge(document)}
 // 오른쪽 창 움직임(261112 대표): 새로 열릴 때 오른쪽에서 밀려 들어옴, 고정·띄우기 바뀔 때 살짝, 닫을 때 오른쪽으로 빠짐. 다시 그릴 때마다는 안 움직임
 const RMO=()=>window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;let pPrev={open:false,dock:false};
 function panelAnim(){const pn=document.querySelector(".body>.panel");const now={open:!!pn,dock:!!dockOn};if(pn&&!RMO()){if(!pPrev.open)pn.classList.add("p-in");else if(pPrev.dock!==now.dock)pn.classList.add("p-sw")}pPrev=now}
@@ -2336,7 +2330,7 @@ Object.assign(LISTS,{
 });
 LISTS.legal_rcpt.form={name:"서식(원부 + 영수증)",desc:"한 건마다 한 쌍 · A4 세로에 두 쌍 · 도장",run:(rows,st)=>rcptPreview(rows)};LISTS.legal_rcpt.xlForm={name:(x,i)=>`${i+1} ${nmStu(x.t.studentId)}`,sheet:rcptSheet};TITLES.profit="결제 · 손익";TITLES.charges="청구 항목";TITLES.legal="법정 서류";TITLES.academy="학원 정보";NOTION.profit="결제 · 손익";NOTION.academy="매뉴얼";
 /* 카드 화면(E = 묶음 카드): 표·캘린더가 아닌 설정 화면. C 제목 줄 + 카드(폭 720)만, D 위 줄 없음 */
-function cardScreen(v,o){v.innerHTML=`<div class="top pg-ttl"><h1>${pgIc(o.scr)}${o.title}</h1>${tlinkBar(o.scr)}${o.help?HELP(o.help):""}${notionBtn(o.scr)}</div><div class="body"><div class="list cards">${o.boxes.map(b=>`<section class="cbox"><h3>${IC(b.icon,"l")}${b.title}${b.help?HELP(b.help):""}</h3>${b.rows.map(r=>`<div class="crow"><span class="cl">${r[0]}</span><span class="cv">${r[1]}</span><span class="ca">${r[2]||""}</span></div>`).join("")}</section>`).join("")}</div></div>`}
+function cardScreen(v,o){v.innerHTML=`<div class="top pg-ttl"><h1>${pgIc(o.scr)}${o.title}</h1>${tlinkBar(o.scr)}${o.help?HELP(o.help):""}${notionBtn(o.scr)}</div><div class="body"><div class="list cards setcards">${o.boxes.map(b=>`<section class="cbox"><h3>${IC(b.icon,"l")}${b.title}${b.help?HELP(b.help):""}</h3>${b.rows.map(r=>`<div class="crow"><span class="cl">${r[0]}</span><span class="cv">${r[1]}</span><span class="ca">${r[2]||""}</span></div>`).join("")}</section>`).join("")}</div></div>`}
 const cbtn=(act,label,icon,cls)=>`<button type="button" class="btn sm ${cls||""}" data-cact="${act}">${icon?IC(icon,"s"):""}${label}</button>`;
 /* 199판: 오늘(노션 대시보드 "하루 한 장") — 카드 화면. 제목 줄에 날 이동(‹ › [오늘] 날짜), 하루 요약 · 그날 수업(시간순, 누르면 수업 화면) · 일정·시험. 보기만 하는 화면(고치는 것은 수업·일정 화면에서) */
 function dayItems(d){const out=[];DB.blocks.filter(b=>!b.del).forEach(b=>{for(let i=-6;i<=6;i++){const d0=dPlus(d,i);if(dow(d0)!==b.day||!lessonMade(b,d0))continue;const e=lessonEff(b,d0);if(e.d===d)out.push({b,d0,e,k:lkey(b,d0)})}});return out.sort((a,b)=>a.e.start-b.e.start)}
@@ -2493,7 +2487,9 @@ function renderMakeup(v,t){const st=t.state,tab=(st.mtab==="mk"?"cal":st.mtab)||
   v.querySelectorAll("[data-mkdec]").forEach(x=>x.onclick=ev=>{ev.stopPropagation();st.mkEdK=null;const v0=x.dataset.mkdec,i0=v0.lastIndexOf("|"),k=v0.slice(0,i0),d=v0.slice(i0+1);DB.mkw[k]=Object.assign({},DB.mkw[k],{dec:d});commit();toast(d==="none"?"보강 없음으로 정리했어요":"보강 필요로 바꿨어요")});
   {const nb=v.querySelector("[data-mknone]");if(nb)nb.onclick=()=>{st.mkNone=!st.mkNone;render()}}
   mkCalBind(v,st);mkSideMount(v,st)}
-/* 261124 홈 = 노션 홈과 같은 위·아래(대표 개입 3 "위에는 할일전용 하나 / 아래는 대시보드"):
+/* 261124 홈 = 할 일 크게 + 오늘 보기 셋(대표 개입 4 "할일만 크게 + 데이터 소스(오늘 수업, 오늘 등원, 오늘 일정)") — 노션 홈과 같은 구성, 숫자 칸 · 도넛 · 달성률 없음:
+   위 = 할 일(노션 연결 보기 탭 4개와 같은 이름 · 순서 · 거르기): 우선순위(보드 중요 → 보통 → 보류) · 담당자(보드) · 캘린더(달) · 완료(달성 · 미달성 표)
+   아래 = 오늘 수업 · 오늘 등원 · 오늘 일정 목록 셋(노션 홈 아래 연결 보기 셋과 같은 이름 · 차례). 앱만: 날 이동 · 입력 점검(맨 아래).
    위 = 할 일(노션 연결 보기 탭 4개와 같은 이름 · 순서 · 거르기): 우선순위(보드 중요 → 보통 → 보류) · 담당자(보드) · 캘린더(달) · 완료(달성 · 미달성 표)
    아래 = 오늘 학원(노션 대시보드 3줄과 같은 위젯 · 순서): 밀린 할 일 · 오늘 수업 · 오늘 출결 / 신규 문의 · 등록 대기 · 이번 주 달성률 / 이번 주 일정. 앱만: 날 이동 · 입력 점검(맨 아래).
    할 일 두 칸(대표 "2개만 하자"): 달성여부(달성 · 미달성, 비면 진행) · 우선순위(중요 · 보류, 비면 보통). 노션 기능만으로 바꾸므로(서버 안 씀) 앱은 보기만 —
@@ -2505,8 +2501,6 @@ const tdOpen=e=>isTodo(e)&&!e.ach;
 const tdLate=(e,d)=>tdOpen(e)&&!!e.start&&e.start<d&&!tdDaily(e);
 const tdByDate=(a,b)=>(a.start||"9")<(b.start||"9")?-1:(a.start||"9")>(b.start||"9")?1:String(a.name).localeCompare(String(b.name),"ko");
 const homeTodos=d=>DB.events.filter(e=>tdOpen(e)&&!(tdDaily(e)&&e.start&&e.start<d)&&(!e.start||e.start<=dPlus(d,7)||!!e.pri)).sort(tdByDate);
-/* 이번 주 달성률 = 노션 위젯과 같은 계산: 할일 중 달성여부가 있는 줄(날짜 그날-7일 ~ 그날)의 달성점수(달성 1 · 미달성 0) 평균 */
-const tdRate=d=>{const xs=DB.events.filter(e=>isTodo(e)&&e.ach&&e.start&&e.start>=dPlus(d,-7)&&e.start<=d),ok=xs.filter(e=>e.ach==="달성").length;return {n:xs.length,ok,pct:xs.length?Math.round(ok/xs.length*100):null}};
 /* 같은 속성은 어디서나 같은 색(노션 선택지 색): 우선순위 중요 빨강 · 보통 회색 · 보류 노랑 / 달성여부 달성 초록 · 미달성 빨강 */
 const TD_COLS=[["중요","중요","bad"],["","보통",""],["보류","보류","warn"]];
 const TD_PRI={"중요":"bad","보류":"warn"},TD_PRK={"중요":"imp","보류":"hold"};
@@ -2530,35 +2524,38 @@ function homeTodoBody(k,d){
 function homeTodoBox(st,d){const k=st.htab||"pri",n=k==="done"?DB.events.filter(e=>isTodo(e)&&e.ach).length:k==="cal"?DB.events.filter(e=>isTodo(e)&&e.start&&e.start.slice(0,7)===d.slice(0,7)).length:homeTodos(d).length;
   return `<section class="cbox hboard"><h3>${IC("check","l")}할 일 <span class="hint">${n}</span>${HELP("노션 홈 위 할 일 보기와 같은 탭이에요. 우선순위 · 담당자 = 달성여부가 빈 할 일(그날부터 7일 안 · 밀린 일 · 날짜 없음 · 우선순위 있음), 캘린더 = 할 일 전부, 완료 = 달성 · 미달성. 앱에서는 보기만 해요 — [달성] · [미달성]과 끌어서 우선순위 바꾸기는 노션 홈에서 해요.")}<span class="seg htabs">${HTD_TABS.map(([v,t])=>`<button type="button" class="${k===v?"on":""}" data-htab="${v}">${t}</button>`).join("")}</span><span class="sp"></span><button type="button" class="btn sm" data-notion="today" title="노션 홈에서 달성 · 미달성 · 우선순위를 바꿔요">${IC("notion","s")}노션에서 열기</button></h3>
   ${homeTodoBody(k,d)}</section>`}
-/* 아래 = 오늘 학원(노션 대시보드 위젯과 같은 이름 · 거르기). 노션에서 보기: 실제 자료 모드에서 그날 수업 출결을 아직 안 받았으면(수업을 열어야 받음 — 홈은 서버를 따로 부르지 않음) */
-const HATT=[["출석","var(--success)"],["결석","var(--danger)"],["보강","var(--info)"],["미입력","var(--line)"]];
-function homeAcademy(st,d){const its=dayItems(d).filter(x=>!x.e.off),late=DB.events.filter(e=>tdOpen(e)&&e.start&&e.start<d).length,rate=tdRate(d);
-  const nw=DB.students.filter(x=>!x.del&&stuStat(x)==="new").length,pre=DB.students.filter(x=>!x.del&&stuStat(x)==="pre").length;
-  const nlink=`<button type="button" class="link-chip" data-notion="today" title="노션 홈 오늘 학원에서 봐요">${IC("notion","s")}노션에서 보기</button>`;
-  const num=(k,n,lab,tone,tip)=>`<button type="button" class="hw hwn ${tone}" data-htile="${k}" title="${esc(tip)}"><span class="hwt">${lab}</span><b>${n}</b></button>`;
-  const lesson=`<div class="hw hwl"><span class="hwt">오늘 수업 <span class="hint">${its.length}</span><span class="sp"></span><button type="button" class="btn sm" data-htile="lesson" title="수업 › 오늘 수업에서 열어요">열기</button></span>${its.length?`<div class="hwrows">${its.map(x=>{const c=cls(x.b.classId)||{};return `<div class="hwr" data-hles="${x.k}" title="수업 › 오늘 수업에서 열기"><b>${esc(c.name||"수업")}</b><span>${fmt(x.e.start)}–${fmt(x.e.end)}</span><span>${esc((tch(c.teacherId)||{}).name||"")}</span></div>`}).join("")}</div>`:'<div class="hint hbnone">수업이 없어요</div>'}</div>`;
-  const att=(()=>{const live=LIVE_ON()&&typeof LIVE_LS!=="undefined",miss=live&&its.some(x=>!(LIVE_LS[x.k]&&LIVE_LS[x.k].state==="ok"));
-    if(miss)return `<div class="hw hwa"><span class="hwt">오늘 출결</span><div class="hint hbnone">앱은 수업을 열어야 출결을 받아요</div>${nlink}</div>`;
-    const s={출석:0,결석:0,보강:0,미입력:0};its.forEach(x=>{const r=attSum(x.b,x.d0);Object.keys(s).forEach(k=>s[k]+=r[k]||0)});const n=Object.values(s).reduce((a,b)=>a+b,0);
-    let acc=0;const seg=HATT.filter(([k])=>s[k]).map(([k,c])=>{const a=acc;acc+=s[k]/n*100;return `${c} ${a}% ${acc}%`}).join(",");
-    return `<div class="hw hwa"><span class="hwt">오늘 출결</span>${n?`<div class="hwdn"><span class="hdonut" style="background:conic-gradient(${seg})"><i>${n}</i></span><span class="hwlg">${HATT.filter(([k])=>s[k]).map(([k,c])=>`<span><i style="background:${c}"></i>${k} <b>${s[k]}</b></span>`).join("")}</span></div>`:'<div class="hint hbnone">출결할 학생이 없어요</div>'}</div>`})();
-  const ws=dPlus(d,-dow(d)),wcell=x=>DB.events.filter(e=>!e.del&&!e.hide&&!isTodo(e)&&e.start&&e.start<=x&&(e.end||e.start)>=x).sort((a,b)=>String(a.name).localeCompare(String(b.name),"ko")).map(e=>`<button type="button" class="evchip evk-${evCatOf(e)}" data-tev="${e.id}" title="${esc(`${evSubOf(e)} · ${e.name}`)}">${esc(e.name)}</button>`).join("");
-  return `<section class="cbox hacad"><h3>${IC("activity","l")}오늘 학원${HELP("노션 홈 아래 대시보드와 같은 칸이에요. 숫자를 누르면 그 화면으로 가요.")}</h3>
-  <div class="hwrow">${num("late",late,"밀린 할 일","bad","날짜가 지났는데 달성여부가 빈 할 일(노션 위젯과 같은 거르기)")}${lesson}${att}</div>
-  <div class="hwrow">${num("new",nw,"신규 문의","info","등록이 없는 학생 — 누르면 학생 › 신규문의")}${num("pre",pre,"등록 대기","warn","가장 최근 등록이 아직 시작 전인 학생 — 누르면 학생 › 등록 전")}${num("rate",rate.pct==null?"—":rate.pct+"%","이번 주 달성률","ok",rate.n?`지난 7일 할 일 중 달성 ${rate.ok} / 달성여부를 정한 ${rate.n} — 노션 위젯과 같은 계산`:"지난 7일에 달성여부를 정한 할 일이 없어요")}</div>
-  <div class="hwrow one"><div class="hw hweek"><span class="hwt">이번 주 일정</span><div class="evcal">${CALF.month({from:ws,to:dPlus(ws,6),cls:"evcf",rowH:96,outItems:true,cell:wcell})}</div></div></div></section>`}
+/* 아래 = 오늘 보기 셋(노션 홈 아래 연결 보기 셋과 같은 이름 · 차례 · 거르기): 오늘 수업(수업 DB 그날, 시각 순 — 클래스 · 강사 · 출결) · 오늘 등원(출석 DB 그날 — 학생 · 클래스 · 출결 · 수업 시각) · 오늘 일정(일정 DB 그날, 할일 · 숨김 뺌).
+   출결은 앱 수업 화면과 같은 값. 실제 자료 모드에서 그날 수업 출결을 아직 안 받았으면(수업을 열어야 받음 — 홈은 서버를 따로 부르지 않음) 출결 자리에 [노션에서 보기] */
+const HATK={출석:"ok",결석:"bad",보강:"info"};
+function homeTodayLists(st,d){const its=dayItems(d).filter(x=>!x.e.off).sort((p,q)=>p.e.start-q.e.start||String((cls(p.b.classId)||{}).name).localeCompare(String((cls(q.b.classId)||{}).name),"ko"));
+  const live=LIVE_ON()&&typeof LIVE_LS!=="undefined",got=x=>!live||!!(LIVE_LS[x.k]&&LIVE_LS[x.k].state==="ok"),miss=its.some(x=>!got(x));
+  const nlink=`<button type="button" class="link-chip" data-notion="today" title="노션 홈 아래 오늘 등원 보기에서 봐요">${IC("notion","s")}노션에서 보기</button>`;
+  const box=(k,title,n,go,rows,none)=>`<div class="hw hwl" data-hbox="${k}"><span class="hwt">${title} <span class="hint">${n}</span><span class="sp"></span>${go}</span>${rows||`<div class="hint hbnone">${none}</div>`}</div>`;
+  const lesson=box("lesson","오늘 수업",its.length,`<button type="button" class="btn sm" data-hgo="lesson" title="수업 › 오늘 수업에서 열어요">열기</button>`,
+    its.length?`<div class="hwrows">${its.map(x=>{const c=cls(x.b.classId)||{},r=got(x)?attSum(x.b,x.d0):null,n=r?Object.values(r).reduce((a,b)=>a+b,0):0;
+      return `<div class="hwr" data-hles="${x.k}" title="수업 › 오늘 수업에서 열기"><span class="hbd">${fmt(x.e.start)}</span><b>${esc(c.name||"수업")}</b><span>${esc((tch(c.teacherId)||{}).name||"")}</span><span>${r?(r.미입력===n?`${n}명`:`출석 ${r.출석+r.보강}/${n}`):"—"}</span></div>`}).join("")}</div>`:"","수업이 없어요");
+  const kids=[];its.forEach(x=>{const c=cls(x.b.classId)||{};lessonRoster(x.b,x.d0).forEach(s=>{kids.push({x,c,name:s.name||"",a:got(x)?(attOf(x.b,x.d0,s.id)||"미입력"):null})})});
+  kids.sort((p,q)=>p.x.e.start-q.x.e.start||String(p.c.name).localeCompare(String(q.c.name),"ko")||String(p.name).localeCompare(String(q.name),"ko"));
+  const att=box("att","오늘 등원",kids.length,miss?nlink:`<button type="button" class="btn sm" data-hgo="att" title="수업 › 오늘 등원 학생에서 열어요">열기</button>`,
+    kids.length?`<div class="hwrows">${kids.map(k=>`<div class="hwr" data-hatt="${k.x.k}" title="수업 › 오늘 등원 학생에서 열기"><span class="hbd">${fmt(k.x.e.start)}</span><b>${esc(k.name)}</b><span>${esc(k.c.name||"")}</span>${k.a?`<span class="rpill ${HATK[k.a]||""}">${esc(k.a)}</span>`:"<span>—</span>"}</div>`).join("")}</div>`:"","등원할 학생이 없어요");
+  const evs=DB.events.filter(e=>!e.del&&!e.hide&&!isTodo(e)&&e.start&&e.start.slice(0,10)<=d&&(e.end||e.start).slice(0,10)>=d).sort((p,q)=>(p.start<q.start?-1:p.start>q.start?1:String(p.name).localeCompare(String(q.name),"ko")));
+  const ev=box("ev","오늘 일정",evs.length,`<button type="button" class="btn sm" data-hgo="ev" title="일정 화면에서 열어요">열기</button>`,
+    evs.length?`<div class="hwrows">${evs.map(e=>`<div class="hwr" data-tev="${e.id}" title="일정 화면에서 열기"><span class="hbd">${e.start.length>10?e.start.slice(11,16):"하루"}</span><b>${esc(e.name)}</b><span class="rpill">${esc(evSubOf(e))}</span><span></span></div>`).join("")}</div>`:"","일정이 없어요");
+  return `<section class="cbox hacad"><h3>${IC("activity","l")}오늘${HELP("노션 홈 아래 보기 셋과 같아요 — 오늘 수업 · 오늘 등원 · 오늘 일정(할 일 빼고). 줄을 누르면 그 화면으로 가요.")}</h3>
+  <div class="hwrow">${lesson}${att}${ev}</div></section>`}
 function renderToday(v,t){const st=t.state,d=st.day||TODAY;
   const closed=DB.events.some(e=>!e.del&&e.start<=d&&(e.end||e.start)>=d&&evSubOf(e)==="학원 휴원");
-  v.innerHTML=`<div class="top pg-ttl ttl"><h1>${pgIc("today")}홈</h1>${HELP("하루를 여기서 시작해요. 위는 할 일(우선순위 · 담당자 · 캘린더 · 완료), 아래는 오늘 학원 — 노션 홈과 같은 구성이에요. 할 일은 보기만 — 바꾸기는 노션 홈에서 해요.")}${notionBtn("today")}${CALF.nav({label:`${D10(d)} (${DAYS[dow(d)]})`,prev:"앞 날",next:"다음 날",now:"오늘",isNow:d===TODAY,attr:"data-dn"})}${closed?'<span class="rpill ex">휴원일</span>':""}</div><div class="body"><div class="list cards home">
+  v.innerHTML=`<div class="top pg-ttl ttl"><h1>${pgIc("today")}홈</h1>${HELP("하루를 여기서 시작해요. 위는 할 일(우선순위 · 담당자 · 캘린더 · 완료), 아래는 오늘 수업 · 오늘 등원 · 오늘 일정 — 노션 홈과 같은 구성이에요. 할 일은 보기만 — 바꾸기는 노션 홈에서 해요.")}${notionBtn("today")}${CALF.nav({label:`${D10(d)} (${DAYS[dow(d)]})`,prev:"앞 날",next:"다음 날",now:"오늘",isNow:d===TODAY,attr:"data-dn"})}${closed?'<span class="rpill ex">휴원일</span>':""}</div><div class="body"><div class="list cards home">
   ${homeTodoBox(st,d)}
-  ${homeAcademy(st,d)}
+  ${homeTodayLists(st,d)}
   ${d===TODAY?todayTodoBox():""}</div></div>`;
   v.querySelectorAll("[data-dn]").forEach(x=>x.onclick=()=>{const k=+x.dataset.dn;st.day=k?dPlus(d,k):TODAY;render()});
   v.querySelectorAll("[data-htab]").forEach(x=>x.onclick=()=>{st.htab=x.dataset.htab;render()});
   v.querySelectorAll("[data-todogo]").forEach(x=>x.onclick=ev=>openScreen(x.dataset.todogo,ev.ctrlKey||ev.metaKey));
   v.querySelectorAll("[data-tev]").forEach(x=>x.onclick=ev=>{if(ev.target.closest("[data-notion]"))return;/* 카드 [달성] = 노션에서 열기(문서 전체 누르기 한 곳) */panelOpen=true;openScreen("events",ev.ctrlKey||ev.metaKey,{sel:x.dataset.tev,lf:{"다가오는 일정":false}})});
   v.querySelectorAll("[data-hles]").forEach(x=>x.onclick=ev=>openScreen("timetable",ev.ctrlKey||ev.metaKey,{view:"lesson",lv:"today"}));
-  v.querySelectorAll("[data-htile]").forEach(x=>x.onclick=ev=>{const k=x.dataset.htile,nt=ev.ctrlKey||ev.metaKey;if(k==="lesson")return openScreen("timetable",nt,{view:"lesson",lv:"today"});if(k==="new"||k==="pre")return openScreen("students",nt,{sub:k});st.htab=k==="rate"?"done":"pri";render();const b=document.querySelector("#view .hboard");if(b)b.scrollIntoView({block:"start"})})}
+  v.querySelectorAll("[data-hatt]").forEach(x=>x.onclick=ev=>openScreen("timetable",ev.ctrlKey||ev.metaKey,{view:"lesson",lv:"att"}));
+  v.querySelectorAll("[data-hgo]").forEach(x=>x.onclick=ev=>{const k=x.dataset.hgo,nt=ev.ctrlKey||ev.metaKey;if(k==="ev")return openScreen("events",nt);openScreen("timetable",nt,{view:"lesson",lv:k==="att"?"att":"today"})})}
 /* 200판: 출석부 격자 줄 — 등록마다 그 달 날짜별 기호. 휴강은 빈칸, 이 주만 옮긴 수업은 옮긴 날, 보강 수업은 △ */
 /* 203판: 영수증 원부 줄 — 일련번호는 결제한 해마다 결제일 순 순번, 대장 번호는 첫 등록일 순 */
 function rollNos(){const m={};DB.students.filter(x=>!x.del&&DB.enrolls.some(e=>e.studentId===x.id)).map(x=>({x,d:DB.enrolls.filter(e=>e.studentId===x.id).map(e=>e.start||"").sort()[0]||""})).sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:a.x.id<b.x.id?-1:1).forEach((z,i)=>m[z.x.id]=String(i+1).padStart(4,"0"));return m}
@@ -3389,7 +3386,7 @@ function lpOpen(st,k){if(!k)return;if(k.startsWith("mk:"))return goLesson(st,k);
 document.addEventListener("focusin",e=>{const x=e.target;if(x&&x.tagName==="TEXTAREA"&&window.HFLIST)HFLIST.bind(x)});
 /* 261119 대표: 화면 설명은 도움말(?) 단추 안에 — 화면 위 설명 줄은 두지 않음 */
 const LVHELP=HELPTX.lv;/* 도움말 글은 help.js 한 곳 */
-function lvTop(st,lv,ph){return `<div class="top"><div class="zone">${ttogHtml(lv,st)}${LVHELP[lv]?HELP(LVHELP[lv]):""}</div><div class="zone end no-print"><span class="searchbox">${IC("search")}<input class="inp" id="lq" placeholder="${ph}" value="${esc(st.q||"")}"></span><span class="tb-grp"><button class="btn icon tb-ic" id="undoB" title="실행 취소 Ctrl+Z">${IC("cul")}</button><button class="btn icon tb-ic" id="redoB" title="다시 실행 Ctrl+Y">${IC("cur")}</button></span>${rvBtn()}<button class="btn pri tb-num" id="saveAll" ${dirtyCount()?"":"disabled"} title="${dirtyTitle()}">${IC("save","s")}저장 <span class="num">${dirtyCount()}</span></button>${lv==="atm"?"":`<button class="btn icon tb-ic" id="panelT" title="${pTT(!!(panelOpen&&(st.lsel||st.mkNew)))}">${IC("panel")}</button>`}</div></div>`}/* 261120: 주간 · 월간 수업 화면에도 오른쪽 창 단추(다른 화면과 같은 자리 = [저장] 오른쪽). 출결 현황은 오른쪽 창을 쓰지 않아(날짜를 누르면 그날 등원 학생으로 감) 단추 없음 */
+function lvTop(st,lv,ph){return `<div class="top"><div class="zone">${ttogHtml(lv,st)}${LVHELP[lv]?HELP(LVHELP[lv],{img:{wk:HELPIMG.lvWeek,mon:HELPIMG.lvMonth}[lv]}):""}</div><div class="zone end no-print"><span class="searchbox">${IC("search")}<input class="inp" id="lq" placeholder="${ph}" value="${esc(st.q||"")}"></span><span class="tb-grp"><button class="btn icon tb-ic" id="undoB" title="실행 취소 Ctrl+Z">${IC("cul")}</button><button class="btn icon tb-ic" id="redoB" title="다시 실행 Ctrl+Y">${IC("cur")}</button></span>${rvBtn()}<button class="btn pri tb-num" id="saveAll" ${dirtyCount()?"":"disabled"} title="${dirtyTitle()}">${IC("save","s")}저장 <span class="num">${dirtyCount()}</span></button>${lv==="atm"?"":`<button class="btn icon tb-ic" id="panelT" title="${pTT(!!(panelOpen&&(st.lsel||st.mkNew)))}">${IC("panel")}</button>`}</div></div>`}/* 261120: 주간 · 월간 수업 화면에도 오른쪽 창 단추(다른 화면과 같은 자리 = [저장] 오른쪽). 출결 현황은 오른쪽 창을 쓰지 않아(날짜를 누르면 그날 등원 학생으로 감) 단추 없음 */
 /* 261119 대표(시안 8): 수업 블록을 누르면 오른쪽 창 먼저(오늘 · 주간 · 월간 같은 창 = panelLesson / 보강 panelMk), 창의 [수업 화면]으로 하루 수업 화면 */
 function lvSelect(st,k){st.lsel=k;st.lsStu=null;st.ldStu=null;st.mkNew=null;if(st.ltab==="rep")st.ltab="att";if(!k.startsWith("mk:")&&(st.lv==="mon"||st.lv==="atm")){const d=k.split("|")[1];st.week=dPlus(d,-dow(d))}panelOpen=true;render()}
 /* 261119 대표: 보강 추가 = [5 | 7] 단추 옆 [+] → 오른쪽 창에 새 보강(날짜 · 시간 · 클래스 · 학생) */
@@ -4286,7 +4283,7 @@ const ALIM_TIP={"enrolls|note":"알림톡으로 나가요 — 등록 안내 · �
  "events|memo":"알림톡·리포트로 나가요 — 일정 안내의 [전달 사항](50자, 비면 '없음'), 학부모 공개 일정이면 리포트에도 보여요.",
  "lesson|memo":"알림톡으로 나가요 — 수업 안내의 [전달 사항]. 50자까지, 비우면 '없음'.",
  "an|say":"알림톡으로 나가요 — 일일 학습 보고서의 선생님 한마디. 학부모 리포트에도 그대로 보여요."};
-const alimTip=key=>ALIM_TIP[key]?HELP(ALIM_TIP[key]):"";
+const alimTip=key=>ALIM_TIP[key]?HELP(ALIM_TIP[key],{alim:key}):"";
 /* 272판(대표 261115 '시리즈 탭 빼고 입력창에서'): 고르기 목록 옵션의 ⋯ = 이름 바꾸기 · 색 · 삭제(노션 선택 속성과 같이). 이름을 바꾸면 쓰는 줄이 모두 바뀌고, 삭제하면 쓰는 줄에서 비워짐(확인 뒤) */
 const NC_COLORS=[["default","기본"],["gray","회색"],["brown","갈색"],["orange","주황"],["yellow","노랑"],["green","초록"],["blue","파랑"],["purple","보라"],["pink","분홍"],["red","빨강"]];
 function optColorOf(k,v){for(const [c,f] of (OPT_USE[k]||[])){const m=NCOL[c+"|"+(c==="books"&&f==="types"?"types":f)];if(m&&m[v])return m[v]}return "default"}
@@ -4775,7 +4772,7 @@ function ttCal(v,t){const st=t.state;
   const draft=pd&&pd.day>=D0&&pd.day<D0+NDAYS?{day:pd.day,start:pd.start,end:pd.end,cls:"pending",id:"ttPend",attr:'data-pend="1"',title:"끌어서 옮기기 · 아래 끝을 끌어 늘리기",style:pcol?`background:${pcol.bg};color:${pcol.fg};border-color:${pcol.fg}`:"",label:pLbl,html:`${pc?esc(pc.name)+"<br>":"새 시간표<br>"}<span class="pt tm">${pLbl(pd.start,pd.end)}</span><div class="rz rt"></div><div class="rz rb"></div>`}:null;
   const hidN=all.filter(b=>b.day>=5).length;const sid1=seaToday(),sid2=ttNextSea();const cnt=id=>DB.blocks.filter(b=>!b.del&&b.seasonId===id).length;
   v.innerHTML=`${st.banner?`<div class="banner">${IC("clock","s")}<b>시간표</b> 빈 곳을 끌어 생성하고, 클래스 없는 학생을 시간표에 끌어 놓아요.<span class="sp"></span><button class="btn icon" id="bnX" title="닫기">${IC("x")}</button></div>`:""}
-  <div class="top pg-ttl ttl"><h1>${pgIc("timetable")}시간표</h1>${HELP(TT_HELP)}${notionBtn("timetable")}${weekNav(st,true)}<span class="sp"></span>
+  <div class="top pg-ttl ttl"><h1>${pgIc("timetable")}시간표</h1>${HELP(TT_HELP,{img:HELPIMG.ttDrag})}${notionBtn("timetable")}${weekNav(st,true)}<span class="sp"></span>
     </div>${st.seaOpen?seasonTimeline(st):""}
   <div class="pg-bar ttcal">${ttVtabs(st)}
     <span class="sp"></span>${anyFilter&&(f.cls||f.tch||f.stu)?CALW.find(st)/* 다른 화면에서 들고 온 찾기(클래스 · 강사 · 학생) — 여기서 풀 수 있게 */:""}<span class="searchbox">${IC("search")}<input class="inp" id="lq" placeholder="${LISTS.blocks.ph}" value="${esc(st.q||"")}"></span>${CALW.zoom(st)}${CALW.wdays(NDAYS)}${tbSlots(st,{add:true,addTitle:"추가 — 누르면 빈 곳을 끌어 새 시간표(다시 누르면 끝)",up:false})}<span class="tb-grp"><button class="btn icon tb-ic" id="undoB" title="실행 취소 Ctrl+Z">${IC("cul")}</button><button class="btn icon tb-ic" id="redoB" title="다시 실행 Ctrl+Y">${IC("cur")}</button></span>${rvBtn()}<button class="btn pri tb-num" id="saveAll" ${dirtyCount()?"":"disabled"} title="${dirtyTitle()}">${IC("save","s")}저장 <span class="num">${dirtyCount()}</span></button><span class="pgrp no-print"><button class="btn icon pbtn tb-ic" id="panelT" title="${pTT(showPanel)}">${IC("panel")}</button></span></div>
@@ -5039,6 +5036,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del&&!z._virtual).
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="finance.js?v=748"></script><script src="finlive.js?v=755"></script><script src="exams.js?v=750"></script><script src="appdata.js?v=743"></script><script src="appsave.js?v=755"></script><script src="appview.js?v=755"></script><script src="livelesson.js?v=744"></script><script src="liveadmin.js?v=742"></script><script src="livebook.js?v=742"></script><script src="liveschool.js?v=742"></script><script src="liveteacher.js?v=747"></script><script src="live.js?v=756"></script><script src="liverefresh.js?v=742"></script><script src="livereq.js?v=742"></script>
+<script src="finance.js?v=748"></script><script src="finlive.js?v=755"></script><script src="exams.js?v=750"></script><script src="appdata.js?v=743"></script><script src="appsave.js?v=755"></script><script src="appview.js?v=755"></script><script src="livelesson.js?v=744"></script><script src="liveadmin.js?v=742"></script><script src="livebook.js?v=742"></script><script src="liveschool.js?v=742"></script><script src="liveteacher.js?v=747"></script><script src="live.js?v=761"></script><script src="liverefresh.js?v=742"></script><script src="livereq.js?v=742"></script>
 </body>
 </html>

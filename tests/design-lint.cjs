@@ -69,5 +69,14 @@ for(const page of PAGES){
   // Scripts may build document tables with computed widths; only the static markup is checked.
   if(/\sstyle="/.test(html.replace(/<script[\s\S]*?<\/script>/g,'')))errors.push(`${page}: 인라인 style 속성 대신 클래스를 씁니다`);
 }
+// Admin app (prototype/admin-app): spacing "간격 다섯" and help "(?) 하나" live in one place each (관리앱-기준.md).
+{const A='prototype/admin-app/',tok=fs.readFileSync(A+'hada-tokens.css','utf8'),app=fs.readFileSync(A+'app.css','utf8'),help=fs.readFileSync(A+'help.js','utf8'),html=fs.readFileSync(A+'hada-admin.html','utf8');
+  for(const t of ['--gap-section','--gap-head','--gap-block','--gap-sub','--gap-in'])if(!new RegExp(t+':').test(tok))errors.push(`${A}hada-tokens.css: 간격 토큰 ${t}가 없습니다`);
+  if(!/\.box>\*\+\*\{margin-top:var\(--gap-block\)\}/.test(app))errors.push(`${A}app.css: 구역 간격 규칙(.box>*+*)이 없습니다`);
+  // Neighbouring blocks inside a section must not get their own off-scale top margins (6 · 10 · 14 px).
+  for(const m of app.matchAll(/(^|\})([^{}]*\.box[^{}]*)\{([^}]*)\}/g)){const sel=m[2],dec=m[3];if(/margin(-top)?:\s*(6|10|14)px/.test(dec))errors.push(`${A}app.css: ${sel.trim().slice(0,60)} — 구역 안 블록 간격은 --gap-* 토큰만(단계 밖 값)`);}
+  if(!/function HELP\(/.test(help)||!/function helpMerge\(/.test(help))errors.push(`${A}help.js: 도움말 부품(HELP · helpMerge)이 없습니다`);
+  if(/function HELP\(|function showTip\(/.test(html))errors.push(`${A}hada-admin.html: 도움말 부품은 help.js 한 곳에만 둡니다`);
+  if(!/helpMerge\(document\)/.test(html))errors.push(`${A}hada-admin.html: 그리기 끝에서 helpMerge를 부르지 않습니다`);}
 if(errors.length){console.error(errors.join('\n'));console.error(`디자인 규칙 위반 ${errors.length}건`);process.exit(1);}
 console.log(`디자인 규칙 검사 통과: ${[SHARED,...PAGES].join(', ')}`);
