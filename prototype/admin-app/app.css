@@ -3554,12 +3554,35 @@ html:root .lj .ljh,html:root .lj dl{font-size:12px}
 .hbm .rpill{display:inline-flex;align-items:center;height:20px;padding:0 var(--space-2);border-radius:var(--radius-pill);font-size:var(--text-micro);font-weight:700;background:var(--line2);color:var(--muted)}
 .hbm .rpill.late{background:var(--danger-soft);color:var(--danger-ink)}
 .hbnone{padding:var(--space-2) var(--space-1)}
-.htiles{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:var(--space-3)}
-.htile{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:76px;padding:var(--space-3) var(--space-4);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);font:inherit;color:var(--ink);cursor:pointer;text-align:left}
-.htile:hover{border-color:var(--brand-border);background:var(--brand-tint)}
-.htile b{font-size:var(--text-title);font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
-.htile span{font-size:var(--text-label);color:var(--muted)}
-.htile.bad b{color:var(--danger-ink)}.htile.warn b{color:var(--warning-ink)}
+/* 261124 홈 위·아래(대표 개입 3): 위 할 일 탭 4개(.htabs 나눔 단추) · 아래 오늘 학원 위젯 3줄(.hwrow — 줄마다 같은 높이 · 같은 폭) */
+.hboard h3 .htabs{margin-left:var(--space-3)}
+.hbh .rpill.warn{background:var(--warning-soft);color:var(--warning-ink)}
+.hbm .rpill.bad,.hdone .rpill.bad{background:var(--danger-soft);color:var(--danger-ink)}.hbm .rpill.warn,.hdone .rpill.warn{background:var(--warning-soft);color:var(--warning-ink)}.hdone .rpill.ok{background:var(--success-soft);color:var(--success-ink)}
+.hbach{margin-left:auto;display:inline-flex;align-items:center;gap:2px;height:24px;padding:0 var(--space-2);border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--muted);font:inherit;font-size:var(--text-caption);font-weight:600;cursor:pointer}
+.hbach:hover{border-color:var(--brand-border);color:var(--brand-deep)}.hbach svg.i{width:14px;height:14px}
+.hcal .evchip.hcchip{border-left:3px solid var(--line)!important;background:var(--surface)}
+.hcal .evchip.tdp-imp{border-left-color:var(--danger)!important;background:var(--danger-soft)}.hcal .evchip.tdp-hold{border-left-color:var(--warning)!important;background:var(--warning-soft)}
+.hcal .evchip.tda-ok{opacity:.5}.hcal .evchip.tda-miss{text-decoration:line-through;opacity:.7}
+.hcleg{display:flex;gap:var(--space-3);align-items:center;margin-top:var(--space-2)}.hcleg>span[class]{padding-left:var(--space-2);border-left:3px solid var(--line)}.hcleg .tdp-imp{border-left-color:var(--danger)}.hcleg .tdp-hold{border-left-color:var(--warning)}
+.hdone{display:flex;flex-direction:column;border:1px solid var(--line2);border-radius:var(--radius-md);overflow:hidden}
+.hdh,.hdr{display:grid;grid-template-columns:minmax(0,1fr) 96px 150px 140px 96px;gap:var(--space-3);align-items:center;padding:var(--space-2) var(--space-3)}
+.hdh{background:var(--canvas);font-size:var(--text-caption);color:var(--muted);font-weight:600}
+.hdr{border-top:1px solid var(--line2);cursor:pointer;font-size:var(--text-small);min-height:44px;box-sizing:border-box}.hdr:hover{background:var(--brand-tint)}.hdr b{font-weight:600;overflow-wrap:anywhere}
+.hdr .rpill{display:inline-flex;align-items:center;height:20px;padding:0 var(--space-2);border-radius:var(--radius-pill);font-size:var(--text-micro);font-weight:700;background:var(--line2);color:var(--muted)}
+.hwrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-3);align-items:stretch}.hwrow+.hwrow{margin-top:var(--space-3)}.hwrow.one{grid-template-columns:1fr}
+.hw{display:flex;flex-direction:column;gap:var(--space-2);min-height:150px;padding:var(--space-3) var(--space-4);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);font:inherit;color:var(--ink);text-align:left;min-width:0;box-sizing:border-box}
+.hwt{display:flex;align-items:center;gap:var(--space-2);font-size:var(--text-label);font-weight:600;color:var(--muted)}.hwt .sp{flex:1}
+.hwn{cursor:pointer;justify-content:space-between}.hwn:hover{border-color:var(--brand-border);background:var(--brand-tint)}
+.hwn b{font-size:var(--text-display);font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.hwn.bad b{color:var(--danger-ink)}.hwn.info b{color:var(--info-ink)}.hwn.warn b{color:var(--warning-ink)}.hwn.ok b{color:var(--success-ink)}
+.hwrows{display:flex;flex-direction:column;max-height:150px;overflow:auto}
+.hwr{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:var(--space-3);align-items:center;padding:6px 0;border-top:1px solid var(--line2);font-size:var(--text-small);cursor:pointer}.hwr:first-child{border-top:0}.hwr:hover b{color:var(--brand-deep)}
+.hwr b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hwr span{color:var(--muted);font-variant-numeric:tabular-nums;font-size:var(--text-caption)}
+.hwdn{display:flex;align-items:center;gap:var(--space-4);flex:1}
+.hdonut{flex:none;width:96px;height:96px;border-radius:50%;display:flex;align-items:center;justify-content:center}.hdonut i{width:64px;height:64px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:var(--text-title);font-weight:700;font-variant-numeric:tabular-nums}
+.hwlg{display:flex;flex-direction:column;gap:var(--space-1);font-size:var(--text-small)}.hwlg span{display:flex;align-items:center;gap:6px}.hwlg i{width:10px;height:10px;border-radius:50%;flex:none}.hwlg b{font-variant-numeric:tabular-nums}
+.hwa .link-chip{align-self:flex-start}
+.hweek .evcal{margin-top:0;min-height:0;height:auto}.hcal{height:auto}
 
 /* 261124 흔들림 점검: 수업 화면 위 줄 두 줄 고정(fitBars barTwo) — 왼쪽 묶음이 첫 줄을 다 쓰고 오른쪽 단추 묶음은 늘 둘째 줄 오른쪽 */
 .top.two-row>.zone:not(.end){flex:1 0 100%}
