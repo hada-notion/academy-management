@@ -3,12 +3,23 @@
                          [교보문고] 책 주소의 상품번호 → kyobo-book(교재명 · ISBN · 정가 · 출판사 · 목차) → register-custom. ISBN만 붙이면 search(ISBN)
                          [직접 등록] 지금 등록 창(live.js liveBookRegisterOpen)
    - 단원(교재 창 [단원] 탭): units로 받아 보이고, [단원 고치기] 창에서 이름 · 시작 고치기 · 삭제 · 추가 · 목차 붙여넣기(parse) → edit-units 한 번에(바로 노션)
-   - 시리즈(라이브러리 [교재] 탭 도구줄 [시리즈 관리]): series · edit-series(추가 · 이름 · 순서 · 삭제 — 교재가 0권인 시리즈만 삭제)
+   - 시리즈(라이브러리 [교재] 탭, 줄을 고르지 않았을 때 오른쪽 창 아래 [시리즈 관리]): series · edit-series(추가 · 이름 · 순서 · 삭제 — 교재가 0권인 시리즈만 삭제)
    실제 자료 모드가 아니면 아무것도 바꾸지 않는다(시제품 예시 목록 그대로). */
 const LBK = { units: {}, series: null };
 const lbKyoboCover = (isbn) => `https://contents.kyobobook.co.kr/sih/fit-in/458x0/pdt/${isbn}.jpg`;
 const lbErr = (e) => (e && e.status === 401) || (e && e.status === 403) ? "관리자 로그인이 필요해요 — 새로고침해서 다시 로그인해요" : (e && e.message) || "서버에 연결하지 못했어요";
 const lbOpts = (k) => (DB.opts && Array.isArray(DB.opts[k]) ? DB.opts[k] : []);
+/* 등록 뒤(원본 검수 261123): 서버가 노션에 직접 만든 교재는 노션 구독 알림이 오지 않아 앱 사본에 바로 안 들어온다 —
+   라이브러리 DB만 [동기화](app-api run sync-copy)로 맞춘 뒤 다시 받는다. 저장 안 한 변경이 있으면 덮어쓰지 않게 안내만 */
+async function lbAfterAdd(okMsg) {
+  if (dirtyCount() !== 0 || typeof window.liveReload !== "function") { toast(okMsg + " — 저장하지 않은 변경이 있어서 목록은 저장하고 [동기화]를 누르면 보여요"); return; }
+  const c = window.LIVE;
+  try {
+    await appPostJson(String(c.url).replace(/\/+$/, "") + "/functions/v1/app-api", { method: "POST", headers: { "Content-Type": "application/json", "x-admin-key": c.session, Authorization: "Bearer " + c.anonKey, apikey: c.anonKey }, body: JSON.stringify({ action: "run", name: "sync-copy", dbs: ["라이브러리(학원) DB"], full: true }) });
+  } catch (_) { /* 못 맞춰도 다시 받기는 한다 — 안 보이면 [동기화] */ }
+  await window.liveReload();
+  toast(okMsg);
+}
 
 /* ───── 책 찾기 ───── */
 function lbFindHtml(st) {
@@ -84,10 +95,7 @@ function lbFindBind(p, st) {
     F.busy = ""; F.picks = [];
     if (fail.length) { F.msg = `${ok}권 등록 · ${fail.length}권 못 함 — ${fail.join(" / ")}`; draw(); }
     else { st.bfind = null; panelOpen = false; render(); }
-    if (ok) {
-      if (dirtyCount() === 0 && typeof window.liveReload === "function") { await window.liveReload(); toast(`${ok}권을 라이브러리에 등록했어요 — 과목은 줄을 눌러 넣어요`); }
-      else toast(`${ok}권을 등록했어요 — 저장하지 않은 변경이 있어서 목록은 저장하고 새로고침하면 보여요`);
-    }
+    if (ok) await lbAfterAdd(`${ok}권을 라이브러리에 등록했어요 — 과목은 줄을 눌러 넣어요`);
   };
 }
 
@@ -203,9 +211,11 @@ function lbSeriesDialog() {
     const run = async (body, done, from, to) => {
       if (S.busy) return; S.busy = true; S.msg = "노션에 넣는 중…"; draw();
       try {
-        apply(await liveBookApi(Object.assign({ action: "edit-series" }, body)));
-        if (from && to) lbSeriesRenamed(from, to);
-        S.msg = ""; toast(done);
+        const res = await liveBookApi(Object.assign({ action: "edit-series" }, body));
+        apply(res);
+        /* 원본 검수 261123: 서버가 ok로 답해도 노션이 이름을 안 바꾼 때가 있다 — 돌아온 목록에 새 이름이 있을 때만 바뀐 것으로 */
+        if (from && to && !(res.series || []).some((o) => o.name === to)) { S.msg = "노션이 이름 바꾸기를 받지 않았어요 — 노션 라이브러리 DB [시리즈] 칸에서 직접 바꿔요"; }
+        else { if (from && to) lbSeriesRenamed(from, to); S.msg = ""; toast(done); }
       } catch (e) { S.msg = lbErr(e); }
       S.busy = false; draw(); try { render(); } catch (_) {}
     };
