@@ -3564,3 +3564,5 @@ html:root .lj .ljh,html:root .lj dl{font-size:12px}
 .top.two-row>.zone:not(.end){flex:1 0 100%}
 /* 261124 흔들림 점검: 창 머리 높이를 고른 줄 창(제목 · 부제 · 한 줄 정보 = 98)에 맞춤 — 줄을 고르기 전 현황 창(80)에서 처음 누르면 창 탭이 18px 내려가던 것(모든 메뉴) */
 .panel .phead{min-height:calc(var(--space-4) + var(--space-3) + 70px)}
+/* 261124 흔들림 점검: 수업 위 줄(오른쪽 묶음) 안 "자동 갱신 켜짐 · 마지막 받음" 글도 한 줄 — 월간 보기에서만 두 줄로 꺾여 위 줄이 10px 커졌음(실제 자료) */
+.top .zone .sync-at{white-space:nowrap}
