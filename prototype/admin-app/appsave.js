@@ -13,7 +13,7 @@ const appsSeaColor = (k) => (typeof k === "string" && Object.prototype.hasOwnPro
 const APPS_EV_MORE = true
 // 시간표 기간을 새 두 칸(`시작일` · `종료일`)으로 쓰기 — 서버 받음(노션서버 PR #463) + 원본에 칸 있음(노션완성 261118, 32줄 옮김). 운영 학원은 이 칸을 넣고 옮긴 뒤 이 판을 적용
 const APPS_BLOCK_2DATE = true
-const APPS_ORDER = ["areas", "glevels", "schools", "subjects", "teachers", "seasons", "books", "classes", "routines", "students", "enrolls", "blocks", "progress", "events"]
+const APPS_ORDER = ["areas", "glevels", "schools", "subjects", "teachers", "seasons", "books", "classes", "routines", "students", "enrolls", "blocks", "progress", "events", "tests", "exams", "grades"]
 // 루틴 저장: 서버 저장 층이 루틴(학원) DB를 받은 뒤 true(appdata.js APP_RT_ON과 함께)
 const APPS_RT_ON = true /* 노션서버 PR #478 — save create/update, 칸 5개만(그 밖은 400), 지우기 안 엶 */
 const APPS_MAX = 60 // app-api 한 요청 줄 수
@@ -280,6 +280,37 @@ const APPSAVE = {
 			"학년": X.byNames("glevels", r.grades, "일정 학년"), // 학년 이름 → 학년(학원) DB id
 		}),
 	},
+	// 시험(261123 시험 보강 — 서버 WRITE_DBS에 이미 열림, 칸 제한 없음). 노션에서 사람이 고치는 칸만 보낸다.
+	// 시험(학원): 연도 · 시험 구분 · 회차. 이름은 노션 규칙 "연도 시험"(노션 [편집] 시험 이름 자동화가 다시 계산해도 같은 값)
+	tests: {
+		db: "시험(학원) DB",
+		props: (r, X) => ({
+			"이름": X.str(r.name), "연도": X.str(r.year), "시험 구분": X.str(r.kind),
+			"지필고사": r.kind === "지필고사" ? X.str(r.term) : "", "모의고사(수능)": r.kind === "모의고사" ? X.str(r.mock) : "",
+		}),
+	},
+	// 시험정보(학원): 시험 · 학교 · 학년 · 과목 · 시험일 · 시험일정 · 시험 범위(단원목록). 이름은 노션 [편집] 시험정보 이름 자동화("시험 (학교 학년 영역)")가 만든다
+	exams: {
+		db: "시험정보(학원) DB",
+		props: (r, X) => appsPut({
+			"시험": X.rel(r.testId), "학교": X.byName("schools", r.school, "시험 학교"), "학년": X.byName("glevels", r.grade, "시험 학년"),
+			"과목": X.rels(r.subjectIds), "시험일": X.d(r.date), "시험일정": X.rel(r.periodId),
+			"단원목록": X.rels((r.unitIds || []).filter(appsIsId)), // 노션 단원 id만(예시 자료의 단원은 보내지 않음)
+		}),
+	},
+	// 성적(학원): 학생마다 한 줄 — 노션 [응시학생 등록](학생 자동화 [생성] 응시 성적)과 같은 칸(학생 · 시험정보 · 학년 · 학교) + 사람이 넣는 점수 · 등수 · 응시인원 · 등급.
+	// 학년 · 학교는 만들 때만(그 학생의 지금 학년 · 학교 — appsOff가 고치기에서 뺀다). 이름은 노션 [편집] 성적 이름 자동화가 만든다. 시험지 · 성적표 파일은 노션에서
+	grades: {
+		db: "성적(학원) DB",
+		props: (r, X) => {
+			const s = X.row("students", r.sid) || {}
+			return appsPut({
+				"학생": X.rel(r.sid), "시험정보": X.rel(r.examId),
+				"학년": X.byName("glevels", s.grade, "성적 학년"), "학교": X.byName("schools", s.school, "성적 학교"),
+				"점수": X.num(r.score), "등수": X.num(r.rank), "응시인원": X.num(r.total), "등급": X.str(r.level),
+			})
+		},
+	},
 }
 
 // ---------- 기준 값(불러온 직후 · 저장 직후) ----------
@@ -306,6 +337,9 @@ function appsOff(coll, row, isNew, send) {
 	if (coll === "events" && isNew) return "all" // 새 일정은 노션에서
 	// 실제 자료 모드에서 일정 쓰기 칸(P2e — live.js LIVE_EVW)이 꺼져 있으면 일정은 보내지 않음(261119 원본검수 Z2)
 	if (coll === "events" && typeof window !== "undefined" && window.LIVE && window.LIVE.loaded && !window.LIVE_EVW) return "all"
+	// 시험 쓰기 칸(P2x — live.js LIVE_EXW)이 꺼져 있으면 시험 · 시험정보 · 성적은 보내지 않음(일정 P2e와 같은 방식)
+	if ((coll === "tests" || coll === "exams" || coll === "grades") && typeof window !== "undefined" && window.LIVE && window.LIVE.loaded && !window.LIVE_EXW) return "all"
+	if (coll === "grades" && !isNew) { delete send["학년"]; delete send["학교"] } // 학년 · 학교는 만들 때만(노션 자동화가 학생 값을 한 번 복사하는 것과 같음)
 	if (coll === "progress") { if (row.mode === "개별" && row.studentId) return "all"; if (!isNew) delete send["진행상태"] }
 	if (coll === "enrolls" && !isNew) delete send["종료일"]
 	if (coll === "blocks" && !isNew && row.lessons) ["요일", "등원시간(HH:mm)", "하원시간(HH:mm)", "등록", "적용 기간", "시작일", "종료일", "이름"].forEach((k) => delete send[k])

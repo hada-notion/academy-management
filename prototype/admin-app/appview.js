@@ -236,28 +236,37 @@ const APPVIEW = {
 			return o
 		},
 	},
+	// 시험(학원) DB 한 줄 = 연도 · 구분 · 회차(예: 2026 2학기 기말고사). 시험정보가 이 줄을 고른다(261123 시험 보강 — 앱에서도 만듦)
+	tests: {
+		db: APPV_DB.exam,
+		row: (r, X, p = r.props) => ({
+			id: r.id, name: X.str(p["이름"]), year: X.str(p["연도"]), kind: X.str(p["시험 구분"]), term: X.str(p["지필고사"]), mock: X.str(p["모의고사(수능)"]), state: "saved",
+		}),
+		sort: (a, b) => String(b.year).localeCompare(String(a.year)) || String(a.name).localeCompare(String(b.name)),
+	},
 	// 시제품 시험 한 줄 = 학교 · 학년 · 과목별 시험 = 노션 시험정보. 이름은 연결한 시험(학원) DB 줄의 이름
 	exams: {
 		db: APPV_DB.examInfo,
 		row: (r, X, p = r.props) => {
-			const v = APPV_index(X), units = X.ids(p["단원목록"]).length
-			const totals = v.kids(v.gradesByExam, r.id, X.ids(p["성적"]), APPV_DB.grade).map((g) => APPV_n(g.props["응시인원"])).filter((n) => n != null)
+			const unitIds = X.ids(p["단원목록"])
 			return {
-				id: r.id, name: X.title(APPV_DB.exam, X.id1(p["시험"]), "이름") || X.str(p["이름"]),
+				id: r.id, name: X.title(APPV_DB.exam, X.id1(p["시험"]), "이름") || X.str(p["이름"]), testId: X.id1(p["시험"]),
 				school: X.title("학교(학원) DB", X.id1(p["학교"]), "이름"), grade: X.title("학년(학원) DB", X.id1(p["학년"]), "이름"),
 				subjectIds: X.ids(p["과목"]), date: X.d(p["시험일"]),
-				// 시험 범위 = 단원목록 관계(단원목록 DB는 복사본에 없음) → 개수만
-				units: units || p["단원목록#more"] ? `단원 ${p["단원목록#more"] ? "25개 넘음" : units + "개"}` : "",
-				total: totals.length ? Math.max(...totals) : "", state: "saved", periodId: X.id1(p["시험일정"]), _examId: X.id1(p["시험"]), _title: X.str(p["이름"]), _status: X.str(p["응시학생 현황"]),
+				// 시험 범위 = 단원목록 관계(단원목록 DB는 복사본에 없음) → id만. 이름은 시험 범위 고르기 창이 교재 단원(textbook-api units)에서 찾는다
+				unitIds, units: unitIds.length || p["단원목록#more"] ? `단원 ${p["단원목록#more"] ? "25개 넘음" : unitIds.length + "개"}` : "", _unitMore: !!p["단원목록#more"],
+				state: "saved", periodId: X.id1(p["시험일정"]), _examId: X.id1(p["시험"]), _title: X.str(p["이름"]), _status: X.str(p["응시학생 현황"]),
+				_err: X.str(p["마지막 오류"]), _live: X.str(p["실시간 처리 상태"]),
 			}
 		},
 		sort: (a, b) => String(a.date).localeCompare(String(b.date)),
 	},
+	// 성적 한 줄 = 학생 한 명(노션처럼 학생마다 응시인원 · 등급). 백분률은 노션 수식 값
 	grades: {
 		db: APPV_DB.grade,
 		row: (r, X, p = r.props) => {
-			const sc = APPV_n(p["점수"]), rk = APPV_n(p["등수"])
-			return { id: r.id, examId: X.id1(p["시험정보"]), sid: X.id1(p["학생"]), score: sc == null ? "" : sc, rank: rk == null ? "" : rk, state: "saved", _total: APPV_n(p["응시인원"]), _pct: p["백분률"] == null ? "" : p["백분률"], _level: X.str(p["등급"]) }
+			const sc = APPV_n(p["점수"]), rk = APPV_n(p["등수"]), tt = APPV_n(p["응시인원"])
+			return { id: r.id, examId: X.id1(p["시험정보"]), sid: X.id1(p["학생"]), score: sc == null ? "" : sc, rank: rk == null ? "" : rk, total: tt == null ? "" : tt, level: X.str(p["등급"]), state: "saved", _pct: p["백분률"] == null ? "" : p["백분률"], _paper: !!(Array.isArray(p["시험지"]) ? p["시험지"].length : p["시험지"]), _sheet: !!(Array.isArray(p["성적표"]) ? p["성적표"].length : p["성적표"]), _name: X.str(p["이름"]) }
 		},
 	},
 	// 시제품 학습 보고서 한 줄 = 클래스별 보고서 묶음 = 노션 알림톡 발송함(구분 주간 · 월간 · 수료 보고서). 학생 장(보고서 DB)은 out.rpStu

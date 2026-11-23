@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리 앱 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3C%2Fsvg%3E">
-<link rel="stylesheet" href="hada-tokens.css?v=737">
-<link rel="stylesheet" href="app.css?v=737">
-<link rel="stylesheet" href="pick.css?v=737">
-<link rel="stylesheet" href="field.css?v=737">
+<link rel="stylesheet" href="hada-tokens.css?v=738">
+<link rel="stylesheet" href="app.css?v=738">
+<link rel="stylesheet" href="pick.css?v=738">
+<link rel="stylesheet" href="field.css?v=738">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -20,7 +20,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=737"><script src="hada-rules.js?v=737"></script><script src="help.js?v=737"></script><script src="alim-preview.js?v=737"></script><script src="pick.js?v=737"></script><script src="field.js?v=737"></script><script src="panel.js?v=737"></script>
+<link rel="stylesheet" href="alim.css?v=738"><script src="hada-rules.js?v=738"></script><script src="help.js?v=738"></script><script src="alim-preview.js?v=738"></script><script src="pick.js?v=738"></script><script src="field.js?v=738"></script><script src="panel.js?v=738"></script>
 <script>
 "use strict";
 
@@ -65,7 +65,7 @@ const DAYS=["월","화","수","목","금","토","일"];
 const uid=(p)=>p+Math.random().toString(36).slice(2,8);
 const rnd=(()=>{let s=261111;return()=>{s=(s*1103515245+12345)%2147483648;return s/2147483648}})();
 const pick=a=>a[Math.floor(rnd()*a.length)];
-const XCOL=["progress","events","reports","tuition","bookfees","letters","schools","exams","costs","alims","recs","anotes","grades","series","glevels","charges","areas","etcs","files","routines"/* 261119 대표: 클래스 루틴 */];/* 185판: 표 부품만으로 생성한 화면들의 자료 */
+const XCOL=["progress","events","reports","tuition","bookfees","letters","schools","tests"/* 261123 시험(학원) 줄 — exams.js */,"exams","costs","alims","recs","anotes","grades","series","glevels","charges","areas","etcs","files","routines"/* 261119 대표: 클래스 루틴 */];/* 185판: 표 부품만으로 생성한 화면들의 자료 */
 const DB={seasons:[],teachers:[],classes:[],students:[],enrolls:[],blocks:[],subjects:[],books:[]};XCOL.forEach(k=>DB[k]=[]);
 function seed(){
   DB.seasons=[{id:"s1",name:"2026 2학기",start:"2026-09-01",end:"2026-12-19",state:"확정"},{id:"s2",name:"2026 겨울방학",start:"2026-12-20",end:"2027-02-28",state:"초안"}];
@@ -541,7 +541,7 @@ function commitKeepFocus(){const a=document.activeElement;let sel=null;if(a&&a.t
 const exElig=x=>DB.students.filter(s=>!s.del&&stuStat(s)==="on"&&x.grade&&s.grade===x.grade&&(!x.school||s.school===x.school));
 const exGr=x=>(DB.grades||[]).filter(g=>g.examId===x.id&&!g.del);
 const exTodo=x=>{const have=new Set(exGr(x).map(g=>g.sid));return exElig(x).filter(s=>!have.has(s.id))};
-const grPct=(g,x)=>g.rank&&+x.total?Math.round(g.rank/x.total*100):null;
+const grPct=(g,x)=>{if(typeof exPct==="function")return exPct(g);const t=+g.total||+x.total;return g.rank&&t?Math.round(g.rank/t*100):null};/* 261123 시험 보강: 응시인원은 성적 줄마다(노션 칸) — exams.js exPct */
 function exBox(x){const gs=exGr(x),todo=exTodo(x),sc=gs.filter(g=>g.score!==""&&g.score!=null);
   return `<div class="box"><h3>성적 <span class="hint">${gs.length}명</span>${HELP("[응시학생 등록] = 같은 학년(학교를 골랐으면 그 학교)의 재원 학생마다 성적 줄을 생성해요. 이미 있는 학생은 건드리지 않아요. 점수·등수를 넣으면 백분율 = 등수 ÷ 응시 인원 × 100([정보]의 응시 인원). 시험지·성적표 파일은 노션에서 올려요.")}<span class="sp"></span><button type="button" class="btn sm" data-act="exGen" ${todo.length?"":"disabled"} title="${todo.length?`응시학생 등록 — 아직 줄이 없는 학생 ${todo.length}명`:"응시학생 등록 — 등록할 학생이 없어요"}">${IC("plus","s")}응시학생 등록 ${todo.length}</button></h3><div class="valline exst">${!gs.length&&!todo.length?"이 학년 재원 학생이 없어요":todo.length?`미응시 ${todo.length}명`:"전원 응시"}${sc.length?` · 평균 ${Math.round(sc.reduce((a,g)=>a+ +g.score,0)/sc.length*10)/10}점 (입력 ${sc.length}/${gs.length}명)`:""}</div>${gs.length?`<div class="recst">${gs.map(g=>`<div class="recrow"><span class="nm">${esc(nmStu(g.sid))}${g.state==="draft"?' <i class="tdot"></i>':""}</span><input class="inp recsc" data-gs="${g.id}" data-gf="score" inputmode="decimal" autocomplete="off" value="${g.score??""}" placeholder="점수" aria-label="${esc(nmStu(g.sid))} 점수"><span class="hint">점</span><input class="inp recsc" data-gs="${g.id}" data-gf="rank" inputmode="numeric" autocomplete="off" value="${g.rank??""}" placeholder="등수" aria-label="${esc(nmStu(g.sid))} 등수"><span class="hint">등</span><span class="recpt" title="백분율 = 등수 ÷ 응시 인원 × 100">${grPct(g,x)==null?"—":grPct(g,x)+"%"}</span></div>`).join("")}</div>`:""}</div>`}
 /* 198판: 수업 창 [보고서] 탭 — 일일 보고서. 내용 순서 출석 → 학습 → 과제 검사 → 새 과제 → 평가 → 선생님 한마디. 제외: 출결 미입력·결석·연락처 없음. 보낸 학생은 건너뜀, [다시]로 풀면 다시 보냄 */
@@ -4962,6 +4962,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del&&!z._virtual).
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="finance.js?v=737"></script><script src="finlive.js?v=737"></script><script src="appdata.js?v=737"></script><script src="appsave.js?v=737"></script><script src="appview.js?v=737"></script><script src="livelesson.js?v=737"></script><script src="liveadmin.js?v=737"></script><script src="livebook.js?v=737"></script><script src="liveschool.js?v=737"></script><script src="live.js?v=737"></script><script src="liverefresh.js?v=737"></script><script src="livereq.js?v=737"></script>
+<script src="finance.js?v=738"></script><script src="finlive.js?v=738"></script><script src="exams.js?v=738"></script><script src="appdata.js?v=738"></script><script src="appsave.js?v=738"></script><script src="appview.js?v=738"></script><script src="livelesson.js?v=738"></script><script src="liveadmin.js?v=738"></script><script src="livebook.js?v=738"></script><script src="liveschool.js?v=738"></script><script src="live.js?v=738"></script><script src="liverefresh.js?v=738"></script><script src="livereq.js?v=738"></script>
 </body>
 </html>

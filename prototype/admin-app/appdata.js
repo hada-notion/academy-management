@@ -199,7 +199,7 @@ const APPMAP = {
 const APP_RT_ON = true /* 노션서버 PR #478(4db5fc9) 원본 배포 — app-api list 루틴(학원) DB */
 if (!APP_RT_ON) delete APPMAP.routines
 // 이번 범위 밖(다음 출시) · 노션 대응 없음 → 빈 배열(MAPPING.md)
-const APP_EMPTY = ["events", "reports", "tuition", "bookfees", "letters", "exams", "costs", "alims", "grades", "charges", "etcs", "files", "recs", "anotes", "series", "mk"]
+const APP_EMPTY = ["events", "reports", "tuition", "bookfees", "letters", "tests", "exams", "costs", "alims", "grades", "charges", "etcs", "files", "recs", "anotes", "series", "mk"]
 
 // ---------- 불러오기 ----------
 // app-api 호출 한 곳(261119, 노션서버 항목 100): Notion 한도(429)로 서버가 15초 넘게 기다릴 일이면 HTTP 503 { error, busy: true, retryAfterSec }로 끊는다.
