@@ -148,13 +148,20 @@
     if (typeof window.finRun === "function") { try { return window.finRun(kind, ctx, close); } catch (e) { toast(String(e.message || e)); return; } }
     close(); toast("노션에 쓰는 연결은 다음 단계에서 켜요 — 지금은 확인 창까지만 보여요");
   };
-  const dlg = (title, rows, note, okLabel, kind, ctx) => modal(`<h2>${title}</h2><div class="box">${rows.map(([k, v]) => `<div class="finrow"><span>${esc(k)}</span><b>${v}</b></div>`).join("")}</div><div class="note finnote">${note}</div><div class="actions"><span class="sp"></span><button class="btn" id="fnC">취소</button><button class="btn pri" id="fnO">${okLabel}</button></div>`, (m, close) => { m.querySelector("#fnC").onclick = close; m.querySelector("#fnO").onclick = () => run(kind, ctx, close); });
+  const dlg = (title, rows, note, okLabel, kind, ctx) => modal(`<h2>${title}</h2><div class="box">${rows.map(([k, v]) => `<div class="finrow"><span>${esc(k)}</span><b>${v}</b></div>`).join("")}</div><div class="note finnote">${note}</div><div class="actions"><span class="sp"></span><button class="btn" id="fnC">취소</button><button class="btn pri" id="fnO">${okLabel}</button></div>`, (m, close) => { m.querySelector("#fnC").onclick = close; const ok = m.querySelector("#fnO"); ok.onclick = () => {
+    /* 261124 앱 클릭 점검: 노션에 쓰는 동안(결제 기록은 10초 넘게 걸리기도) 단추가 그대로라 눌렸는지 모름 → 끝날 때까지 "노션에 쓰는 중…"으로 잠금 */
+    if (ok.disabled) return; ok.disabled = true; ok.textContent = "노션에 쓰는 중…";
+    const back = () => { if (ok.isConnected) { ok.disabled = false; ok.textContent = okLabel; } };
+    try { Promise.resolve(run(kind, ctx, close)).then(back, back); } catch (e) { back(); throw e; }
+  }; });
+  /* 클래스에 붙은 기타경비: 실제 자료는 클래스 쪽 `기타경비`(etcIds), 예시 자료는 기타경비 쪽 classIds — 둘 다 센다(261124 점검: 실제 자료에서 늘 0개로 보였음) */
+  const etcOf = (c) => { const ids = new Set(c.etcIds || []); return alive(DB.etcs).filter((e) => ids.has(e.id) || (e.classIds || []).includes(c.id)); };
   const act = {
     gen: (c) => { const n = enrolled(c).length, k = alive(DB.tuition).filter((t) => t.classId === c.id && t.month === nextM()).length; dlg(`월 수강료 생성 — ${esc(c.name)}`, [["수강료 기간", `${nextM()} <small>(비우면 다음 달)</small>`], ["해당월 수강료 생성 내역", `${mm(nextM())}월 ${k}/${n}`], ["월간 수업 총량", c.qty ? `${c.qty} ${esc(c.unit || "")}` : "비어 있음"]], "수강 중인 등록마다 수강료 줄을 노션에 만들어요. 안내문은 보내지 않아요. 월간 수업 총량이 비어 있으면 만들지 않아요.", "월 수강료 생성", "tuition-create", { classId: c.id }); },
     pay: (t) => { const amt = safe(() => tuFee(t), 0), etc = etcSum(t); dlg("결제", [["수강료", esc(tuName(t))], ["청구금액", WON(amt)], ["매달 기타경비 금액", etc ? WON(etc) : "—"], ["결제 기록 금액", WON(amt + etc)]], "노션 결제 기록 한 줄을 만들고 이 수강료에 이어요. 실제 결제나 알림톡은 하지 않아요. 일부만 받았으면 만든 뒤 결제 내역에서 금액을 고쳐요.", "결제 기록 만들기", "tuition-pay", { tuitionId: t.id }); },
     cpay: (x) => dlg("청구서 결제", [["청구 줄", esc(`${stuName(x.studentId)} · ${x.name || x.item || ""}`)], ["금액", WON(x.amount)]], "청구 결제에 결제 한 줄을 남겨요. 실제 결제나 알림톡은 하지 않아요.", "결제 기록 만들기", "charge-pay", { chargeId: x.id }),
     bill: (c) => { const es = enrolled(c), miss = es.filter((e) => !alive(DB.bookfees).some((b) => b.studentId === e.studentId && b.classId === c.id)).length; dlg(`교재비 생성 — ${esc(c.name)}`, [["수강 중 등록", es.length + "명"], ["청구서 없는 학생", miss + "명"]], "수강 중인 등록 가운데 청구서가 없는 학생마다 한 장씩 만들어요. 교재를 배부하지는 않고, 안내문도 보내지 않아요.", "교재비 생성", "bill-create", { classId: c.id }); },
-    etc: (c) => dlg(`기타경비 청구 — ${esc(c.name)}`, [["수강 중 등록", enrolled(c).length + "명"], ["붙은 기타경비", alive(DB.etcs).filter((e) => (e.classIds || []).includes(c.id)).length + "개"]], "한 번 받기로 한 기타경비를 학생마다 청구서로 만들어요. 같은 달 · 같은 기타경비는 다시 눌러도 두 번 만들어지지 않아요. 안내문은 보내지 않아요.", "기타경비 청구", "etc-charge", { classId: c.id }),
+    etc: (c) => dlg(`기타경비 청구 — ${esc(c.name)}`, [["수강 중 등록", enrolled(c).length + "명"], ["붙은 기타경비", etcOf(c).length + "개"]], "한 번 받기로 한 기타경비를 학생마다 청구서로 만들어요. 같은 달 · 같은 기타경비는 다시 눌러도 두 번 만들어지지 않아요. 안내문은 보내지 않아요.", "기타경비 청구", "etc-charge", { classId: c.id }),
   };
   document.addEventListener("click", (e) => {
     const b = e.target.closest && e.target.closest("[data-fin]"); if (!b || b.disabled) return;
