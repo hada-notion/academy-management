@@ -209,7 +209,8 @@ export async function handleAdminSecurity(req:Request):Promise<Response> {
       if(password===b.current_password)throw new SecurityError(400,'현재 비밀번호와 다른 비밀번호를 입력해 주세요.');
       if(password.replace(/\D/g,'')===t.phone||password===t.phone)throw new SecurityError(400,'휴대폰 번호와 다른 비밀번호를 정해 주세요.');
       const r=await teacherRpc('change',{session_hash:sessionHash,expected_version:t.version,password_hash:await hashPassword(password)});
-      return result({ok:true,changed_at:r.changed_at,message:'바꿨어요. 새 비밀번호로 다시 로그인해요.'});
+      // 앱이 새 비밀번호로 바로 다시 로그인할 수 있게 자기 아이디(번호)를 돌려준다(이 세션의 강사 본인 것만).
+      return result({ok:true,changed_at:r.changed_at,phone:t.phone,message:'바꿨어요. 새 비밀번호로 다시 로그인해요.'});
     }
     if(b.action==='teacher-logout'){if(session)await teacherRpc('logout',{session_hash:await sha256(session)});return result({ok:true});}
     // 원장만: 강사 앱 계정 목록 · 켜기 · 끄기 · 첫 비밀번호로 되돌리기. 원장 세션(초기 비밀번호 상태 아님)만 — 강사 세션은 profile에서 401.

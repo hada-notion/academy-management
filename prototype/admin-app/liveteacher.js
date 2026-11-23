@@ -68,6 +68,38 @@
     });
   };
 
+  /* 로그인한 강사가 비밀번호 바꾸기(대표 261123 "비밀번호 수정은 어디서"): 현재 · 새 · 확인 → teacher-change → 새 비밀번호로 다시 로그인(서버가 이 강사 세션을 모두 끊으므로).
+     값은 보낸 바로 뒤 지운다. 잊었으면 원장이 [첫 비밀번호로 되돌리기] */
+  window.liveTeacherChangePw = function () {
+    const c = window.LIVE; if (!c) return;
+    modal(`<h2>비밀번호 바꾸기</h2><div class="box"><p class="hint">8자 이상, 휴대폰 번호와 다르게 정해요. 바꾸면 다른 기기의 로그인은 풀려요.</p>`
+      + `<label class="lt-l" for="ltc0">현재 비밀번호</label><input id="ltc0" type="password" autocomplete="current-password">`
+      + `<label class="lt-l" for="ltc1">새 비밀번호</label><input id="ltc1" type="password" autocomplete="new-password">`
+      + `<label class="lt-l" for="ltc2">새 비밀번호 확인</label><input id="ltc2" type="password" autocomplete="new-password"><p class="hint lt-err" id="lterr" role="alert"></p></div>`
+      + `<div class="actions"><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">비밀번호 저장</button></div>`, (m, close) => {
+      const a0 = m.querySelector("#ltc0"), a = m.querySelector("#ltc1"), b = m.querySelector("#ltc2"), err = m.querySelector("#lterr"), ok = m.querySelector("#co");
+      const wipe = () => { a0.value = ""; a.value = ""; b.value = ""; };
+      m.querySelector("#cc").onclick = () => { wipe(); close(); };
+      const submit = async () => {
+        err.textContent = "";
+        if (!a0.value || !a.value) { err.textContent = "현재 비밀번호와 새 비밀번호를 넣어요"; return; }
+        if (a.value !== b.value) { err.textContent = "새 비밀번호와 확인 값이 달라요"; return; }
+        ok.disabled = true;
+        try {
+          const out = await sec(c.url, { action: "teacher-change", current_password: a0.value, new_password: a.value }, c.session);
+          const again = out.phone ? await sec(c.url, { action: "teacher-login", phone: out.phone, password: a.value }).catch(() => null) : null;
+          wipe(); close();
+          try { HadaAdminAuth.saveSession(again && again.session ? again.session : ""); } catch (_) {}
+          toast(again && again.session ? "비밀번호를 바꿨어요" : "비밀번호를 바꿨어요 — 새 비밀번호로 다시 로그인해요");
+          setTimeout(() => location.reload(), 600);
+        } catch (e) { err.textContent = e.message; } finally { ok.disabled = false; }
+      };
+      ok.onclick = submit;
+      [a0, a, b].forEach((i) => { i.onkeydown = (e) => { if (e.key === "Enter") submit(); }; });
+      setTimeout(() => a0.focus(), 0);
+    });
+  };
+
   /* ---------- 강사 화면: 메뉴 거름 ---------- */
   /* 화면 이름 → 노션 메뉴 이름(hada-admin.html NOTION 표와 같은 이름 · 메뉴가 아닌 하위 화면은 그 메뉴) */
   const SCREEN_MENU = () => (typeof NOTION !== "undefined" ? NOTION : {});
@@ -136,8 +168,9 @@
     const side = document.getElementById("side");
     if (side && (!chip || chip.parentElement !== side || side.firstElementChild !== chip)) {
       if (chip) chip.remove();
-      side.insertAdjacentHTML("afterbegin", `<div class="lt-who" id="ltWho"><span class="tag b">강사</span><b>${esc(t.name || "")}</b><span class="sp"></span><button type="button" class="btn" id="ltOut">로그아웃</button></div>`);
+      side.insertAdjacentHTML("afterbegin", `<div class="lt-who" id="ltWho"><span class="tag b">강사</span><b>${esc(t.name || "")}</b><span class="lt-acts"><button type="button" class="btn" id="ltPw">비밀번호 바꾸기</button><button type="button" class="btn" id="ltOut">로그아웃</button></span></div>`);
       chip = document.getElementById("ltWho");
+      chip.querySelector("#ltPw").onclick = () => window.liveTeacherChangePw();
       chip.querySelector("#ltOut").onclick = async () => {
         const c = window.LIVE; try { if (c) await sec(c.url, { action: "teacher-logout" }, c.session); } catch (_) {}
         try { HadaAdminAuth.saveSession(""); } catch (_) {}
@@ -223,7 +256,7 @@
   const css = document.createElement("style");
   css.textContent = ".lt-l{display:block;margin:var(--space-2) 0 var(--space-1);font-size:var(--text-label);color:var(--muted)}.lt-err{color:var(--danger-ink);min-height:1.4em}"
     + ".lt-kv{display:grid;grid-template-columns:auto 1fr;gap:var(--space-1) var(--space-3);margin:var(--space-2) 0;font-size:var(--text-label)}.lt-kv dt{color:var(--muted)}.lt-kv dd{margin:0}"
-    + ".lt-vo #saveAll .num{display:none}.lt-bad{color:var(--danger-ink);font-weight:600}.lt-row{display:flex;gap:var(--space-2);flex-wrap:wrap;margin:var(--space-2) 0}.lt-who{display:flex;align-items:center;gap:var(--space-2);margin:0 0 var(--space-3);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);background:var(--surface);font-size:var(--text-label)}.lt-who .sp{flex:1}.live-teacher .side .tour{display:none}"
+    + ".lt-vo #saveAll .num{display:none}.lt-bad{color:var(--danger-ink);font-weight:600}.lt-row{display:flex;gap:var(--space-2);flex-wrap:wrap;margin:var(--space-2) 0}.lt-who{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);margin:0 0 var(--space-3);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);background:var(--surface);font-size:var(--text-label)}.lt-who .sp{flex:1}.lt-who .lt-acts{display:flex;gap:var(--space-2);width:100%}.lt-who .lt-acts .btn{flex:1}.live-teacher .side .tour{display:none}"
     + ".lt-empty{max-width:var(--form-max,560px);margin:var(--space-6,48px) auto}";
   document.head.appendChild(css);
 })();

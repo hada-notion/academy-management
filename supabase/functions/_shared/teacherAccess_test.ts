@@ -352,3 +352,15 @@ Deno.test("teacher app-api: 댓글허용만인 메뉴 — 읽기 · 고르기 �
 	await api(a, { action: "run", name: "sync-copy" }, log); const sy = log.filter((x) => x.startsWith("sync:")).pop()!
 	assert(sy.includes("학생(학원) DB") && !sy.includes("과목(학원) DB"), sy)
 }))
+
+Deno.test("teacher: 첫 로그인 뒤에도 비밀번호 바꾸기 — 현재 비밀번호 확인, 자기 번호만 돌려줌, 바꾸면 옛 비밀번호 · 옛 세션 끊김", () => withServer(async (srv) => {
+	const s = await teacherKey(TA, "01012345678", "teacher-pass-a")
+	eq((await change("wrong-pass-0", "teacher-pass-a2", s)).status, 401)
+	const r = await change("teacher-pass-a", "teacher-pass-a2", s)
+	eq([r.status, r.body.phone], [200, "01012345678"])
+	eq(((await access("app-api", s)) as Response).status, 401)
+	eq((await login("01012345678", "teacher-pass-a")).status, 401)
+	eq((await login("01012345678", "teacher-pass-a2")).status, 200)
+	eq((await change("teacher-pass-a2", "x", "")).status, 401) // 세션 없이는 못 바꿈
+	eq(srv.accounts.get(TA)!.must_change, false)
+}))
