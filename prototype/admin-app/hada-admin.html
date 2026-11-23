@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리 앱 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3C%2Fsvg%3E">
-<link rel="stylesheet" href="hada-tokens.css?v=721">
-<link rel="stylesheet" href="app.css?v=721">
-<link rel="stylesheet" href="pick.css?v=721">
-<link rel="stylesheet" href="field.css?v=721">
+<link rel="stylesheet" href="hada-tokens.css?v=722">
+<link rel="stylesheet" href="app.css?v=722">
+<link rel="stylesheet" href="pick.css?v=722">
+<link rel="stylesheet" href="field.css?v=722">
 </head>
 <body>
 <div id="narrow"><div><b>PC나 태블릿에서 열어 주세요.</b><br><span class="hint">가로 768px 이상 (휴대폰 화면은 다음 업데이트)</span></div></div>
@@ -20,7 +20,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=721"><script src="hada-rules.js?v=721"></script><script src="help.js?v=721"></script><script src="alim-preview.js?v=721"></script><script src="pick.js?v=721"></script><script src="field.js?v=721"></script><script src="panel.js?v=721"></script>
+<link rel="stylesheet" href="alim.css?v=722"><script src="hada-rules.js?v=722"></script><script src="help.js?v=722"></script><script src="alim-preview.js?v=722"></script><script src="pick.js?v=722"></script><script src="field.js?v=722"></script><script src="panel.js?v=722"></script>
 <script>
 "use strict";
 
@@ -644,7 +644,7 @@ const noticeAsk=list=>list.length?`<div class="ask2">${list.map(n=>`<label class
 function lSaveDialog(k,after){const nm=lName(k),c0=lChanges(k)||{att:[],other:[]},c={att:c0.att,other:[...c0.other,...lxText(k)]};const ns=lNotices([k]);
   if(!ns.length){const n=lSaveOne(k);render();toast(`저장했어요 — 노션 ${n}건 (시제품: 노션에 쓰지 않음)`);if(after)after();return}
   modal(`<h2>저장</h2><div class="box"><ul class="savelist"><li><span class="dotc" style="background:${nm.bar}"></span>${esc(nm.name)} ${mdw(nm.d)} <span class="sl-t">${[c.att.length?`출결 ${c.att.length}명`:"",...c.other].filter(Boolean).join(" · ")}</span></li></ul>${noticeAsk(ns)}</div>
-  <div class="actions"><span class="sp"></span><button class="btn" id="lsC">취소</button><button class="btn pri" id="lsO">${IC("save","s")}수업 저장</button></div>`,(m,close)=>{m.querySelector("#lsC").onclick=close;m.querySelector("#lsO").onclick=()=>{close();const n=lSaveOne(k);render();toast(`저장했어요 — 노션 ${n}건 (시제품: 노션에 쓰지 않음)`);if(after)after()}})}
+  <div class="actions"><span class="sp"></span><button class="btn" id="lsC">취소</button><button class="btn pri" id="lsO">${IC("save","s")}${k.startsWith("mk:")?"보강 저장":"수업 저장"}</button></div>`,(m,close)=>{m.querySelector("#lsC").onclick=close;m.querySelector("#lsO").onclick=()=>{close();const n=lSaveOne(k);render();toast(`저장했어요 — 노션 ${n}건 (시제품: 노션에 쓰지 않음)`);if(after)after()}})}
 function lSaveOne(k){const n=lCount(k)+lxRows(k).length;lxSave(k);LDIRTY.delete(k);return n}
 function lName(k){if(k.startsWith("mk:")){const m=DB.mk.find(x=>"mk:"+x.id===k);return m?{name:mkName(m),d:m.d,bar:mkCol(m).bar}:null}const [bid,d]=k.split("|");const b=byId(DB.blocks,bid);return b?{name:(cls(b.classId)||{}).name,d,bar:classBar(cls(b.classId))}:null}
 // 다른 수업으로 옮길 때 저장 안 한 것 묻기
@@ -3913,7 +3913,7 @@ const ADJ_WHY=["형제 할인","장기 등록 할인","소개 할인","직원 �
 function enAdjs(e){if(!e.adjs)e.adjs=e.discount?[{amt:-e.discount,why:"형제 할인"}]:[];return e.adjs}
 const enAdjSum=e=>enAdjs(e).reduce((a,x)=>a+(+x.amt||0),0);
 const enTimes=e=>DB.blocks.filter(b=>b.regs.includes(e.id)&&b.seasonId===seaToday()).sort((a,b)=>a.day-b.day||a.start-b.start).map(b=>DAYS[b.day]+" "+fmt(b.start));
-const gtPlain=z=>{z=String(z==null?"":z);return z.startsWith("!")?z.slice(1):z.startsWith("@g:")?z.slice(3):z.startsWith("@c:")?z.slice(3).split("|").join(", "):z.startsWith("@s:")?z.slice(3).split("|")[1]||"":z.startsWith("@p:")?z.slice(3)+"%":z.startsWith("@m:")?z.slice(3).split("|").slice(1).join(" "):z};
+const gtPlain=z=>{z=String(z==null?"":z);return z.startsWith("@h:")?z.slice(3).replace(/<[^>]*>/g,"").replace(/&nbsp;/g," ").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&amp;/g,"&").replace(/\s+/g," ").trim():z.startsWith("!")?z.slice(1):z.startsWith("@g:")?z.slice(3):z.startsWith("@c:")?z.slice(3).split("|").join(", "):z.startsWith("@s:")?z.slice(3).split("|")[1]||"":z.startsWith("@p:")?z.slice(3)+"%":z.startsWith("@m:")?z.slice(3).split("|").slice(1).join(" "):z};
 /* 같은 값이 이어지는 줄의 칸 합치기(등록: 같은 학생). 표 편집 중에는 합치지 않는다 */
 function gtMerge(L,rows,st){/* 265판: 표 편집 중에도 합친 칸 유지 */if(!L.merge||!L.mergeBy)return null;const out=[];let i=0;while(i<rows.length){let j=i+1;const k=L.mergeBy(rows[i]);while(j<rows.length&&L.mergeBy(rows[j])===k)j++;out.push({span:j-i});for(let x=i+1;x<j;x++)out.push({skip:true});i=j}return out}
 function enAtt(e){const out=[];const bl=DB.blocks.filter(b=>b.regs.includes(e.id)&&b.lessons);for(let i=-41;i<=0;i++){const d=dPlus(TODAY,i);bl.forEach(b=>{if(dow(d)!==b.day||!lessonMade(b,d))return;if((e.start&&e.start>d)||(e.end&&e.end<d))return;out.push({d,b,a:attOf(b,d,e.studentId)})})}return out}
@@ -4430,7 +4430,8 @@ function gtXlMenu(btn,L,rows,st){if(ddPop){ddClose();return}const pop=document.c
   placePop(pop,btn.getBoundingClientRect(),260);pop._place=()=>placePop(pop,btn.getBoundingClientRect(),260);
   pop.querySelectorAll("[data-x]").forEach(o=>o.onmousedown=e=>{e.preventDefault();ddClose();if(o.dataset.x==="vis")gtXlDown(L,rows,cond);else if(o.dataset.x==="down")gtXlDown(L,all,"");else gtXlUp(L)})}
 /* 엑셀·인쇄에 나가는 열 = 표 열 정의 + 켜 둔 숨긴 열(창의 칸에서 생긴 열) */
-function outCols(L){return [...L.cols,...gtVis(L).filter(c=>c.hid).map(c=>c.src)]}
+/* 261123: 이미 L.cols에 있는 칸(숨김 표시가 붙은 칸 포함)은 다시 붙이지 않음 — 엑셀 · 인쇄에 뒤쪽 열이 두 번 나오던 것 */
+function outCols(L){const have=new Set(L.cols.map(c=>c[0]));return [...L.cols,...gtVis(L).filter(c=>c.hid&&c.src&&!have.has(c.src[0])).map(c=>c.src)]}
 async function gtXlDown(L,list,cond){const OC=outCols(L);const heads=OC.map(c=>c[0]);const data=list.map(r=>OC.map(c=>gtTxt(c[1](r))));const name=`${L.coll}-${TODAY}${cond?"-filtered":""}`;
   const sub=`내려받은 날 ${md(TODAY)} · 필터 조건: ${cond||"전체"} · ${list.length}${L.unit||"개"}`;let X;
   try{X=await xlLib()}catch(e){dlFile(name+".csv",[csvCell(`하다 학원관리 · ${L.title} · `+sub),"",heads.map(csvCell).join(",")].concat(data.map(r=>r.map(csvCell).join(","))).join("\n"));toast("엑셀 꾸밈을 못 불러와 CSV로 받았어요");return}
@@ -4455,12 +4456,12 @@ function gtXlUp(L){modal(`<h2>엑셀로 한번에 올리기 — ${L.title}${HELP
   <div class="hint" id="xlR"></div><div class="actions"><span class="sp"></span><button class="btn" id="xlC">닫기</button></div>`,(m,close)=>{
     m.querySelector("#xlC").onclick=close;m.querySelector("#xlT").onclick=()=>gtXlTemplate(L);
     m.querySelector("#xlF").onchange=async e=>{const f=e.target.files[0];if(!f)return;let rows;try{rows=await gtReadFile(f,L)}catch(err){m.querySelector("#xlR").textContent=err.message==="xls"?"옛 엑셀(.xls)은 못 읽어요. 엑셀에서 .xlsx로 저장해 올려 주세요.":"파일을 읽지 못했어요. 양식 파일인지 확인해 주세요.";return}
-      const F=L.upFields||L.fields||[];const nm=c=>String(c||"").trim().replace(/\s*\*$/,"");const hi=rows.findIndex(r=>r.some(c=>nm(c)===F[0][1]));let col=F.map((f,i)=>i);if(hi>=0){const h=rows[hi].map(nm);/* 256판: 옛 칸 이름도 받음(클래스 과목 → 영역) */const AL={"영역":["과목"]};col=F.map(f=>{let j=h.indexOf(f[1]);if(j<0)(AL[f[1]]||[]).some(a=>(j=h.indexOf(a))>=0);return j});rows=rows.slice(hi+1)}
+      const F=L.upFields||L.fields||[];/* 261123: 칸 이름 비교는 설명(괄호 뒤)과 * 를 떼고 — 양식 칸 이름 "학교(짧게: 운양중)" · "학년 (예: 중2)"와 내려받은 명단 머리 "학교" · "학년"이 같은 칸으로 읽힘 */const nm=c=>String(c||"").trim().replace(/\s*\*$/,"").replace(/\s*[(（].*$/,"").trim();const hi=rows.findIndex(r=>r.some(c=>nm(c)===nm(F[0][1])));let col=F.map((f,i)=>i),lost=[];if(hi>=0){const h=rows[hi].map(nm);/* 256판: 옛 칸 이름도 받음(클래스 과목 → 영역) */const AL={"영역":["과목"]};col=F.map(f=>{let j=h.indexOf(nm(f[1]));if(j<0)(AL[nm(f[1])]||[]).some(a=>(j=h.indexOf(a))>=0);if(j<0)lost.push(nm(f[1]));return j});rows=rows.slice(hi+1)}
       let n=0,skip=0,bad=0,dup=0,rej=0;rows.forEach(c=>{const bad0=bad;const first=(col[0]>=0?c[col[0]]||"":"").trim();if(!first){skip++;return}const x=(L.upBlank||L.blank)();markDirty(L,x);
         F.forEach((f,i)=>{const j=col[i];if(j<0||c[j]===undefined)return;let v=String(c[j]).trim();if(v==="")return;
           if(f[3]==="date"){const d=dParse(v,false);if(!d){bad++;return}v=d}else if(["won","cnt","num"].includes(f[3])){v=+v.replace(/[^\d.-]/g,"")||0}else if(f[2]==="teachers"){const tt=DB.teachers.find(y=>y.name===v);if(!tt){bad++;return}v=tt.id}else if(Array.isArray(f[2])&&!f[2].includes(v)){bad++;return}else if(typeof f[2]==="function"){const it=f[2](x).find(y=>(y.t||y)===v||(y.v||y)===v);if(!it){bad++;return}v=it.v||it}else if(f[3]==="days"){v=daysArr(v).join(",")}
           x[f[0]]=v});if(L.upCheck){const why=L.upCheck(x);if(why==="dup"){bad=bad0;dup++;return}if(why){bad=bad0;rej++;return}}DB[L.coll].unshift(x);n++});
-      close();commit();toast(`${n}줄을 올렸어요(작성 중)${bad?` · 형식이 맞지 않은 칸 ${bad}개는 비워 뒀어요`:""}${rej?` · 꼭 있어야 할 칸이 틀린 ${rej}줄은 넣지 않았어요`:""}${dup?` · 이미 있는 ${dup}줄 건너뜀`:""}${skip?` · 빈 줄 ${skip}줄 건너뜀`:""} — 위 [저장]을 누르면 반영돼요`)}})}
+      close();commit();toast(`${n}줄을 올렸어요(작성 중)${bad?` · 형식이 맞지 않은 칸 ${bad}개는 비워 뒀어요`:""}${rej?` · 꼭 있어야 할 칸이 틀린 ${rej}줄은 넣지 않았어요`:""}${dup?` · 이미 있는 ${dup}줄 건너뜀`:""}${skip?` · 빈 줄 ${skip}줄 건너뜀`:""}${lost.length?` · 파일에서 못 찾은 칸 ${josa(lost.join("·"),"은","는")} 비워 뒀어요`:""} — 위 [저장]을 누르면 반영돼요`)}})}
 async function gtReadFile(f,L){if(/\.xlsx$/i.test(f.name)){const X=await xlLib();const wb=new X.Workbook();await wb.xlsx.load(await f.arrayBuffer());const ws=wb.getWorksheet(L.title+" 입력")||wb.worksheets[wb.worksheets.length>1?1:0];
     const rows=[];ws.eachRow({includeEmpty:false},r=>{const a=[];for(let i=1;i<=Math.max(r.cellCount,(L.upFields||L.fields||[]).length);i++){const c=r.getCell(i);a.push(c.text==null?"":String(c.text))}rows.push(a)});return rows}
   if(/\.xls$/i.test(f.name))throw new Error("xls");return csvParse((await f.text()).replace(/^\ufeff/,""))}
