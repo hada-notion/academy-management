@@ -1,22 +1,23 @@
 /* 실제 자료 모드의 관리자 설정(261123 관리자 설정 실제 연결): 시제품 카드(토스트만)를 서버에 붙인다.
-   지금 관리자 설정 화면(저장소 맨 위 admin_settings.html · admin_settings.js)과 같은 서버 동작을 같은 값으로 부른다 — 그 화면은 그대로 둔다(비상구).
+   옛 관리자 설정 웹 화면과 같은 서버 동작을 같은 값으로 부른다(그 웹 화면은 261123에 없앰 — 모두 이 앱에서).
    - 로그인 상태 · 로그아웃 · 관리자 비밀번호 바꾸기: admin-security (profile · logout · change)
    - 예시 데이터 비우기: clear-example-data (state · status · start · stop) — 워크스페이스 이름을 그대로 넣어야 시작, 한 번 끝나면 서버가 잠근다
    - 서버 · 노션 연결, 노션 연동 구독 상태: admin-security status + app-api admin-status(_shared/notionSubscriptionStatus.ts, 서버 표에서 읽기만)
-   - 웹훅 키 교체(옛 버튼 방식) · 보안 설정 현황은 옮기지 않고 관리자 설정 화면으로 가는 단추로 남긴다.
+   - 웹훅 키 교체 · 교체 현황(옛 버튼 방식)은 옮기지 않는다 — 원본은 노션 연동 구독 방식. 옛 방식 학원은 구독으로 바꾼 뒤 이 판을 받는다(docs/updates/v2.8.0.md 운영 적용 순서).
+   - 첫 설치의 초기 비밀번호(0000)는 live.js 로그인 창이 바로 새 비밀번호를 정하게 한다(서버 scope "settings" 로그인 → change).
    비밀번호 칸 값은 보낸 바로 뒤 지우고, 어디에도 적지 않는다(콘솔 · 저장소 · 주소). 실제 자료 모드가 아니면(LIVE 없음) 시제품 카드 그대로. */
 (function () {
   const S = { at: 0, loading: false, server: null, profile: null, admin: null, clear: null, err: {} };
   const root = () => String(window.LIVE.url).replace(/\/+$/, "");
   const session = () => (window.LIVE && window.LIVE.session) || "";
-  /* 지금 관리자 설정 화면의 request()와 같은 부름(admin-security, x-admin-key = 관리자 세션) */
+  /* 옛 관리자 설정 화면의 request()와 같은 부름(admin-security, x-admin-key = 관리자 세션) */
   async function sec(action, values = {}, timeout = 20000) {
     const res = await fetch(root() + "/functions/v1/admin-security", { method: "POST", headers: { "Content-Type": "application/json", ...(session() ? { "x-admin-key": session() } : {}) }, body: JSON.stringify({ action, ...values }), cache: "no-store", signal: AbortSignal.timeout(timeout) });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) { const e = new Error(data.error || "인증 서버 응답을 확인하지 못했어요"); e.status = res.status; throw e; }
     return data;
   }
-  /* 지금 관리자 설정 화면의 clearRequest()와 같은 부름(clear-example-data) */
+  /* 옛 관리자 설정 화면의 clearRequest()와 같은 부름(clear-example-data) */
   async function clr(action, values = {}, timeout = 90000) {
     const res = await fetch(root() + "/functions/v1/clear-example-data", { method: "POST", headers: { "Content-Type": "application/json", "x-admin-key": session() }, body: JSON.stringify({ action, ...values }), cache: "no-store", signal: AbortSignal.timeout(timeout) });
     const data = await res.json().catch(() => ({}));
@@ -48,7 +49,7 @@
   }
   const redraw = () => { try { if (typeof activeTab !== "undefined" && activeTab && activeTab.screen === "admin") render(); } catch (_) {} };
 
-  /* 비우기 상태 한 줄(지금 관리자 설정 화면 clearSummary와 같은 말) → [글, 시작할 수 있나] */
+  /* 비우기 상태 한 줄(옛 관리자 설정 화면 clearSummary와 같은 말) → [글, 시작할 수 있나] */
   function clearLine(s) {
     const f = s && s.flag;
     if (f && f.state === "done") return [`${dt(f.finishedAt || s.updatedAt)}에 비웠어요(${(f.done || 0).toLocaleString()}건) — 이 기능은 잠겼어요`, false, "g"];
@@ -78,7 +79,6 @@
     if (sub.rejectedAt) rows.push(["거절한 요청", `<span class="tag w">${esc(dt(sub.rejectedAt))}</span> <span class="hint">서명이 맞지 않아 받지 않았어요 — 구독을 다시 만들었다면 확인 토큰을 새로 넣어요</span>`, ""]);
     return rows;
   }
-  const oldKeyRow = () => ["옛 웹훅 키", '<span class="hint">노션 버튼 · 자동화가 키를 붙여 서버를 부르던 옛 방식 — 교체는 관리자 설정 화면에서 해요</span>', btn("web", "관리자 설정 화면", "ext")];
 
   /* 화면: 시안 a · b · c(주소 &admv=a|b|c, 검수용) — 노션 연동 구독을 어디에 둘지. 기본 = b(따로 카드) */
   const VARIANT = () => ((/[?&]admv=([abc])(&|$)/.exec(location.search) || [])[1] || "b");
@@ -98,9 +98,9 @@
     const clearBox = { icon: "trash", title: "예시 데이터 비우기", help: "새 학원이 처음 설치할 때 한 번만 써요. 고른 DB의 예시 페이지를 노션 휴지통으로 보내고, 끝나면 잠겨요.", rows: [clearRow] };
     const va = VARIANT();
     let boxes;
-    if (va === "a") boxes = [loginBox, { icon: "lock", title: "보안", help: pwHelp, rows: [pwRow, ["노션 연동", sub ? (() => { const l = subLine(sub); return `${tag(l[1], l[0])} <span class="hint">${esc(l[2])}</span>`; })() : S.err.admin ? errCell("admin") : loadingCell, btn("web", "옛 웹훅 키", "ext")]] }, clearBox, { icon: "activity", title: "연결", rows: [srvRow, notionRow, syncRow] }];
-    else if (va === "c") boxes = [loginBox, { icon: "lock", title: "보안", help: pwHelp, rows: [pwRow] }, clearBox, { icon: "activity", title: "연결", help: subHelp, rows: [srvRow, notionRow, ...subRows(sub).map((r, i) => [i ? r[0] : "연동 구독", r[1], r[2]]), syncRow] }, { icon: "settings", title: "옛 방식", rows: [oldKeyRow()] }];
-    else boxes = [loginBox, { icon: "lock", title: "보안", help: pwHelp, rows: [pwRow] }, { icon: "activity", title: "연결", rows: [srvRow, notionRow, syncRow] }, { icon: "link", title: "노션 연동 구독", help: subHelp, rows: [...subRows(sub), oldKeyRow()] }, clearBox];
+    if (va === "a") boxes = [loginBox, { icon: "lock", title: "보안", help: pwHelp, rows: [pwRow, ["노션 연동", sub ? (() => { const l = subLine(sub); return `${tag(l[1], l[0])} <span class="hint">${esc(l[2])}</span>`; })() : S.err.admin ? errCell("admin") : loadingCell, ""]] }, clearBox, { icon: "activity", title: "연결", rows: [srvRow, notionRow, syncRow] }];
+    else if (va === "c") boxes = [loginBox, { icon: "lock", title: "보안", help: pwHelp, rows: [pwRow] }, clearBox, { icon: "activity", title: "연결", help: subHelp, rows: [srvRow, notionRow, ...subRows(sub).map((r, i) => [i ? r[0] : "연동 구독", r[1], r[2]]), syncRow] }];
+    else boxes = [loginBox, { icon: "lock", title: "보안", help: pwHelp, rows: [pwRow] }, { icon: "activity", title: "연결", rows: [srvRow, notionRow, syncRow] }, { icon: "link", title: "노션 연동 구독", help: subHelp, rows: subRows(sub) }, clearBox];
     cardScreen(v, { title: "관리자 설정", scr: "admin", help: "보안과 설치에 쓰는 화면이에요. 원장만 써요.", boxes });
   };
 
@@ -112,7 +112,7 @@
     modal(`<h2>다시 로그인해요</h2><div class="box">${esc(msg)}<div class="warnbox">노션에 아직 보내지 않은 줄이 ${n}개 있어요. 다시 로그인하면 그 줄은 사라져요.</div></div><div class="actions"><span class="sp"></span><button class="btn pri" id="lago">다시 로그인</button></div>`, (m) => { m.querySelector("#lago").onclick = go; });
   }
 
-  /* 비밀번호 바꾸기 — 지금 관리자 설정 화면과 같은 change(현재 · 새 · 확인). 끝나면 모든 로그인이 풀린다 */
+  /* 비밀번호 바꾸기 — 옛 관리자 설정 화면과 같은 change(현재 · 새 · 확인). 끝나면 모든 로그인이 풀린다 */
   function pwDialog() {
     modal(`<h2>관리자 비밀번호 바꾸기</h2><div class="box"><label class="lab" for="lapw0">현재 비밀번호</label><input class="inp" id="lapw0" type="password" autocomplete="current-password" maxlength="128"><label class="lab" for="lapw1">새 비밀번호</label><input class="inp" id="lapw1" type="password" autocomplete="new-password" minlength="8" maxlength="128"><p class="hint">앞뒤 공백 없이 8~128자. 초기 비밀번호 0000은 쓸 수 없어요.</p><label class="lab" for="lapw2">새 비밀번호 확인</label><input class="inp" id="lapw2" type="password" autocomplete="new-password" minlength="8" maxlength="128"><div class="warnbox">바꾸면 키오스크 · 법정 서류 · 학교 검색 · 수업 관리 · 이 앱의 로그인이 모두 풀리고 새 비밀번호로 다시 로그인해요. 노션 버튼 · 자동화는 그대로예요.</div><p class="err" id="laerr" hidden></p></div><div class="actions"><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">비밀번호 바꾸기</button></div>`, (m, close) => {
       const f = (id) => m.querySelector(id), err = f("#laerr"), ok = f("#co");
@@ -135,7 +135,7 @@
     });
   }
 
-  /* 예시 데이터 비우기 — 지금 관리자 설정 화면과 같은 순서: status(DB별 건수) → 고르기 → 워크스페이스 이름 그대로 → start → 5초마다 state */
+  /* 예시 데이터 비우기 — 옛 관리자 설정 화면과 같은 순서: status(DB별 건수) → 고르기 → 워크스페이스 이름 그대로 → start → 5초마다 state */
   let poll = null;
   const stopPoll = () => { if (poll) { clearInterval(poll); poll = null; } };
   const shortDb = (n) => String(n).replace("(학원) DB", "");
@@ -195,7 +195,6 @@
     if (!b || !(window.LIVE && window.LIVE.loaded)) return;
     const a = b.dataset.ladm;
     if (a === "refresh") { S.server = S.profile = S.admin = S.clear = null; S.at = 0; render(); return load(); }
-    if (a === "web") return openWebPage("admin");
     if (a === "pw") return pwDialog();
     if (a === "clear") return clearDialog(b);
     if (a === "relogin") return relogin("다시 로그인해요");

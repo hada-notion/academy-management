@@ -259,7 +259,11 @@ window.liveModeFor = function (search, hostname, protocol) {
       const submit = async () => {
         err.textContent = "";
         try { session = await HadaAdminAuth.login(cfg.url, pw.value); HadaAdminAuth.saveSession(session); close(); go(); }
-        catch (e) { err.textContent = e.message; pw.select(); }
+        catch (e) {
+          /* 첫 설치(261123): 초기 비밀번호는 서버가 설정용(scope "settings") 로그인만 받는다 — 옛 관리자 설정 웹 화면 대신 여기서 바로 새 비밀번호를 정한다 */
+          if (/초기 비밀번호/.test(e.message || "")) { const first = pw.value; pw.value = ""; close(); liveFirstPassword(cfg, first, (s) => { session = s; HadaAdminAuth.saveSession(s); go(); }, ask); return; }
+          err.textContent = e.message; pw.select();
+        }
       };
       m.querySelector("#co").onclick = submit;
       pw.onkeydown = (e) => { if (e.key === "Enter") submit(); };
@@ -271,6 +275,37 @@ window.liveModeFor = function (search, hostname, protocol) {
   setTimeout(start, 0);
 })();
 
+/* 첫 설치 초기 비밀번호 바꾸기(261123, 옛 관리자 설정 웹 화면에서 옮김): 초기 비밀번호로 설정용 세션(scope "settings")을 받아 change → 새 비밀번호로 다시 로그인.
+   비밀번호 값은 보낸 바로 뒤 지우고 어디에도 적지 않는다. 서버 동작(admin-security login · change)은 그대로 */
+function liveFirstPassword(cfg, first, done, back) {
+  const call = async (body, key) => {
+    const res = await fetch(String(cfg.url).replace(/\/+$/, "") + "/functions/v1/admin-security", { method: "POST", headers: { "Content-Type": "application/json", ...(key ? { "x-admin-key": key } : {}) }, body: JSON.stringify(body), cache: "no-store" });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(out.error || "관리자 로그인 서버에 연결하지 못했어요");
+    return out;
+  };
+  modal(`<h2>새 관리자 비밀번호 정하기</h2><div class="box"><p class="hint">처음 설치한 초기 비밀번호예요. 새 비밀번호를 정하면 이 앱 · 키오스크 · 법정 서류 · 학교 검색 · 수업 관리에서 그 비밀번호로 로그인해요.</p><label class="lab" for="lvnp1">새 비밀번호</label><input class="inp" id="lvnp1" type="password" autocomplete="new-password" minlength="8" maxlength="128"><p class="hint">앞뒤 공백 없이 8~128자. 0000은 쓸 수 없어요.</p><label class="lab" for="lvnp2">새 비밀번호 확인</label><input class="inp" id="lvnp2" type="password" autocomplete="new-password" minlength="8" maxlength="128"><p class="hint" id="lvnerr"></p></div><div class="actions"><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">비밀번호 정하기</button></div>`, (m, close) => {
+    const a = m.querySelector("#lvnp1"), b = m.querySelector("#lvnp2"), err = m.querySelector("#lvnerr"), ok = m.querySelector("#co");
+    const wipe = () => { a.value = ""; b.value = ""; };
+    m.querySelector("#cc").onclick = () => { wipe(); first = ""; close(); back(); };
+    const submit = async () => {
+      err.textContent = "";
+      const nw = a.value;
+      if (!nw) return (err.textContent = "새 비밀번호를 넣어요");
+      if (nw !== b.value) return (err.textContent = "새 비밀번호와 확인 값이 달라요");
+      ok.disabled = true;
+      try {
+        const s1 = await call({ action: "login", password: first, scope: "settings" });
+        await call({ action: "change", current_password: first, new_password: nw }, s1.session);
+        const s2 = await HadaAdminAuth.login(cfg.url, nw);
+        wipe(); first = ""; close(); toast("새 비밀번호로 바꿨어요"); done(s2);
+      } catch (e) { err.textContent = e.message; } finally { ok.disabled = false; }
+    };
+    ok.onclick = submit;
+    [a, b].forEach((i) => { i.onkeydown = (e) => { if (e.key === "Enter") submit(); }; });
+    setTimeout(() => a.focus(), 0);
+  });
+}
 /* 실제 자료 모드의 [저장]: 작성 중인 줄(입력 범위 12개 묶음)을 app-api save로 노션에 쓴다. 저장 창의 [저장]이 부른다(LIVE일 때만).
    성공한 줄은 저장됨으로, 실패 · 충돌 줄은 작성 중으로 남기고 이유를 보여 준다. 지우기는 보내지 않는다(노션에서 직접). */
 async function liveApi(conn, body) {
@@ -309,7 +344,7 @@ function liveHooks() {
   /* 노션 선택지로 바꾼 목록에는 앱에서 새 값을 만들지 않는다(노션에서 선택지를 먼저 만든다) */
   optAdd = (k, t) => {
     if (window.LIVE && window.LIVE_OPTS_PENDING) { toast0("노션 선택지를 불러오는 중이에요 — 잠시 뒤 다시 만들어요"); return null; }
-    if (window.LIVE && window.LIVE_OPTS && window.LIVE_OPTS[k]) { toast0(`'${String(t || "").trim()}'은(는) 노션 [${window.LIVE_OPTS[k]}] 선택지에 없어요 — 노션에서 선택지를 먼저 만들어요`); return null; }
+    if (window.LIVE && window.LIVE_OPTS && window.LIVE_OPTS[k]) { toast0(`'${String(t || "").trim()}'은(는) 노션 [${window.LIVE_OPTS[k]}] 선택지에 없어요 — ${k === "series" ? "라이브러리 [시리즈 관리]에서 먼저 만들어요" : "노션에서 선택지를 먼저 만들어요"}`); return null; }
     return optAdd0(k, t);
   };
   const pending = () => { try { return appSaveCollect(DB).changes.length; } catch (_) { return 0; } };
@@ -334,9 +369,9 @@ function liveHooks() {
   setTimeout(() => { try { liveMenuPages().catch(() => {}); } catch (_) {} }, 2500);
   /* 라이브러리(교재) 입력(261119 대표): [+] = 새 교재 등록 창(서버 textbook-api register-custom — 교재 + 단원목록을 노션에), 줄·표 편집은 저장의 update. 프로그램은 노션에서 */
   try {
-    bookFindOpen = () => liveBookRegisterOpen("교재");
-    LISTS.books_b.add = LISTS.books.add = () => liveBookRegisterOpen("교재"); /* 261120 대표: [교재] 탭 [+] = 구분 교재로 채워 열림(창 첫 칸에서 바꿀 수 있음). [프로그램] 탭 [+]은 서버가 프로그램 등록 동작을 알려 주면 liveBookRegisterOpen("프로그램")으로 연결 */
-    LISTS.books_b.addLabel = "교재 등록";
+    /* 261123 대표 "모든걸 앱에서": [교재] 탭 [+] = 책 찾기(검색 · 교보문고 · 직접 등록), 단원 고치기 · 시리즈 관리 — livebook.js(옛 라이브러리 웹 화면에서 옮김) */
+    if (typeof liveBookHooks === "function") liveBookHooks();
+    else { bookFindOpen = () => liveBookRegisterOpen("교재"); LISTS.books_b.add = LISTS.books.add = () => liveBookRegisterOpen("교재"); LISTS.books_b.addLabel = "교재 등록"; }
     LISTS.books_p.add = () => liveBookRegisterOpen("프로그램"); /* 261120 서버 #530: register-custom kind:"프로그램"(ISBN · 단원 없이 가능, 가격 = 재료비, 분량 = 총 차시) */
     LISTS.books_p.addLabel = "프로그램 등록"; LISTS.books_p.blank = null;
   } catch (_) {}

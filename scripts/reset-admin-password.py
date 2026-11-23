@@ -3,8 +3,8 @@
 
 Deploy-manager tool. Reads SB_URL and SB_SERVICE_ROLE_KEY for THAT academy's Supabase project from
 the environment (never pass them as arguments, never commit them). All admin/kiosk sessions are
-logged out. The owner then logs in to admin_settings.html with 0000 and must set a new password
-before any kiosk or document page accepts it. Notion webhook keys are not changed.
+logged out. The owner then logs in to the admin app (prototype/admin-app/hada-admin.html) with 0000,
+which asks for a new password right away, before any kiosk or document page accepts it. Notion webhook keys are not changed.
 """
 import argparse, json, os, urllib.request
 
