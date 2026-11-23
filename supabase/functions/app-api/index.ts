@@ -7,10 +7,14 @@
 //   { action: "admin-status" } — 관리자 설정(261123): 노션 연결(최상위 제목 · 마지막 동기화) + 노션 연동 구독 상태(_shared/notionSubscriptionStatus.ts)
 //   { action: "save", changes: [{ op: "create"|"update", db, id?, tmp?, edited?, props }] } — (항목 75) 입력 범위 DB만 Notion에 먼저 쓰고
 //       복사본에 반영. 줄마다 성공 · 실패 · 충돌을 돌려준다. 지우기는 없다. 로직은 _shared/appSave.ts.
+//   { action: "record-payment", requestId, tuitionId, amount?, date?, method?, memo? } — (재무 서버 261123) 노션 수강료 [결제]와 같은
+//       결제 줄(매출)을 만들고 수강료를 다시 읽어 결제 관리 · 결제금액을 돌려준다. 같은 requestId는 한 번만. kind "지출"은 name · amount.
+//       로직은 _shared/appPayment.ts. 실제 결제 · 발송은 없음.
 // 읽기 로직은 _shared/appCopy.ts.
 import { CORS_HEADERS, requireAdminKey } from "../_shared/adminShared.ts"
 import { APP_DBS, isAppDb, listApp, statusApp, warmSources, syncCopy, lastSyncedAt, rootTitle, NotionBusyError } from "../_shared/appCopy.ts"
 import { checkChanges, saveChanges, runGenerateClasses, writeOptions, SaveError } from "../_shared/appSave.ts"
+import { checkPaymentInput, recordPayment } from "../_shared/appPayment.ts"
 import { appChanges, checkChangesInput, ChangesInputError } from "../_shared/appChanges.ts"
 import { subscriptionStatus, healthOf } from "../_shared/notionSubscriptionStatus.ts"
 
@@ -57,6 +61,7 @@ Deno.serve(async (req: Request) => {
       const results = await saveChanges(checkChanges(body.changes))
       return json({ ok: results.every((r) => r.ok), results })
     }
+    if (body?.action === "record-payment") return json(await recordPayment(checkPaymentInput(body)))
     // (항목 76) 시간표마다 다음 수업 한 번을 기존 수업 생성 큐에 넣는다. timetableIds가 없으면 시간표 전부.
     if (body?.action === "run") {
       // [동기화] 버튼: 노션 → 사본을 지금 한 번 맞춘다(바뀐 줄만, dbs 없으면 전체 앱 DB). full:true는 dbs 1~3개를 통째로 대조(노션에서 지운 줄도 뺌).
@@ -70,7 +75,7 @@ Deno.serve(async (req: Request) => {
     }
     // 쓸 수 있는 DB의 고르기 칸 선택지(앱이 Notion에 있는 값만 고르게).
     if (body?.action === "options") return json({ ok: true, dbs: await writeOptions() })
-    return json({ error: 'action은 "list", "changes", "status", "admin-status", "save", "run", "options" 중 하나여야 합니다.' }, 400)
+    return json({ error: 'action은 "list", "changes", "status", "admin-status", "save", "record-payment", "run", "options" 중 하나여야 합니다.' }, 400)
   } catch (err) {
     if (err instanceof SaveError) return json({ error: err.message }, err.status)
     if (err instanceof ChangesInputError) return json({ error: err.message }, 400)
