@@ -17,13 +17,14 @@ const lrLive = () => !!(window.LIVE_MODE && window.LIVE && window.LIVE.loaded &&
 /* 요청 값: 동작 ID(서버가 아직 안 받음) = 대기 · 🔄 처리 중 · ✅ 완료 · ⚠️ 실패. 요청 결과 = 서버가 쓴 한 줄(이유 · 걸린 초) */
 function lrReq(r) {
   const p = (r && r.props) || {}, v = String(p["요청"] == null ? "" : p["요청"]).trim();
-  const msg = String(p["요청 결과"] == null ? "" : p["요청 결과"]).trim().replace(/^(🔄|✅|⚠️)?\s*(처리 중|완료|실패)\s*·?\s*/u, "").replace(/\s*·?\s*(\d{1,2}\/\d{1,2}\s+)?\d{1,2}:\d{2}(:\d{2})?\s*$/, ""); /* 앞머리 상태는 알약이 보이고, 글 끝 시각은 lrReqHtml이 한 번만 붙임 */
+  const msg = String(p["요청 결과"] == null ? "" : p["요청 결과"]).trim().replace(/^(🔄|✅|⚠️)?\s*(처리 중|완료|실패)\s*·?\s*/u, "").replace(/\s*·\s*\d{1,2}\/\d{1,2}\s+\d{1,2}:\d{2}(:\d{2})?(?=\s*·|\s*$)/, "").replace(/\s*·?\s*(\d{1,2}\/\d{1,2}\s+)?\d{1,2}:\d{2}(:\d{2})?\s*$/, ""); /* 앞머리 상태는 알약이 보이고, 글 끝 시각은 lrReqHtml이 한 번만 붙임 */
   if (!v) return null;
   const age = Date.now() - (Date.parse(r.notion_edited_at || "") || Date.now());
   if (/^🔄|처리 중/.test(v)) return { k: age > LR_SLOW_MS ? "slow" : "run", label: age > LR_SLOW_MS ? "오래 걸려요" : "처리 중", msg, age };
   if (/^✅|완료/.test(v)) return { k: "ok", label: "완료", msg, age };
   if (/^⚠️|실패/.test(v)) return { k: "fail", label: "실패", msg: msg || "이유가 적혀 있지 않아요", age };
-  return { k: age > LR_SLOW_MS ? "slow" : "wait", label: age > LR_SLOW_MS ? "오래 걸려요" : "대기", msg: msg || "서버가 받기를 기다려요", age, action: v };
+  /* 대기(요청 = 동작 ID): 요청 결과 칸에는 앞 요청의 글이 남아 있으므로 쓰지 않는다(261123 막힌단추 사용성 — "대기 · 교재 생성 1.6초"처럼 보였음) */
+  return { k: age > LR_SLOW_MS ? "slow" : "wait", label: age > LR_SLOW_MS ? "오래 걸려요" : "대기", msg: (window.LQ_ACT_NAME && window.LQ_ACT_NAME[v] ? window.LQ_ACT_NAME[v] + " — " : "") + "서버가 받기를 기다려요", age, action: v };
 }
 function lrRawRow(id) {
   const R = window.APP_RAW; if (!R || !id) return null;
