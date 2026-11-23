@@ -194,6 +194,8 @@ export async function writeOptions(): Promise<Record<string, Record<string, stri
 }
 
 // ---------- 평평한 값 → Notion 속성 ----------
+// 노션 칸 이름을 바꾼 것: 옛 이름 → 새 이름(그 DB에 옛 이름이 없고 새 이름이 있을 때만). 261124 대표 "1안": 일정 진행상태 → 완료
+const PROP_RENAMED: Record<string, string> = { "진행상태": "완료" }
 const rt = (v: unknown) => {
 	const s = v == null ? "" : String(v)
 	return s ? [{ type: "text", text: { content: s.slice(0, 2000) } }] : []
@@ -204,7 +206,9 @@ const isId = (s: unknown) => typeof s === "string" && /^[0-9a-f-]{32,36}$/i.test
 // resolve: "tmp:…" → 앞에서 만든 페이지 id. 잘못된 값은 throw(그 줄만 실패).
 export function toNotionProps(props: Record<string, unknown>, schema: Schema, resolve: (v: string) => string = (v) => v): Record<string, unknown> {
 	const out: Record<string, unknown> = {}
-	for (const [name, value] of Object.entries(props ?? {})) {
+	for (const [name0, value] of Object.entries(props ?? {})) {
+		// 노션에서 칸 이름을 바꾼 뒤 앱 사본에 옛 이름이 남아 있으면 새 이름으로(PROP_RENAMED)
+		const name = !schema[name0] && PROP_RENAMED[name0] && schema[PROP_RENAMED[name0]] ? PROP_RENAMED[name0] : name0
 		const def = schema[name]
 		if (!def) throw new SaveError(400, `없는 칸: ${name}`)
 		if (SKIP_PROPS.has(name)) throw new SaveError(400, `앱에서 쓰지 않는 칸: ${name}`)

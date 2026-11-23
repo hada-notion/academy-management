@@ -215,6 +215,12 @@ Deno.test("일정(홈 할 일 261124): 진행상태·담당자 받고, 그것만
   assertEquals([eventAffectsReport(EV, { 진행상태: "완료" }), eventAffectsReport(EV, { 담당자: [] }), eventAffectsReport(EV, { 진행상태: "완료", 날짜: "2026-05-01" })], [false, false, true])
 })
 
+Deno.test("칸 이름 바꾼 뒤(261124): 옛 이름 진행상태로 와도 새 이름 완료로 쓰고, 옛 이름이 있는 DB는 그대로", () => {
+  const sch = { 완료: { type: "status" } } as never
+  assertEquals(toNotionProps({ 진행상태: "완료" }, sch), { 완료: { status: { name: "완료" } } })
+  assertEquals(toNotionProps({ 진행상태: "완료" }, { 진행상태: { type: "status" } } as never), { 진행상태: { status: { name: "완료" } } })
+})
+
 // ---------- 라이브러리(교재) 입력: 새 교재는 textbook-api, 고치기는 save + 라이브러리 복사본 맞추기 ----------
 Deno.test("라이브러리: 새 교재는 save로 만들지 않고, 고치면 라이브러리 복사본 맞추기를 부른다", async () => {
   const LIB = "라이브러리(학원) DB"
