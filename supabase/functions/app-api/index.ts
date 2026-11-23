@@ -3,12 +3,14 @@
 // body:
 //   { action: "list", db: "학생(학원) DB", since?: ISO } — 그 DB 줄 전체(since가 있으면 그 뒤 동기화된 줄만)
 //   { action: "status" } — DB마다 줄 수 · 마지막 동기화(앱 자료 상태)
+//   { action: "admin-status" } — 관리자 설정(261123): 노션 연결(최상위 제목 · 마지막 동기화) + 노션 연동 구독 상태(_shared/notionSubscriptionStatus.ts)
 //   { action: "save", changes: [{ op: "create"|"update", db, id?, tmp?, edited?, props }] } — (항목 75) 입력 범위 DB만 Notion에 먼저 쓰고
 //       복사본에 반영. 줄마다 성공 · 실패 · 충돌을 돌려준다. 지우기는 없다. 로직은 _shared/appSave.ts.
 // 읽기 로직은 _shared/appCopy.ts.
 import { CORS_HEADERS, requireAdminKey } from "../_shared/adminShared.ts"
 import { APP_DBS, isAppDb, listApp, statusApp, warmSources, syncCopy, lastSyncedAt, rootTitle, NotionBusyError } from "../_shared/appCopy.ts"
 import { checkChanges, saveChanges, runGenerateClasses, writeOptions, SaveError } from "../_shared/appSave.ts"
+import { subscriptionStatus } from "../_shared/notionSubscriptionStatus.ts"
 
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store" } })
@@ -37,6 +39,11 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, db: body.db, at, rows })
     }
     if (body?.action === "status") { const dbs = await statusApp(); const [syncedAt, title] = await Promise.all([lastSyncedAt(), rootTitle()]); return json({ ok: true, dbs, syncedAt, rootTitle: title }) }
+    // 관리자 설정 칸(261123): 노션 연결 확인 + 연동 구독 상태. 노션 연결은 최상위 페이지 제목을 실제로 읽어 본다(못 읽으면 null).
+    if (body?.action === "admin-status") {
+      const [title, syncedAt, subscription] = await Promise.all([rootTitle(), lastSyncedAt(), subscriptionStatus().catch(() => null)])
+      return json({ ok: true, notion: { ok: !!title, rootTitle: title }, syncedAt, subscription })
+    }
     if (body?.action === "save") {
       const results = await saveChanges(checkChanges(body.changes))
       return json({ ok: results.every((r) => r.ok), results })
@@ -54,7 +61,7 @@ Deno.serve(async (req: Request) => {
     }
     // 쓸 수 있는 DB의 고르기 칸 선택지(앱이 Notion에 있는 값만 고르게).
     if (body?.action === "options") return json({ ok: true, dbs: await writeOptions() })
-    return json({ error: 'action은 "list", "status", "save", "run", "options" 중 하나여야 합니다.' }, 400)
+    return json({ error: 'action은 "list", "status", "admin-status", "save", "run", "options" 중 하나여야 합니다.' }, 400)
   } catch (err) {
     if (err instanceof SaveError) return json({ error: err.message }, err.status)
     // (v2.8.0 항목 100) Notion 한도(429)로 DB 찾기가 오래 걸릴 때: 503 + busy — 앱은 안내 띠를 띄우고 retryAfterSec 뒤 한 번 다시 부른다.
