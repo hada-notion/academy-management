@@ -357,12 +357,13 @@ export async function updatePageProperties(pageId: string, properties: Record<st
 	return res.json()
 }
 
-export async function createPage(dataSourceId: string, properties: Record<string, unknown>) {
+// extra: 본문 밖 페이지 값(예: icon) — 노션 템플릿이 붙이던 아이콘을 서버가 만들 때 같게(재무 서버 261123 결제 💵).
+export async function createPage(dataSourceId: string, properties: Record<string, unknown>, extra: Record<string, unknown> = {}) {
 	// 400(속성 이름 오류)은 Notion이 페이지를 만들지 않은 경우라 예전 이름으로 다시 보내도 두 번 생기지 않는다.
 	const res = await sendWithPropAliases(properties, (props) => fetchWithRetry(`${NOTION_API}/pages`, {
 		method: "POST",
 		headers: notionHeaders(),
-		body: JSON.stringify({ parent: { data_source_id: dataSourceId }, properties: props }),
+		body: JSON.stringify({ ...extra, parent: { data_source_id: dataSourceId }, properties: props }),
 	}, 5, { retryAmbiguous: false }))
 	if (!res.ok) {
 		throw new Error(`create page in ${dataSourceId} failed: ${res.status} ${await res.text()}`)
