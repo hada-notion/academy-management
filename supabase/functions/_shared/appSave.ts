@@ -21,6 +21,8 @@ import { textbookSources } from "./textbookSearch.ts"
 import { syncBookCopy } from "./libraryCopy.ts"
 import { runInBackground } from "./backgroundTask.ts"
 import { getCurrentAdminKey } from "./adminShared.ts"
+import { routeById } from "./webhookRoutes.ts"
+import { REQUEST_PROP } from "./notionRequests.ts"
 
 export const WRITE_DBS = [
 	"강사(학원) DB", "학생(학원) DB", "클래스(학원) DB", "시즌(학원) DB", "시간표(학원) DB", "등록(학원) DB", "진도관리(학원) DB",
@@ -28,10 +30,12 @@ export const WRITE_DBS = [
 	// (2.8, 담당 261118) 일정 공개 화면: 앱이 쓰는 칸만(EVENT_PROPS). 잠긴 줄의 날짜는 서버도 거절.
 	"일정(학원) DB",
 	// (2.8, 담당 261119 연결 준비) 시험 화면 입력: 시험 · 시험정보 · 성적(노션에서 줄을 직접 고치는 것과 같음 — 보내기 없음).
-	// 재무(수강료 · 결제 · 청구서 · 청구 결제)는 아직 읽기만 — [결제] 버튼 단계를 서버 동작으로 옮긴 뒤(N-18·19).
 	"시험(학원) DB", "시험정보(학원) DB", "성적(학원) DB",
 	// (2.8, 담당 261119) 앱 클래스 창 [루틴] 탭: 앱이 쓰는 칸만(ROUTINE_PROPS). 지우기는 열지 않음 — 쉬기로 끄거나 노션 [삭제].
 	"루틴(학원) DB",
+	// (2.8, 재무 서버 261123) 재무 입력: 노션에서 사람이 고치는 칸만(FINANCE_PROPS). 결제 · 청구 결제 DB는 save로 열지 않는다 —
+	// 결제는 노션 수강료 [결제]와 같은 일을 하는 서버 동작(app-api "record-payment", _shared/appPayment.ts)으로만 만든다.
+	"수강료(학원) DB", "기타경비(학원) DB", "청구서(학원) DB", "청구 항목(학원) DB",
 ] as const
 export type WriteDb = typeof WRITE_DBS[number]
 export const isWriteDb = (v: unknown): v is WriteDb => typeof v === "string" && (WRITE_DBS as readonly string[]).includes(v)
@@ -44,12 +48,42 @@ export const EVENT_PROPS = ["이름", "날짜", "세부 구분", "기록(내부�
 export const ROUTINE_DB = "루틴(학원) DB"
 // 루틴 체크 관계는 받지 않는다(체크는 수업 [루틴 체크 생성]이 만든다).
 export const ROUTINE_PROPS = ["이름", "클래스", "순서", "설명", "쉬기"] as const
-const ONLY_PROPS: Partial<Record<WriteDb, ReadonlySet<string>>> = { [EVENT_DB]: new Set(EVENT_PROPS), [ROUTINE_DB]: new Set(ROUTINE_PROPS) }
-export function checkAllowedProps(db: WriteDb, props: Record<string, unknown>): void {
+// (재무 서버 261123) 재무 DB는 노션에서 사람이 고치는 칸만 받는다. 수식 · 롤업(청구금액 · 결제 관리 · 반별 생성 · 결제금액 등)은
+// 칸 형식 검사(toNotionProps)도 거절하지만, 여기서 칸 이름으로 한 번 더 좁힌다. 수강료 · 청구 항목 줄은 서버 동작이 만든다(만들기 거절).
+export const FINANCE_PROPS = {
+	"수강료(학원) DB": ["청구금액 조정", "청구금액 조정 사유", "메모(내부용)", "실제 수업량"],
+	"기타경비(학원) DB": ["이름", "기타경비 항목", "받는 방식", "신고 금액", "클래스"],
+	// 청구서: 새 청구서(이름 · 등록) → [담기]는 `요청` = cart-progress-book. 안내문 전송(cart-notice)은 받지 않음(아래 요청 검사).
+	"청구서(학원) DB": ["이름", "등록", "요청"],
+	"청구 항목(학원) DB": ["교재비 수기입력", "배부일"],
+} as const
+const ONLY_PROPS: Partial<Record<WriteDb, ReadonlySet<string>>> = {
+	[EVENT_DB]: new Set(EVENT_PROPS), [ROUTINE_DB]: new Set(ROUTINE_PROPS),
+	...Object.fromEntries(Object.entries(FINANCE_PROPS).map(([db, p]) => [db, new Set<string>(p)])),
+}
+export const NO_CREATE_DBS: readonly string[] = ["수강료(학원) DB", "청구 항목(학원) DB"]
+export function checkAllowedProps(db: WriteDb, props: Record<string, unknown>, op: "create" | "update" = "update"): void {
+	if (op === "create" && NO_CREATE_DBS.includes(db)) throw new SaveError(400, `${db} 줄은 앱에서 만들지 않아요 — 클래스 [월 수강료 생성] · 청구서 [담기] 같은 동작으로 만들어요.`)
+	checkRequestProp(db, props, op)
 	const only = ONLY_PROPS[db]
 	if (!only) return
 	const bad = Object.keys(props ?? {}).filter((k) => !only.has(k))
 	if (bad.length) throw new SaveError(400, `앱에서 ${db}에 쓰지 않는 칸: ${bad.join(", ")}`)
+}
+
+// ---------- `요청` 칸(앱 → 서버 동작) ----------
+// (재무 서버 261123) 앱이 줄의 `요청` 칸에 동작 ID를 쓰면 노션 버튼을 누른 것과 같은 길(notion-events → notionRequests.ts)로 처리된다.
+// 앱이 쓸 수 있는 값: 그 DB의 동작 ID(webhookRoutes.ts)만, 고치기(update)만. 학부모에게 나가는 안내문 전송 둘과 삭제 동작은 받지 않는다
+// (발송은 노션에서 담당자가, 삭제는 앱에서 하지 않는 규칙 — DELETE_FORBIDDEN_MESSAGE). 처리 중 · 완료 · 실패는 서버만 쓴다.
+export const APP_REQUEST_DENY: readonly string[] = ["tuition-notice", "cart-notice"]
+export function checkRequestProp(db: string, props: Record<string, unknown>, op: "create" | "update"): void {
+	if (!props || !Object.prototype.hasOwnProperty.call(props, REQUEST_PROP)) return
+	const v = String(props[REQUEST_PROP] ?? "").trim()
+	if (op !== "update") throw new SaveError(400, "요청은 이미 있는 줄에만 써요(만들기와 함께 쓰지 않음).")
+	const route = routeById(v)
+	if (!route || `${route.db} DB` !== db) throw new SaveError(400, `이 줄에서 할 수 없는 요청: ${v || "(빈 값)"}`)
+	if (APP_REQUEST_DENY.includes(v)) throw new SaveError(400, "안내문 전송은 앱에서 하지 않아요 — 노션에서 담당자가 직접 눌러요.")
+	if (v.endsWith("-delete")) throw new SaveError(400, DELETE_FORBIDDEN_MESSAGE)
 }
 // 앱이 고친 일정의 학부모 리포트 맞추기: sync-report-cache를 force로 부른다(건너뛰기 없이, 응답을 기다리지 않음).
 export const LIBRARY_DB = "라이브러리(학원) DB"
@@ -281,7 +315,7 @@ export async function saveChanges(changes: Change[]): Promise<ChangeResult[]> {
 			if (!ds) throw new SaveError(404, `Notion에서 ${c.db}를 찾지 못했습니다.`)
 			if (c.op === "delete") { out.push(await timed("지우기", () => deleteOne(i, c))); console.log(`[appSave] ${c.db} delete ${Date.now() - t0}ms (${steps.join(" ")})`); continue }
 			const cprops = c.props ?? {}
-			checkAllowedProps(c.db as WriteDb, cprops)
+			checkAllowedProps(c.db as WriteDb, cprops, c.op)
 			// 새 교재는 단원목록까지 만들어야 하므로 textbook-api(register-custom)로만 만든다 — 이 길로는 만들지 않는다.
 			if (c.db === LIBRARY_DB && c.op === "create") throw new SaveError(400, "교재 추가는 라이브러리 등록(textbook-api register-custom)으로 하세요. 단원목록까지 함께 만들어요.")
 			const props = toNotionProps(cprops, await timed("칸형식", () => dataSourceSchema(ds)), resolve)
