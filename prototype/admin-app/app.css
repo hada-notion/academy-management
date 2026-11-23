@@ -90,9 +90,9 @@ select.chip{appearance:auto;padding-right:var(--space-2)}
 .panel{width:var(--panel-w);flex:none;border-left:1px solid var(--line2);background:var(--surface);overflow:auto;padding:var(--space-4)}
 .panel h2{font-size:var(--text-section);font-weight:700;margin:0;display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-1)}
 .panel .sub{color:var(--subtle);font-size:var(--text-caption);margin:var(--space-1) 0 var(--space-6)}
-.box{padding:0 0 var(--space-6);margin:0 0 var(--space-6);border-bottom:1px solid var(--line2)}
+.box{padding:0 0 var(--gap-section);margin:0 0 var(--gap-section);border-bottom:1px solid var(--line2)}
 .box:last-of-type{border-bottom:0}
-.box h3{font-size:var(--text-label);color:var(--subtle);margin:0 0 var(--space-3);font-weight:600;display:flex;align-items:center;gap:var(--space-1)}
+.box h3{font-size:var(--text-label);color:var(--subtle);margin:0 0 var(--gap-head);font-weight:600;display:flex;align-items:center;gap:var(--space-1)}
 .row{display:flex;align-items:center;gap:var(--space-2);margin:var(--space-2) 0;flex-wrap:wrap}
 .row label{width:72px;color:var(--subtle);flex:none;font-size:var(--text-label)}
 .field{margin:0 0 var(--space-3)}
@@ -274,7 +274,7 @@ header.tabs{background:var(--brand-soft);border-bottom:1px solid var(--line)}
 .tour .hd svg.i{color:var(--subtle)}
 .top .tag svg.i,.btn svg.i.s{flex:none}
 /* 목록 상세 창: 라벨은 위, 값은 아래(좁은 창에서 줄 어긋남 방지) */
-#lp .box .row{flex-direction:column;align-items:stretch;gap:var(--space-1);margin:0 0 var(--space-3)}
+#lp .box .row{flex-direction:column;align-items:stretch;gap:var(--space-1);margin-bottom:var(--space-3)}
 #lp .box .row label{width:auto;font-size:var(--text-caption);font-weight:600}
 #lp .box .row .inp{flex:none;width:100%}
 
@@ -1031,7 +1031,6 @@ body.today-red{--today-head:#FDECEA;--today-col:#FFF8F6;--today-ink:#C0392B}
 .offbox{background:var(--brand-tint);border-radius:var(--radius-md);padding:10px 12px;font-size:var(--text-label);color:var(--brand-deep);line-height:1.55;margin:0 0 var(--space-2)}
 .box.dis .attrow,.box.dis .srow{color:var(--subtle)}.box.dis .gchip,.box.dis .gc,.box.dis [class*="gch"]{filter:grayscale(1);opacity:.55}.box.dis .attseg{opacity:.45}
 .box.dimall{opacity:.55}
-.box h3.h3s{margin-top:var(--space-4)}
 .slist .srow{display:flex;align-items:center;gap:var(--space-2);min-height:38px;border-bottom:1px solid var(--line2);font-size:var(--text-small)}.slist .srow:last-child{border-bottom:0}
 .pv2{background:var(--brand-tint);border-radius:var(--radius-md);padding:9px 12px;font-size:var(--text-label);margin-top:var(--space-2);line-height:1.55}
 /* 77판: 새 보강 = 보강 수업 정보와 같은 틀, 학생 고르기 줄 정리 */
@@ -2141,7 +2140,7 @@ table.stt.gt td[data-mg]{vertical-align:top;padding-top:calc(var(--space-2) + 1p
 .enspark span{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:var(--space-1);font-size:11px;color:var(--subtle);font-variant-numeric:tabular-nums}
 .enspark i{display:block;width:16px;background:var(--brand-deep,#6B5D4D);border-radius:var(--radius-sm) var(--radius-sm) 0 0}
 .adjsum{display:flex;justify-content:space-between;align-items:center;min-height:32px;font-size:var(--text-small)}
-.adjsum.tot{border-top:1px solid var(--line);margin-top:var(--space-2);padding-top:var(--space-2)}
+.adjsum.tot{border-top:1px solid var(--line);margin-top:var(--gap-block);padding-top:var(--space-2)}
 .adjsum b{font-variant-numeric:tabular-nums}
 .unrow select.adjk{width:68px;flex:none;padding:0 var(--space-1)}.unrow .adja{width:84px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
 
@@ -2350,7 +2349,7 @@ table.stt.gt td[data-mg].mgsel.mghl{background:var(--sel-bg)}
 /* ═════ 266판 ═════ 표 열 머리는 숫자 열도 왼쪽 정렬(대표 후순위 요청) — 값 칸(숫자)은 오른쪽 그대로 */
 #view table.t th.n,table.stt.gt th.n,table.stt th{text-align:left}
 /* ═════ 267판 ═════ 오른쪽 창 기본 = [할 일] */
-.tdp{display:flex;flex-direction:column;gap:12px;padding:4px 0}
+.tdp{display:flex;flex-direction:column;gap:var(--gap-block);padding:4px 0}
 .tdl{display:flex;flex-direction:column;border:1px solid var(--line2,#E8E2DA);border-radius:12px;overflow:hidden}
 .tdr{display:flex;align-items:center;gap:8px;min-height:44px;padding:8px 12px;border:0;border-bottom:1px solid var(--line2,#EFE9E1);background:var(--surface,#fff);text-align:left;font:inherit;font-size:13.5px;color:var(--ink);cursor:pointer}
 .tdr:last-child{border-bottom:0}.tdr:hover{background:var(--brand-tint,#FBF8F4)}.tdr small{margin-left:4px}.tdr svg{margin-left:auto;color:var(--subtle)}
@@ -2491,7 +2490,7 @@ body[data-w="tabv"] .ttl .seachip small{display:none}
 /* 317판(대표): 학생 창 — 연락처 줄마다 [우선], 접수 안내 줄, 새 문의 점, 머리 2줄 문의일 */
 .ctl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
 .ctl .prb{height:40px;min-width:52px}
-.rcpt{display:flex;flex-direction:column;gap:6px}
+.rcpt{display:flex;flex-direction:column;gap:var(--gap-in)}
 .rcpt .row{display:flex;gap:8px;flex-wrap:wrap}
 .rcpt .hint.mut{color:var(--subtle)}
 .newdot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--danger,#d9534f);margin-left:6px;vertical-align:2px}
@@ -2524,7 +2523,6 @@ body[data-w="tabv"] .ttl .seachip small{display:none}
 /* 320판: 접수 안내 알림톡 = 다른 칸처럼 이름 위 + 반 칸 단추 두 개(40px) */
 .rcpt{display:flex;flex-direction:column}
 .rcpt .rcb{height:40px;width:100%;justify-content:center}
-.rcpt .hint{margin-top:6px}
 .sc-memo{min-height:150px;background-image:repeating-linear-gradient(to bottom,transparent 0 27px,var(--line) 27px 28px);line-height:28px}
 /* 322판: 학생 표 줄 인쇄(휴지통 왼쪽) · 학생 카드 여러 장 인쇄 */
 
@@ -2783,7 +2781,7 @@ table.stt tr.sel,table.stt tr.sel:hover{background:var(--sel-bg)}
 .ttrow.bk2 .l2 .r2+.r2::before{content:"· ";color:var(--subtle)}
 :is(#sp,#lp,.body>.panel,.panel) .pgsecs .pgsec+.pgsec{margin-top:12px}
 /* 398판(대표 "교재 추가 = 아래 카드 잔상 모양"): 목록 아래 점선 카드([+ 등록 추가]와 같은 모양) — 제목 줄의 글자 단추는 없앰 */
-.pgaddc{height:56px;width:100%;margin-top:12px;border:1.5px dashed var(--line);border-radius:var(--radius-md,10px);background:none;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--muted);font:inherit;font-size:var(--text-small);font-weight:700;cursor:pointer}
+.pgaddc{height:56px;width:100%;margin-top:var(--gap-block);border:1.5px dashed var(--line);border-radius:var(--radius-md,10px);background:none;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--muted);font:inherit;font-size:var(--text-small);font-weight:700;cursor:pointer}
 .pgaddc:hover{border-color:var(--brand-mid);color:var(--brand-deep);background:var(--brand-tint)}
 .pgaddc svg.i{width:16px;height:16px}
 .spill.pgn::before{content:none}
@@ -2850,15 +2848,15 @@ table.stt tr[data-id] td.op,table.stt tr[data-id]:not(.sdel):hover td.op,table.s
 #view table.stt td[data-csel],#view.tedit-on table.t td[data-ge][data-csel],#view.tedit-on table.t td[data-ge][data-csel]:hover{box-shadow:inset 0 0 0 2px var(--brand-deep);background:var(--surface)}/* 선택 테두리는 호버 표시보다 늘 위 */
 /* 계산 칸 값 */
 .hf-box .calcv{display:inline-flex;align-items:center;gap:8px;min-width:0;overflow:hidden;white-space:nowrap}
-.box [data-ex="stat"]{margin-bottom:14px}
+.box [data-ex="stat"]{margin-bottom:0}
 /* 창 [시간표] 탭 */
 .box .ttsub{display:flex;align-items:baseline;gap:8px;margin:12px 0 6px}.box .ttsub b{font-size:13px}
 .box h3 .hfh.pss{width:150px;margin-left:8px}.box h3 .hfh.pss .hf-lbl{display:none}
-.box .indadd{margin-top:10px;padding-top:12px;border-top:1px solid var(--line)}
+.box .indadd{margin-top:var(--gap-block);padding-top:var(--gap-block);border-top:1px solid var(--line)}
 .box .indwarn .errtext{display:flex;gap:6px;align-items:flex-start;margin-top:8px;font-size:12.5px}
 .box .ttrow.ttind{cursor:pointer}.box .ttrow.ttind.on{box-shadow:inset 0 0 0 2px var(--brand-deep)}
 .box .ttrow .indx{width:28px;height:28px;border:0;background:none;color:var(--subtle)}
-.box .ttfoot,#lp .box .row.ttfoot{margin-top:16px}
+.box .ttfoot,#lp .box .row.ttfoot{margin-top:var(--gap-block)}
 #lp .box .indadd .row,#lp .box .row.ttfoot,.box .indadd .row,.box .ttfoot{display:flex;flex-direction:row;align-items:center;gap:8px}#lp .box .indadd .row .btn,#lp .box .row.ttfoot .btn,.box .indadd .row .btn,.box .ttfoot .btn{width:auto;flex:none}
 
 /* 진도 줄 펼치기(기준 3장 "진도 줄 펼치기") — 줄 안 아래쪽, 위 구분선 하나(상자 안 상자 없음) · 교재/프로그램 전환 */
@@ -3199,7 +3197,7 @@ html:root #view .stl.ro .stl-h .btn.sm{color:var(--text-ink,#3D3530)}html:root #
 .ttls-s .atti{display:inline-flex;flex:none;width:16px;height:16px}.ttls-s .atti svg.i{width:16px;height:16px}
 .ttls-s .atti.a1{color:#3E9B5C}.ttls-s .atti.a2{color:#D0533F}.ttls-s .atti.a3{color:#3D7BC9}.ttls-s .atti.a0{color:#C9BCAB}
 /* 261118 대표: 창 안에서 B 하나 추가 = 그 목록 맨 끝 점선 잔상 한 부품(.pgaddc) — 카드 목록 뒤 = 카드 높이(기본 56), 줄 목록 뒤 = 한 줄 높이(.ln 36) */
-.pgaddc.ln{height:36px;margin-top:6px;border-radius:8px;font-weight:600}
+.pgaddc.ln{height:36px;margin-top:var(--gap-block);border-radius:8px;font-weight:600}
 .pgaddc.ttls-add{margin-top:4px}.pgaddc:disabled,.pgaddc:disabled:hover{opacity:.5;cursor:default;border-color:var(--line);color:var(--muted);background:none}/* 만들 수 없는 날(휴원 · 기간 밖 · 예정 시즌) = 흐린 잔상, 이유는 위 줄 */
 .ttls-empty{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:var(--text-small);margin:2px 0 10px}
 /* ═════ 261118 대표: 수업 메뉴 하루 보기 [오늘 수업 | 오늘 등원 학생] — 주간 달력과 같은 블록 모양 · 시간 축 · 지금 선 */
@@ -3328,7 +3326,7 @@ html:root :is(.seg.pgam,.mwper){display:flex;width:100%}.krow2{height:40px;displ
 .rtcard{display:flex;flex-direction:column;align-items:stretch;gap:8px;text-align:center;background:var(--surface,#fff);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:0 8px 24px rgba(61,53,48,.14);width:100%;max-width:290px}
 .rtcard::before{display:none}
 .rtcard>b{font-size:14px;color:var(--ink)}.rtcard>span{font-size:12px;color:var(--muted);line-height:1.6}.rtcard>span b{color:var(--ink)}.rtcard .btn{width:100%;justify-content:center;height:34px}.rtcard small{font-size:11px;color:var(--muted);line-height:1.5}
-.rtsub{font-size:11.5px;color:var(--muted);margin-top:2px}html:root .rtmore{display:block;margin:6px auto 0;padding:4px 10px;border:0;background:none;box-shadow:none;font-size:12px;color:var(--muted);cursor:pointer}html:root .rtmore:hover{color:var(--ink)}
+.rtsub{font-size:11.5px;color:var(--muted);margin-top:2px}html:root .rtmore{display:block;margin:var(--gap-block) auto 0;padding:4px 10px;border:0;background:none;box-shadow:none;font-size:12px;color:var(--muted);cursor:pointer}html:root .rtmore:hover{color:var(--ink)}
 .rtempty{background:var(--tint,#FBF8F4);border:1px dashed var(--line);border-radius:10px;padding:16px;text-align:center;color:var(--muted);line-height:1.7;margin-bottom:10px}.rtempty b{color:var(--ink)}.rtempty small{display:block;font-size:11.5px;margin-top:6px}.rtempty .btn{display:flex;margin:10px auto 0;width:100%}
 /* 결석 줄: 이름 줄 아래에 [보강 잡기]를 한 줄로(한 줄에 다 넣으면 출석/결석 단추가 잘림) */
 #panel .attrow:has(.mkin){flex-wrap:wrap;row-gap:4px}.attrow .btn.mkin{order:9;flex:0 0 auto;margin:0 0 4px 0;height:24px;padding:0 8px;font-size:11.5px;white-space:nowrap;color:var(--brand-deep,#5C4A3D)}
@@ -3479,7 +3477,7 @@ table.lpt tr[data-id]{cursor:pointer}
 .cfday .mkab.s-pend small,.cfday .mkab.s-done small,.cfday .mkab.s-none small{color:inherit;opacity:.75}
 .mkfdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-left:-2px}.mkfdot.k-need{background:#E27A68}.mkfdot.k-pend{background:#6FA3E0}.mkfdot.k-none{background:#B9B4AB}.mkfdot.k-mk{background:#C8A97E}
 /* 학생 창 [보강] 상자 간격 */
-.box h3>.spill{margin-left:auto}.box>.hfh+.hfh,.box>.hfh+.asr,.box>.hfh+.mkpl{margin-top:10px}.box>.asr+.row,.box>.mkpl+.row,.box>.hfh+.row{margin-top:10px}.box>.asr{padding:6px 0}
+.box h3>.spill{margin-left:auto}.box>.asr{padding:6px 0}
 
 /* 261119 대표: 보강 완료 = 초록 칩 · [거르기] 점 · 모든 결석 칩은 눌러 고를 수 있음 · 등원/하원 한 줄 2단 */
 .mkfdot.k-done{background:#6BBF8A}.cfday .mkab{cursor:pointer}.cfday .mkab.sel:not(.open){outline:2px solid currentColor;outline-offset:-2px}
@@ -3508,8 +3506,8 @@ html:root :is(.ldb,.lde)>small{font-size:12px;opacity:1}
 html:root .lj .ljh,html:root .lj dl{font-size:12px}
 
 /* 261119 대표: 공용 창 [현황] / [할 일] 2탭 */
-.tdsum{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:14px}.tdsr{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-top:1px solid var(--line2,#EEE8E1);font-size:13px}.tdsr:first-child{border-top:0}.tdsr span{color:var(--muted)}.tdsr b{font-weight:700;font-variant-numeric:tabular-nums}
-.tdsubs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}.tdsb{height:28px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px;cursor:pointer}.tdsb small{color:var(--muted);margin-left:2px}.tdsb.on{background:var(--ink,#2B2118);border-color:var(--ink,#2B2118);color:#fff}.tdsb.on small{color:#fff;opacity:.8}
+.tdsum{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:0}.tdsr{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-top:1px solid var(--line2,#EEE8E1);font-size:13px}.tdsr:first-child{border-top:0}.tdsr span{color:var(--muted)}.tdsr b{font-weight:700;font-variant-numeric:tabular-nums}
+.tdsubs{display:flex;flex-wrap:wrap;gap:6px;margin:0}.tdsb{height:28px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px;cursor:pointer}.tdsb small{color:var(--muted);margin-left:2px}.tdsb.on{background:var(--ink,#2B2118);border-color:var(--ink,#2B2118);color:#fff}.tdsb.on small{color:#fff;opacity:.8}
 /* 261120 대표: 요일 수 [‹ 4 ›] = 줌 조절과 같은 껍데기(.zoomgrp), 가운데는 숫자만 */
 .wdgrp .zoomlbl{min-width:32px;font-variant-numeric:tabular-nums;color:var(--text-ink);font-weight:700}
 
@@ -3567,3 +3565,23 @@ html:root .lj .ljh,html:root .lj dl{font-size:12px}
 .panel .phead{min-height:calc(var(--space-4) + var(--space-3) + 70px)}
 /* 261124 흔들림 점검: 수업 위 줄(오른쪽 묶음) 안 "자동 갱신 켜짐 · 마지막 받음" 글도 한 줄 — 월간 보기에서만 두 줄로 꺾여 위 줄이 10px 커졌음(실제 자료) */
 .top .zone .sync-at{white-space:nowrap}
+/* 구역 간격(관리앱-기준.md F3 "간격 다섯", 토큰 --gap-*): 구역(.box) 안 블록은 모두 같은 간격 — 화면마다 따로 띄우지 않는다.
+   블록의 아래 여백이 더 크면 그 값(겹침)이고, 작은 제목(h3 · h4)이 구역 중간에 오면 위 --gap-sub */
+.box>*+*{margin-top:var(--gap-block)}
+.box>*+h3,.box>*+h4,.box>h3.h3s{margin-top:var(--gap-sub)}
+/* 도움말 창(help.js helpOpen) — (?)를 누르면 옆에 뜨는 창: 제목 · 글 · 그림 · 칸 설명 · 알림톡 미리보기. 간격은 구역 간격 토큰 */
+.hpop{position:fixed;z-index:210;width:360px;max-height:calc(100vh - 16px);overflow:auto;background:var(--surface);border:1px solid var(--line2);border-radius:var(--radius-lg);box-shadow:0 12px 32px rgba(25,31,40,.18),0 2px 6px rgba(25,31,40,.08)}
+.hpop-h{position:sticky;top:0;display:flex;align-items:center;gap:var(--space-2);padding:var(--space-3) var(--space-3) var(--space-3) var(--space-4);background:var(--surface);border-bottom:1px solid var(--line2);font-size:var(--text-small)}
+.hpop-h svg.i{width:16px;height:16px;color:var(--brand-deep)}.hpop-h b{flex:1;min-width:0;font-weight:700}
+.hpop-x{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;background:none;border-radius:var(--radius-sm);color:var(--subtle);cursor:pointer}.hpop-x:hover{background:var(--field-bg)}
+.hpop-b{padding:var(--gap-head) var(--space-4) var(--space-4);font-size:var(--text-label);line-height:1.6;color:var(--ink)}
+.hpop-b>*+*{margin-top:var(--gap-block)}.hpop-b p{margin:0}.hpop-b p+p{margin-top:var(--space-1)}
+.hpop-items{margin:0;padding:var(--gap-block) 0 0;border-top:1px solid var(--line2)}.hpop-b>.hpop-items:first-child{border-top:0;padding-top:0}
+.hpop-items dt{font-weight:700;font-size:var(--text-label);color:var(--ink)}.hpop-items dd{margin:var(--gap-in) 0 0;color:var(--muted)}.hpop-items dd+dt{margin-top:var(--gap-block)}
+.hpop-img{margin:0}.hpop-img img{display:block;width:100%;height:auto;border:1px solid var(--line2);border-radius:var(--radius-md)}
+.hpop-alim{background:var(--canvas);border-radius:var(--radius-md);padding:var(--space-2)}.hpop-items dd>.hpop-alim,.hpop-items dd>.hpop-img{margin-top:var(--space-2)}
+.qhelp[aria-expanded=true]{color:var(--brand-deep)}
+.hpop.wide{width:440px}.hpop-b p+p{margin-top:var(--space-2)}
+/* 카드형 설정 화면(cardScreen — 관리자 설정 · 학원 정보, 관리앱-기준.md "카드 화면 폭"): 화면 폭에 맞춰 넓히고 최대 --setcards-max. 줄 = 이름 · 값 · 단추 한 줄 */
+#view .list.cards.setcards{max-width:var(--setcards-max)}
+.setcards .crow .cl{width:160px}.setcards .crow .ca{flex-wrap:nowrap}
