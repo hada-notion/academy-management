@@ -91,6 +91,8 @@
     for (let i = MENU.length - 1; i >= 0; i--) { MENU[i][1] = MENU[i][1].filter((x) => window.liveTeacherAllowed(x[0], menus, true)); if (!MENU[i][1].length) MENU.splice(i, 1); }
     const gate0 = window.gateOn;
     window.gateOn = (s) => gate0(s) && (ok(s) || s === "ext:manual");
+    /* 강사에게 없는 메뉴 화면을 열려고 하면(링크 · 바로가기) 기능 잠금 말("아직 열지 않았어요") 대신 메뉴 권한 말로 */
+    try { const os = openScreen; openScreen = function (s) { if (!ok(s) && s !== "ext:manual") { toast("이 메뉴 권한이 없어요 — 원장에게 노션 메뉴관리 권한을 요청하세요"); return; } return os.apply(this, arguments); }; } catch (_) {}
     try {
       const firstOk = (() => { for (const g of MENU) for (const x of g[1]) if (!String(x[0]).includes(":")) return x[0]; return ""; })();
       const scrOf = (t) => (typeof window.liveScr === "function" ? window.liveScr(t) : t.screen);
