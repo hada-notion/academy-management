@@ -18,6 +18,8 @@ Deno.test("나이스 100건 넘어도 페이지를 끝까지 수집", async () =
   Deno.env.set("NEIS_API_KEY", "offline-test-only")
   let calls = 0
   globalThis.fetch = async input => {
+    // 다른 시험 파일이 SB_URL을 켜 두면 키 읽기(_shared/externalKeys.ts)가 Vault를 먼저 부른다 — 나이스 요청만 센다(Vault 실패 → Secret).
+    if (!String(input).startsWith("https://open.neis.go.kr/")) return new Response("{}", { status: 404 })
     calls++; const u = new URL(String(input)); const index = Number(u.searchParams.get("pIndex"))
     return new Response(JSON.stringify({ SchoolSchedule: [{ head: [{ list_total_count: 102 }, { RESULT: { CODE: "INFO-000" } }] }, { row: Array.from({ length: index === 1 ? 100 : 2 }, () => row) }] }))
   }

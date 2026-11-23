@@ -2,11 +2,13 @@
 //
 // 라이브러리 교재 정보 출처(v2.5.120). 알라딘 OpenAPI가 2026-10-30에 종료되어(신규 키는 2026-09-04 종료) 다음 두 곳을 쓴다.
 //   - 국립중앙도서관 ISBN 서지정보 API(주력): 국내에서 ISBN을 받은 책. 제목·발행처·총서명·쪽수·정가·표지·(일부)목차.
-//     키: 함수 Secret NL_CERT_KEY. https://www.nl.go.kr/seoji/SearchApi.do
+//     키: NL_CERT_KEY(관리 앱 [관리자 설정]에서 넣은 값 먼저, 없으면 함수 Secret — _shared/externalKeys.ts). https://www.nl.go.kr/seoji/SearchApi.do
 //   - 카카오 책 검색 API(보조): 수입 원서처럼 국립중앙도서관에 없는 책. 제목·출판사·정가·표지(쪽수·목차 없음).
-//     키: 함수 Secret KAKAO_REST_KEY. https://dapi.kakao.com/v3/search/book
+//     키: KAKAO_REST_KEY(같은 방식). https://dapi.kakao.com/v3/search/book
 // 키는 학원마다 따로 받는다(원본 키를 나눠 쓰지 않음). 둘 중 하나만 있어도 그 출처로 동작한다. 키 값은 로그·응답에 쓰지 않는다.
 // 같은 ISBN13은 하나로 합친다(국립중앙도서관 값 우선, 빈 칸만 카카오로 채움).
+
+import { externalKey } from "./externalKeys.ts"
 
 export class BookSourceError extends Error {
 	constructor(public status: number, message: string) { super(message) }
@@ -52,7 +54,7 @@ export function nlBook(d: any): Book | null {
 	}
 }
 async function nlSearch(params: Record<string, string>): Promise<Book[]> {
-	const key = Deno.env.get("NL_CERT_KEY") ?? ""
+	const key = await externalKey("NL_CERT_KEY")
 	if (!key) return []
 	const q = new URLSearchParams({ cert_key: key, result_style: "json", page_no: "1", page_size: "20", ...params })
 	const data = await getJson(`${NL}?${q}`, {}, "국립중앙도서관")
@@ -86,7 +88,7 @@ export function kakaoBook(d: any): Book | null {
 	}
 }
 async function kakaoSearch(query: string, target: "title" | "isbn"): Promise<Book[]> {
-	const key = Deno.env.get("KAKAO_REST_KEY") ?? ""
+	const key = await externalKey("KAKAO_REST_KEY")
 	if (!key) return []
 	const q = new URLSearchParams({ query, target, size: "20" })
 	const data = await getJson(`${KAKAO}?${q}`, { headers: { Authorization: `KakaoAK ${key}` } }, "카카오")
@@ -106,9 +108,9 @@ export function mergeBooks(lists: Book[][]): Book[] {
 	}
 	return [...out.values()]
 }
-function requireAnyKey() {
-	if (!Deno.env.get("NL_CERT_KEY") && !Deno.env.get("KAKAO_REST_KEY"))
-		throw new BookSourceError(503, "책 검색 키가 없습니다. Supabase Secrets에 NL_CERT_KEY(국립중앙도서관) 또는 KAKAO_REST_KEY(카카오)를 넣어 주세요.")
+async function requireAnyKey() {
+	if (!(await externalKey("NL_CERT_KEY")) && !(await externalKey("KAKAO_REST_KEY")))
+		throw new BookSourceError(503, "책 검색 키가 없습니다. 관리 앱 [관리자 설정] > 외부 키에 NL_CERT_KEY(국립중앙도서관) 또는 KAKAO_REST_KEY(카카오)를 붙여 넣어 주세요(Supabase Secrets에 넣어도 됩니다).")
 }
 // 한쪽 출처가 실패해도 다른 쪽 결과는 보여 준다. 둘 다 실패하면 첫 오류.
 async function settle(jobs: Promise<Book[]>[]): Promise<Book[][]> {
@@ -119,10 +121,10 @@ async function settle(jobs: Promise<Book[]>[]): Promise<Book[][]> {
 	return ok
 }
 export async function searchTitle(query: string): Promise<Book[]> {
-	requireAnyKey()
+	await requireAnyKey()
 	return mergeBooks(await settle([nlSearch({ title: query }), kakaoSearch(query, "title")]))
 }
 export async function lookupIsbn(isbn13: string): Promise<Book | null> {
-	requireAnyKey()
+	await requireAnyKey()
 	return mergeBooks(await settle([nlSearch({ isbn: isbn13 }), kakaoSearch(isbn13, "isbn")])).find((b) => b.isbn13 === isbn13) ?? null
 }
