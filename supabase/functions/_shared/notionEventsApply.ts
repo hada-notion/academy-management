@@ -80,6 +80,8 @@ export function sameRow(existing: Record<string, unknown> | null, next: Record<s
 export interface Deps {
 	rpc(name: string, args: Record<string, unknown>): Promise<any>
 	targets(): Promise<TargetMap>
+	// 모르는 데이터 소스일 때: 기억한 목록이 오래됐으면(10분) 다시 찾아 돌려주고, 아니면 null(다시 찾지 않음).
+	targetsFresh?(): Promise<TargetMap | null>
 	readPage(id: string): Promise<Page | null> // 404 = null
 	copyRow(target: Target, id: string): Promise<Record<string, unknown> | null>
 	rowsOf(target: Target, page: Page): Promise<Record<string, unknown>[]>
@@ -95,9 +97,13 @@ export type ApplyResult = { result: string; target?: string }
 
 // 줄 하나. 결과 글자는 대기열 result 칸에 남는다.
 export async function applyOne(item: QueueItem, deps: Deps): Promise<ApplyResult> {
-	const map = await deps.targets()
-	const evTarget = targetOf(map, item.data_source_id)
 	if (!REREAD_EVENTS.has(item.event_type)) return { result: "skip:event" }
+	let map = await deps.targets()
+	let evTarget = targetOf(map, item.data_source_id)
+	if (!evTarget && item.data_source_id && deps.targetsFresh) {
+		const fresh = await deps.targetsFresh()
+		if (fresh) { map = fresh; evTarget = targetOf(map, item.data_source_id) }
+	}
 	if (!evTarget && item.event_type !== "page.moved") return { result: "skip:no-copy" }
 	if (evTarget && item.own_bot) {
 		const row = await deps.copyRow(evTarget, item.page_id)
@@ -178,17 +184,46 @@ export async function sbRpc(name: string, args: Record<string, unknown>): Promis
 	return text ? JSON.parse(text) : null
 }
 
+// 찾은 목록은 함수 메모리와 표 notion_event_targets에 1시간 기억한다(처리기가 새로 떠도 노션 검색을 다시 하지 않게).
+export const TARGETS_TTL_MS = 60 * 60 * 1000
+export const TARGETS_RETRY_MS = 10 * 60 * 1000
+export const targetsToJson = (m: TargetMap) => [...m.entries()]
+export const targetsFromJson = (j: unknown): TargetMap => new Map(Array.isArray(j) ? j.filter((e) => Array.isArray(e) && e.length === 2) as [string, Target][] : [])
 let targetCache: { at: number; map: TargetMap } | null = null
-async function liveTargets(): Promise<TargetMap> {
-	if (targetCache && Date.now() - targetCache.at < 10 * 60 * 1000) return targetCache.map
+async function rebuildTargets(): Promise<TargetMap> {
 	const map = buildTargets(DS, await appSources())
 	targetCache = { at: Date.now(), map }
+	try {
+		const res = await fetchSupabaseWithRetry(`${SB_URL()}/rest/v1/notion_event_targets?on_conflict=id`, {
+			method: "POST", headers: sbHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+			body: JSON.stringify([{ id: 1, map: targetsToJson(map), built_at: new Date(targetCache.at).toISOString() }]),
+		})
+		if (!res.ok) console.error("[notionEvents] 목록 저장 실패", res.status)
+	} catch (err) { console.error("[notionEvents] 목록 저장 실패", (err as Error).message) }
 	return map
+}
+async function liveTargets(): Promise<TargetMap> {
+	if (targetCache && Date.now() - targetCache.at < TARGETS_TTL_MS) return targetCache.map
+	try {
+		const res = await fetchSupabaseWithRetry(`${SB_URL()}/rest/v1/notion_event_targets?id=eq.1&select=map,built_at`, { headers: sbHeaders() })
+		const row = res.ok ? (await res.json())[0] : null
+		const at = row ? Date.parse(row.built_at) : NaN
+		if (row && Date.now() - at < TARGETS_TTL_MS) {
+			targetCache = { at, map: targetsFromJson(row.map) }
+			return targetCache.map
+		}
+	} catch (err) { console.error("[notionEvents] 목록 읽기 실패(다시 찾음)", (err as Error).message) }
+	return await rebuildTargets()
+}
+async function freshTargets(): Promise<TargetMap | null> {
+	if (targetCache && Date.now() - targetCache.at < TARGETS_RETRY_MS) return null
+	return await rebuildTargets()
 }
 
 export const liveDeps: Deps = {
 	rpc: sbRpc,
 	targets: liveTargets,
+	targetsFresh: freshTargets,
 	async readPage(id) {
 		const res = await fetchWithRetry(`${NOTION_API}/pages/${id}`, { headers: notionHeaders() })
 		if (res.status === 404) return null
