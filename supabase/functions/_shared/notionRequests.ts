@@ -133,6 +133,24 @@ export function readableReason(status: number, raw: string, retried: boolean): s
 	return `서버가 요청을 받지 않았어요(${status}). 관리자에게 알려 주세요`
 }
 
+// 줄의 `상태`가 ⚠️ 오류이고 그 오류가 이번 요청 동안 생겼으면 `마지막 오류`를 읽을 말로(없으면 기본 안내). 아니면 "".
+// "이번 요청 동안" = 접수 전 줄과 상태 · 마지막 오류가 다르거나, 함수가 쓰는 `처리 시작 시각`이 접수 뒤(분 단위).
+// 같은 줄에 다른 동작이 남긴 옛 ⚠️ 오류(예: 보고서 생성 실패 뒤 [학생 페이지 동기화])를 이번 요청 실패로 보지 않게.
+export const STATUS_PROP = "상태", LAST_ERROR_PROP = "마지막 오류", STARTED_PROP = "처리 시작 시각"
+const dateStart = (p: any): number => { const v = p?.date?.start; return typeof v === "string" ? Date.parse(v) : NaN }
+export function rowErrorOf(now: Page | null, before: Page | null = null, t0 = 0): string {
+	if (!/^⚠️/.test(propText(now?.properties?.[STATUS_PROP]).trim())) return ""
+	const raw = propText(now?.properties?.[LAST_ERROR_PROP]).trim()
+	if (before) {
+		const changed = propText(before.properties?.[STATUS_PROP]).trim() !== propText(now?.properties?.[STATUS_PROP]).trim() ||
+			propText(before.properties?.[LAST_ERROR_PROP]).trim() !== raw
+		const started = dateStart(now?.properties?.[STARTED_PROP]) >= Math.floor(t0 / 60000) * 60000
+		if (!changed && !started) return ""
+	}
+	const c = cleanReason(raw)
+	return hasHangul(c) ? clip(c, 160) : "줄의 [마지막 오류]를 보고 고친 뒤 다시 눌러 주세요"
+}
+
 export type RequestOutcome = { state: typeof STATE_DONE | typeof STATE_FAILED; ids: string[]; results: ForwardResult[]; ms: number; overwritten: boolean }
 
 // 줄 하나의 요청 처리. page = 방금 다시 읽은 페이지(노션 API 모양 그대로).
@@ -157,23 +175,30 @@ export async function handleRequest(page: Page, req: { id: string; ids: string[]
 		}
 		return out
 	}))
+	// 다시 읽어: 그 사이 새 요청이 들어왔나 · 바로 답한 함수(200)가 줄을 ⚠️ 오류로 끝냈나.
+	const now = await deps.readPage(page.id)
 	const failed = results.filter((r) => r.error)
-	const state = failed.length ? STATE_FAILED : STATE_DONE
+	// (261123 원본 실측) 함수는 예시 데이터가 모자라면 실패로 답하지 않고 줄의 `상태` = ⚠️ 오류 · `마지막 오류`에 이유를 쓴다
+	// (예: 시험 기간 연결 "학교와 시험을 먼저 고르세요."). 요청 칸이 ✅ 완료면 사람이 놓치므로, 바로 처리하는 함수(200 — 큐에
+	// 넣고 202로 답하는 함수는 아직 결과 전)가 끝낸 줄이 ⚠️ 오류면 요청도 ⚠️ 실패 + 그 이유로.
+	const rowError = !failed.length && results.every((r) => r.status === 200) ? rowErrorOf(now, page, t0) : ""
+	const state = failed.length || rowError ? STATE_FAILED : STATE_DONE
 	const ms = deps.now() - t0
 	const sec = (ms / 1000).toFixed(1)
 	// (261123) 학원 사람이 읽을 말: 무엇이 안 됐고 어떻게 하면 되는지. 내부 id · 함수 이름 · 영문 오류 원문은 서버 기록(log)에만.
 	for (const r of failed) deps.log(`[notionRequests] ${page.id.slice(-6)} ${r.id} 실패 원문 ${r.status}: ${clip(r.error ?? "", 400)}`)
-	const why = failed.map((r) => `${names([r.id])} — ${readableReason(r.status, r.error ?? "", !!r.retry)}`).join(" / ")
+	const why = rowError
+		? `${label} — ${rowError}`
+		: failed.map((r) => `${names([r.id])} — ${readableReason(r.status, r.error ?? "", !!r.retry)}`).join(" / ")
 	const notes = results.map((r) => r.note).filter(Boolean)
 	const resultText = state === STATE_DONE
 		? `${STATE_DONE} · ${label} · ${sec}초 · ${kst(deps.now())}${notes.length ? ` · ${notes.join(" / ")}` : ""}`
 		: `${STATE_FAILED} · ${why} · ${kst(deps.now())}`
 	// 그 사이 새 요청이 들어왔으면 요청 칸은 그대로 두고 결과만.
-	const now = await deps.readPage(page.id)
 	const cur = propText(now?.properties?.[REQUEST_PROP]).trim()
 	const overwritten = cur !== STATE_RUNNING
 	await deps.patch(page.id, overwritten ? { [RESULT_PROP]: textProp(resultText) } : { [REQUEST_PROP]: selectProp(state), [RESULT_PROP]: textProp(resultText) })
-	deps.log(`[notionRequests] ${page.id.slice(-6)} ${req.ids.join(",")} → ${state} ${sec}s${overwritten ? " (새 요청 있음)" : ""}`)
+	deps.log(`[notionRequests] ${page.id.slice(-6)} ${req.ids.join(",")} → ${state} ${sec}s${rowError ? " (줄 ⚠️ 오류)" : ""}${overwritten ? " (새 요청 있음)" : ""}`)
 	return { state, ids: req.ids, results, ms, overwritten }
 }
 
