@@ -4,7 +4,7 @@ import { normalizeBareDbTitle } from '../_shared/dbNames.ts';
 import { narrowSameName,rootTitle } from '../_shared/appCopy.ts';
 import { EXTERNAL_KEYS,isExternalKeyName,externalKeyRpc,forgetExternalKeys,externalKey } from '../_shared/externalKeys.ts';
 import { testExternalKey } from '../_shared/externalKeyCheck.ts';
-import { teacherRpc,normalizePhone,TEACHER_DB } from '../_shared/teacherAccess.ts';
+import { teacherRpc,normalizePhone,TEACHER_DB,TEACHER_MENU_DB,teacherMenuAccess } from '../_shared/teacherAccess.ts';
 import { listApp } from '../_shared/appCopy.ts';
 import { getPage } from '../_shared/notionClient.ts';
 // 관리자 설정을 열 때 연결 확인 결과를 다시 쓰는 시간(1안 10분 — 2안 하루 한 번 · 3안 매번은 결과 문서). 확인 못 함은 1분 뒤 다시.
@@ -187,7 +187,12 @@ export async function handleAdminSecurity(req:Request):Promise<Response> {
       const token=randomToken();
       // 노션 계정(강사 DB 사람 칸)은 앱 사본에 없으므로(SKIP_PROPS) 로그인 때 노션에서 한 번 읽어 세션에 둔다 — 메뉴 권한(편집허용) 대조용.
       let users:string[]=[];
-      if(ok){try{const page=await getPage(acc.teacher_id);users=((page?.properties?.['노션 계정']?.people)??[]).map((u:any)=>String(u?.id??'')).filter(Boolean).slice(0,20);}catch(e){console.error('[admin-security] teacher notion account',(e as Error).message.slice(0,80));}}
+      if(ok){
+        try{const page=await getPage(acc.teacher_id);users=((page?.properties?.['노션 계정']?.people)??[]).map((u:any)=>String(u?.id??'')).filter(Boolean).slice(0,20);}catch(e){console.error('[admin-security] teacher notion account',(e as Error).message.slice(0,80));}
+        // (대표 261123 "편집허용 · 댓글허용에도 해당 강사가 없으면 로그인이 안되게") 번호 · 비밀번호가 맞아도 볼 메뉴가 하나도 없으면 세션을 만들지 않는다.
+        // 틀린 비밀번호가 아니므로 잠금 횟수에는 넣지 않는다(login을 부르지 않음).
+        if(!teacherMenuAccess(await listApp(TEACHER_MENU_DB as any),users).menus.length)throw new SecurityError(403,'아직 볼 수 있는 메뉴가 없어요 — 원장에게 노션 메뉴관리 권한을 요청하세요.');
+      }
       await teacherRpc('login',{teacher_id:acc.teacher_id,verified:ok,version:acc.version,token_hash:await sha256(token),notion_users:users});
       return result({session:token,role:'teacher',must_change:!!acc.must_change,name:acc.name});
     }
@@ -217,8 +222,15 @@ export async function handleAdminSecurity(req:Request):Promise<Response> {
       const count=new Map<string,number>();for(const r of rows as any[]){const ph=normalizePhone(r.props?.['연락처']);if(ph)count.set(ph,(count.get(ph)??0)+1);}
       if(b.action==='teachers-status'){
         const acc=await teacherRpc('list');const byId=new Map((acc.accounts??[]).map((a:any)=>[a.teacher_id,a]));
+        // 메뉴 권한(편집허용 · 댓글허용): 노션 계정은 사본에 없어 강사 페이지를 읽는다(3개씩). 못 읽으면 null(모름).
+        const menuRows=await listApp(TEACHER_MENU_DB as any);const perm=new Map<string,{menus:number,edit:number}|null>();
+        const ids=(rows as any[]).map((r)=>id32(r.id)).slice(0,60);let next=0;
+        await Promise.all([0,1,2].map(async()=>{while(next<ids.length){const id=ids[next++];try{const page=await getPage(id);
+          const users=((page?.properties?.['노션 계정']?.people)??[]).map((u:any)=>String(u?.id??'')).filter(Boolean);
+          const m=teacherMenuAccess(menuRows,users);perm.set(id,{menus:m.menus.length,edit:m.editMenus.length});}catch(_){perm.set(id,null);}}}));
         return result({teachers:(rows as any[]).map((r)=>{const id=id32(r.id),ph=normalizePhone(r.props?.['연락처']),a:any=byId.get(id);
           return {teacher_id:id,name:String(r.props?.['이름']??''),phone:ph,phone_raw:String(r.props?.['연락처']??''),duplicate:!!ph&&(count.get(ph)??0)>1,
+            menu:perm.get(id)??null,
             account:a?{enabled:!!a.enabled,must_change:!!a.must_change,locked:!!a.locked,locked_until:a.locked_until,changed_at:a.changed_at,phone:a.phone}:null};})});
       }
       await securityRpc('limit',{bucket:'security-teacher-admin',max:120,seconds:3600});

@@ -2,7 +2,7 @@
 // 원장 SQL(hada_security_command)과 강사 SQL(hada_teacher_command)은 작은 모형으로 대신한다. 실제 SQL은 tests/teacher-accounts-sql.cjs(PGlite)가
 // 같은 경우(켜기 · 같은 번호 · 첫 로그인 · 바꾸기 · 강사별 잠김 · 되돌리기 · 끄기)를 시험한다.
 // adminSecurity_test.ts가 이 파일을 불러와 CI(web-checks)에서 함께 돈다.
-import { normalizePhone, teacherMenus, teacherAppDeny, maskTeacherRows, requireAccess, teacherWriteDbs, teacherReadDbs, MENU_DBS, TEACHER_ROUTES, TEACHER_BLOCKED_DBS } from "./teacherAccess.ts"
+import { normalizePhone, teacherMenus, teacherMenuAccess, teacherRouteDeny, teacherAppDeny, maskTeacherRows, requireAccess, teacherWriteDbs, teacherReadDbs, MENU_DBS, TEACHER_ROUTES, TEACHER_BLOCKED_DBS } from "./teacherAccess.ts"
 import { sha256 } from "./adminSecurity.ts"
 import { WRITE_DBS } from "./appSave.ts"
 import { APP_DBS } from "./appCopy.ts"
@@ -21,7 +21,7 @@ Deno.test("teacher: 휴대폰 번호 맞추기 — 하이픈 · 공백 · +82는
 	eq(["02-123-4567", "", null, "1234", "010-1234-56789"].map(normalizePhone), ["", "", "", "", ""])
 })
 const MENU_ROWS = [
-	{ props: { "이름": "학생", "편집허용": ["u-a"] } }, { props: { "이름": "수업", "편집허용": ["u-a", "u-b"] } },
+	{ props: { "이름": "학생", "편집허용": ["u-a"], "댓글허용": ["u-d"] } }, { props: { "이름": "수업", "편집허용": ["u-a", "u-b"] } },
 	{ props: { "이름": "등록(스터디)", "편집허용": ["u-a"] } }, { props: { "이름": "수강료", "편집허용": ["u-a"] } },
 	{ props: { "이름": "관리자 설정", "편집허용": ["u-a"] } }, { props: { "이름": "일정", "편집허용": [] } }, { props: { "이름": "시험" } },
 	{ props: { "이름": "과목", "편집허용": ["u-c"] } },
@@ -30,6 +30,24 @@ Deno.test("teacher: 메뉴 = 편집허용에 노션 계정이 든 메뉴만, 재
 	eq(teacherMenus(MENU_ROWS, ["u-a"]).sort(), ["등록", "수업", "학생"])
 	eq(teacherMenus(MENU_ROWS, ["u-b"]), ["수업"])
 	eq(teacherMenus(MENU_ROWS, []), []); eq(teacherMenus(MENU_ROWS, ["u-z"]), [])
+})
+Deno.test("teacher: 댓글허용만 = 보이는 메뉴 · 읽기만(편집 메뉴 아님), 편집허용 = 둘 다, 둘 다 있으면 편집", () => {
+	eq(teacherMenuAccess(MENU_ROWS, ["u-d"]), { menus: ["학생"], editMenus: [] })
+	eq(teacherMenuAccess(MENU_ROWS, ["u-a", "u-d"]).editMenus.sort(), ["등록", "수업", "학생"])
+	const t = T(["학생"], [])
+	eq(teacherAppDeny(t, { action: "list", db: "학생(학원) DB" }), null)
+	eq(teacherAppDeny(t, { action: "save", changes: [{ op: "update", db: "학생(학원) DB", id: "x", props: { "요청": "링크 재발급" } }] })?.[0], 403) // 단추 요청도 save
+	eq(teacherAppDeny(t, { action: "run", name: "sync-copy" })?.[0], 403)
+	eq(teacherAppDeny(t, { action: "run", name: "sync-copy", dbs: ["학생(학원) DB"] })?.[0], 403)
+	eq(teacherAppDeny(T(["수업"], []), { action: "run", name: "generate-classes" })?.[0], 403)
+	// 다른 경로: 읽기 동작만
+	const c = T(["수업", "라이브러리", "학교"], [])
+	eq(teacherRouteDeny(c, "class-room", { action: "day" }), null); eq(teacherRouteDeny(c, "class-room", { action: "roster" }), null)
+	for (const a of ["save-attendance", "update-record", "create-records", "save-routines", "assign-makeup", "update-session", "create-routine-checks"]) eq(teacherRouteDeny(c, "class-room", { action: a })?.[0], 403, a)
+	eq(teacherRouteDeny(c, "textbook-api", { action: "search" }), null); eq(teacherRouteDeny(c, "textbook-api", { action: "register" })?.[0], 403)
+	eq(teacherRouteDeny(c, "school-api", { action: "search" }), null); eq(teacherRouteDeny(c, "school-api", { action: "link" })?.[0], 403)
+	const e = T(["수업"], ["수업"]); eq(teacherRouteDeny(e, "class-room", { action: "save-attendance" }), null)
+	eq(teacherRouteDeny({ role: "owner" }, "class-room", { action: "save-attendance" }), null)
 })
 Deno.test("teacher: 메뉴 → DB 표(한 곳) — 읽기 · 쓰기 DB는 앱 DB 이름, 쓰기는 읽기 안, 재무는 어느 메뉴에도 없음, 메뉴 DB는 늘 읽음", () => {
 	for (const [m, { read, write }] of Object.entries(MENU_DBS)) {
@@ -46,7 +64,7 @@ Deno.test("teacher: 쓰기 DB 표는 앱 쓰기 목록 안에만 있고, 재무 
 	for (const db of [...TEACHER_BLOCKED_DBS, "강사(학원) DB"]) assert(!all.has(db), db)
 	for (const db of TEACHER_BLOCKED_DBS) assert((APP_DBS as readonly string[]).includes(db), db) // 이름이 바뀌면 여기서 걸린다
 })
-const T = (menus: string[]) => ({ role: "teacher" as const, teacherId: "a".repeat(32), name: "예시강사", notionUsers: ["u-a"], menus })
+const T = (menus: string[], editMenus: string[] = menus) => ({ role: "teacher" as const, teacherId: "a".repeat(32), name: "예시강사", notionUsers: ["u-a"], menus, editMenus })
 Deno.test("teacher: app-api 동작 거름 — 재무 읽기 · 쓰기 · 결제 · 관리자 설정 · 강사 DB 쓰기 · 권한 없는 메뉴 쓰기는 거절", () => {
 	const t = T(["학생", "수업"])
 	for (const db of TEACHER_BLOCKED_DBS) {
@@ -81,9 +99,11 @@ const TEACHER_ROWS = [
 	{ id: TD1, props: { "이름": "예시강사D1", "연락처": "010-5555-0000" } }, { id: TD2, props: { "이름": "예시강사D2", "연락처": "01055550000" } },
 	{ id: "f".repeat(32), props: { "이름": "번호없음", "연락처": "" } },
 	{ id: "9".repeat(32), props: { "이름": "예시강사G", "연락처": "010-7777-6666" } },
+	{ id: "8".repeat(32), props: { "이름": "예시강사D", "연락처": "010-4444-3333" } },
 ]
 const TG = "9".repeat(32)
-const NOTION_USERS: Record<string, string[]> = { [TA]: ["u-a"], [TB]: [], [TG]: ["u-c"] }
+const TDV = "8".repeat(32)
+const NOTION_USERS: Record<string, string[]> = { [TA]: ["u-a"], [TB]: [], [TG]: ["u-c"], [TDV]: ["u-d"] }
 type Acc = { teacher_id: string; phone: string; name: string; password_hash: string; must_change: boolean; enabled: boolean; fails: number; locked: boolean; version: number }
 function fakeServer() {
 	const accounts = new Map<string, Acc>(), sessions = new Map<string, { teacher_id: string; version: number; users: string[] }>()
@@ -215,19 +235,25 @@ Deno.test("teacher 흐름: 원장이 켠 강사만 → 첫 로그인(번호) →
 	eq(await access("app-api", OWNER), { role: "owner" }); eq(await access("clear-example-data", OWNER), { role: "owner" })
 }))
 
-Deno.test("teacher 흐름: 노션 계정이 비면 메뉴 0개(빈 화면 안내) · 다섯 번 틀리면 그 강사만 잠김 · 원장 되돌리기 뒤 다시 첫 로그인 · 끄면 바로 끊김", () => withServer(async (srv) => {
+Deno.test("teacher 흐름: 편집허용 · 댓글허용 어디에도 없으면 번호 · 비밀번호가 맞아도 로그인 거절(세션 없음 · 잠금 셈 안 함) · 다섯 번 틀리면 그 강사만 잠김 · 되돌리기 · 끄면 바로 끊김", () => withServer(async (srv) => {
 	eq((await sec({ action: "teacher-enable", teacher_id: TA }, OWNER)).status, 200)
 	eq((await sec({ action: "teacher-enable", teacher_id: TB }, OWNER)).status, 200)
-	// B: 노션 계정 없음 → 바꾼 뒤 메뉴 0개, app-api는 열리고(me로 빈 안내) class-room은 403
-	const b1 = (await login("01099998888", "01099998888")).body.session
-	await change("01099998888", "teacher-pass-b", b1)
-	const b2 = (await login("01099998888", "teacher-pass-b")).body.session
-	const bAcc = await access("app-api", b2); assert(!(bAcc instanceof Response)); eq((bAcc as any).menus, [])
-	eq(((await access("class-room", b2)) as Response).status, 403)
-	// A: 다섯 번 틀림 → A만 잠김(429), B · 원장은 그대로
+	// B: 노션 계정 없음 = 어느 메뉴에도 없음 → 첫 비밀번호가 맞아도 403 + 안내, 세션 없음, 잠금 셈 0
+	for (let i = 0; i < 6; i++) {
+		const r = await login("01099998888", "01099998888")
+		eq(r.status, 403); assert(/메뉴관리 권한을 요청/.test(r.body.error)); assert(!r.body.session)
+	}
+	eq(srv.sessions.size, 0); eq(srv.accounts.get(TB)!.fails, 0); eq(srv.accounts.get(TB)!.locked, false)
+	eq((await login("01099998888", "wrong-pass")).status, 401) // 틀린 비밀번호는 그대로 401(메뉴 여부를 알려 주지 않음)
+	// 원장 [앱 계정]: 메뉴 권한 수
+	const stB = (await sec({ action: "teachers-status" }, OWNER)).body.teachers
+	eq(stB.find((t: any) => t.teacher_id === TB).menu, { menus: 0, edit: 0 }); eq(stB.find((t: any) => t.teacher_id === TA).menu, { menus: 3, edit: 3 })
+	// G(과목 편집): 로그인 됨
+	const g = await teacherKey(TG, "01077776666", "teacher-pass-g")
+	// A: 다섯 번 틀림 → A만 잠김(429), G · 원장은 그대로
 	for (let i = 0; i < 5; i++) eq((await login("01012345678", "nope-" + i)).status, 401)
 	eq((await login("01012345678", "01012345678")).status, 429)
-	assert(!((await access("app-api", b2)) instanceof Response))
+	assert(!((await access("app-api", g)) instanceof Response))
 	eq(await access("app-api", OWNER), { role: "owner" })
 	assert(!srv.calls.some((c) => c === "owner:login")) // 강사 틀림은 원장 잠김 셈에 들어가지 않는다
 	// 원장: 되돌리기 → 잠김 풀림 · 다시 첫 비밀번호(must_change)
@@ -236,10 +262,10 @@ Deno.test("teacher 흐름: 노션 계정이 비면 메뉴 0개(빈 화면 안내
 	eq((await sec({ action: "teacher-reset", teacher_id: TA }, OWNER)).status, 200)
 	const r = await login("01012345678", "01012345678")
 	eq([r.status, r.body.must_change], [200, true])
-	// 끄기: B 세션 바로 끊김 · 로그인 안 됨
-	eq((await sec({ action: "teacher-disable", teacher_id: TB }, OWNER)).status, 200)
-	eq(((await access("app-api", b2)) as Response).status, 401)
-	eq((await login("01099998888", "teacher-pass-b")).status, 401)
+	// 끄기: G 세션 바로 끊김 · 로그인 안 됨
+	eq((await sec({ action: "teacher-disable", teacher_id: TG }, OWNER)).status, 200)
+	eq(((await access("app-api", g)) as Response).status, 401)
+	eq((await login("01077776666", "teacher-pass-g")).status, 401)
 	// 로그아웃
 	await sec({ action: "teacher-logout" }, r.body.session); eq(srv.sessions.has(await sha256(r.body.session)), false)
 }))
@@ -305,4 +331,24 @@ Deno.test("teacher app-api: 권한 없는 메뉴의 DB는 읽기 · 고르기 �
 	eq((await api(OWNER, { action: "me" }, log)).body, { ok: true, role: "owner" })
 	// 세션 없음 · 첫 비밀번호 세션은 401
 	eq((await api("", { action: "list", db: "과목(학원) DB" }, log)).status, 401)
+}))
+
+Deno.test("teacher app-api: 댓글허용만인 메뉴 — 읽기 · 고르기 목록은 되고 저장 · 단추 요청 · 동기화 · 수업 생성은 403, me에 읽기/쓰기 DB가 따로", () => withServer(async () => {
+	const log: string[] = []
+	const d = await teacherKey(TDV, "01044443333", "teacher-pass-d")
+	const me = (await api(d, { action: "me" }, log)).body
+	eq([me.menus, me.editMenus, me.writeDbs], [["학생"], [], []]); assert(me.readDbs.includes("학생(학원) DB"))
+	eq((await api(d, { action: "list", db: "학생(학원) DB" }, log)).status, 200)
+	eq((await api(d, { action: "options" }, log)).body.dbs["학생(학원) DB"]["학생과의 관계"], ["어머니", "아버지"])
+	const sv = await api(d, { action: "save", changes: [{ op: "update", db: "학생(학원) DB", id: STU, props: { "이름": "x" } }] }, log)
+	eq(sv.status, 403); assert(/보기만/.test(sv.body.error)); assert(!log.some((x) => x.startsWith("save:")), "저장 함수를 부르지도 않음")
+	eq((await api(d, { action: "save", changes: [{ op: "update", db: "학생(학원) DB", id: STU, props: { "요청": "링크 재발급" } }] }, log)).status, 403)
+	eq((await api(d, { action: "run", name: "sync-copy" }, log)).status, 403)
+	eq((await api(d, { action: "run", name: "sync-copy", dbs: ["학생(학원) DB"] }, log)).status, 403)
+	eq((await api(d, { action: "run", name: "generate-classes" }, log)).status, 403)
+	await api(d, { action: "changes", since: "2026-11-23T00:00:00Z", dbs: ["학생(학원) DB"] }, log); eq(log.filter((x) => x.startsWith("changes:")).pop(), "changes:학생(학원) DB") // 바뀐 줄 받기(읽기)는 됨
+	// 편집허용 강사 A의 동기화는 쓰기 DB만
+	const a = await teacherKey(TA, "01012345678", "teacher-pass-a")
+	await api(a, { action: "run", name: "sync-copy" }, log); const sy = log.filter((x) => x.startsWith("sync:")).pop()!
+	assert(sy.includes("학생(학원) DB") && !sy.includes("과목(학원) DB"), sy)
 }))

@@ -5,7 +5,7 @@
 // 실제 로직은 _shared/classRoom.ts. 읽기 위치(Notion·복사본)는 CLASS_ROOM_SOURCE가 정한다(v2.5.116, _shared/classRoomRead.ts).
 import { CORS_HEADERS, getCurrentAdminKey } from "../_shared/adminShared.ts"
 import { securityEnabled } from "../_shared/adminSecurity.ts"
-import { requireAccess } from "../_shared/teacherAccess.ts"
+import { requireAccess, teacherRouteDeny } from "../_shared/teacherAccess.ts"
 import { ClassRoomError } from "../_shared/classRoom.ts"
 import { handleClassRoomWithSource } from "../_shared/classRoomRead.ts"
 
@@ -37,6 +37,8 @@ Deno.serve(async (req: Request) => {
     if (raw.length > 64_000) return json({ error: "요청이 너무 큽니다." }, 413)
     let body: unknown
     try { body = JSON.parse(raw) } catch { return json({ error: "요청 형식이 올바르지 않습니다." }, 400) }
+    // (강사계정 · 대표 261123) 댓글허용만인 메뉴는 읽기 동작만(_shared/teacherAccess.ts ROUTE_READ_ACTIONS)
+    { const no = teacherRouteDeny(authError0 as any, "class-room", body); if (no) return json({ error: no[1] }, no[0]) }
     // (v2.5.108, 속도 측정 0단계) 응답에 서버 처리 시간과 Notion 호출 수를 함께 싣는다. 화면은 ?timing=1일 때만 보여 준다.
     const calls0 = notionCount.calls, wait0 = notionCount.waitMs
     const result = await handleClassRoomWithSource(body)

@@ -17,7 +17,7 @@
 // 실제 로직은 _shared/textbookSearch.ts, 목차 규칙은 _shared/textbookToc.ts.
 import { CORS_HEADERS, getCurrentAdminKey } from "../_shared/adminShared.ts"
 import { securityEnabled } from "../_shared/adminSecurity.ts"
-import { requireAccess } from "../_shared/teacherAccess.ts"
+import { requireAccess, teacherRouteDeny } from "../_shared/teacherAccess.ts"
 import { TextbookError, addUnits, bookDetail, bookUnits, editUnits, kyoboBook, libraryBooks, parsePasted, registerBook, registerCustom, searchBooks, seriesList, editSeries, setCover, updateBook } from "../_shared/textbookSearch.ts"
 
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store" } })
@@ -34,6 +34,8 @@ Deno.serve(async (req: Request) => {
     if (raw.length > 64_000) return json({ error: "요청이 너무 큽니다." }, 413)
     let body: any
     try { body = JSON.parse(raw) } catch { return json({ error: "요청 형식이 올바르지 않습니다." }, 400) }
+    // (강사계정 · 대표 261123) 댓글허용만인 메뉴는 읽기 동작만(_shared/teacherAccess.ts ROUTE_READ_ACTIONS)
+    { const no = teacherRouteDeny(denied0 as any, "textbook-api", body); if (no) return json({ error: no[1] }, no[0]) }
     switch (body?.action) {
       case "search": return json(await searchBooks(body.query))
       case "register-custom": return json(await registerCustom(body))

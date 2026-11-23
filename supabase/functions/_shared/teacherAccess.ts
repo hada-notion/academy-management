@@ -62,7 +62,7 @@ export const TEACHER_ROUTES: Record<string, string[] | null> = {
 
 export type Access =
 	| { role: "owner" }
-	| { role: "teacher"; teacherId: string; name: string; notionUsers: string[]; menus: string[] }
+	| { role: "teacher"; teacherId: string; name: string; notionUsers: string[]; menus: string[]; editMenus: string[] }
 
 export async function teacherRpc(action: string, data: Record<string, unknown> = {}): Promise<any> {
 	const base = Deno.env.get("SB_URL"), key = Deno.env.get("SB_SERVICE_ROLE_KEY")
@@ -90,18 +90,25 @@ export function normalizePhone(raw: unknown): string {
 }
 
 // 메뉴 줄(app_rows) → 이 강사가 열 수 있는 메뉴 이름. 이름 = `이름` 칸, 끝의 관 꼬리표("등록(스터디)")는 뗀다.
-export function teacherMenus(menuRows: { props?: Record<string, unknown> }[], notionUsers: string[]): string[] {
+// (대표 261123 "노션의 댓글허용과 편집허용 방식이 웹앱에도 똑같이") 메뉴 줄의 `편집허용`에 있으면 읽기 · 쓰기, `댓글허용`에만 있으면 읽기만.
+export function teacherMenuAccess(menuRows: { props?: Record<string, unknown> }[], notionUsers: string[]): { menus: string[]; editMenus: string[] } {
 	const mine = new Set(notionUsers.filter(Boolean))
-	if (!mine.size) return []
-	const out = new Set<string>()
+	const view = new Set<string>(), edit = new Set<string>()
+	if (!mine.size) return { menus: [], editMenus: [] }
+	const has = (v: unknown) => Array.isArray(v) && (v as unknown[]).some((u) => mine.has(String(u)))
 	for (const r of menuRows) {
 		const p = r.props ?? {}
-		const allow = Array.isArray(p["편집허용"]) ? (p["편집허용"] as unknown[]).map(String) : []
-		if (!allow.some((u) => mine.has(u))) continue
+		const e = has(p["편집허용"]), c = has(p["댓글허용"])
+		if (!e && !c) continue
 		const name = String(p["이름"] ?? "").trim().replace(/\s*\([^()]*\)\s*$/, "")
-		if (name && !OWNER_ONLY_MENUS.has(name)) out.add(name)
+		if (!name || OWNER_ONLY_MENUS.has(name)) continue
+		view.add(name); if (e) edit.add(name)
 	}
-	return [...out]
+	return { menus: [...view], editMenus: [...edit] }
+}
+// 보이는 메뉴(편집허용 또는 댓글허용) 이름만 — 옛 부름 자리.
+export function teacherMenus(menuRows: { props?: Record<string, unknown> }[], notionUsers: string[]): string[] {
+	return teacherMenuAccess(menuRows, notionUsers).menus
 }
 export function teacherWriteDbs(menus: string[]): Set<string> {
 	const out = new Set<string>()
@@ -123,8 +130,9 @@ export async function teacherSession(provided: string): Promise<Access | null> {
 	}
 	if (s?.kind !== "teacher" || s.must_change) return null // 첫 비밀번호 상태 = 비밀번호 바꾸기(admin-security) 밖은 모두 거절
 	const notionUsers = Array.isArray(s.notion_users) ? s.notion_users.map(String) : []
-	const menus = teacherMenus(await listApp(TEACHER_MENU_DB as any), notionUsers)
-	return { role: "teacher", teacherId: String(s.teacher_id), name: String(s.name ?? ""), notionUsers, menus }
+	const { menus, editMenus } = teacherMenuAccess(await listApp(TEACHER_MENU_DB as any), notionUsers)
+	if (!menus.length) return null // 편집허용 · 댓글허용 어디에도 없으면 세션이 있어도 아무것도 못 함(로그인도 거절 — admin-security)
+	return { role: "teacher", teacherId: String(s.teacher_id), name: String(s.name ?? ""), notionUsers, menus, editMenus }
 }
 
 const deny = (status: number, error: string, cors: Record<string, string>) =>
@@ -145,11 +153,26 @@ export async function requireAccess(req: Request, cors: Record<string, string>, 
 	return deny(401, "인증 실패", cors)
 }
 
+// 강사를 받는 다른 경로(class-room · textbook-api · school-api)의 읽기 동작. 그 밖 동작은 쓰기 — 그 경로 메뉴의 편집허용이 있어야 한다.
+export const ROUTE_READ_ACTIONS: Record<string, Set<string>> = {
+	"class-room": new Set(["routines", "teachers", "day", "days", "session", "classes", "class-sessions", "class-records", "roster", "class-stats", "books", "activities", "record-body", "student", "makeup-waiting"]),
+	"textbook-api": new Set(["search", "detail", "parse", "kyobo-book", "library", "units", "series"]),
+	"school-api": new Set(["meta", "search"]),
+}
+export const VIEW_ONLY_MESSAGE = "댓글 권한 메뉴라 보기만 할 수 있어요 — 고치려면 원장에게 노션 메뉴관리 편집허용을 요청하세요."
+export function teacherRouteDeny(access: Access, route: string, body: any): [number, string] | null {
+	if (access.role !== "teacher") return null
+	const reads = ROUTE_READ_ACTIONS[route], need = TEACHER_ROUTES[route]
+	if (!reads || !need) return null
+	if (reads.has(String(body?.action ?? ""))) return null
+	return need.some((m) => access.editMenus.includes(m)) ? null : [403, VIEW_ONLY_MESSAGE]
+}
+
 // app-api 동작마다 강사 거름. 거절이면 [status, 말], 통과면 null. 원장은 부르지 않는다.
 export function teacherAppDeny(t: Extract<Access, { role: "teacher" }>, body: any): [number, string] | null {
 	const a = body?.action
 	const fin = "재무 · 결제는 원장만 볼 수 있어요."
-	const read = teacherReadDbs(t.menus)
+	const read = teacherReadDbs(t.menus), write = teacherWriteDbs(t.editMenus)
 	const noMenu = (db: string) => `${String(db).replace(/\(학원\) DB$/, "")} 메뉴 권한이 없어요 — 원장에게 메뉴 권한을 요청하세요.`
 	if (a === "me" || a === "status" || a === "options" || a === "changes") return null // 응답을 읽기 DB로 거른다(app-api)
 	if (a === "list") return TEACHER_BLOCKED_DBS.has(body.db) ? [403, fin] : read.has(body.db) ? null : [403, noMenu(body.db)]
@@ -157,22 +180,22 @@ export function teacherAppDeny(t: Extract<Access, { role: "teacher" }>, body: an
 	if (a === "record-payment") return [403, fin]
 	if (a === "end-preview") return t.menus.includes("등록") ? null : [403, "등록 메뉴 권한이 없어요 — 원장에게 메뉴 권한을 요청하세요."]
 	if (a === "run") {
+		// [동기화]는 노션 → 사본을 다시 맞추는 일이라 편집허용 메뉴의 DB만(댓글허용만이면 403).
 		if (body.name === "sync-copy") {
-			if (!Array.isArray(body.dbs)) return null // dbs 없이 = app-api가 읽기 DB로 채움
-			const bad = body.dbs.find((d: string) => !read.has(d))
-			return bad ? [403, TEACHER_BLOCKED_DBS.has(bad) ? fin : noMenu(bad)] : null
+			if (!Array.isArray(body.dbs)) return write.size ? null : [403, VIEW_ONLY_MESSAGE] // dbs 없이 = app-api가 쓰기 DB로 채움
+			const bad = body.dbs.find((d: string) => !write.has(d))
+			return bad ? [403, TEACHER_BLOCKED_DBS.has(bad) ? fin : read.has(bad) ? VIEW_ONLY_MESSAGE : noMenu(bad)] : null
 		}
-		if (body.name === "generate-classes") return t.menus.some((m) => m === "수업" || m === "시간표") ? null : [403, "수업 생성 권한이 없어요 — 원장에게 메뉴 권한을 요청하세요."]
+		if (body.name === "generate-classes") return t.editMenus.some((m) => m === "수업" || m === "시간표") ? null : [403, "수업 생성 권한이 없어요 — 원장에게 메뉴 권한을 요청하세요."]
 		return null
 	}
 	if (a === "save") {
-		const ok = teacherWriteDbs(t.menus)
 		const list = Array.isArray(body.changes) ? body.changes : []
 		for (const c of list) {
 			const db = String(c?.db ?? "")
 			if (TEACHER_BLOCKED_DBS.has(db)) return [403, fin]
 			if (db === TEACHER_DB) return [403, "강사 정보는 원장만 고칠 수 있어요."]
-			if (!ok.has(db)) return [403, noMenu(db)]
+			if (!write.has(db)) return [403, read.has(db) ? VIEW_ONLY_MESSAGE : noMenu(db)]
 		}
 		return null
 	}

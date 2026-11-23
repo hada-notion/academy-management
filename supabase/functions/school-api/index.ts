@@ -1,6 +1,6 @@
 import { CORS_HEADERS, getCurrentAdminKey } from "../_shared/adminShared.ts"
 import { securityEnabled } from "../_shared/adminSecurity.ts"
-import { requireAccess } from "../_shared/teacherAccess.ts"
+import { requireAccess, teacherRouteDeny } from "../_shared/teacherAccess.ts"
 import { queryAllPages, getPage, updatePageProperties } from "../_shared/notionClient.ts"
 import { neisRows, textOf, richText, safeWebsite } from "../_shared/neisSchool.ts"
 import { schoolSources, compactId } from "../_shared/schoolNotion.ts"
@@ -14,6 +14,8 @@ Deno.serve(async req => {
   if (denied) return denied
   try {
     const body = await req.json()
+    // (강사계정 · 대표 261123) 댓글허용만인 메뉴는 읽기 동작만(_shared/teacherAccess.ts ROUTE_READ_ACTIONS)
+    { const no = teacherRouteDeny(denied0 as any, "school-api", body); if (no) return json({ error: no[1] }, no[0]) }
     const { schools } = await schoolSources()
     if (body.action === "meta") {
       const pages = await queryAllPages(schools)
