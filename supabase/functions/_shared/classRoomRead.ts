@@ -4,7 +4,7 @@
 //   - notion(기본·값 없음): 지금처럼 Notion을 읽는다.
 //   - shadow: Notion 결과를 보여 주고, 뒤에서 같은 요청을 복사본으로 읽어 다르면 함수 로그에 남긴다.
 //   - copy: 아래 동작은 복사본(cr_*)을 읽는다. 복사본에 없는 수업·기록이 있거나 읽기에 실패하면 그 요청만 Notion으로 읽는다.
-// 복사본으로 읽는 동작: day, days, classes, session, class-sessions, class-records, class-stats.
+// 복사본으로 읽는 동작: day, days, classes, session, class-sessions, class-records, class-stats, range-records(학습기록 메뉴).
 // 그대로 Notion: teachers, roster, books, activities, record-body, student(복사본에 없는 교재·등록·원생·본문을 읽음)와 모든 저장.
 // 결과 모양은 classRoom.ts의 같은 이름 함수와 같아야 한다(classRoomRead_test.ts가 같은 자료로 둘을 비교).
 //
@@ -16,6 +16,7 @@ import {
 	HOMEWORK_SUBMITTED,
 	handleClassRoom,
 	isId,
+	rangeOf,
 	seoulDate,
 	seoulDayRange,
 	seoulTime,
@@ -298,6 +299,23 @@ export async function loadClassSessions(sessionId: string, around?: string) {
 }
 
 // 수업 상세: 학생(출석)·오늘 마감 과제·학습기록
+// (v2.8.0 학습생성결함 ②) 관리 앱 학습기록 메뉴 — classRoom.ts loadRangeRecords와 같은 모양. 기록이 사본에 다 없으면 Notion으로.
+export async function loadRangeRecords(from: string, to: string) {
+	const { start, end } = rangeOf(from, to)
+	const sessions = await selectCopy("cr_sessions", `${between("starts_at", start, end)}&order=starts_at,id`)
+	if (!sessions.length) return { records: [] }
+	const byId = new Map(sessions.map((s) => [s.id as string, s]))
+	const rows = await allByIds("cr_records", sessions.flatMap((s) => arr(s.record_ids))), extra = cardExtras(await gradedActivities(rows))
+	const records = rows.map((r) => {
+		const sid = arr(r.session_ids).find((id) => byId.has(id)) ?? null, s = sid ? byId.get(sid)! : null
+		const at = s?.start_text ?? null
+		const { body: _drop, ...ex } = extra(r)
+		return { ...recordSummary(r), ...ex, sessionId: sid, date: seoulDate(at), start: at, classIds: s ? arr(s.class_ids) : [], blockId: s?.block_id ?? null }
+	})
+	records.sort((a, b) => String(b.start ?? "").localeCompare(String(a.start ?? "")) || a.title.localeCompare(b.title, "ko"))
+	return { records: records.map(({ start, ...r }) => ({ ...r, time: seoulTime(start) })) }
+}
+
 export async function loadSession(sessionId: string) {
 	if (!isId(sessionId)) throw new ClassRoomError(400, "수업 형식이 올바르지 않습니다.")
 	const session = await sessionById(sessionId)
@@ -349,6 +367,7 @@ const READERS: Record<string, (b: any) => Promise<unknown>> = {
 	"session": (b) => loadSession(b.sessionId),
 	"class-sessions": (b) => loadClassSessions(b.sessionId, b.around),
 	"class-records": (b) => loadClassRecords(b.sessionId),
+	"range-records": (b) => loadRangeRecords(String(b.from ?? ""), String(b.to ?? "")),
 	"class-stats": (b) => loadClassStats(b.sessionId),
 }
 
