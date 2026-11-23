@@ -68,6 +68,13 @@ export const PAYMENT_RULES: Record<string, { update: readonly string[]; required
 	"청구 결제(학원) DB": { update: ["결제 금액", "결제 방법", "결제일"], required: [], noEmpty: ["결제 금액", "결제일"] },
 }
 export const MAX_PAYMENT_AMOUNT = 100_000_000
+// (2바퀴 원본 확인 261123) 결제 줄을 고치면 노션은 연결된 줄의 수식(수강료 `결제 관리` · 청구 항목 `결제 상태`)을 바로 바꾸지만,
+// 그 줄 자체는 편집 시각이 바뀌지 않아 앱 사본의 증분 동기화가 놓친다(원본에서 결제 줄 250,000 → 50,000 뒤 사본이 🟠과오납으로 남음).
+// 그래서 결제 · 청구 결제 줄을 쓰면 연결된 줄을 다시 읽어 사본에 바로 넣는다(실패해도 저장은 성공 — 다음 통째 대조가 맞춤).
+export const PAYMENT_LINKS: Record<string, { prop: string; db: WriteDb }> = {
+	"결제(학원) DB": { prop: "수강료", db: "수강료(학원) DB" },
+	"청구 결제(학원) DB": { prop: "교재배부", db: "청구 항목(학원) DB" },
+}
 const blank = (v: unknown) => v === undefined || v === null || (typeof v === "string" && v.trim() === "") || (Array.isArray(v) && !v.length)
 function checkPaymentRow(db: string, props: Record<string, unknown>, op: "create" | "update"): void {
 	const rule = PAYMENT_RULES[db]
@@ -256,9 +263,19 @@ async function upsertCopy(db: WriteDb, page: Record<string, any>): Promise<Recor
 	return row
 }
 
+// 결제 줄과 이어진 줄(수강료 · 청구 항목)을 다시 읽어 사본에 넣는다. 실패한 줄은 빼고 돌려준다(저장 결과는 그대로 성공).
+async function refreshLinked(link: { prop: string; db: WriteDb }, page: Record<string, any>): Promise<Record<string, unknown>[]> {
+	const ids: string[] = (page?.properties?.[link.prop]?.relation ?? []).map((r: any) => r.id).slice(0, 5)
+	const rows: Record<string, unknown>[] = []
+	for (const id of ids) {
+		try { rows.push(await upsertCopy(link.db, await getPage(id))) } catch (err) { console.warn(`[appSave] ${link.db} 연결 줄 사본 맞추기 실패:`, id, String((err as Error).message).slice(0, 200)) }
+	}
+	return rows
+}
+
 // ---------- 저장 ----------
 export type Change = { op: "create" | "update" | "delete"; db: string; id?: string; tmp?: string; edited?: string; props?: Record<string, unknown> }
-export type ChangeResult = { i: number; ok: boolean; id?: string; tmp?: string; row?: Record<string, unknown> | null; error?: string; conflict?: boolean; deleted?: boolean; blocked?: Record<string, number>; warn?: string }
+export type ChangeResult = { i: number; ok: boolean; id?: string; tmp?: string; row?: Record<string, unknown> | null; linked?: Record<string, unknown>[]; error?: string; conflict?: boolean; deleted?: boolean; blocked?: Record<string, number>; warn?: string }
 // (261123 출시 전 5번) 노션엔 썼고 앱 사본(Supabase)만 못 쓴 줄의 안내 — 앱이 그대로 보여 준다.
 export const COPY_ONLY_FAILED = "노션엔 저장됨, 앱 사본만 못 맞춤 — 잠시 뒤 저절로 맞춰져요(다시 저장하지 않아도 돼요)"
 
@@ -378,7 +395,8 @@ export async function saveChanges(changes: Change[]): Promise<ChangeResult[]> {
 				warn = COPY_ONLY_FAILED
 				console.error(`[appSave] ${c.db} ${c.op} 노션엔 저장, 사본 쓰기 실패: ${String((err as Error).message).slice(0, 200)}`)
 			}
-			out.push({ i, ok: true, id: page.id, tmp: c.tmp, row, ...(warn ? { warn } : {}) })
+			const linked = PAYMENT_LINKS[c.db] ? await timed("연결줄", () => refreshLinked(PAYMENT_LINKS[c.db], page)) : undefined
+			out.push({ i, ok: true, id: page.id, tmp: c.tmp, row, ...(linked?.length ? { linked } : {}), ...(warn ? { warn } : {}) })
 			console.log(`[appSave] ${c.db} ${c.op} ${Date.now() - t0}ms (${steps.join(" ")})`)
 		} catch (err) {
 			out.push({ i, ok: false, id: c.id, tmp: c.tmp, error: err instanceof SaveError ? err.message : "Notion에 쓰지 못했습니다: " + String((err as Error).message).slice(0, 200) })
