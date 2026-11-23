@@ -11,7 +11,6 @@ const APPV_DB = {
 // appLoad가 더 받아야 할 DB(appdata.js APPMAP의 DB는 빼고)
 const APPV_DBS = [APPV_DB.event, APPV_DB.box, APPV_DB.report, APPV_DB.letter, APPV_DB.tuition, APPV_DB.pay, APPV_DB.bill, APPV_DB.line, APPV_DB.billPay, APPV_DB.etc, APPV_DB.exam, APPV_DB.examInfo, APPV_DB.grade, APPV_DB.alim, APPV_DB.file]
 const APPV_ETC6 = ["모의고사비", "재료비", "피복비", "급식비", "기숙사비", "차량비"]
-// 일정 진행상태: 노션(시작 전·진행 중·미완료·완료) → 시제품(예정·진행 중·완료). 미완료는 시제품에 없는 값이라 그대로 둔다
 const APPV_REPORT_KINDS = { "주간 보고서": "주간", "월간 보고서": "월간", "수료 보고서": "수료" }
 // 알림톡 받는 사람: 노션 옵션 → 시제품 고르기 값
 const APPV_TARGET = { "우선 연락 대상": "우선 연락처" }
@@ -89,7 +88,9 @@ const APPVIEW = {
 				schools: X.ids(p["학교"]), grades: X.ids(p["학년"]).map((id) => X.title("학년(학원) DB", id, "이름")).filter(Boolean), students: X.ids(p["학생"]),
 				// 날짜 시작~끝 = 노션 값 그대로(끝이 없으면 "")
 				start, end, who: X.id1(p["담당자"]),
-				stat: X.str(p["완료"] ?? p["진행상태"]) || "시작 전", _statKey: "완료" in p ? "완료" : "진행상태", // 노션 진행상태 이름 그대로(시작 전 · 진행 중 · 완료). 칸 이름은 "진행상태" → "완료"(261124 대표) — 둘 다 읽음 pub: !!p["학부모 공개"], memo: X.str(p["일정 안내 메모"]),
+				// 할 일 두 칸(261124 대표): 달성여부(달성 · 미달성, 비면 진행) · 우선순위(중요 · 보류, 비면 보통) · 태그(매일). 앱은 읽기만 — 바꾸기는 노션 홈 보드
+				ach: X.str(p["달성여부"]), pri: X.str(p["우선순위"]), tags: Array.isArray(p["태그"]) ? p["태그"].map(String) : [],
+				pub: !!p["학부모 공개"], memo: X.str(p["일정 안내 메모"]),
 				classIds: X.ids(p["클래스"]), school: X.title("학교(학원) DB", X.id1(p["학교"]), "이름"), state: "saved",
 				_time: X.dt(p["날짜"]).length > 10 ? X.dt(p["날짜"]).slice(11) : "", _students: X.ids(p["학생"]), _neis: !!X.str(p["NEIS 동기화키"]),
 			}
