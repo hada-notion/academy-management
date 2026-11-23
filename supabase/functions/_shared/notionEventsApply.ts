@@ -17,6 +17,7 @@ import { fetchWithRetry, notionHeaders, normalizeProps, notionCalls } from "./no
 import { fetchSupabaseWithRetry } from "./reportCacheShared.ts"
 import { appSources, pageRow, upsertRows, deleteIds, type AppDb } from "./appCopy.ts"
 import { COPY_TABLES, DS, toRows, upsertCopyRows, deleteCopyRows, type CopyTable } from "./classRoomCopy.ts"
+import { handleRequest, hasRequestProp, liveRequestDeps, requestOf, requestsEnabled } from "./notionRequests.ts"
 
 type Page = Record<string, any>
 
@@ -91,11 +92,19 @@ export interface Deps {
 	now(): number
 	sleep(ms: number): Promise<void>
 	log(msg: string): void
+	// (261123 버튼 전환) 요청 칸. 없으면 요청은 보지 않는다(사본만).
+	request?: {
+		isSource(ds: string): Promise<boolean | null>
+		remember(ds: string, has: boolean): Promise<void>
+		hasProp(page: Page): boolean
+		handle(page: Page): Promise<string | null> // 넘겼으면 결과 글자(예: "session-record ✅ 완료"), 요청 없으면 null
+	}
 }
 
 export type ApplyResult = { result: string; target?: string }
 
 // 줄 하나. 결과 글자는 대기열 result 칸에 남는다.
+// (261123 버튼 전환) `요청` 칸이 있는 DB(requestSource)는 사본이 없어도 다시 읽고, 요청이 있으면 넘긴다(notionRequests.ts).
 export async function applyOne(item: QueueItem, deps: Deps): Promise<ApplyResult> {
 	if (!REREAD_EVENTS.has(item.event_type)) return { result: "skip:event" }
 	let map = await deps.targets()
@@ -104,28 +113,38 @@ export async function applyOne(item: QueueItem, deps: Deps): Promise<ApplyResult
 		const fresh = await deps.targetsFresh()
 		if (fresh) { map = fresh; evTarget = targetOf(map, item.data_source_id) }
 	}
-	if (!evTarget && item.event_type !== "page.moved") return { result: "skip:no-copy" }
-	if (evTarget && item.own_bot) {
+	// 요청 칸 DB인가: true · false · null(아직 모름 → 읽어 보고 기억)
+	const reqSource = deps.request && item.data_source_id && item.event_type !== "page.deleted" ? await deps.request.isSource(item.data_source_id) : false
+	if (!evTarget && reqSource === false && item.event_type !== "page.moved") return { result: "skip:no-copy" }
+	if (evTarget && item.own_bot && reqSource === false) {
 		const row = await deps.copyRow(evTarget, item.page_id)
 		if (item.event_type === "page.deleted" && !row) return { result: "echo", target: label(evTarget) } // 앱이 지우면서 사본도 이미 뺌
 		const synced = row?.synced_at ? Date.parse(String(row.synced_at)) : NaN
 		if (Number.isFinite(synced) && synced >= Date.parse(item.event_time)) return { result: "echo", target: label(evTarget) }
 	}
 	const page = await deps.readPage(item.page_id)
-	if (!page || page.in_trash || page.archived) {
+	const gone = !page || page.in_trash || page.archived
+	let req = ""
+	if (deps.request && !gone) {
+		if (reqSource === null && item.data_source_id) await deps.request.remember(item.data_source_id, deps.request.hasProp(page))
+		const r = await deps.request.handle(page)
+		if (r) req = `request:${r} `
+	}
+	if (!evTarget && !targetOf(map, pageDataSource(page)) && item.event_type !== "page.moved") return { result: `${req}no-copy`.trim() }
+	if (gone) {
 		await deps.removeEverywhere(item.page_id)
-		return { result: "deleted", target: evTarget ? label(evTarget) : undefined }
+		return { result: `${req}deleted`.trim(), target: evTarget ? label(evTarget) : undefined }
 	}
 	const target = targetOf(map, pageDataSource(page)) ?? null
 	if (!target) {
 		await deps.removeEverywhere(item.page_id) // 사본 DB 밖으로 옮겨짐
-		return { result: "moved-out" }
+		return { result: `${req}moved-out`.trim() }
 	}
 	if (item.event_type === "page.moved" && (!evTarget || label(evTarget) !== label(target))) await deps.removeEverywhere(item.page_id)
 	const rows = await deps.rowsOf(target, page)
-	if (rows.length === 1 && sameRow(await deps.copyRow(target, item.page_id), rows[0])) return { result: "same", target: label(target) }
+	if (rows.length === 1 && sameRow(await deps.copyRow(target, item.page_id), rows[0])) return { result: `${req}same`.trim(), target: label(target) }
 	await deps.upsert(target, rows)
-	return { result: "upserted", target: label(target) }
+	return { result: `${req}upserted`.trim(), target: label(target) }
 }
 const label = (t: Target) => (t.kind === "app" ? `app_rows:${t.db}` : t.table)
 
@@ -220,6 +239,41 @@ async function freshTargets(): Promise<TargetMap | null> {
 	return await rebuildTargets()
 }
 
+// (261123 버튼 전환) 요청 칸 DB 기억: 데이터 소스마다 처음 한 번 그 줄을 읽어 `요청` 칸이 있는지 본다.
+// 함수 메모리와 표 notion_request_sources에 1시간(칸을 새로 넣은 DB는 1시간 안에 알아챔).
+export const REQUEST_SOURCE_TTL_MS = 60 * 60 * 1000
+const reqSourceCache = new Map<string, { has: boolean; at: number }>()
+async function liveIsSource(ds: string): Promise<boolean | null> {
+	const key = norm(ds)
+	const mem = reqSourceCache.get(key)
+	if (mem && Date.now() - mem.at < REQUEST_SOURCE_TTL_MS) return mem.has
+	const res = await fetchSupabaseWithRetry(`${SB_URL()}/rest/v1/notion_request_sources?id=eq.${key}&select=has_request,checked_at`, { headers: sbHeaders() })
+	const row = res.ok ? (await res.json())[0] : null
+	const at = row ? Date.parse(row.checked_at) : NaN
+	if (row && Date.now() - at < REQUEST_SOURCE_TTL_MS) { reqSourceCache.set(key, { has: !!row.has_request, at }); return !!row.has_request }
+	return null
+}
+async function liveRemember(ds: string, has: boolean): Promise<void> {
+	const key = norm(ds)
+	reqSourceCache.set(key, { has, at: Date.now() })
+	const res = await fetchSupabaseWithRetry(`${SB_URL()}/rest/v1/notion_request_sources?on_conflict=id`, {
+		method: "POST", headers: sbHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+		body: JSON.stringify([{ id: key, has_request: has, checked_at: new Date().toISOString() }]),
+	})
+	if (!res.ok) console.error("[notionEvents] 요청 칸 DB 기억 실패", res.status)
+}
+export const liveRequest: NonNullable<Deps["request"]> = {
+	isSource: liveIsSource,
+	remember: liveRemember,
+	hasProp: hasRequestProp,
+	async handle(page) {
+		const req = requestOf(page)
+		if (!req) return null
+		const out = await handleRequest(page, req, liveRequestDeps)
+		return `${out.ids.join(",")} ${out.state}${out.overwritten ? " (새 요청 있음)" : ""}`
+	},
+}
+
 export const liveDeps: Deps = {
 	rpc: sbRpc,
 	targets: liveTargets,
@@ -251,6 +305,7 @@ export const liveDeps: Deps = {
 	now: () => Date.now(),
 	sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
 	log: (m) => console.log(m),
+	request: requestsEnabled() ? liveRequest : undefined,
 }
 
 export const applyEnabled = () => Deno.env.get("NOTION_EVENTS_APPLY") !== "off"
