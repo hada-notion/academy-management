@@ -6,7 +6,7 @@
 <title>관리 앱 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3C%2Fsvg%3E">
 <link rel="stylesheet" href="hada-tokens.css?v=742">
-<link rel="stylesheet" href="app.css?v=748">
+<link rel="stylesheet" href="app.css?v=750">
 <link rel="stylesheet" href="pick.css?v=742">
 <link rel="stylesheet" href="field.css?v=742">
 </head>
@@ -20,7 +20,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=742"><script src="hada-rules.js?v=742"></script><script src="help.js?v=742"></script><script src="alim-preview.js?v=742"></script><script src="pick.js?v=742"></script><script src="field.js?v=742"></script><script src="panel.js?v=742"></script>
+<link rel="stylesheet" href="alim.css?v=742"><script src="hada-rules.js?v=742"></script><script src="help.js?v=742"></script><script src="alim-preview.js?v=742"></script><script src="pick.js?v=742"></script><script src="field.js?v=742"></script><script src="panel.js?v=750"></script>
 <script>
 "use strict";
 
@@ -536,7 +536,7 @@ function lmsgBind(p,k,kind,off,d,start,studs,attS,name){
   const b=p.querySelector("#lmSend");if(!b)return;b.onclick=()=>{const I=lmsgInfo(k,kind,off,d,start,studs,attS);const again=!I.todo.length;const to=(again?I.can:I.todo).map(r=>({name:r.x.name}));const skip=[...I.rows.filter(r=>r.why).map(r=>({name:r.x.name,why:r.why})),...(again?[]:I.can.filter(r=>r.done).map(r=>({name:r.x.name,why:"같은 일시로 이미 받음"})))];const x0=(again?I.can:I.todo)[0];
     alimSend({title:`${I.tpl} 전송`,tpl:I.tpl,mine:I.m.memo||"",mark:"전달사항",vals:{학생이름:x0?x0.x.name:"",클래스:name,수업일정:`📅 일시  ${D10(d).slice(2)} ${fmt(start)}`},to,skip,onSend:()=>{const cur=DB.lmsg[k]=DB.lmsg[k]||{memo:"",sent:{}};(again?I.can:I.todo).forEach(r=>cur.sent[r.x.id]=I.sig);commit();toast(`${to.length}명에게 전송 완료로 표시했어요 — Ctrl+Z로 되돌려요`)}})}}
 /* 197판: 줄마다 숫자 칸(평가 정답·성적 점수·등수) — 값이 바뀌면 다시 그리되, Tab으로 옮겨 간 다음 칸에 커서를 돌려놓는다 */
-function commitKeepFocus(){const a=document.activeElement;let sel=null;if(a&&a.tagName==="INPUT"&&a.dataset){const d=a.dataset;sel=d.rsc?`.reccard.open input[data-rsc="${d.rsc}"]`:d.gs?`.recst input[data-gs="${d.gs}"][data-gf="${d.gf}"]`:null}commit();if(sel){const e=document.querySelector(sel);if(e){e.focus();if(e.select)e.select()}}}
+function commitKeepFocus(){const a=document.activeElement;let sel=null;if(a&&(a.tagName==="INPUT"||a.tagName==="SELECT")&&a.dataset){const d=a.dataset;sel=d.rsc?`.reccard.open input[data-rsc="${d.rsc}"]`:d.gs?`#lp [data-gs="${d.gs}"][data-gf="${d.gf}"]`:d.gx?`#lp [data-gx="${d.gx}"][data-gf="${d.gf}"]`:null}commit();if(sel){const e=document.querySelector(sel);if(e){e.focus();if(e.select)e.select()}}}
 /* 197판: 시험 성적 — 응시학생 등록(같은 학년·학교의 재원 학생), 점수·등수, 백분율 = 등수 ÷ 응시 인원 × 100 */
 const exElig=x=>DB.students.filter(s=>!s.del&&stuStat(s)==="on"&&x.grade&&s.grade===x.grade&&(!x.school||s.school===x.school));
 const exGr=x=>(DB.grades||[]).filter(g=>g.examId===x.id&&!g.del);
@@ -571,7 +571,8 @@ const pgBookLab=g=>g?nmBook(g.bookId)+(g.mode==="개별"&&g.studentId?" · "+nmS
 const recBook=r=>r.bookId?pgBookLab(DB.progress.find(x=>x.id===r.bookId)||{bookId:""}):"교재 없음";
 /* 과제검사: 이 수업이 마감인 과제 = 같은 클래스 바로 앞 수업의 과제 기록 */
 function recsDue(b,d){if(!b||!b.classId)return [];const hw=(DB.recs||[]).filter(r=>!r.del&&r.kind==="과제"&&r.classId===b.classId&&r.d<d);if(!hw.length)return [];const last=hw.reduce((m,r)=>r.d>m?r.d:m,"");return hw.filter(r=>r.d===last)}
-function recStu(r,studs){return `<div class="recst">${studs.length?studs.map(s=>{const a=r.acts[s.id]||{};return `<div class="recrow"><span class="nm">${esc(s.name)}</span>${r.kind==="과제"?`<span class="attseg" data-rs="${s.id}" data-rid="${r.id}">${[["완료","a1"],["일부 완료","a3"],["미제출","a2"]].map(([v,cl])=>`<button type="button" class="${a.hw===v?cl+" on":""}" data-v="${v}" title="${HWL[v]}">${v==="일부 완료"?"일부":HWL[v]}</button>`).join("")}</span>`:`<input class="inp recsc" data-rsc="${s.id}" inputmode="numeric" autocomplete="off" value="${a.ok??""}" placeholder="정답" aria-label="${esc(s.name)} 정답 문항"><span class="hint">/ ${r.total||0}</span><span class="recpt">${recPct(r,a)==null?"—":recPct(r,a)+"점"}</span>`}</div>`}).join(""):'<div class="lnone">이 수업에 학생이 없어요.</div>'}</div>`}
+function recStu(r,studs){if(r.kind!=="과제"&&window.PANEL&&PANEL.rgrid)return studs.length?PANEL.rgrid({key:"rec:"+r.id,always:true,nameLabel:"학생",rows:studs.map(s=>({id:s.id,data:{s,a:r.acts[s.id]||{}},nameHtml:esc(s.name)})),cols:[{k:"ok",label:"정답",w:52,num:true,edit:d=>({attr:`data-rsc="${d.s.id}"`,value:d.a.ok??"",ph:"정답",aria:d.s.name+" 정답 문항"})},{k:"total",label:"전체",w:40,num:true,view:()=>`/${r.total||0}`},{k:"pct",label:"점수",w:48,num:true,view:d=>recPct(r,d.a)==null?"":recPct(r,d.a)+"점"}]}):'<div class="lnone">이 수업에 학생이 없어요.</div>';/* 261124: 평가 정답 줄 = 반복 줄 칸 부품(펼친 카드 = 편집 상태라 늘 편집 갈래) */
+  return `<div class="recst">${studs.length?studs.map(s=>{const a=r.acts[s.id]||{};return `<div class="recrow"><span class="nm">${esc(s.name)}</span>${r.kind==="과제"?`<span class="attseg" data-rs="${s.id}" data-rid="${r.id}">${[["완료","a1"],["일부 완료","a3"],["미제출","a2"]].map(([v,cl])=>`<button type="button" class="${a.hw===v?cl+" on":""}" data-v="${v}" title="${HWL[v]}">${v==="일부 완료"?"일부":HWL[v]}</button>`).join("")}</span>`:""}</div>`}).join(""):'<div class="lnone">이 수업에 학생이 없어요.</div>'}</div>`}
 /* ═════ 261119 대표: 학습기록 카드 한 모양(수업 창 모양) — 수업 창 · 진도 창 [기록] · 학생 창 [학습] · 수업 화면 학습 탭이 모두 이 카드. 열면 그 자리에서 펼쳐짐.
    o = {date:날짜 머리에 보임, tag:머리 글자, noOpen:펼치지 않음, open:펼침 여부, act:학생 id — 출석에서 연 카드(펼치면 그 학생의 학습활동 = 과제상태 · 점수 · 선생님 한마디 · 메모(내부용)), ro:보기만} ═════ */
 const recSumAct=(r,sid)=>{const aa=(r.acts||{})[sid]||{};if(r.kind==="평가"){const pc=recPct(r,aa);return pc==null?"점수 입력 전":`${aa.ok}/${r.total||0} · ${pc}점`}if(r.kind==="과제")return aa.hw?"과제상태 "+HWL[aa.hw]:"과제상태 입력 전";return aa.say||r.content||""};
@@ -4987,6 +4988,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del&&!z._virtual).
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="finance.js?v=748"></script><script src="finlive.js?v=742"></script><script src="exams.js?v=742"></script><script src="appdata.js?v=743"></script><script src="appsave.js?v=748"></script><script src="appview.js?v=748"></script><script src="livelesson.js?v=744"></script><script src="liveadmin.js?v=742"></script><script src="livebook.js?v=742"></script><script src="liveschool.js?v=742"></script><script src="liveteacher.js?v=747"></script><script src="live.js?v=748"></script><script src="liverefresh.js?v=742"></script><script src="livereq.js?v=742"></script>
+<script src="finance.js?v=748"></script><script src="finlive.js?v=742"></script><script src="exams.js?v=750"></script><script src="appdata.js?v=743"></script><script src="appsave.js?v=748"></script><script src="appview.js?v=748"></script><script src="livelesson.js?v=744"></script><script src="liveadmin.js?v=742"></script><script src="livebook.js?v=742"></script><script src="liveschool.js?v=742"></script><script src="liveteacher.js?v=747"></script><script src="live.js?v=748"></script><script src="liverefresh.js?v=742"></script><script src="livereq.js?v=742"></script>
 </body>
 </html>

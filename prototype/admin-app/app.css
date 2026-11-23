@@ -2088,6 +2088,24 @@ table.stt.gt.grid{width:auto}
 .unrow .unx{display:inline-flex;flex:none;opacity:0}
 .unrow:hover .unx,.unrow:focus-within .unx{opacity:1}
 .unrow.ed{padding:var(--space-1) 0;min-height:40px}
+/* 반복 줄 칸(PANEL.rgrid, 기준 5장 "반복 줄 칸"): 보기·편집이 같은 열 틀 — 이름 1fr + 칸마다 고정 폭, 줄 40, 머리줄 28, 숫자 오른쪽 정렬 */
+.rgrid{margin-bottom:var(--space-3)}
+.rgrow{display:grid;grid-template-columns:var(--rgcols);column-gap:var(--space-2);align-items:center;min-height:40px;padding:0 var(--space-2);border-bottom:1px solid var(--line2);font-size:var(--text-small)}
+.rgrow.rgh{min-height:28px;font-size:var(--text-label);font-weight:600;color:var(--muted);border-bottom:1px solid var(--line)}
+.rgrow:not(.rgh):hover{background:var(--brand-tint,#FBF8F4)}
+.rgrid.ed .rgrow:not(.rgh):hover{background:none}
+.rgrow.draft{box-shadow:inset 3px 0 0 var(--warning-ink)}
+.rgrow .rgn{min-width:0;display:flex;align-items:baseline;gap:var(--space-1);overflow:hidden}
+.rgrow .rgnt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.rgrow.rgh .rgnt,.rgrow.rgh .rgn{font-weight:600}
+.rgrow .rgns{flex:none;font-size:var(--text-micro);color:var(--muted)}
+.rgrow .rgc{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.rgrow .rgc.num{text-align:right}
+.rgrow .rgc.none{color:var(--subtle)}
+#lp .rgrow .rgi,.rgrow .rgi{width:100%;min-width:0;height:32px;box-sizing:border-box;border:1px solid var(--field-line);border-radius:var(--radius-sm);padding:0 6px;font-size:var(--text-small);background-color:var(--field-bg);color:var(--ink)}
+#lp .rgrow select.rgi,.rgrow select.rgi{padding:0 16px 0 6px!important;background-position:right 4px center;background-size:12px 12px}
+.rgrow .rgi:focus{outline:2px solid var(--brand-deep);outline-offset:-1px}
+.box h3 .rgok{margin-left:var(--space-1)}
 @media (hover:none){.unrow .unx{opacity:1}}
 /* 211판: 카드 끝 [+] 칸을 다른 카드와 같은 상자로(단추 기본 여백·가운데 맞춤 때문에 아래로 밀리던 것) */
 .bkcard.bkadd{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;width:100%;margin:0;padding:var(--space-2);border:1px solid transparent;box-sizing:border-box;align-self:start;line-height:inherit}

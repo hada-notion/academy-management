@@ -106,9 +106,12 @@ const DBS = () => ({
 
   // 3) 성적 고치기: 점수 · 등수 · 응시인원 · 등급 → 고친 칸만(학년 · 학교 · 학생은 안 보냄)
   await sel(X2, 'gr');
+  assert.equal(await page.evaluate(() => document.querySelectorAll('#view .panel .rgrid input, #view .panel .rgrid select').length), 0, '평소 성적은 글(입력칸 없음)');
+  await press('#view .panel [data-rged]'); await page.waitForTimeout(150);
   await page.evaluate(() => { const set = (c, v) => { const i = document.querySelector('#view .panel ' + c); i.value = v; i.dispatchEvent(new Event('change', { bubbles: true })); }; set('[data-gf=score]', '92'); set('[data-gf=rank]', '4'); set('[data-gf=total]', '180'); set('select[data-gf=level]', '2등급'); });
   await page.waitForTimeout(200);
-  assert.match(await page.textContent('#view .panel .exgr'), /백분율 2\.2%/, '저장 전 백분율 = 등수 ÷ 응시인원');
+  await press('#view .panel [data-rgok]'); await page.waitForTimeout(150);
+  assert.match(await page.textContent('#view .panel .rgrid'), /92\s*4\/180\s*2\.2%\s*2등급/, '편집 완료 뒤 글 · 저장 전 백분율 = 등수 ÷ 응시인원');
   await page.evaluate(() => liveSave());
   assert.deepEqual(await last(3), [{ op: 'update', db: '성적(학원) DB', id: G1, props: { '점수': 92, '등수': 4, '응시인원': 180, '등급': '2등급' } }]);
   assert.match(await page.evaluate(() => document.querySelector('#view .panel .exfl').getAttribute('href')), /notion\.so\//, '파일은 노션 링크');
@@ -146,6 +149,7 @@ const DBS = () => ({
   assert.deepEqual(c6.map((c) => [c.op, c.db]), [['create', '시험(학원) DB'], ['create', '시험정보(학원) DB']], '창 저장에 새 시험 줄');
   assert.equal(c6[0].props['모의고사(수능)'], '6월 모의고사'); assert.equal(c6[0].props['시험 구분'], '모의고사');
   await sel(X2, 'gr');
+  await press('#view .panel [data-rged]'); await page.waitForTimeout(100);
   await page.evaluate(() => { const i = document.querySelector('#view .panel [data-gf=score]'); i.value = '95'; i.dispatchEvent(new Event('change', { bubbles: true })); });
   await page.waitForTimeout(200);
   assert.equal(await page.evaluate(() => document.querySelector('#view .panel #rowSave').disabled), false, '성적만 고쳐도 창 [저장] 켜짐');

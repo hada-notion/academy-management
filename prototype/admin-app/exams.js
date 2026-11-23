@@ -93,16 +93,26 @@
   if (typeof HEAD_DEF !== "undefined") HEAD_DEF.grades = (g) => { const x = exOf(g); return { name: nmStu(g.sid), belong: [x.name, x.school, x.grade].filter(Boolean).join(" "), info: [g.score !== "" && g.score != null ? g.score + "점" : "점수 전", g.rank ? g.rank + "등" + (g.total ? "/" + g.total + "명" : "") : "", g.level || ""] }; };
 
   /* ── 성적 탭(시험정보 창) ── */
-  const fileCell = (g) => {
-    const have = [g._paper ? "시험지" : "", g._sheet ? "성적표" : ""].filter(Boolean).join(" · ");
-    if (isId(g.id)) return `<a class="exfl" href="https://www.notion.so/${String(g.id).replace(/-/g, "")}" target="_blank" rel="noopener" title="시험지 · 성적표는 노션 성적 페이지에서 올려요">${IC("ext", "s")}${have || "노션에서 올리기"}</a>`;
-    return `<span class="hint exfl" title="저장하면 노션 성적 페이지에서 파일을 올릴 수 있어요">${have || "저장 뒤 노션에서"}</span>`;
-  };
+  /* 보기 줄 이름 옆: 파일이 있으면 이름(시험지 · 성적표), 없으면 아이콘만 — 저장 전 줄은 비움 */
+  const fileMini = (g) => { const have = [g._paper ? "시험지" : "", g._sheet ? "성적표" : ""].filter(Boolean).join(" · "); return isId(g.id) ? `<a class="exfl" href="https://www.notion.so/${String(g.id).replace(/-/g, "")}" target="_blank" rel="noopener" title="${have ? have + " — " : ""}시험지 · 성적표는 노션 성적 페이지에서 올려요">${IC("ext", "s")}${have}</a>` : ""; };
   window.exBox = exBox = function (x) {
     const gs = exGr(x), todo = exTodo(x), sc = gs.filter((g) => g.score !== "" && g.score != null);
-    const lv = (g) => `<select class="inp exlv" data-gx="${g.id}" data-gf="level" aria-label="${esc(nmStu(g.sid))} 등급"><option value="">등급</option>${LEVELS.map((v) => `<option ${g.level === v ? "selected" : ""}>${v}</option>`).join("")}</select>`;
-    const st = ""; /* 노션 수식 응시학생 현황은 성적 줄을 만든 뒤에도 사본에 옛 값이 남아(시험정보 줄 편집 시각이 안 바뀜) 앱 셈과 엇갈렸음 — 앱 셈 한 줄만(같은 뜻) */
-    return `<div class="box"><h3>성적 <span class="hint">${gs.length}명</span>${HELP("[응시학생 등록] = 같은 학년(학교를 골랐으면 그 학교)의 재원 학생 가운데 이 시험 성적이 없는 학생마다 성적 줄을 생성해요(노션 버튼과 같아요). 이미 있는 학생은 건드리지 않아요. 학생마다 점수 · 등수 · 응시인원 · 등급을 넣고 [저장]해요. 백분율은 노션 수식(저장 전엔 등수 ÷ 응시인원 × 100). 시험지 · 성적표는 줄 끝 링크로 노션에서 올려요.")}<span class="sp"></span><button type="button" class="btn sm" data-exgen="${x.id}" ${todo.length ? "" : "disabled"} title="${todo.length ? `응시학생 등록 — 아직 줄이 없는 학생 ${todo.length}명` : "응시학생 등록 — 등록할 학생이 없어요"}">${IC("plus", "s")}응시학생 등록 ${todo.length}</button></h3>${st}<div class="valline exst">${!gs.length && !todo.length ? "이 학년 재원 학생이 없어요" : todo.length ? `미응시 ${todo.length}명` : "전원 응시"}${sc.length ? ` · 평균 ${Math.round(sc.reduce((a, g) => a + +g.score, 0) / sc.length * 10) / 10}점 (입력 ${sc.length}/${gs.length}명)` : ""}</div>${gs.length ? `<div class="recst exgr"><div class="recrow exgh"><span class="nm">학생</span><span>점수</span><span>등수</span><span>응시인원</span></div>${gs.map((g) => `<div class="recrow"><span class="nm">${esc(nmStu(g.sid))}${g.state === "draft" ? ' <i class="tdot"></i>' : ""}</span><input class="inp recsc" data-gs="${g.id}" data-gf="score" inputmode="decimal" autocomplete="off" value="${g.score ?? ""}" placeholder="점수" aria-label="${esc(nmStu(g.sid))} 점수"><input class="inp recsc" data-gs="${g.id}" data-gf="rank" inputmode="numeric" autocomplete="off" value="${g.rank ?? ""}" placeholder="등수" aria-label="${esc(nmStu(g.sid))} 등수"><input class="inp recsc" data-gx="${g.id}" data-gf="total" inputmode="numeric" autocomplete="off" value="${g.total ?? ""}" placeholder="인원" aria-label="${esc(nmStu(g.sid))} 응시인원"><div class="exg2">${lv(g)}<span class="recpt" title="백분율 = 등수 ÷ 응시인원 × 100 (노션 수식)">백분율 ${pctOf(g) == null ? "—" : pctOf(g) + "%"}</span><span class="sp"></span>${fileCell(g)}</div></div>`).join("")}</div>` : ""}</div>`;
+    /* 261124 입력창 보기 모드: 평소 = 정돈된 글(반복 줄 칸 PANEL.rgrid), [성적 편집] → 모든 줄 입력칸(Tab · Enter로 다음 칸), [편집 완료] · [취소] */
+    const key = "ex:" + x.id, ed = PANEL.rgridOn(key), nm = (g) => esc(nmStu(g.sid)), blank = (v) => v === "" || v == null;
+    PANEL.rgridReg(key, {
+      snap: () => exGr(x).map((g) => ({ id: g.id, score: g.score, rank: g.rank, total: g.total, level: g.level, state: g.state })),
+      restore: (s) => s.forEach((o) => { const g = DB.grades.find((z) => z.id === o.id); if (g) Object.assign(g, o); }),
+    });
+    /* 창 폭 320 안에 넣으려고 셋째 칸은 보기 = 백분율(노션 수식) · 편집 = 응시인원, 등수 보기는 "등수/응시인원" */
+    const cols = [
+      { k: "score", label: "점수", w: 40, num: true, view: (g) => (blank(g.score) ? "" : g.score), edit: (g) => ({ attr: `data-gs="${g.id}" data-gf="score"`, value: g.score, ph: "점수", mode: "decimal", aria: nmStu(g.sid) + " 점수" }) },
+      { k: "rank", label: "등수", w: 52, num: true, view: (g) => (blank(g.rank) ? "" : g.rank + (blank(g.total) ? "" : `<small>/${g.total}</small>`)), edit: (g) => ({ attr: `data-gs="${g.id}" data-gf="rank"`, value: g.rank, ph: "등수", aria: nmStu(g.sid) + " 등수" }) },
+      { k: "total", label: "백분율", editLabel: "응시인원", w: 52, num: true, view: (g) => (pctOf(g) == null ? "" : pctOf(g) + "%"), edit: (g) => ({ attr: `data-gx="${g.id}" data-gf="total"`, value: g.total, ph: "인원", aria: nmStu(g.sid) + " 응시인원" }) },
+      { k: "level", label: "등급", w: 56, view: (g) => esc(g.level || ""), edit: (g) => ({ attr: `data-gx="${g.id}" data-gf="level"`, value: g.level || "", items: LEVELS, ph: "등급", aria: nmStu(g.sid) + " 등급" }) },
+    ];
+    const rows = gs.map((g) => ({ id: g.id, data: g, draft: g.state === "draft", nameHtml: nm(g), sub: ed ? "" : fileMini(g) }));
+    const avg = sc.length ? ` · 평균 ${Math.round(sc.reduce((a, g) => a + +g.score, 0) / sc.length * 10) / 10}점 (입력 ${sc.length}/${gs.length}명)` : "";
+    return `<div class="box"><h3>성적 <span class="hint">${gs.length}명</span>${HELP("[응시학생 등록] = 같은 학년(학교를 골랐으면 그 학교)의 재원 학생 가운데 이 시험 성적이 없는 학생마다 성적 줄을 생성해요(노션 버튼과 같아요). 이미 있는 학생은 건드리지 않아요. [성적 편집]을 누르면 학생마다 점수 · 등수 · 응시인원 · 등급 칸이 열려요(Tab · Enter로 다음 칸). [편집 완료] 뒤 [저장]하면 노션에 들어가요. 등수 옆 /숫자는 응시인원, 백분율은 노션 수식(저장 전엔 등수 ÷ 응시인원 × 100). 시험지 · 성적표는 이름 옆 링크로 노션에서 올려요.")}<span class="sp"></span>${ed ? "" : `<button type="button" class="btn sm" data-exgen="${x.id}" ${todo.length ? "" : "disabled"} title="${todo.length ? `응시학생 등록 — 아직 줄이 없는 학생 ${todo.length}명` : "응시학생 등록 — 등록할 학생이 없어요"}">${IC("plus", "s")}응시학생 등록 ${todo.length}</button>`}${PANEL.rgridHead(key, "성적", { off: !gs.length })}</h3><div class="valline exst">${!gs.length && !todo.length ? "이 학년 재원 학생이 없어요" : todo.length ? `미응시 ${todo.length}명` : "전원 응시"}${avg}</div>${PANEL.rgrid({ key, cols, rows, nameLabel: "학생" })}</div>`;
   };
 
   /* ── 시험 범위(단원 고르기) · 시험 기간 연결 · 마지막 오류: 창 [시험일] 아래 ── */
@@ -189,6 +199,6 @@
   }, true);
 
   const css = document.createElement("style");
-  css.textContent = ".exgr .recrow{display:grid;grid-template-columns:minmax(56px,1fr) 64px 56px 64px;gap:4px 6px;align-items:center;padding:6px 0;border-bottom:1px solid #F0EBE3}.exgr .exg2{grid-column:1/-1;display:flex;gap:8px;align-items:center}.exgr .exg2 .sp{flex:1}.exgr .exg2 .recpt{font-size:12px;color:#5C554B;white-space:nowrap}.exlv{width:88px}.exgr .exgh{font-size:12px;color:#8A8378}.exgr .exgh span{white-space:nowrap}.exlv{min-width:0;padding:4px 6px;height:32px}.exfl{font-size:12px;white-space:nowrap;display:inline-flex;gap:4px;align-items:center}a.exfl{color:#5C554B;text-decoration:underline;text-underline-offset:2px}.exmore{margin:8px 0 4px;display:grid;gap:6px}.exrg{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.exrg .l{font-size:12px;color:#8A8378;min-width:64px}.exrg .v{flex:1;min-width:0}.exul{max-height:360px;overflow:auto;display:grid;gap:2px;margin-top:8px}.exu{display:flex;gap:8px;align-items:center;padding:6px 4px;border-radius:6px;cursor:pointer}.exu:hover{background:#F6F2EA}.exuh{font-size:12px;margin:4px 0}";
+  css.textContent = ".rgrow .rgc small{color:var(--muted);font-size:var(--text-micro)}.exfl{font-size:12px;white-space:nowrap;display:inline-flex;gap:2px;align-items:center;color:var(--muted)}a.exfl{text-decoration:none}a.exfl:hover{color:var(--brand)}a.exfl svg.i{width:12px;height:12px}.exmore{margin:8px 0 4px;display:grid;gap:6px}.exrg{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.exrg .l{font-size:12px;color:#8A8378;min-width:64px}.exrg .v{flex:1;min-width:0}.exul{max-height:360px;overflow:auto;display:grid;gap:2px;margin-top:8px}.exu{display:flex;gap:8px;align-items:center;padding:6px 4px;border-radius:6px;cursor:pointer}.exu:hover{background:#F6F2EA}.exuh{font-size:12px;margin:4px 0}";
   document.head.appendChild(css);
 })();
