@@ -4,6 +4,7 @@
 //       ③ 1280 폭에서 다시 그려도 위 줄이 흔들리지 않음(layout-shift 0)
 //       ④ 결제 · 손익 달 이동 ‹ › 단추가 달마다 제자리
 //       ⑤ 확대 · 축소 단추로 시간표 · 오늘 수업의 가운데 시각이 그대로(30분 안)
+//       ⑥ 수업 화면 위 줄 높이가 보기(오늘 · 주간 · 월간 · 등원 학생 · 출결 현황)마다 같음  ⑦ 처음 줄을 눌러도 창 머리 높이 그대로
 // 사용: ROOT=<저장소 폴더> NODE_PATH=<playwright 있는 node_modules> node tests/admin-shift.cjs
 const { chromium } = require('playwright'), http = require('http'), fs = require('fs'), path = require('path');
 const root = process.env.ROOT || path.resolve(__dirname, '..');
@@ -32,7 +33,22 @@ const root = process.env.ROOT || path.resolve(__dirname, '..');
     await go(p, s, st); const c0 = await center(); await p.locator('#view #zIn').click(); await p.waitForTimeout(350); const c1 = await center(); await p.locator('#view #zOut').click(); await p.waitForTimeout(350); const c2 = await center();
     if (Math.abs(c1 - c0) > 30 || Math.abs(c2 - c0) > 30) bad.push(`⑤ ${n} 확대하니 가운데 시각이 ${c0} → ${c1} → ${c2}분`);
   }
+  // ⑦ 창 머리 높이: 고르기 전 현황 창 → 줄을 고른 창에서 그대로(창 탭이 내려가지 않음)
+  for (const s of ['students', 'classes', 'teachers']) {
+    await go(p, s); const h0 = await p.evaluate(() => { activeTab.state.sel = null; panelOpen = true; render(); const h = document.querySelector('#lp .phead'); return h && Math.round(h.getBoundingClientRect().height); });
+    await p.evaluate(() => document.querySelector('#view tr[data-id] td').click()); await p.waitForTimeout(400);
+    const h1 = await p.evaluate(() => { const h = document.querySelector('#lp .phead'); return h && Math.round(h.getBoundingClientRect().height); });
+    if (h0 !== h1) bad.push(`⑦ ${s} 처음 누르니 창 머리 ${h0} → ${h1}`);
+    await p.keyboard.press('Escape');
+  }
   await p.close();
+  // ⑥ 수업 화면 위 줄 높이가 보기마다 같음(1280 · 1440)
+  for (const w of [1280, 1440]) {
+    const q = await open(w); await go(q, 'lesson'); const hs = [];
+    for (const lv of ['today', 'wk', 'mon', 'att', 'atm']) { await q.evaluate((lv) => { activeTab.state.lv = lv; render(); }, lv); await q.waitForTimeout(300); hs.push(await q.evaluate(() => Math.round(document.querySelector('#view > .top').getBoundingClientRect().height))); }
+    if (new Set(hs).size > 1) bad.push(`⑥ ${w} 수업 위 줄 높이가 보기마다 다름 ${hs.join(' / ')}`);
+    await q.close();
+  }
   // ③
   p = await open(1280);
   for (const s of ['timetable', 'tuition']) {

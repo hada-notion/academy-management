@@ -6,7 +6,7 @@
 <title>관리 앱 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3C%2Fsvg%3E">
 <link rel="stylesheet" href="hada-tokens.css?v=742">
-<link rel="stylesheet" href="app.css?v=751">
+<link rel="stylesheet" href="app.css?v=752">
 <link rel="stylesheet" href="pick.css?v=742">
 <link rel="stylesheet" href="field.css?v=742">
 </head>
@@ -388,8 +388,13 @@ function scrollBack(o){const pn=document.querySelector(".body>.panel");lastPK=pn
    모든 화면의 위 줄이 이 한 곳을 쓴다(화면이 따로 접지 않는다). 검사 chk-topbar */
 const BAR_STEPS=["compact","fold-seg","fold-chips","fold-search"],BAR_SEGS=".subseg,.sfseg,.mkseg";
 function barBad(bar){const kids=[...bar.children].filter(e=>e.offsetParent&&!e.classList.contains("sp"));if(!kids.length)return false;const rs=kids.map(k=>k.getBoundingClientRect());const t0=Math.min(...rs.map(r=>r.top));if(rs.some(r=>r.top>t0+8))return true;const br=bar.getBoundingClientRect();if(bar.scrollWidth>bar.clientWidth+1||rs.some(r=>r.right>br.right+1))return true;const s=rs.slice().sort((a,b)=>a.left-b.left);for(let i=1;i<s.length;i++)if(s[i].left<s[i-1].right-1)return true;return false}
+/* 261124 흔들림 점검: 수업 화면 위 줄은 보기(오늘 · 주간 · 월간 · 등원 학생 · 출결 현황)마다 왼쪽 묶음 길이가 달라(생성 단추 · 시각 이동) 1280 · 1440에서 어떤 보기는 한 줄 · 어떤 보기는 두 줄 —
+   보기를 바꿀 때마다(학습기록에서 수업으로 넘어올 때도) 아래 전부가 33px 오르내렸다. 폭이 모자라면(1500 미만) 수업 화면은 늘 두 줄(오른쪽 단추 묶음이 둘째 줄)로 같게 */
+const barTwo=bar=>bar.matches(".top")&&!!bar.querySelector(":scope>.zone.end")&&!!activeTab&&activeTab.screen==="timetable"&&activeTab.state.view==="lesson"&&bar.clientWidth<1500;
+const zoneBad=bar=>{const br=bar.getBoundingClientRect();return [...bar.querySelectorAll(":scope>.zone")].some(z=>{const zr=z.getBoundingClientRect();return [...z.children].some(c=>{if(!c.offsetParent)return false;const r=c.getBoundingClientRect();return r.top>zr.top+8||r.right>br.right+1})})};
 function fitBars(){document.querySelectorAll("#view .pg-bar,#view .top").forEach(bar=>{bar.classList.remove(...BAR_STEPS);bar.querySelectorAll(".foldchip").forEach(x=>x.remove());if(innerWidth<768)return;
-  for(const s of BAR_STEPS){if(!barBad(bar))break;bar.classList.add(s);if(s==="fold-chips"){const cs=[...bar.querySelectorAll(".chip[data-f]")];if(cs.length){const n=cs.filter(c=>c.classList.contains("on")).length;const b=document.createElement("button");b.type="button";b.className="chip foldchip"+(n?" on":"");b.title="필터 — 눌러서 골라요";b.textContent="필터"+(n?" "+n:"")+" ▾";cs[0].before(b)}}}})}
+  const two=barTwo(bar);bar.classList.toggle("two-row",two);const bad=two?()=>zoneBad(bar):()=>barBad(bar);
+  for(const s of BAR_STEPS){if(!bad())break;bar.classList.add(s);if(s==="fold-chips"){const cs=[...bar.querySelectorAll(".chip[data-f]")];if(cs.length){const n=cs.filter(c=>c.classList.contains("on")).length;const b=document.createElement("button");b.type="button";b.className="chip foldchip"+(n?" on":"");b.title="필터 — 눌러서 골라요";b.textContent="필터"+(n?" "+n:"")+" ▾";cs[0].before(b)}}}})}
 /* 접힌 묶음을 펼치는 목록(위 줄 한 곳): 항목을 누르면 원래 단추를 누른 것과 같다 */
 function barPop(anchor,items){document.querySelectorAll(".barpop").forEach(x=>x.remove());const r=anchor.getBoundingClientRect();const m=document.createElement("div");m.className="barpop";m.setAttribute("role","menu");m.style.left=Math.round(r.left)+"px";m.style.top=Math.round(r.bottom+4)+"px";m.innerHTML=items.map((it,i)=>`<button type="button" role="menuitem" class="${it.on?"on":""}" data-i="${i}">${esc(it.label)}</button>`).join("");document.body.appendChild(m);m.onclick=e=>{const b=e.target.closest("[data-i]");if(!b)return;m.remove();items[+b.dataset.i].el.click()};setTimeout(()=>{const off=e=>{if(!m.contains(e.target)){m.remove();document.removeEventListener("mousedown",off,true)}};document.addEventListener("mousedown",off,true)},0)}
 document.addEventListener("click",e=>{const bar=e.target.closest&&e.target.closest(".pg-bar,.top");if(!bar)return;const sb=e.target.closest(".vseg>button.on");
