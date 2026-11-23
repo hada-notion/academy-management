@@ -242,6 +242,12 @@ window.liveModeFor = function (search, hostname, protocol) {
       banner("노션 자료를 받는 중이에요 — 받기 전에는 저장할 수 없어요");
       try {
         /* 보기 칸(P2)이 켜져 있으면 보기 묶음(일정 · 보고서 · 수강료 · 청구 · 시험 · 알림톡 설정 · 자료)도 함께 받는다 */
+        /* (강사계정 261123) 누가 로그인했나 — 강사면 메뉴를 거르고(liveteacher.js), 그 메뉴 화면이 읽는 DB만 받는다(서버도 거절). 옛 서버(me 모름)면 원장으로 본다 */
+        let me = null;
+        try { me = await liveApi({ url: cfg.url, anonKey: cfg.anonKey, session }, { action: "me" }); } catch (e) { if (/\((401|403)/.test(e.message) || /인증 실패/.test(e.message)) throw new Error("로그인이 필요해요 (401)"); }
+        if (typeof window.liveRoleApply === "function") window.liveRoleApply(me);
+        /* 강사가 읽을 DB = 서버 표(_shared/teacherAccess.ts MENU_DBS)에서 계산한 readDbs — 앱에 따로 적지 않는다. 그 밖 DB는 부르지 않는다(서버도 403) */
+        window.LIVE_READ_DBS = me && me.role === "teacher" ? new Set(Array.isArray(me.readDbs) ? me.readDbs : []) : null;
         await (P2ON && typeof appViewLoad === "function" ? appViewLoad : appLoad)({ url: cfg.url, anonKey: cfg.anonKey, session });
         appSaveMark(DB); /* 불러온 값을 기준으로 적어 둠 — 저장 때 달라진 칸만 보냄 */
         try { liveStuMark(); } catch (_) {} /* 학생 되돌리기 기준 */
@@ -264,8 +270,10 @@ window.liveModeFor = function (search, hostname, protocol) {
         else stop("노션 자료를 불러오지 못했어요(" + e.message + ")");
       } finally { document.body.classList.remove("live-loading"); }
     };
-    const ask = () => modal(`<h2>관리자 로그인</h2><div class="box"><p class="hint">노션 자료를 읽으려면 관리자 비밀번호를 넣어요.</p><input id="lvpw" type="password" autocomplete="current-password" aria-label="관리자 비밀번호"><p class="hint" id="lverr"></p></div><div class="actions"><span class="sp"></span><button class="btn" id="cc">예시 자료로 보기</button><button class="btn pri" id="co">로그인</button></div>`, (m, close) => {
+    const ask = () => modal(`<h2>관리자 로그인</h2><div class="box"><p class="hint">노션 자료를 읽으려면 관리자(원장) 비밀번호를 넣어요. 선생님은 아래 [강사 로그인]으로 들어와요.</p><input id="lvpw" type="password" autocomplete="current-password" aria-label="관리자 비밀번호"><p class="hint" id="lverr"></p></div><div class="actions"><button class="btn" id="lvtc">강사 로그인</button><span class="sp"></span><button class="btn" id="cc">예시 자료로 보기</button><button class="btn pri" id="co">로그인</button></div>`, (m, close) => {
       const pw = m.querySelector("#lvpw"), err = m.querySelector("#lverr");
+      /* (강사계정 261123) 강사는 휴대폰 번호 · 자기 비밀번호로(liveteacher.js). 원장 로그인은 그대로 */
+      m.querySelector("#lvtc").onclick = () => { pw.value = ""; close(); window.liveTeacherAsk(cfg, (s) => { session = s; HadaAdminAuth.saveSession(s); go(); }, ask); };
       m.querySelector("#cc").onclick = () => { location.href = location.pathname + "?demo=1"; }; /* 예시 자료 = 실제 자료 모드를 벗어난 주소(배포 사이트는 매개변수 없이 열면 실제 자료라 ?demo=1을 붙인다) */
       const submit = async () => {
         err.textContent = "";
@@ -400,7 +408,7 @@ function liveHooks() {
     toast0(m);
   };
   /* [동기화] 버튼(261119 대표 "느려도 정확하게"): 우측 상단 [저장] 옆. render 뒤마다 붙이고, 마지막 동기화 시각은 서버 status의 syncedAt으로 */
-  try { const render0 = render; render = function () { const o = render0.apply(this, arguments); try { liveSyncMount(); } catch (_) {} return o; }; } catch (_) {}
+  try { const render0 = render; render = function () { const o = render0.apply(this, arguments); try { liveSyncMount(); } catch (_) {} try { if (window.liveTeacherMount) window.liveTeacherMount(); } catch (_) {} return o; }; } catch (_) {}
   setTimeout(() => { try { liveSyncStatus(); } catch (_) {} }, 3000);
   /* 메뉴 [N] 주소를 미리 받아 둔다(누를 때 새 탭이 팝업으로 막히지 않게) — 못 받아도 누를 때 다시 시도 */
   setTimeout(() => { try { liveMenuPages().catch(() => {}); } catch (_) {} }, 2500);

@@ -3,7 +3,9 @@
 // (adminSecurity.ts의 class-room 경로, v2.5.82에 수업용 비밀번호 삭제). 요청 본문의 action에 따라
 // 조회(teachers/day/session/books/activities)와 저장(save-*, create-*, update-record, 보강 대기실)을 한다.
 // 실제 로직은 _shared/classRoom.ts. 읽기 위치(Notion·복사본)는 CLASS_ROOM_SOURCE가 정한다(v2.5.116, _shared/classRoomRead.ts).
-import { CORS_HEADERS, requireAdminKey } from "../_shared/adminShared.ts"
+import { CORS_HEADERS, getCurrentAdminKey } from "../_shared/adminShared.ts"
+import { securityEnabled } from "../_shared/adminSecurity.ts"
+import { requireAccess } from "../_shared/teacherAccess.ts"
 import { ClassRoomError } from "../_shared/classRoom.ts"
 import { handleClassRoomWithSource } from "../_shared/classRoomRead.ts"
 
@@ -26,7 +28,9 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS })
   if (req.method !== "POST") return json({ error: "POST 요청만 지원합니다." }, 405)
   const startedAt = Date.now()
-  const authError = await requireAdminKey(req)
+  // (강사계정 261123) 원장 세션 그대로 + 이 경로 메뉴 권한이 있는 강사 세션(_shared/teacherAccess.ts TEACHER_ROUTES).
+  const authError0 = await requireAccess(req, CORS_HEADERS, securityEnabled() ? "" : await getCurrentAdminKey())
+  const authError = authError0 instanceof Response ? authError0 : null
   if (authError) return authError
   try {
     const raw = await req.text()

@@ -244,4 +244,6 @@ await db.exec(fs.readFileSync('supabase/migrations/20261123090000_external_keys.
  }
 }
 await db.close();console.log(`PostgreSQL security checks passed: ${checks}`);
+// (강사계정 261123) 강사 계정 SQL — 같은 배포 시험 단계에서 함께 돌린다(.github 작업 파일은 그대로).
+await require('./teacher-accounts-sql.cjs');
 })().catch(e=>{console.error(e);process.exit(1)});

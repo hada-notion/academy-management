@@ -14,7 +14,9 @@
 //   { action: "end-preview", id, endDate? } — (261123 종료 처리) 등록 [종료 처리] 확인 창 숫자: 이 종료일(없으면 등록 종료일 · 오늘)이면
 //       빠질 앞으로 수업의 날짜들. 읽기만. 실제 종료는 등록 `요청` = reg-end-cleanup(save) — 같은 거름(_shared/registrationEnd.ts).
 // 읽기 로직은 _shared/appCopy.ts.
-import { CORS_HEADERS, requireAdminKey } from "../_shared/adminShared.ts"
+import { CORS_HEADERS, getCurrentAdminKey } from "../_shared/adminShared.ts"
+import { securityEnabled } from "../_shared/adminSecurity.ts"
+import { requireAccess, teacherAppDeny, maskTeacherRows, teacherReadDbs, TEACHER_DB, type Access } from "../_shared/teacherAccess.ts"
 import { APP_DBS, isAppDb, listApp, statusApp, warmSources, syncCopy, lastSyncedAt, rootTitle, NotionBusyError } from "../_shared/appCopy.ts"
 import { checkChanges, saveChanges, runGenerateClasses, writeOptions, SaveError } from "../_shared/appSave.ts"
 import { checkPaymentInput, recordPayment } from "../_shared/appPayment.ts"
@@ -28,11 +30,19 @@ const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store" } })
 const isIso = (v: unknown) => typeof v === "string" && !Number.isNaN(Date.parse(v)) && v.length <= 40
 
-Deno.serve(async (req: Request) => {
+// (강사계정 261123) 시험이 노션 · 사본 없이 경로째 돌 수 있게 손잡이만 바꿔 끼운다(기본 = 실제 함수).
+const DEFAULT_DEPS = { listApp, writeOptions, saveChanges, statusApp, appChanges, syncCopy, lastSyncedAt, rootTitle, warmSources, healthOf }
+export type AppApiDeps = typeof DEFAULT_DEPS
+export async function handleAppApi(req: Request, deps: Partial<AppApiDeps> = {}): Promise<Response> {
+  const D = { ...DEFAULT_DEPS, ...deps }
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS })
   if (req.method !== "POST") return json({ error: "POST 요청만 지원합니다." }, 405)
-  const authError = await requireAdminKey(req)
-  if (authError) return authError
+  // (강사계정 261123) 원장 세션은 그대로 통과, 강사 세션은 동작마다 거른다(_shared/teacherAccess.ts — 재무 · 관리자 설정 · 강사 DB 쓰기는 원장만).
+  const access: Access | Response = await requireAccess(req, CORS_HEADERS, securityEnabled() ? "" : await getCurrentAdminKey())
+  if (access instanceof Response) return access
+  const teacher = access.role === "teacher" ? access : null
+  // 강사가 읽을 수 있는 DB = 편집허용 메뉴들의 화면 DB(_shared/teacherAccess.ts MENU_DBS). 원장은 null(전부).
+  const readable = teacher ? teacherReadDbs(teacher.menus) : null
   // (v2.8.0 항목 101) 어느 요청이 느린지 로그로 보려고 action 이름과 걸린 시간을 한 줄 남긴다 — 1초 넘은 요청만(평소 수십 개 list는 안 남김).
   const t0 = Date.now()
   let action = "?", dbName = ""
@@ -42,29 +52,39 @@ Deno.serve(async (req: Request) => {
     let body: any
     try { body = JSON.parse(raw) } catch { return json({ error: "요청 형식이 올바르지 않습니다." }, 400) }
     action = String(body?.action ?? "?").slice(0, 20); dbName = typeof body?.db === "string" ? body.db.slice(0, 40) : ""
+    // (강사계정) 누가 로그인했나 — 앱이 메뉴를 거를 때. 원장은 role만.
+    if (body?.action === "me") return json(teacher ? { ok: true, role: "teacher", name: teacher.name, menus: teacher.menus, readDbs: [...readable!] } : { ok: true, role: "owner" })
+    if (teacher) {
+      const denied = teacherAppDeny(teacher, body)
+      if (denied) return json({ error: denied[1], role: "teacher" }, denied[0])
+    }
     if (body?.action === "list") {
       if (!isAppDb(body.db)) return json({ error: `db는 ${APP_DBS.join(", ")} 중 하나여야 합니다.` }, 400)
       if (body.since !== undefined && body.since !== null && !isIso(body.since)) return json({ error: "since 형식이 올바르지 않습니다." }, 400)
       const at = new Date().toISOString()
-      const rows = await listApp(body.db, body.since ?? null)
-      warmSources() // (항목 99) 앱 첫 로드가 데우기 — 응답은 안 기다림
+      const rows0 = await D.listApp(body.db, body.since ?? null)
+      const rows = teacher && body.db === TEACHER_DB ? maskTeacherRows(rows0 as any[], teacher.teacherId) : rows0
+      D.warmSources() // (항목 99) 앱 첫 로드가 데우기 — 응답은 안 기다림
       return json({ ok: true, db: body.db, at, rows })
     }
     // 열린 화면 자동 갱신(261123): Realtime 신호 · 60초 따라잡기 때. 사본만 읽는다.
     if (body?.action === "changes") {
-      const { since, dbs } = checkChangesInput(body)
+      const { since, dbs: dbs0 } = checkChangesInput(body)
+      const dbs = readable ? dbs0.filter((d: string) => readable.has(d)) : dbs0
+      if (!dbs.length) return json({ ok: true, now: new Date().toISOString(), rows: [], gone: [], crAt: null, subscription: null })
       // (261123) 구독 끊김도 함께 — 홈 입력 점검이 경고를 띄운다(표 한 줄 읽기, 실패해도 바뀐 줄은 그대로 돌려줌).
-      const [changes, health] = await Promise.all([appChanges(since, dbs), healthOf().catch(() => null)])
-      return json({ ...changes, subscription: health })
+      const [changes, health] = await Promise.all([D.appChanges(since, dbs), D.healthOf().catch(() => null)])
+      if (teacher) (changes as any).rows = (changes as any).rows.map((r: any) => r?.db === TEACHER_DB ? maskTeacherRows([r], teacher.teacherId)[0] : r)
+      return json({ ...changes, subscription: teacher ? null : health })
     }
-    if (body?.action === "status") { const dbs = await statusApp(); const [syncedAt, title] = await Promise.all([lastSyncedAt(), rootTitle()]); return json({ ok: true, dbs, syncedAt, rootTitle: title }) }
+    if (body?.action === "status") { const dbs = (await D.statusApp()).filter((d) => !readable || readable.has(d.db)); const [syncedAt, title] = await Promise.all([D.lastSyncedAt(), D.rootTitle()]); return json({ ok: true, dbs, syncedAt, rootTitle: title }) }
     // 관리자 설정 칸(261123): 노션 연결 확인 + 연동 구독 상태. 노션 연결은 최상위 페이지 제목을 실제로 읽어 본다(못 읽으면 null).
     if (body?.action === "admin-status") {
       const [title, syncedAt, subscription] = await Promise.all([rootTitle(), lastSyncedAt(), subscriptionStatus().catch(() => null)])
       return json({ ok: true, notion: { ok: !!title, rootTitle: title }, syncedAt, subscription })
     }
     if (body?.action === "save") {
-      const results = await saveChanges(checkChanges(body.changes))
+      const results = await D.saveChanges(checkChanges(body.changes))
       return json({ ok: results.every((r) => r.ok), results })
     }
     if (body?.action === "record-payment") return json(await recordPayment(checkPaymentInput(body)))
@@ -82,14 +102,19 @@ Deno.serve(async (req: Request) => {
       if (body.name === "sync-copy") {
         if (body.dbs !== undefined && (!Array.isArray(body.dbs) || body.dbs.length > 40 || !body.dbs.every(isAppDb))) return json({ error: "dbs는 앱 DB 이름 목록이어야 합니다." }, 400)
         if (body.full === true && (!Array.isArray(body.dbs) || !body.dbs.length || body.dbs.length > 3)) return json({ error: "full은 dbs를 1~3개 줄 때만 씁니다." }, 400)
-        return json({ ok: true, ...(await syncCopy(body.dbs, body.full === true)) })
+        const dbs = readable && body.dbs === undefined ? APP_DBS.filter((d) => readable.has(d)) : body.dbs
+        return json({ ok: true, ...(await D.syncCopy(dbs, body.full === true)) })
       }
       if (body.name !== "generate-classes") return json({ error: 'run의 name은 "generate-classes" 또는 "sync-copy"여야 합니다.' }, 400)
       return json({ ok: true, ...(await runGenerateClasses(body.timetableIds)) })
     }
     // 쓸 수 있는 DB의 고르기 칸 선택지(앱이 Notion에 있는 값만 고르게).
-    if (body?.action === "options") return json({ ok: true, dbs: await writeOptions() })
-    return json({ error: 'action은 "list", "changes", "status", "admin-status", "save", "record-payment", "end-preview", "run", "options" 중 하나여야 합니다.' }, 400)
+    if (body?.action === "options") {
+      const dbs = await D.writeOptions()
+      if (readable) for (const k of Object.keys(dbs)) if (!readable.has(k)) delete (dbs as any)[k]
+      return json({ ok: true, dbs })
+    }
+    return json({ error: 'action은 "me", "list", "changes", "status", "admin-status", "save", "record-payment", "end-preview", "run", "options" 중 하나여야 합니다.' }, 400)
   } catch (err) {
     if (err instanceof SaveError) return json({ error: err.message }, err.status)
     if (err instanceof ChangesInputError) return json({ error: err.message }, 400)
@@ -105,4 +130,5 @@ Deno.serve(async (req: Request) => {
     const ms = Date.now() - t0
     if (ms >= 1000) console.log(`[app-api] action=${action}${dbName ? ` db=${dbName}` : ""} ${ms}ms`)
   }
-})
+}
+Deno.serve((req: Request) => handleAppApi(req))

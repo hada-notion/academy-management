@@ -218,6 +218,8 @@ async function appPostJson(url, init) {
 	}
 }
 async function appList({ url, anonKey, session }, db) {
+	// (강사계정 261123) 강사 세션은 편집허용 메뉴 화면이 읽는 DB(app-api "me" readDbs)만 받는다(서버도 403) — 그 밖은 빈 목록으로 두고 화면은 그대로
+	if (typeof window !== "undefined" && window.LIVE_READ_DBS && !window.LIVE_READ_DBS.has(db)) return []
 	const { res, body } = await appPostJson(String(url).replace(/\/+$/, "") + "/functions/v1/app-api", {
 		method: "POST",
 		headers: { "Content-Type": "application/json", "x-admin-key": session, Authorization: "Bearer " + anonKey, apikey: anonKey },
