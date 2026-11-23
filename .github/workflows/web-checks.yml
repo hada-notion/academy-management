@@ -57,3 +57,9 @@ jobs:
           deno test --allow-env supabase/functions/_shared/appCopy_test.ts supabase/functions/_shared/appSave_test.ts
           npm install --prefix "$RUNNER_TEMP/hada-security-tests" @electric-sql/pglite@0.5.8 --no-audit --no-fund
           PGLITE_MODULE="$RUNNER_TEMP/hada-security-tests/node_modules/@electric-sql/pglite" node tests/app-copy-sql.cjs
+
+      # 노션 웹훅 반영(이벤트 처리기·요청 칸 설정)과 대기열 마이그레이션. 병합 = 원본 자동 배포라 PR에서 먼저 확인한다.
+      - name: Notion webhook apply, request column and event queue
+        run: |
+          deno test --allow-env supabase/functions/_shared/notionEventsApply_test.ts supabase/functions/_shared/notionRequests_test.ts
+          PGLITE_MODULE="$RUNNER_TEMP/hada-security-tests/node_modules/@electric-sql/pglite" node tests/notion-event-queue-sql.cjs

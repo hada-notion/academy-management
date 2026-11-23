@@ -11,6 +11,7 @@ on:
       - 'tests/class-room-copy-sql.cjs'
       - 'tests/class-room-copy-cron-sql.cjs'
       - 'tests/app-copy-sql.cjs'
+      - 'tests/notion-event-queue-sql.cjs'
   workflow_dispatch: {}
 
 # 저장소 읽기만 한다. 배포·호출에 쓰는 값은 Secrets에서 읽는다(v2.7.19).
@@ -64,6 +65,9 @@ jobs:
       - name: Test administrator authentication and key scopes
         run: deno test --allow-env --allow-read=admin_settings.js supabase/functions/_shared/adminSecurity_test.ts supabase/functions/_shared/webhookRouter_test.ts
 
+      - name: Test Notion webhook apply and request column
+        run: deno test --allow-env supabase/functions/_shared/notionEventsApply_test.ts supabase/functions/_shared/notionRequests_test.ts
+
       - name: Test example data clearing lists
         run: deno test --allow-env --allow-read=scripts/clear-example-data.py supabase/functions/_shared/exampleClear_test.ts
 
@@ -75,6 +79,7 @@ jobs:
           PGLITE_MODULE="$RUNNER_TEMP/hada-security-tests/node_modules/@electric-sql/pglite" node tests/class-room-copy-cron-sql.cjs
           PGLITE_MODULE="$RUNNER_TEMP/hada-security-tests/node_modules/@electric-sql/pglite" node tests/example-clear-sql.cjs
           PGLITE_MODULE="$RUNNER_TEMP/hada-security-tests/node_modules/@electric-sql/pglite" node tests/app-copy-sql.cjs
+          PGLITE_MODULE="$RUNNER_TEMP/hada-security-tests/node_modules/@electric-sql/pglite" node tests/notion-event-queue-sql.cjs
 
       - name: Run regression guard checks
         run: bash scripts/check-known-regressions.sh
