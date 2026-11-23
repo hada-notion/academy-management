@@ -493,3 +493,25 @@ Deno.test("노션이 거절(4xx)하면 자리를 비워 같은 id로 다시 기�
   await assertRejects(() => recordPayment(checkPaymentInput({ requestId: "req-other-002", itemId: TU })), SaveError, "청구 항목(학원) DB의 줄이 아니에요")
   assertEquals(w2.reqs.size, 0)
 })
+
+Deno.test("재무 2바퀴 원본 확인: 결제 줄을 고치면 연결된 수강료를 다시 읽어 사본에 넣음(결제 관리가 사본에 바로) · 실패해도 저장은 성공", async () => {
+  const PAYID = "44444444444444444444444444444444", TUX = "55555555555555555555555555555555"
+  for (const failTu of [false, true]) {
+    const upserts: any[] = []
+    globalThis.fetch = (async (input: Request | URL | string, init?: RequestInit) => {
+      const url = String(input), method = init?.method ?? "GET", body = init?.body ? JSON.parse(String(init.body)) : undefined
+      const ok = (data: unknown) => new Response(JSON.stringify(data), { status: 200, headers: { "Content-Type": "application/json" } })
+      if (url.includes("/rest/v1/app_rows?select=db")) return ok([{ db: "결제(학원) DB" }])
+      if (url.endsWith(`/v1/pages/${PAYID}`) && method === "PATCH") return ok({ id: PAYID, properties: { "결제 금액": { type: "number", number: 50000 }, 수강료: { type: "relation", relation: [{ id: TUX }] } }, last_edited_time: "2026-11-23T00:00:00.000Z" })
+      if (url.endsWith(`/v1/pages/${TUX}`)) return failTu ? new Response('{"message":"gone"}', { status: 404 }) : ok({ id: TUX, properties: { "결제 관리": { type: "formula", formula: { type: "string", string: "🟢결제 완료" } } }, last_edited_time: "2026-11-23T00:00:00.000Z" })
+      if (url.includes("/rest/v1/app_rows")) { upserts.push(...body); return new Response(null, { status: 201 }) }
+      return new Response("unexpected " + method + " " + url, { status: 500 })
+    }) as typeof fetch
+    const r = await saveChanges(checkChanges([{ op: "update", db: "결제(학원) DB", id: PAYID, props: { "결제 금액": 50000 } }]))
+    assertEquals(r[0].ok, true)
+    if (!failTu) {
+      assertEquals(upserts.map((u) => u.db), ["결제(학원) DB", "수강료(학원) DB"])
+      assertEquals((r[0].linked?.[0] as any)?.props?.["결제 관리"], "🟢결제 완료")
+    } else assertEquals([upserts.map((u) => u.db), r[0].linked], [["결제(학원) DB"], undefined])
+  }
+})
