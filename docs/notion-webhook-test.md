@@ -17,7 +17,7 @@
 1. 노션 연동 설정 열기: `https://www.notion.so/profile/integrations`(새 화면 이름은 connections, 노션 문서 기준 `https://app.notion.com/developers/connections`) → 원본 서버가 쓰는 **내부 연동**(원본 Supabase Secret `NOTION_TOKEN`의 연동) → **Webhooks** 탭 → **+ Create a subscription**.
 2. Webhook URL: `https://<원본 Supabase 프로젝트 주소>.supabase.co/functions/v1/notion-events`
    (프로젝트 주소는 Supabase 대시보드 Project Settings > API의 Project URL과 같다.)
-3. API version은 `2025-09-03`(data_source 이벤트가 이 판부터). 이벤트 고르기: `page.created` · `page.properties_updated` · `page.deleted` · `page.undeleted` · `data_source.content_updated`.
+3. API version은 `2026-03-11`. 이벤트 고르기(이 5개만): `page.created` · `page.properties_updated` · `page.deleted` · `page.undeleted` · `page.moved`. `page.content_updated`·`data_source.*`는 고르지 않는다.
 4. **Create subscription** → 노션이 함수로 확인 토큰을 한 번 보낸다(함수가 `notion_webhook_tokens`에 저장).
 5. Supabase 대시보드 → 원본 프로젝트 → **SQL Editor**에서 아래를 실행해 결과 칸 값을 복사한다(값을 어디에도 붙여 두지 않는다):
    ```sql
@@ -41,7 +41,7 @@ select event_type, count(*) n,
        round(max(extract(epoch from (received_at - event_time)))::numeric, 1) slowest
 from public.notion_webhook_events where kind = 'event' group by event_type order by event_type;
 ```
-`event_time`은 노션이 붙인 이벤트 시각이다. 묶여 오는 이벤트(`page.properties_updated` 두 번째부터, `page.deleted`, `data_source.*`)는 시험 절차에 적은 "노션에서 한 시각"과도 따로 비교한다.
+`event_time`은 노션이 붙인 이벤트 시각이다. 묶여 오는 이벤트(`page.properties_updated` 두 번째부터, `page.deleted`, `page.moved`)는 시험 절차에 적은 "노션에서 한 시각"과도 따로 비교한다.
 
 ## 끄는 법
 - 잠시 끄기: 노션 Webhooks 탭에서 구독을 **Pause**(또는 이벤트 선택 해제). 함수는 그대로 두어도 요청이 없으면 아무 일도 하지 않는다.
