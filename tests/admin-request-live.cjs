@@ -1,6 +1,6 @@
 // 관리 앱 — 노션 버튼과 같은 일을 하는 단추(261123, 과제 막힌단추) — 가짜 서버로만. 실제 자료 모드(?live=1)에서
 // 막혀 있던 단추가 노션 버튼과 같은 줄 · 같은 칸(`요청` = 동작 ID, 또는 자동화가 보는 상태 칸)을 app-api save update로 바꾸는지,
-// 확인 창이 뜨는지, 저장 안 한 줄은 보내지 않는지, 아직 막힌 단추([종료 처리] · 수료 보고서 [보내기])는 그대로인지. PC 1280만.
+// 확인 창이 뜨는지, 저장 안 한 줄은 보내지 않는지. 등록 [종료 처리](261123 과제 종료처리)는 확인 창 숫자 = 서버 미리보기(end-preview), 보내는 것 = 종료일 + 요청. PC 1280만.
 // 사용: NODE_PATH=<hada-ui-tests>/node_modules ROOT=<저장소 폴더> node tests/admin-request-live.cjs   (캡처는 SHOTS 폴더)
 const { chromium } = require('playwright'), http = require('http'), fs = require('fs'), path = require('path'), assert = require('node:assert/strict');
 const root = process.env.ROOT || path.resolve(__dirname, '..'), shots = (process.env.SHOTS || __dirname) + '/';
@@ -33,7 +33,7 @@ const DBS = () => ({
   const b = await chromium.launch(); const done = [];
   async function open() {
     const page = await b.newPage({ viewport: { width: 1280, height: 900 } });
-    const saves = [], errors = [], data = DBS();
+    const saves = [], errors = [], data = DBS(), previews = [];
     page.on('pageerror', (e) => errors.push(e.message));
     await page.addInitScript(() => { try { sessionStorage.setItem('hada_admin_browser_session_v1', 'sess-1'); } catch (_) {} });
     const reply = (route, status, d) => route.fulfill({ status, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify(d) });
@@ -46,6 +46,7 @@ const DBS = () => ({
         if (q.action === 'options') return reply(route, 200, { ok: true, dbs: {} });
         if (q.action === 'status') return reply(route, 200, { ok: true, dbs: [], syncedAt: null, rootTitle: '하다 학원관리 v2.0' });
         if (q.action === 'changes') return reply(route, 200, { ok: true, rows: [], gone: [], now: new Date().toISOString() });
+        if (q.action === 'end-preview') { previews.push(q); const all = ['2026-11-20', '2026-12-07', '2026-12-14', '2026-12-21']; return reply(route, 200, { ok: true, basis: q.endDate, dates: all.filter((d) => d > q.endDate) }); }
         if (q.action === 'save') {
           assert.equal(req.headers()['x-admin-key'], 'sess-1', 'save에 관리자 세션');
           saves.push(q.changes);
@@ -58,7 +59,7 @@ const DBS = () => ({
     });
     await page.goto(`${origin}/prototype/admin-app/hada-admin.html?live=1&refresh=0`);
     await page.waitForFunction(() => window.LIVE && window.LIVE.loaded, null, { timeout: 30000 });
-    return { page, saves, errors, data };
+    return { page, saves, errors, data, previews };
   }
   const sel = async (page, scr, rid, tab) => { await page.evaluate(([s, r]) => { openScreen(s); activeTab.state.sel = r; panelOpen = true; render(); }, [scr, rid]); if (tab) await page.evaluate((t) => [...document.querySelectorAll('#view .panel .ptabs button')].find((x) => x.textContent.trim() === t).click(), tab); await page.waitForTimeout(150); };
   const press = (page, css) => page.evaluate((c) => { const x = document.querySelector(c); if (!x) throw new Error('없음: ' + c); x.click(); }, css);
@@ -67,7 +68,7 @@ const DBS = () => ({
   const last = async (saves, n) => { for (let k = 0; k < 50 && saves.length < n; k++) await new Promise((r) => setTimeout(r, 100)); assert.equal(saves.length, n, `save ${n}번`); return saves[n - 1].map((c) => ({ op: c.op, db: c.db, id: c.id, props: c.props })); };
   const noOverflow = async (page, name) => assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), name + ': 가로 넘침');
 
-  const { page, saves, errors } = await open();
+  const { page, saves, errors, previews } = await open();
   // 1) 등록 [링크 재발급] → 확인 창(노션 버튼 뜻) → 등록 요청 = reg-link-regenerate · 줄에 대기 알약
   await sel(page, 'enrolls', E1, '현황'); await press(page, '#view .panel [data-ermore]');
   assert.equal(await page.evaluate(() => document.querySelector('#view .panel [data-act=enReissue]').disabled), false, '[링크 재발급] 켜짐');
@@ -130,12 +131,32 @@ const DBS = () => ({
   assert.match(await page.evaluate(() => [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' ')), /먼저 \[저장\]/);
   assert.equal(await dlg(page), '', '확인 창 없음'); assert.equal(saves.length, 8, '보내지 않음');
   done.push('저장 안 한 줄');
-  // 10) 아직 막힌 것: 등록 [종료 처리]는 꺼진 채(노션 버튼이 수업 DB까지 고침 — 서버 저장 길 없음)
+  // 10) 등록 [종료 처리] → 확인 창(되돌릴 수 없음 · 종료일 · 서버 미리보기로 센 앞으로 수업 수) → 종료일 + 요청 = reg-end-cleanup 한 번에
   await sel(page, 'enrolls', E1, '정보');
-  assert.equal(await page.evaluate(() => document.querySelector('#view .panel [data-act=end]').disabled), true, '[종료 처리] 꺼짐');
-  assert.match(await page.evaluate(() => document.querySelector('#view .panel [data-act=end]').title), /노션 등록 페이지의 \[종료 처리\]/, '꺼진 까닭이 보임');
+  assert.equal(await page.evaluate(() => document.querySelector('#view .panel [data-act=end]').disabled), false, '[종료 처리] 켜짐');
+  await page.evaluate(() => { TODAY = '2026-12-01'; });
+  await press(page, '#view .panel [data-act=end]');
+  await page.waitForFunction(() => /수업 3개에서 빠져요/.test(([...document.querySelectorAll('.modal')].pop() || {}).innerText || ''), null, { timeout: 5000 });
+  assert.equal(previews[0].id, E1); assert.equal(previews[0].endDate, '2026-12-01', '종료일이 비면 오늘');
+  assert.match(await dlg(page), /되돌리는 기능이 없어요/); assert.match(await dlg(page), /12월 2일부터 수업 3개에서 빠져요 \(12월 7일 ~ 12월 21일\)/);
+  assert.equal(await page.evaluate(() => document.activeElement && document.activeElement.id), 'cc', '첫 초점은 [취소]');
+  await page.screenshot({ path: shots + 'request-live-end.png' });
+  //    종료일을 앞으로 당기면(지난 날) 지난 수업도 빠짐을 따로 알림 — 다시 셈
+  await page.evaluate(() => { const m = [...document.querySelectorAll('.modal')].pop(); const inp = m.querySelector('#lqEndD input'); inp.value = '2026-11-15'; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true })); inp.dispatchEvent(new Event('blur', { bubbles: true })); });
+  await page.waitForFunction(() => /이미 지난 수업 1개/.test(([...document.querySelectorAll('.modal')].pop() || {}).innerText || ''), null, { timeout: 5000 });
+  await page.screenshot({ path: shots + 'request-live-end-past.png' });
+  assert.equal(previews[previews.length - 1].endDate, '2026-11-15');
+  await ok(page);
+  assert.deepEqual(await last(saves, 9), [{ op: 'update', db: '등록(학원) DB', id: E1, props: { '종료일': '2026-11-15', '요청': 'reg-end-cleanup' } }]);
+  //    서버가 끝내면(요청 결과 = 앞으로 수업 n개에서 뺌) 알림
+  await page.evaluate((r) => { const p = APP_RAW.raw['등록(학원) DB'].get(r).props; p['요청'] = '✅ 완료'; p['요청 결과'] = '✅ 완료 · 종료 처리 · 3.1초 · 12/1 10:00:00 · 종료일 2026-11-15 · 앞으로 수업 4개에서 뺌'; }, E1);
+  await page.waitForFunction(() => [...document.querySelectorAll('.toast')].some((t) => /종료 처리 완료/.test(t.textContent)), null, { timeout: 8000 });
+  //    저장 안 한 변경이 있으면 확인 창 없이 막음
+  await page.evaluate((r) => { const e = DB.enrolls.find((x) => x.id === r); e.note = '고친 메모'; e.state = 'draft'; render(); }, E2);
+  await sel(page, 'enrolls', E2, '정보'); await press(page, '#view .panel [data-act=end]');
+  assert.equal(await dlg(page), '', '확인 창 없음'); assert.equal(saves.length, 9, '보내지 않음');
   await noOverflow(page, '등록 창');
-  assert.deepEqual(errors, []); done.push('종료 처리 잠김');
+  assert.deepEqual(errors, []); done.push('종료 처리');
   console.log('노션 버튼 단추 통과:', done.join(', '));
   await b.close(); server.close();
 })().catch((e) => { console.error(e); process.exit(1); });

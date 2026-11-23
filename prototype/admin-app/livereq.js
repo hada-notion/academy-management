@@ -11,12 +11,14 @@
        (클래스 [한 번 청구] = 노션 [기타경비 청구]는 재무 구조 정리 뒤로 보류 — 담당 P0 261123. 아래 길은 남겨 두고 LQ_OPEN에서만 뺌)
        학생 [접수 안내 전송] → 학생 요청 = student-inquiry            학생 [개인정보 동의] 체크 → 학생 `개인정보 동의`만(노션 자동화 student-inquiry-auto는
          "동의 ☑인 새 줄"에서만 돈다 — 원본 실측 261123: 이미 있는 줄은 노션에서 직접 체크해도 안 돎. 그래서 안내는 [접수 안내 전송]으로)
-   - 아직 막힌 것(서버가 그 DB에 쓰지 못함 · 노션 버튼이 다른 DB까지 고침): 등록 [종료 처리](수업 DB) · 수료 보고서 [보내기](보고서 DB) ·
+       등록 [종료 처리] → 등록 `종료일` = 고른 날 + 요청 = reg-end-cleanup(261123 과제 종료처리 — 서버가 노션 버튼의 수업 단계까지:
+         앞으로 수업 명단에서 빼기 · 출석 조정 ⚪ 대기 · 시간표 비우기 · 교재 정리). 확인 창 숫자는 서버 미리보기(app-api end-preview, 같은 거름)
+   - 아직 막힌 것(서버가 그 DB에 쓰지 못함 · 노션 버튼이 다른 DB까지 고침): 수료 보고서 [보내기](보고서 DB) ·
      교재비에 담기(청구서) · 수강료 · 청구서 [안내 전송] · 수업 안내 · 일정 안내 — live.js P1_DENY.
    실제 자료 모드가 아니면 아무것도 하지 않는다(시제품 예시 흐름 그대로). */
 const LQ = { next: null, watch: new Map(), timer: null, last: new Map() };
 const LQ_DB = { students: "학생(학원) DB", enrolls: "등록(학원) DB", classes: "클래스(학원) DB", progress: "진도관리(학원) DB" };
-const LQ_NAME = { "reg-link-regenerate": "링크 재발급", "reg-registration-notice": "등록 안내", "progress-completion": "수료", "class-etc-charge": "기타경비 청구", "student-inquiry": "접수안내 전송",
+const LQ_NAME = { "reg-end-cleanup": "종료 처리", "reg-link-regenerate": "링크 재발급", "reg-registration-notice": "등록 안내", "progress-completion": "수료", "class-etc-charge": "기타경비 청구", "student-inquiry": "접수안내 전송",
   "교재 생성 상태": "교재 생성", "시간표 안내 상태": "시간표 변경 안내" };
 /* 요청 칸의 동작 ID → 노션 버튼 이름(대기 줄에 보임 — liverefresh.js lrReq) */
 window.LQ_ACT_NAME = { "reg-link-regenerate": "링크 재발급", "reg-registration-notice": "등록 안내", "reg-end-cleanup": "종료 처리", "reg-textbook-queue": "교재 생성", "reg-timetable-notice": "시간표 안내",
@@ -28,7 +30,7 @@ const LQ_STAT = { "등록 안내": "안내 상태", "시간표 변경 안내": "
 const lqStatBad = (r, label) => { const k = LQ_STAT[label], v = k ? String(((r && r.props) || {})[k] || "") : ""; return /^⚠️/.test(v); };
 const lqErrOf = (r) => { const p = (r && r.props) || {}; for (const k of LQ_ERR) if (typeof p[k] === "string" && p[k].trim()) return p[k].trim(); return ""; };
 /* 앱이 여는 단추(live.js p1Denied가 먼저 통과시킴) */
-window.LQ_OPEN = "[data-act=enReissue],[data-act=genPg],[data-act=genPg1],[data-act=pgDone],[data-act=pgRep],[data-pgdo^='done|'],[data-pgdo^='rep|'],[data-s1rc],[data-engd2],[data-ttn],#bfM";
+window.LQ_OPEN = "[data-act=end],[data-act=enReissue],[data-act=genPg],[data-act=genPg1],[data-act=pgDone],[data-act=pgRep],[data-pgdo^='done|'],[data-pgdo^='rep|'],[data-s1rc],[data-engd2],[data-ttn],#bfM";
 const lqLive = () => !!(window.LIVE && window.LIVE.loaded && window.APP_RAW);
 const lqEsc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const lqIsId = (v) => /^[0-9a-f-]{32,36}$/i.test(String(v || ""));
@@ -143,6 +145,42 @@ function lqNextAlim(coll, ids, props, label, note) { LQ.next = { coll, ids, prop
 })();
 const LQ_ALIM_NOTE = (btn) => `노션 [${btn}] 버튼과 같아요 — 서버가 알림톡 설정을 보고 보내요(설정이 꺼져 있으면 보내지 않고 이유를 남겨요). 보낸 결과는 이 줄의 상태 칸에 남아요.`;
 
+/* 등록 [종료 처리](261123 과제 종료처리): 노션 버튼은 `종료일`(비면 오늘) 다음 날부터의 수업에서 이 등록을 빼고(보강 제외) 출석 조정 · 시간표 비우기 ·
+   교재 정리까지 한다. 앱은 종료일을 고르게 하고 `종료일` + `요청` = reg-end-cleanup을 한 번에 저장 — 서버가 같은 단계를 한다(_shared/registrationEnd.ts).
+   확인 창: 되돌릴 수 없음 · 종료일 · 빠지는 앞으로 수업 수(서버 미리보기 — 실제 처리와 같은 거름). 종료일이 오늘보다 앞이면 지난 수업 · 출석도 빠짐을 따로 알린다. */
+const lqDay = (d) => { const [y, m, dd] = String(d).split("-").map(Number); return y ? `${m}월 ${dd}일` : ""; };
+const lqPlus1 = (d) => { const t = new Date(d + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() + 1); return t.toISOString().slice(0, 10); };
+function lqEndAsk(e) {
+  const today = typeof TODAY === "string" ? TODAY : new Date().toISOString().slice(0, 10);
+  let day = e.end || today, seq = 0, ready = false;
+  const body = `<div><b>${lqEsc(nmStu(e.studentId))}</b> · ${lqEsc(nmCls(e.classId))}</div><div class="hfh" id="lqEndD"></div>
+<ul class="askl"><li id="lqEndN">빠지는 수업을 세고 있어요…</li><li>시간표 연결이 풀리고, 시작하지 않은 교재는 정리돼요</li><li>학생 · 등록 · 종료일까지의 출결 기록은 그대로 남아요</li></ul>
+<div class="hint">노션 등록 [종료 처리]와 같아요 — 되돌리는 기능이 없어요. 바로 노션에 반영돼요.</div>`;
+  askRun("이 등록을 종료할까요?", body, "종료 처리", () => {
+    if (!ready) { toast("빠지는 수업을 세는 중이에요 — 잠시 뒤 다시 눌러요"); return; }
+    lqSend("enrolls", [String(e.id)], { "종료일": day, "요청": "reg-end-cleanup" }, LQ_NAME["reg-end-cleanup"]);
+  });
+  const root = document.getElementById("modalRoot"); if (!root) return;
+  const co = root.querySelector("#co"), n = root.querySelector("#lqEndN");
+  setTimeout(() => { const cc = root.querySelector("#cc"); if (cc) cc.focus({ preventScroll: true }); }, 20); /* 되돌릴 수 없는 일 — 첫 초점은 [취소] */
+  const count = () => {
+    const my = ++seq; ready = false; if (co) co.disabled = true; if (n) n.textContent = "빠지는 수업을 세고 있어요…";
+    liveApi(window.LIVE, { action: "end-preview", id: String(e.id), endDate: day }).then((r) => {
+      if (my !== seq || !n || !n.isConnected) return;
+      const dates = (r && r.dates) || [], past = dates.filter((d) => d <= today).length;
+      n.innerHTML = dates.length
+        ? `${lqDay(lqPlus1(day))}부터 수업 <b>${dates.length}개</b>에서 빠져요 (${lqEsc(lqDay(dates[0]))}${dates.length > 1 ? ` ~ ${lqEsc(lqDay(dates[dates.length - 1]))}` : ""})${past ? ` — <b>이미 지난 수업 ${past}개</b>도 빠지고 그 출석이 지워져요` : ""}`
+        : `${lqDay(lqPlus1(day))}부터 만들어진 수업이 없어요 — 종료일 · 시간표만 정리돼요`;
+      ready = true; if (co) co.disabled = false;
+    }).catch((err) => {
+      if (my !== seq || !n || !n.isConnected) return;
+      n.textContent = `빠지는 수업을 세지 못했어요 — ${(err && err.message) || "서버 연결 실패"}. 창을 닫고 다시 눌러요`;
+    });
+  };
+  const host = root.querySelector("#lqEndD");
+  if (host && typeof HF !== "undefined" && HF.date) HF.date(host, { label: "종료일", value: day, clear: false, help: "이 날까지 다니고, 다음 날부터의 수업에서 빠져요", onChange: (v) => { if (v && v !== day) { day = v; count(); } } });
+  count();
+}
 /* 누름 가로채기: 앱의 다른 듣기보다 먼저(window 잡기 단계) */
 function lqClick(ev) {
   if (!lqLive() || !ev.target.closest) return;
@@ -166,6 +204,12 @@ function lqClick(ev) {
   if (b.matches("[data-act=enReissue]") && rid) {
     stop(); const e = lqRow("enrolls", rid); if (!e) return;
     lqAsk("리포트 링크를 다시 생성할까요?", `<div>${lqEsc(nmStu(e.studentId))} · ${lqEsc(nmCls(e.classId))}</div><div class="hint">노션 등록 [링크 재발급]과 같아요. 옛 링크는 바로 막혀요 — 학부모에게 새 링크를 다시 보내야 해요.</div>`, "재발급", "enrolls", [rid], { "요청": "reg-link-regenerate" }, LQ_NAME["reg-link-regenerate"]);
+    return;
+  }
+  if (b.matches("[data-act=end]") && rid) {
+    stop(); const e = lqRow("enrolls", rid); if (!e) return;
+    const why = lqBlocked("enrolls", [rid]); if (why) { toast(why); return; }
+    lqEndAsk(e);
     return;
   }
   if (b.matches("[data-act=genPg1]") && rid) {
