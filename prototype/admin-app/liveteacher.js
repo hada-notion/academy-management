@@ -91,6 +91,8 @@
     for (let i = MENU.length - 1; i >= 0; i--) { MENU[i][1] = MENU[i][1].filter((x) => window.liveTeacherAllowed(x[0], menus, true)); if (!MENU[i][1].length) MENU.splice(i, 1); }
     const gate0 = window.gateOn;
     window.gateOn = (s) => gate0(s) && (ok(s) || s === "ext:manual");
+    /* 강사에게 없는 메뉴 화면을 열려고 하면(링크 · 바로가기) 기능 잠금 말("아직 열지 않았어요") 대신 메뉴 권한 말로 */
+    try { const os = openScreen; openScreen = function (s) { if (!ok(s) && s !== "ext:manual") { toast("이 메뉴 권한이 없어요 — 원장에게 노션 메뉴관리 권한을 요청하세요"); return; } return os.apply(this, arguments); }; } catch (_) {}
     try {
       const firstOk = (() => { for (const g of MENU) for (const x of g[1]) if (!String(x[0]).includes(":")) return x[0]; return ""; })();
       const scrOf = (t) => (typeof window.liveScr === "function" ? window.liveScr(t) : t.screen);
@@ -108,12 +110,28 @@
       scrs.forEach((x) => { if (ok(x) && !window.liveTeacherAllowed(x, edits)) window.liveRoAdd(x); });
     }
     document.body.classList.add("live-teacher");
+    try { const rv0 = rvSync; rvSync = function () { const o = rv0.apply(this, arguments); try { lockBar(); } catch (_) {} return o; }; } catch (_) {}
   };
+  /* 보기만(댓글허용) 메뉴 화면: 위 줄 [저장] · [동기화]를 흐리게(눌리지 않게) 하고 바뀐 줄 숫자는 숨긴다(담당 261123 — 서버도 403이지만 화면이 헷갈리지 않게).
+     render 뒤(liveTeacherMount)와 숫자를 다시 쓰는 rvSync 뒤에 한 번씩 적용한다 */
+  const VO_TITLE = "댓글 권한 메뉴라 보기만 해요 — 저장 · 동기화는 편집허용 메뉴에서";
+  const viewOnlyNow = () => { try { const t = typeof activeTab !== "undefined" ? activeTab : null; const scr = typeof window.liveScr === "function" ? window.liveScr(t) : t && t.screen; return !!(window.LIVE_TEACHER && window.liveTeacherRo && window.liveTeacherRo.has(scr)); } catch (_) { return false; } };
+  const lockBar = () => {
+    const vo = viewOnlyNow();
+    ["saveAll", "syncBtn"].forEach((id) => {
+      const b = document.getElementById(id); if (!b) return;
+      if (vo) { b.disabled = true; b.dataset.ltvo = "1"; b.title = VO_TITLE; }
+      else if (b.dataset.ltvo) { delete b.dataset.ltvo; if (id === "syncBtn") b.disabled = !!window._liveSyncing; }
+    });
+    document.body.classList.toggle("lt-vo", vo);
+  };
+  window.liveTeacherLockBar = lockBar;
   /* 강사 화면 덧그리기: 메뉴가 하나도 없으면 빈 화면 안내, 위 줄에 "강사 · 이름 [로그아웃]" */
   window.liveTeacherMount = function () {
     const t = window.LIVE_TEACHER;
     let chip = document.getElementById("ltWho");
     if (!t) { if (chip) chip.remove(); return; }
+    lockBar();
     /* 왼쪽 메뉴 맨 위(원장용 [시작하기] 자리): 누가 로그인했는지 + [로그아웃] */
     const side = document.getElementById("side");
     if (side && (!chip || chip.parentElement !== side || side.firstElementChild !== chip)) {
@@ -205,7 +223,7 @@
   const css = document.createElement("style");
   css.textContent = ".lt-l{display:block;margin:var(--space-2) 0 var(--space-1);font-size:var(--text-label);color:var(--muted)}.lt-err{color:var(--danger-ink);min-height:1.4em}"
     + ".lt-kv{display:grid;grid-template-columns:auto 1fr;gap:var(--space-1) var(--space-3);margin:var(--space-2) 0;font-size:var(--text-label)}.lt-kv dt{color:var(--muted)}.lt-kv dd{margin:0}"
-    + ".lt-bad{color:var(--danger-ink);font-weight:600}.lt-row{display:flex;gap:var(--space-2);flex-wrap:wrap;margin:var(--space-2) 0}.lt-who{display:flex;align-items:center;gap:var(--space-2);margin:0 0 var(--space-3);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);background:var(--surface);font-size:var(--text-label)}.lt-who .sp{flex:1}.live-teacher .side .tour{display:none}"
+    + ".lt-vo #saveAll .num{display:none}.lt-bad{color:var(--danger-ink);font-weight:600}.lt-row{display:flex;gap:var(--space-2);flex-wrap:wrap;margin:var(--space-2) 0}.lt-who{display:flex;align-items:center;gap:var(--space-2);margin:0 0 var(--space-3);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);background:var(--surface);font-size:var(--text-label)}.lt-who .sp{flex:1}.live-teacher .side .tour{display:none}"
     + ".lt-empty{max-width:var(--form-max,560px);margin:var(--space-6,48px) auto}";
   document.head.appendChild(css);
 })();

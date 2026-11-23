@@ -54,6 +54,7 @@ window.liveModeFor = function (search, hostname, protocol) {
   window.liveTeacherRo = new Set();
   window.liveRoAdd = (scr) => { RO.add(scr); window.liveTeacherRo.add(scr); };
   const tRo = (scr) => window.liveTeacherRo.has(scr);
+  const T_RO_TEXT = "댓글 권한 메뉴라 보기만 해요 — 고치려면 원장에게 노션 메뉴관리 편집허용을 요청하세요";
   window.liveScr = (t) => (t && t.screen === "timetable" && t.state && t.state.view === "lesson" ? "lesson" : t ? t.screen : "");
   let roBase = null, roScreen = null, roBusy = false;
   /* 출결 쓰기(P3 걸음 2, 칸 P3w — 수업 칸 P3과 함께 켤 때만): 수업 창의 [출석][결석] · [모두 출석] · [되돌리기] · [수업 저장]만 풀고 나머지는 보기만 그대로 */
@@ -86,7 +87,7 @@ window.liveModeFor = function (search, hostname, protocol) {
     let n = v.querySelector(":scope > .ro-line");
     if (!show) { if (n) n.remove(); return; }
     const top = v.querySelector(":scope > .top"); if (!top) return;
-    const txt = tRo(scr) ? "댓글 권한 메뉴라 보기만 해요 — 고치려면 원장에게 노션 메뉴관리 편집허용을 요청하세요" : RO_NOTE_BY[scr] || RO_NOTE_TEXT;
+    const txt = tRo(scr) ? T_RO_TEXT : RO_NOTE_BY[scr] || RO_NOTE_TEXT;
     if (n && n.textContent !== txt) n.textContent = txt;
     if (!n) { n = document.createElement("div"); n.className = "ro-line"; n.textContent = txt; }
     if (top.nextElementSibling !== n) top.after(n);
@@ -212,6 +213,8 @@ window.liveModeFor = function (search, hostname, protocol) {
     if (e.target.closest(roPass()) || !e.target.closest(RO_HIT)) return;
     if (!e.target.closest(".panel") && !e.target.closest("button,select,[role=button],.btn,.lnk,.hf-box")) return; /* 창 밖은 단추 · 고르기만(표 줄 · 카드 · 찾기 칸은 그대로) */
     if (e.type === "keydown" && !["Enter", " ", "Delete", "Backspace"].includes(e.key)) return;
+    /* 강사 보기만(댓글허용) 메뉴에서 막힌 동작은 위 안내 줄과 같은 말로 한 번 알린다(같은 누름의 mousedown · click 겹침은 1초에 한 번) */
+    if ((e.type === "click" || e.type === "keydown") && tRo(liveScr(typeof activeTab !== "undefined" ? activeTab : null)) && Date.now() - (window._ltRoSaid || 0) > 1000) { window._ltRoSaid = Date.now(); say(T_RO_TEXT); }
     e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
   };
   ["click", "mousedown", "pointerdown", "keydown", "change"].forEach((ev) => document.addEventListener(ev, roBlock, true));
