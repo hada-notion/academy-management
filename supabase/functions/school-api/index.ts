@@ -1,4 +1,6 @@
-import { CORS_HEADERS, requireAdminKey } from "../_shared/adminShared.ts"
+import { CORS_HEADERS, getCurrentAdminKey } from "../_shared/adminShared.ts"
+import { securityEnabled } from "../_shared/adminSecurity.ts"
+import { requireAccess } from "../_shared/teacherAccess.ts"
 import { queryAllPages, getPage, updatePageProperties } from "../_shared/notionClient.ts"
 import { neisRows, textOf, richText, safeWebsite } from "../_shared/neisSchool.ts"
 import { schoolSources, compactId } from "../_shared/schoolNotion.ts"
@@ -6,7 +8,9 @@ const json = (data: unknown, status = 200) => new Response(JSON.stringify(data),
 Deno.serve(async req => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS })
   if (req.method !== "POST") return json({ error: "POST required" }, 405)
-  const denied = await requireAdminKey(req)
+  // (강사계정 261123) 원장 세션 그대로 + 이 경로 메뉴 권한이 있는 강사 세션(_shared/teacherAccess.ts TEACHER_ROUTES).
+  const denied0 = await requireAccess(req, CORS_HEADERS, securityEnabled() ? "" : await getCurrentAdminKey())
+  const denied = denied0 instanceof Response ? denied0 : null
   if (denied) return denied
   try {
     const body = await req.json()

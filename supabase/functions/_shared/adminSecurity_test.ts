@@ -5,6 +5,8 @@ function rejects(fn:()=>unknown){try{fn();}catch(e){assert(e instanceof Security
 Deno.env.set('SB_URL','https://mock.supabase.co');Deno.env.set('SB_SERVICE_ROLE_KEY','test-only-service');Deno.env.set('ADMIN_ALLOWED_ORIGINS','https://admin.example.test');Deno.env.set('ADMIN_SECRET','test-only-webhook-key-0123456789abcdef');Deno.env.set('NOTION_TOKEN','test-only-notion');
 const originalServe=Deno.serve;(Deno as any).serve=()=>({});
 const {handleAdminSecurity,notionDatabaseLinks,webhookViewUrl,chooseDbLinks}=await import('../admin-security/index.ts');(Deno as any).serve=originalServe;
+// (강사계정 261123) 강사 계정 시험도 같은 CI 단계(web-checks · 배포)에서 돈다 — .github 작업 파일은 그대로 둔다. 환경 값을 넣은 뒤에 불러온다.
+await import('./teacherAccess_test.ts');
 async function withFetch(fn:(action:string,data:any,url:string)=>unknown,run:()=>Promise<void>){const old=fetch;globalThis.fetch=(async(input:any,init:any)=>{const b=init?.body?JSON.parse(init.body):{};return new Response(JSON.stringify(await fn(b.p_action,b.p_data,String(input))),{headers:{'Content-Type':'application/json'}});}) as typeof fetch;try{await run();}finally{globalThis.fetch=old;Deno.env.delete('ADMIN_SECURITY_ENABLED');}}
 const request=(body:any,origin='https://admin.example.test',key='')=>new Request('https://mock.supabase.co/functions/v1/admin-security',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json','x-admin-key':key},body:JSON.stringify(body)});
 const ready={initialized:true,password_set:true};
