@@ -43,7 +43,7 @@ const FOUND = [
           case 'series': return reply(route, 200, { series, duplicates: [] });
           case 'edit-series': {
             if (q.op === 'add') series = [...series, { id: 's' + (series.length + 9), name: q.name }];
-            if (q.op === 'rename') series = series.map((o) => o.id === q.id ? { ...o, name: q.name } : o);
+            if (q.op === 'rename' && q.name !== '무시될 이름') series = series.map((o) => o.id === q.id ? { ...o, name: q.name } : o); // 원본 검수: 노션이 ok로 답해도 이름을 안 바꾸는 때
             if (q.op === 'order') series = q.order.map((i) => series.find((o) => o.id === i));
             if (q.op === 'remove') series = series.filter((o) => o.id !== q.id);
             return reply(route, 200, { ok: true, cleaned: [], series, duplicates: [] });
@@ -55,6 +55,7 @@ const FOUND = [
         if (q.action === 'list') return reply(route, 200, { ok: true, db: q.db, at: new Date().toISOString(), rows: q.db === '라이브러리(학원) DB' ? [BOOK_ROW] : [] });
         if (q.action === 'options') return reply(route, 200, { ok: true, dbs: { '라이브러리(학원) DB': { '시리즈': ['예시 시리즈', '빈 시리즈'], '출판사': ['예시 출판'] } } });
         if (q.action === 'status') return reply(route, 200, { ok: true, dbs: [], syncedAt: null, rootTitle: '하다 학원관리 v2.0' });
+        if (q.action === 'run') return reply(route, 200, { ok: true, changed: 1, syncedAt: new Date().toISOString() });
         return reply(route, 200, { ok: true });
       }
       return reply(route, 200, { ok: true, rows: [], items: [] });
@@ -80,6 +81,9 @@ const FOUND = [
     await page.waitForFunction(() => !document.querySelector('#lp #bfQ'), null, { timeout: 10000 });
     assert.equal(tb(calls, 'detail').length, 1);
     assert.deepEqual(tb(calls, 'register')[0].body, { action: 'register', isbn13: '9791100000017', title: '예시 개념 수학 1', cover: 'kyobo', units: [{ name: '1. 수와 연산', page: 8 }] });
+    for (let k = 0; k < 50 && !calls.some((c) => c.fn === 'app-api' && c.action === 'run'); k++) await page.waitForTimeout(200);
+    const sy = calls.filter((c) => c.fn === 'app-api' && c.action === 'run');
+    assert.deepEqual(sy.map((c) => c.body), [{ action: 'run', name: 'sync-copy', dbs: ['라이브러리(학원) DB'], full: true }], '등록 뒤 라이브러리 사본 맞추기');
     assert.deepEqual(errors, []); done.push('검색 등록'); await page.close();
   }
   // 2) 책 찾기 — 교보문고 주소: 상품번호 → kyobo-book → register-custom(교재명 · ISBN · 교보 표지 · 정가 · 선택지에 있는 출판사 · 단원)
@@ -135,6 +139,10 @@ const FOUND = [
     assert.deepEqual(tb(calls, 'edit-series')[1].body, { action: 'edit-series', op: 'rename', id: 's1', name: '예시 시리즈 개정' });
     assert.deepEqual(await page.evaluate(() => DB.opts.series), ['예시 시리즈 개정', '새 예시 시리즈']);
     assert.equal(await page.evaluate(() => dirtyCount()), 0, '이름 바꾸기는 노션에 이미 들어감 — [저장] 숫자 0');
+    // 노션이 이름 바꾸기를 받지 않으면 성공으로 보이지 않고 화면 값도 그대로
+    await page.fill('.dlg #lbsR [data-i="0"] .unn', '무시될 이름'); await page.press('.dlg #lbsR [data-i="0"] .unn', 'Enter');
+    await page.waitForFunction(() => /받지 않았어요/.test(document.querySelector('.dlg #lbsM').textContent), null, { timeout: 10000 });
+    assert.equal(await page.evaluate(() => DB.books.some((b) => b.series === '무시될 이름')), false, '안 바뀐 이름은 화면에도 안 씀');
     assert.deepEqual(errors, []); done.push('시리즈'); await page.close();
   }
   console.log('라이브러리 실제 연결 통과:', done.join(', '));

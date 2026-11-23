@@ -423,7 +423,8 @@ function liveBookRegisterOpen(kind0, keep) {
         if (F.publisher) body.publisher = F.publisher;
         await liveBookApi(body);
         close();
-        if (dirtyCount() === 0 && typeof window.liveReload === "function") { await window.liveReload(); toast(nm + (pg ? "을" : "를") + " 등록했어요 — 과목은 줄을 눌러 넣어요"); }
+        if (typeof lbAfterAdd === "function") await lbAfterAdd(nm + (pg ? "을" : "를") + " 등록했어요 — 과목은 줄을 눌러 넣어요"); /* 라이브러리 사본을 맞춘 뒤 다시 받음(livebook.js) */
+        else if (dirtyCount() === 0 && typeof window.liveReload === "function") { await window.liveReload(); toast(nm + (pg ? "을" : "를") + " 등록했어요 — 과목은 줄을 눌러 넣어요"); }
         else toast(nm + (pg ? "을" : "를") + " 등록했어요 — 저장하지 않은 변경이 있어서 목록은 저장하고 새로고침하면 보여요");
       } catch (e) {
         ok.textContent = nm + " 등록"; upd();
