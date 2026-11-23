@@ -3538,10 +3538,12 @@ html:root .lj .ljh,html:root .lj dl{font-size:12px}
 .finchart .fcleg{margin-left:auto;display:inline-flex;align-items:center;gap:var(--space-3);color:var(--muted,#8A7F72);font-size:12px}.finchart .fcleg i{display:inline-block;vertical-align:middle;width:10px;height:10px;border-radius:50%;margin-right:4px}.finchart .fcleg i.t-blue{background:var(--info)}.finchart .fcleg i.t-red{background:var(--danger)}.finchart .fcleg i.t-green{background:var(--success)}
 .link-chip{display:inline-flex;align-items:center;gap:var(--space-1);padding:2px var(--space-2);border:1px solid var(--brand-border);border-radius:var(--radius-md);background:var(--surface);color:var(--brand-deep);font-size:var(--text-caption);font-weight:600;text-decoration:none;white-space:nowrap;position:relative}/* 카드 안 이동 링크(DESIGN.md 부품 기준표) — 밑줄 없는 작은 버튼 + ↗, 누르는 영역 투명 44 */
 .link-chip:hover{border-color:var(--brand-deep)}.link-chip::before{content:"";position:absolute;left:50%;top:50%;width:max(100%,var(--hit-min,44px));height:max(100%,var(--hit-min,44px));transform:translate(-50%,-50%)}
-/* ═════ 261124 홈 다시 만들기: 담당자별 할 일 보드(.hboard) · 오늘 한눈에 숫자 칸(.htile) — 노션 홈 보드(담당자 묶음)와 같은 구성 */
+/* ═════ 261124 홈 다시 만들기: 할 일 보드(.hboard, 열 = 우선순위 중요 · 보통 · 보류 — 보기만) · 오늘 한눈에 숫자 칸(.htile) — 노션 홈 보드와 같은 구성 */
 #view .list.cards.home{max-width:none}
 .hboard h3 .sp{flex:1}
 .hbcols{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--space-3);align-items:start}
+.hbcols.td3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.hbh .rpill{display:inline-flex;align-items:center;height:20px;padding:0 var(--space-2);border-radius:var(--radius-pill);font-size:var(--text-micro);font-weight:700;background:var(--line2);color:var(--ink)}.hbh .rpill.bad{background:var(--danger-soft);color:var(--danger-ink)}.hbh .rpill.mute{color:var(--muted)}
 .hbcol{background:var(--canvas);border:1px solid var(--line2);border-radius:var(--radius-md);padding:var(--space-2);display:flex;flex-direction:column;gap:var(--space-2);min-width:0}
 .hbh{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-1) var(--space-1) 0;font-size:var(--text-label)}.hbh svg.i{width:14px;height:14px;color:var(--muted)}.hbh .hint{margin-left:auto}
 .hbcard{display:flex;flex-direction:column;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:10px 12px;cursor:pointer;min-width:0}
@@ -3551,9 +3553,8 @@ html:root .lj .ljh,html:root .lj dl{font-size:12px}
 .hbm{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:var(--text-caption);color:var(--muted);font-variant-numeric:tabular-nums}
 .hbm .rpill{display:inline-flex;align-items:center;height:20px;padding:0 var(--space-2);border-radius:var(--radius-pill);font-size:var(--text-micro);font-weight:700;background:var(--line2);color:var(--muted)}
 .hbm .rpill.late{background:var(--danger-soft);color:var(--danger-ink)}
-.hbchk{margin-left:auto;display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 4px;font-size:var(--text-caption);color:var(--muted);cursor:pointer}.hbchk input{width:16px;height:16px;margin:0;accent-color:var(--brand-deep);cursor:pointer}.hbchk.mid input{accent-color:var(--info)}
 .hbnone{padding:var(--space-2) var(--space-1)}
-.htiles{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-3)}
+.htiles{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:var(--space-3)}
 .htile{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:76px;padding:var(--space-3) var(--space-4);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);font:inherit;color:var(--ink);cursor:pointer;text-align:left}
 .htile:hover{border-color:var(--brand-border);background:var(--brand-tint)}
 .htile b{font-size:var(--text-title);font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
