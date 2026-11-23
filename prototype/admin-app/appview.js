@@ -355,6 +355,7 @@ async function appViewLoad({ url, anonKey, session, target }) {
 	if (!out) throw new Error("DB 객체가 없습니다")
 	const dbs = [...new Set([...Object.values(APPMAP).map((m) => m.db), ...APPV_DBS])]
 	const raw = await appListMany({ url, anonKey, session }, dbs) /* 동시에 받음(appdata.js) — 요청 순서 · 실패 메시지는 순차 받기와 같음 */
+	if (typeof window !== "undefined" && !target) window.APP_RAW = { raw, view: true } // 열린 화면 자동 갱신(liverefresh.js)
 	appApply(raw, out)
 	return appViewApply(raw, out)
 }

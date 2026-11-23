@@ -251,6 +251,7 @@ async function appLoad({ url, anonKey, session, target }) {
 	if (!out) throw new Error("DB 객체가 없습니다")
 	const dbs = [...new Set(Object.keys(APPMAP).map((coll) => APPMAP[coll].db))]
 	const raw = await appListMany({ url, anonKey, session }, dbs)
+	if (typeof window !== "undefined" && !target) window.APP_RAW = { raw, view: false } // 열린 화면 자동 갱신(liverefresh.js)이 바뀐 줄만 끼워 다시 계산
 	return appApply(raw, out)
 }
 // raw = { "<DB 제목>": Map(id → app-api 줄) } → out[coll]. 검사(check.cjs)도 이 함수를 쓴다.
