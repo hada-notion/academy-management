@@ -373,7 +373,8 @@ export async function reconcileApp(db: AppDb): Promise<AppSyncResult> {
 }
 
 // 처음 채우기가 끝난(커서가 있는) DB만. 지운 페이지는 밤 대조(reconcile)가 지운다.
-export async function incrementalApp(db: AppDb): Promise<AppSyncResult | null> {
+// before: 사본에 넣기 직전에 부른다(15분 폴링의 구독 끊김 대조 — _shared/notionSubscriptionWatch.ts). 실패해도 폴링은 계속.
+export async function incrementalApp(db: AppDb, before?: (db: AppDb, rows: Row[], pages: Page[]) => Promise<void>): Promise<AppSyncResult | null> {
 	const cursor = await getCursor(db)
 	if (!cursor) return null
 	const problem = await sourceProblem(db)
@@ -384,6 +385,7 @@ export async function incrementalApp(db: AppDb): Promise<AppSyncResult | null> {
 	const pages: Page[] = []
 	for (const ds of sources) pages.push(...await queryAllPages(ds, { timestamp: "last_edited_time", last_edited_time: { on_or_after: since } }))
 	const rows = pages.map((p) => pageRow(db, p))
+	if (before && rows.length) { try { await before(db, rows, pages) } catch (e) { console.error(`[appCopy] ${db} 대조 건너뜀: ${(e as Error).message}`) } }
 	await upsertRows(rows)
 	await setCursor(db, startedAt)
 	return { db, found: sources.length > 0, read: pages.length, upserted: rows.length, deleted: 0 }

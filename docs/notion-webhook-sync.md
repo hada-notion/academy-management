@@ -21,6 +21,27 @@
 5. 안전망: 사본 증분 폴링 `app-copy-incremental` · `class-room-copy-incremental` 5분 → **15분**(구독이 확인된 곳만, `notion_webhook_tokens`에 줄이 있을 때). 밤 대조는 그대로.
 6. 정리 `notion-events-prune`(매일 한국 02:40): 이벤트 id 3일, 끝난 대기열 7일, 수신 기록 30일.
 
+## 구독 끊김 알아채기 (`20261123060000_notion_subscription_watch.sql`, `_shared/notionSubscriptionWatch.ts`)
+노션은 실패가 쌓인 구독을 스스로 끄고, 확인 토큰이 바뀌면 서명이 맞지 않는다. 그동안 사본이 늦지 않게 서버가 알아채서 폴링을 5분으로 되돌린다.
+1. **대조**: 15분 폴링(`app-copy-incremental`)이 노션에서 바뀐 줄을 사본에 넣기 **전에** 사본 값과 견준다. 구독이 살아 있으면 웹훅이 몇 초 안에 사본을 먼저 맞춰 두므로 같다.
+   값이 다르고 고친 지 2분 넘은 줄만 `notion_subscription_poll_report`로 보내고, 서버가 그 줄 이벤트를 받은 적이 없으면 "놓친 줄"로 센다.
+   - 본문만 고친 줄 · 사본에 없는 칸만 고친 줄은 값이 같아 세지 않는다(구독이 원래 알리지 않는 고침).
+   - 아무도 노션을 고치지 않는 밤 · 주말엔 놓친 줄도 없어 경고가 뜨지 않는다.
+2. **끊김**: 놓친 줄이 **2개 이상** 쌓이고 그 사이 받은 이벤트가 없으면 `notion_subscription_health.state = 'down'` → 폴링 두 예약(`app-copy-incremental` · `class-room-copy-incremental`) **5분**.
+   - 놓친 줄의 `요청`이 동작 ID면 대기열에 넣는다 — 끊긴 동안에도 버튼 · 자동화가 폴링 주기(5분) 안에 처리된다.
+3. **되돌아옴**: 서명이 맞는 이벤트가 하나라도 오면(트리거 `notion_webhook_events_watch`) 쌓인 수를 비우고, 끊김이었으면 `ok` → 폴링 **15분**.
+4. **보이는 곳**: 관리 앱 관리자 설정 "노션 연동 구독" 상태 **끊김**(이유 · 언제부터 · 폴링 주기 · 마지막 대조), 관리 앱 홈 입력 점검 "노션 연동 구독 끊김"(누르면 안내 창). 홈은 자동 갱신(`app-api changes`)이 받을 때마다 같이 받는다.
+5. **기록**: `notion_subscription_log`(down · ok · poll · simulate). 구독이 없는 학원(`notion_webhook_tokens`가 빔)은 끊김으로 보지 않고 폴링도 바꾸지 않는다.
+
+시험(실제 구독은 그대로 두고 서버 쪽 흉내):
+```sql
+select public.notion_subscription_simulate(30);  -- 30분 동안 받은 이벤트를 "거절(꺼짐 흉내)"로 적고 대기열에 넣지 않음(노션에는 200)
+-- 노션에서 시험 줄 2개를 고치고 다음 15분 폴링을 기다리면 → 끊김 · 폴링 5분
+select public.notion_subscription_simulate(0);   -- 흉내 끝 → 다음 노션 고침이 오면 되돌아옴 · 폴링 15분
+select * from public.notion_subscription_log order by id desc limit 10;
+select state, since, reason, missed, poll_min, last_report_at from public.notion_subscription_health;
+```
+
 ## 확인 (SQL Editor)
 ```sql
 -- 최근 처리: 노션 이벤트 시각 → 처리 끝 시각(초)
@@ -40,6 +61,7 @@ select status, count(*) from public.notion_event_queue group by status;
   select cron.schedule('class-room-copy-incremental', '*/5 * * * *', $c$ select public.class_room_copy_incremental_step(); $c$);
   ```
 - 구독 끄기: 노션 연동 설정 > Webhooks에서 Pause 또는 Delete.
+- 끊김 감지만 끄기: `drop trigger notion_webhook_events_watch on public.notion_webhook_events; drop trigger notion_webhook_events_simulate on public.notion_webhook_events;` + `select public.notion_subscription_poll_set(15);`(폴링 15분 고정). 함수는 표 · 함수가 없으면 대조를 건너뛴다.
 
 ## 구독 새로 만들어 확인 토큰 바꾸기 (대표가 노션 · Supabase 화면에서)
 시험 때 확인 토큰 값이 대화에 한 번 보였다. 실사용 전에 바꾼다. 값은 어디에도 적지 않는다.

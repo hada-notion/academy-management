@@ -159,6 +159,10 @@ async function lrPull() {
     if (res.many) { lrMany(); }
     else if (lrApplyRaw(res.rows, res.gone)) { LR.need = true; LR.reqVer++; lrFlush(); }
     if (res.crAt) { if (LR.crAt && res.crAt > LR.crAt) lrCrPoke(); LR.crAt = res.crAt; }
+    if ("subscription" in res) { /* (261123) 노션 연동 구독 끊김 — 바뀌면 홈 입력 점검을 다시 그림 */
+      const was = LR.sub ? LR.sub.state : null; LR.sub = res.subscription || null;
+      if (was !== (LR.sub ? LR.sub.state : null)) { try { render(); } catch (_) {} }
+    }
   } catch (e) { try { console.warn("[자동 갱신]", e.message); } catch (_) {} }
   finally { LR.busy = false; if (LR.again) { LR.again = false; setTimeout(lrPull, LR_MIN_GAP_MS); } }
 }
@@ -264,11 +268,23 @@ function lrDress() {
 }
 function lrHomeRows() {
   const L = lrReqList(), rows = [];
+  if (LR.sub && LR.sub.state === "down") rows.push(["sub", "노션 연동 구독 끊김", "노션에서 고친 것이 바로 들어오지 않아요 — 5분마다 맞추는 중", 1]);
   if (L.fail.length) rows.push(["fail", "노션 요청 실패", "노션 버튼 · 자동화가 처리되지 않은 줄", L.fail.length]);
   if (L.slow.length) rows.push(["slow", "오래 걸리는 요청", "5분 넘게 대기 · 처리 중인 줄", L.slow.length]);
   return rows;
 }
+/* 구독 끊김 안내 창: 무엇이 · 지금 어떻게 돌고 있나 · 할 일 */
+function lrSubOpen() {
+  const h = LR.sub || {}, since = h.since ? new Date(h.since).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+  modal(`<h2>노션 연동 구독 끊김</h2><div class="box lr-list">
+    <div class="lr-note w" role="status"><span>${lrEsc(h.reason || "노션에서 고친 줄을 웹훅으로 받지 못했어요")}${since ? ` · ${lrEsc(since)}부터` : ""}${h.simulating ? " · 시험(꺼짐 흉내) 중" : ""}</span></div>
+    <p>그동안 앱은 <b>${h.pollMin || 5}분마다</b> 노션을 다시 읽어 맞추고, 노션 버튼 · 자동화 요청도 그때 처리돼요(평소 몇 초 → 최대 ${h.pollMin || 5}분).</p>
+    <p>할 일: 노션 연동 설정 → Webhooks에서 구독이 <b>Active</b>인지 봐요. 꺼져 있으면 다시 켜고, 새로 만들었다면 확인 토큰을 넣어요. 노션에서 다음 고침이 들어오면 저절로 정상(15분)으로 돌아가요.</p>
+    <p class="hint">자세한 상태는 관리자 설정 → 노션 연동 구독에 있어요.</p></div><div class="actions"><span class="sp"></span><button type="button" class="btn" id="lrClose">닫기</button></div>`,
+    (m, close) => { m.querySelector("#lrClose").onclick = close; });
+}
 function lrReqOpen(kind) {
+  if (kind === "sub") { lrSubOpen(); return; }
   const L = lrReqList(), list = kind === "fail" ? L.fail : L.slow;
   const rows = list.sort((a, b) => String(b.r.notion_edited_at).localeCompare(String(a.r.notion_edited_at))).map(({ db, r, q }) =>
     `<div class="crow"><span class="cl">${lrEsc(lrDbShort(db))} · ${lrEsc(lrTitle(r))}</span><span class="cv">${lrReqHtml(q, r.notion_edited_at)}</span><span class="ca">${r.url ? `<a class="btn sm" href="${lrEsc(r.url)}" target="_blank" rel="noopener">노션에서 열기</a>` : ""}</span></div>`).join("");
