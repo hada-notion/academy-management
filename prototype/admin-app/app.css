@@ -3496,3 +3496,6 @@ html:root .lj .ljh,html:root .lj dl{font-size:12px}
 .tdsubs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}.tdsb{height:28px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px;cursor:pointer}.tdsb small{color:var(--muted);margin-left:2px}.tdsb.on{background:var(--ink,#2B2118);border-color:var(--ink,#2B2118);color:#fff}.tdsb.on small{color:#fff;opacity:.8}
 /* 261120 대표: 요일 수 [‹ 4 ›] = 줌 조절과 같은 껍데기(.zoomgrp), 가운데는 숫자만 */
 .wdgrp .zoomlbl{min-width:32px;font-variant-numeric:tabular-nums;color:var(--text-ink);font-weight:700}
+
+/* 학교 검색 창(실제 자료 모드, liveschool.js) */
+.nsr{flex:0 0 180px}.nsrow{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-2) var(--space-3);border-bottom:1px solid var(--line2);min-height:64px}.nsrow:last-child{border-bottom:0}.nst{display:flex;flex-direction:column;min-width:0;flex:1}.nst b{font-size:var(--text-small)}.nst .hint{white-space:normal}.nsrow .btn{flex:none}
