@@ -566,7 +566,9 @@ const recsOf=k=>(DB.recs||[]).filter(r=>r.key===k&&!r.del);const RK={학습:"edi
 const recPct=(r,a)=>a&&a.ok!==""&&a.ok!=null&&r.total?Math.round(a.ok/r.total*100):null;
 function recSum(r,studs){if(r.kind==="과제"){const c={"완료":0,"일부 완료":0,"미제출":0};let n=0;studs.forEach(s=>{const v=(r.acts[s.id]||{}).hw;if(v){c[v]++;n++}});return n?`제출 ${c["완료"]} · 일부 ${c["일부 완료"]} · 미제출 ${c["미제출"]} / ${studs.length}명`:`검사 전 · ${studs.length}명 · 마감 다음 수업`}
   if(r.kind==="평가"){const a=studs.map(s=>recPct(r,r.acts[s.id])).filter(v=>v!=null);return a.length?`평균 ${Math.round(a.reduce((x,y)=>x+y,0)/a.length)}점 (입력 ${a.length}/${studs.length}명)`:`채점 전 · ${r.total||0}문항`}return [recUnits(r).join(" · "),r.content].filter(Boolean).join(" — ")}
-const recBook=r=>r.bookId?nmBook((DB.progress.find(x=>x.id===r.bookId)||{}).bookId):"교재 없음";
+/* 학습생성결함(261124): 개별 교재는 학생 이름을 붙임 — 노션 진도교재 이름("교재 · 학생 반")처럼, 같은 교재 카드가 학생마다 여럿일 때 구분 */
+const pgBookLab=g=>g?nmBook(g.bookId)+(g.mode==="개별"&&g.studentId?" · "+nmStu(g.studentId):""):"";
+const recBook=r=>r.bookId?pgBookLab(DB.progress.find(x=>x.id===r.bookId)||{bookId:""}):"교재 없음";
 /* 과제검사: 이 수업이 마감인 과제 = 같은 클래스 바로 앞 수업의 과제 기록 */
 function recsDue(b,d){if(!b||!b.classId)return [];const hw=(DB.recs||[]).filter(r=>!r.del&&r.kind==="과제"&&r.classId===b.classId&&r.d<d);if(!hw.length)return [];const last=hw.reduce((m,r)=>r.d>m?r.d:m,"");return hw.filter(r=>r.d===last)}
 function recStu(r,studs){return `<div class="recst">${studs.length?studs.map(s=>{const a=r.acts[s.id]||{};return `<div class="recrow"><span class="nm">${esc(s.name)}</span>${r.kind==="과제"?`<span class="attseg" data-rs="${s.id}" data-rid="${r.id}">${[["완료","a1"],["일부 완료","a3"],["미제출","a2"]].map(([v,cl])=>`<button type="button" class="${a.hw===v?cl+" on":""}" data-v="${v}" title="${HWL[v]}">${v==="일부 완료"?"일부":HWL[v]}</button>`).join("")}</span>`:`<input class="inp recsc" data-rsc="${s.id}" inputmode="numeric" autocomplete="off" value="${a.ok??""}" placeholder="정답" aria-label="${esc(s.name)} 정답 문항"><span class="hint">/ ${r.total||0}</span><span class="recpt">${recPct(r,a)==null?"—":recPct(r,a)+"점"}</span>`}</div>`}).join(""):'<div class="lnone">이 수업에 학생이 없어요.</div>'}</div>`}
@@ -578,7 +580,7 @@ function recBar(r,studs){const n=studs.length;if(!n||(r.kind!=="과제"&&r.kind!
   if(r.kind==="과제"){const c={"완료":0,"일부 완료":0,"미제출":0};studs.forEach(x=>{const v=(A[x.id]||{}).hw;if(v)c[v]++});const done=c["완료"]+c["일부 완료"]+c["미제출"];seg=[["ok",c["완료"]],["pt",c["일부 완료"]],["ab",c["미제출"]],["no",n-done]]}
   else{const k=studs.filter(x=>recPct(r,A[x.id])!=null).length;seg=[["ok",k],["no",n-k]]}
   return `<div class="lbar recbar">${seg.filter(z=>z[1]).map(z=>`<i class="${z[0]}" style="width:${z[1]/n*100}%"></i>`).join("")}</div>`}
-function recHead(r,open,due,o){return `<div class="rech" data-reco="${r.id}">${o.date?`<span class="hint rcd">${D10(r.d).slice(5)}</span>`:""}<span class="rk k${Object.keys(RK).indexOf(r.kind)}">${IC(RK[r.kind],"s")}${r.kind==="평가"?(r.ekind||"일일")+" 평가":r.kind}</span><b>${esc(recBook(r))}</b><span class="hint">${esc(due?D10(r.d).slice(5)+" 냄":r.range||"")}</span><span class="sp"></span>${o.tag?`<span class="tag">${esc(o.tag)}</span>`:""}${r.state==="draft"?'<span class="pill w">작성 중</span>':""}${o.noOpen?"":IC(open?"up":"down","s")}</div>`}
+function recHead(r,open,due,o){return `<div class="rech" data-reco="${r.id}">${o.date?`<span class="hint rcd">${D10(r.d).slice(5)}</span>`:""}<span class="rk k${Object.keys(RK).indexOf(r.kind)}">${IC(RK[r.kind],"s")}${r.kind==="평가"?(r.ekind||"일일")+" 평가":r.kind}</span><b title="${esc(recBook(r))}">${esc(recBook(r))}</b><span class="hint">${esc(due?D10(r.d).slice(5)+" 냄":r.range||"")}</span><span class="sp"></span>${o.tag?`<span class="tag">${esc(o.tag)}</span>`:""}${r.state==="draft"?'<span class="pill w">작성 중</span>':""}${o.noOpen?"":IC(open?"up":"down","s")}</div>`}
 /* 출석에서 연 카드의 몸통 = 그 학생의 학습활동(노션 학습활동 칸 이름 그대로) */
 function recActBody(r,sid,ro){const aa=(r.acts||{})[sid]||{},pc=recPct(r,aa);
   const main=r.kind==="평가"?`<div class="asr"><span class="t">점수<small>정답 ÷ 전체 ${r.total||0}문항</small></span><span class="lpev"><input class="inp recsc" data-rsc="${sid}" data-rid="${r.id}" inputmode="numeric" autocomplete="off" value="${aa.ok??""}" placeholder="정답" ${ro?"disabled":""}><span class="hint">/${r.total||0}</span><b class="recpt">${pc==null?"—":pc+"점"}</b></span></div>`
@@ -2900,7 +2902,7 @@ LISTS.bookfees_e=bfList("기타경비",{help:"피복비·모의고사비처럼 �
   acts:[{id:"aCls",icon:"users",plain:true,name:"클래스 전체에 추가",n:()=>bfClsList().length,tip:n=>n?"클래스 전체에 추가 — 그 클래스를 수강 중인 학생마다 기타경비를 한 건씩 생성해요":"클래스 전체에 추가 — 수강 중인 학생이 있는 클래스가 없어요",run:()=>bfClsDialog()},...bfActs("기타경비")]});
 LISTS.bookfees_l=Object.assign({},LISTS.charges,{title:"청구서",_gc:null});
 /* 학습기록(노션 학습기록 메뉴 [학습 | 과제 | 평가]) · 수료 보고서(학습 보고서에서 수료만). 정기 보고서 = 주간 · 월간 */
-const recBookOf=x=>{const g=DB.progress.find(p=>p.id===x.bookId);return g?nmBook(g.bookId):nmBook(x.bookId)};
+const recBookOf=x=>{const g=DB.progress.find(p=>p.id===x.bookId);return g?pgBookLab(g):nmBook(x.bookId)};
 const recHw=x=>{const a=Object.values(x.acts||{});return a.length?`완료 ${a.filter(v=>v.hw==="완료").length}/${a.length}`:"—"};
 const recEv=x=>{const a=Object.values(x.acts||{}).map(v=>+v.score).filter(v=>v>=0&&!isNaN(v));return a.length?`평균 ${Math.round(a.reduce((p,q)=>p+q,0)/a.length)}점 · ${a.length}명`:"—"};
 function recList(kind,extra){return {title:"학습기록",coll:"recs",unit:"건",ro:true,filters:[],noAdd:1,noDel:true,ph:"교재 · 내용 검색",help:"수업에서 적은 학습 · 과제 · 평가 기록이에요. 편집는 수업 화면에서 해요(이 목록은 찾아보기용).",
