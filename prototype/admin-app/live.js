@@ -138,10 +138,12 @@ window.liveModeFor = function (search, hostname, protocol) {
   /* 0단계 — 입력 화면(P1)에서 잠그는 것(두 길로 갈라지는 일): 노션 버튼이 딸린 일까지 하는 단추는 끄고 [노션에서 해요]로 알린다.
      등록 [종료 처리] · [링크 재발급], 진도 [교재 생성] · [수료], 안내 전송 · 접수 안내 · 학사일정, 시간표 [잠금 해제](수업이 만들어진 시간표의 요일 · 시간),
      학생 [개인정보 동의](체크하면 노션 자동화가 접수 안내 알림톡을 보낸다 — 앱은 그 칸을 보내지 않는다). 저장 층(appsave.js appsOff)도 같은 것을 보내지 않는다. */
-  const P1_DENY = "[data-act=end],[data-act=enReissue],[data-act=genPg],[data-act=genPg1],[data-act=pgDone],[data-act=pgRep],[data-pgdo],[data-cetone],#bfM,#pLock"; /* [data-cetone] = 클래스 창 [한 번 청구] — 청구서는 노션 [기타경비 청구](서버)가 만듦, 앱엔 저장 길 없음 */
-  const P1_DENY_TEXT = /(접수 안내|등록 안내|안내 전송|안내문 전송|재발급|학사일정 가져오기|종료 처리|교재 생성|교재비에 담기|한 번 청구)\s*\d*\s*$/; /* 담기 = 노션 [담기](서버가 청구서까지 만듦) */
+  /* 261123(과제 막힌단추): 노션 버튼과 같은 칸(`요청` · 자동화 상태 칸)을 바꾸는 단추는 livereq.js가 연다(window.LQ_OPEN — 아래 목록보다 먼저 통과).
+     남은 것 = 서버 저장 길이 그 DB에 쓰지 못하거나 노션 버튼이 다른 DB까지 고치는 것: 등록 [종료 처리](수업 DB의 등록 · 출석 조정까지) · 수료 보고서 [보내기](보고서 DB) · 시간표 [잠금 해제] */
+  const P1_DENY = "[data-act=end],[data-pgdo^='send|'],#pLock";
+  const P1_DENY_TEXT = /(접수 안내|등록 안내|안내 전송|안내문 전송|재발급|학사일정 가져오기|종료 처리|교재 생성|교재비에 담기|한 번 청구)\s*\d*\s*$/; /* 담기 = 노션 [담기](서버가 청구서까지 만듦). 이 글자의 단추라도 LQ_OPEN이면 열림 */
   const P1_WHY = "";
-  const p1Denied = (el) => { const hf = el && el.closest && el.closest(".hf"); if (hf && hf.closest("#view")) { const lb = hf.querySelector(".hf-lbl"); if (lb && /^개인정보 동의/.test(lb.textContent.trim())) return el.closest(".qhelp,[data-help]") ? null : hf; } const b = el && el.closest && el.closest("button,[role=button],.btn,.lnk,label,.swf,[data-hf]"); if (!b || !b.closest("#view")) return null; if (b.matches(P1_DENY) || b.closest(P1_DENY)) return b; const t = (b.textContent || "").trim(); if (b.matches("button,.btn,.lnk") && P1_DENY_TEXT.test(t)) return b; if (/개인정보 동의/.test(t) && t.length < 40) return b; return null; };
+  const p1Denied = (el) => { const hf = el && el.closest && el.closest(".hf"); if (hf && hf.closest("#view") && !window.LQ_OPEN) { const lb = hf.querySelector(".hf-lbl"); if (lb && /^개인정보 동의/.test(lb.textContent.trim())) return el.closest(".qhelp,[data-help]") ? null : hf; } /* 개인정보 동의는 livereq.js가 확인 창 → 노션 체크(자동화가 접수 안내) */ const b = el && el.closest && el.closest("button,[role=button],.btn,.lnk,label,.swf,[data-hf]"); if (!b || !b.closest("#view")) return null; if (window.LQ_OPEN && b.matches(window.LQ_OPEN)) return null; if (b.matches(P1_DENY) || b.closest(P1_DENY)) return b; const t = (b.textContent || "").trim(); if (b.matches("button,.btn,.lnk") && P1_DENY_TEXT.test(t)) return b; if (/개인정보 동의/.test(t) && t.length < 40 && !window.LQ_OPEN) return b; return null; };
   const p1Dress = () => {
     if (!(window.LIVE && window.LIVE.loaded) || document.body.classList.contains("live-ro")) return;
     document.querySelectorAll("#view button,#view .lnk,#view .swf,#view [data-hf],#view .hf").forEach((el) => { if (p1Denied(el) !== el) return; if ("disabled" in el) el.disabled = true; el.setAttribute("aria-disabled", "true"); el.title = /개인정보 동의/.test(el.textContent) ? "개인정보 동의는 노션에서 체크해요 — 체크하면 접수 안내 알림톡이 나가요" : P1_WHY; el.classList.add("live-off"); });
