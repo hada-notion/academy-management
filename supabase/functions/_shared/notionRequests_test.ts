@@ -206,6 +206,9 @@ Deno.test("읽을 말: 이유 원문 3종 이상 — 내부 id · 함수 · 표 
 	}
 	assert(readableReason(500, RAW_CACHE, true).includes("[학생 페이지 동기화]"))
 	assert(readableReason(503, "", true).includes("자동으로 다시 넘기"))
+	assertEquals(readableReason(500, "대시보드 날짜가 비어 있습니다 (page 00000000000040008000000000000001)", true),
+		"대시보드 날짜가 비어 있습니다 — 서버가 자동으로 다시 넘기고 있어요(최대 3번). 10분 뒤에도 실패면 다시 누르고, 계속되면 관리자에게 알려 주세요")
+	assertEquals(readableReason(500, "TypeError: Cannot read properties of undefined", false), "서버가 잠깐 처리하지 못했어요. 1~2분 뒤 다시 눌러 주세요")
 	assertEquals(readableReason(400, "보고서 구분이 비어 있습니다 (page 00000000000040008000000000000001)", false), "보고서 구분이 비어 있습니다")
 	assert(readableReason(422, "Something went wrong", false).includes("관리자에게"))
 	assertEquals(cleanReason("연락처가 없습니다: student_phone (HTTP 400)"), "연락처가 없습니다")

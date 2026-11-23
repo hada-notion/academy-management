@@ -120,9 +120,12 @@ const hasHangul = (s: string) => /[가-힣]/.test(s)
 export function readableReason(status: number, raw: string, retried: boolean): string {
 	for (const [re, say] of KNOWN) if (re.test(raw)) return retried ? `${say} (서버가 몇 분 안에 자동으로 한 번 더 넘겨요)` : say
 	if (status === 0 || status >= 500) {
+		// 함수가 한글 이유를 줬으면 앞에(무엇이), 뒤에 서버가 하는 일 · 할 일(어떻게)
+		const c = status === 0 ? "" : cleanReason(raw)
+		const why = hasHangul(c) ? `${clip(c, 120)} — ` : ""
 		return retried
-			? "서버가 잠깐 처리하지 못해 자동으로 다시 넘기고 있어요(최대 3번). 10분 뒤에도 실패면 다시 누르고, 계속되면 관리자에게 알려 주세요"
-			: "서버가 잠깐 처리하지 못했어요. 1~2분 뒤 다시 눌러 주세요"
+			? `${why}서버가 ${why ? "" : "잠깐 처리하지 못해 "}자동으로 다시 넘기고 있어요(최대 3번). 10분 뒤에도 실패면 다시 누르고, 계속되면 관리자에게 알려 주세요`
+			: `${why}${why ? "" : "서버가 잠깐 처리하지 못했어요. "}1~2분 뒤 다시 눌러 주세요`
 	}
 	if (status === 404) return "서버에 이 기능이 아직 없어요(업데이트가 필요해요). 관리자에게 알려 주세요"
 	const c = cleanReason(raw)
