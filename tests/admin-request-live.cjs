@@ -123,6 +123,7 @@ const DBS = () => ({
   // 10) 아직 막힌 것: 등록 [종료 처리]는 꺼진 채(노션 버튼이 수업 DB까지 고침 — 서버 저장 길 없음)
   await sel(page, 'enrolls', E1, '정보');
   assert.equal(await page.evaluate(() => document.querySelector('#view .panel [data-act=end]').disabled), true, '[종료 처리] 꺼짐');
+  assert.match(await page.evaluate(() => document.querySelector('#view .panel [data-act=end]').title), /노션 등록 페이지의 \[종료 처리\]/, '꺼진 까닭이 보임');
   await noOverflow(page, '등록 창');
   assert.deepEqual(errors, []); done.push('종료 처리 잠김');
   console.log('노션 버튼 단추 통과:', done.join(', '));
