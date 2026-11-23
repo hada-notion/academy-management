@@ -43,7 +43,9 @@ const FOUND = [
           case 'series': return reply(route, 200, { series, duplicates: [] });
           case 'edit-series': {
             if (q.op === 'add') series = [...series, { id: 's' + (series.length + 9), name: q.name }];
-            if (q.op === 'rename' && q.name !== '무시될 이름') series = series.map((o) => o.id === q.id ? { ...o, name: q.name } : o); // 원본 검수: 노션이 ok로 답해도 이름을 안 바꾸는 때
+            if (q.op === 'rename' && q.name === '실패할 이름') return reply(route, 502, { error: '교재 1권 중 0권만 새 이름으로 옮기고 멈췄습니다. 옮긴 교재를 옛 이름으로 되돌렸습니다. 잠시 뒤 다시 하세요.' });
+            // 서버는 새 선택지를 만들고 옛 것을 빼므로 id가 바뀐다(v2.8.0). '무시될 이름'은 옛 서버(ok인데 안 바뀜) 흉내
+            if (q.op === 'rename' && q.name !== '무시될 이름') series = series.map((o) => o.id === q.id ? { id: o.id + 'r', name: q.name } : o);
             if (q.op === 'order') series = q.order.map((i) => series.find((o) => o.id === i));
             if (q.op === 'remove') series = series.filter((o) => o.id !== q.id);
             return reply(route, 200, { ok: true, cleaned: [], series, duplicates: [] });
@@ -143,6 +145,11 @@ const FOUND = [
     await page.fill('.dlg #lbsR [data-i="0"] .unn', '무시될 이름'); await page.press('.dlg #lbsR [data-i="0"] .unn', 'Enter');
     await page.waitForFunction(() => /받지 않았어요/.test(document.querySelector('.dlg #lbsM').textContent), null, { timeout: 10000 });
     assert.equal(await page.evaluate(() => DB.books.some((b) => b.series === '무시될 이름')), false, '안 바뀐 이름은 화면에도 안 씀');
+    // 서버가 이유로 거절하면 그 이유를 그대로 보여 주고 화면 값은 그대로
+    await page.fill('.dlg #lbsR [data-i="0"] .unn', '실패할 이름'); await page.press('.dlg #lbsR [data-i="0"] .unn', 'Enter');
+    await page.waitForFunction(() => /되돌렸습니다/.test(document.querySelector('.dlg #lbsM').textContent), null, { timeout: 10000 });
+    assert.equal(await page.evaluate(() => DB.books.some((b) => b.series === '실패할 이름')), false, '실패한 이름은 화면에도 안 씀');
+    assert.equal(await page.evaluate(() => document.querySelector('.dlg #lbsR [data-i="0"] .unn').value), '예시 시리즈 개정');
     assert.deepEqual(errors, []); done.push('시리즈'); await page.close();
   }
   console.log('라이브러리 실제 연결 통과:', done.join(', '));
