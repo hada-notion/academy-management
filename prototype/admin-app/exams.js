@@ -53,6 +53,7 @@
   }
   if (typeof REL_NEW !== "undefined") { REL_NEW.exams = REL_NEW.exams || {}; REL_NEW.exams.testId = (t) => testNew(t); }
   if (typeof REL_NAME !== "undefined") REL_NAME.testId = "시험";
+  if (typeof COLLNAME !== "undefined") COLLNAME.tests = "시험(연도 · 회차)"; /* 저장 확인 창 · 저장 결과에 보이는 묶음 이름 */
   const testItems = () => alive(DB.tests).slice().sort((a, b) => String(b.year).localeCompare(String(a.year)) || String(a.name).localeCompare(String(b.name))).map((t) => ({ v: t.id, t: t.name, sub: t.kind }));
 
   /* ── 시험정보 창 칸: 이름(글) 대신 [시험] 고르기, 응시 인원은 성적 줄마다(노션 칸 그대로) ── */
@@ -60,11 +61,13 @@
     ["testId", "시험", () => testItems(), "req", "시험(연도 · 회차)을 골라요 · 없으면 적어서 생성해요 — 예: 2026 2학기 기말고사, 2026 6월 모의고사. 이 시험정보 이름은 노션이 \"시험 (학교 학년 영역)\"으로 붙여요"],
     ...LISTS.exams.fields.filter((f) => f[0] !== "name" && f[0] !== "total" && f[0] !== "units"),
   ];
+  /* 창 [시험 저장]이 켜지는 때: 시험정보 줄 · 이 시험의 성적 줄 · 새로 고른 시험(학원) 줄 중 하나라도 작성 중(live.js liveSaveRow가 같은 줄들을 보냄) */
+  const exDirty = (r) => !!r && (r.state === "draft" || (DB.grades || []).some((g) => g.examId === r.id && g.state === "draft") || (!!testOf(r) && testOf(r).state === "draft"));
   const onSet0 = LISTS.exams.onSet;
   const onSet = (r, k) => { if (onSet0) onSet0(r, k); if (k === "testId") { const t = testOf(r); r.name = t ? t.name : ""; } };
   const blank = () => ({ id: uid("ex"), name: "", testId: "", school: "", grade: "", subjectIds: [], date: "", units: "", unitIds: [] });
   const HELP_TXT = "학교 · 학년 · 과목별 시험 정보예요(노션 시험정보). 시험(연도 · 회차)을 고르고, 창의 [성적] 탭에서 [응시학생 등록] 뒤 학생마다 점수 · 등수 · 응시인원 · 등급을 넣어요. 보기 칩은 노션 시험 메뉴 보기(지필고사 · 모의고사 · 성적)와 같아요.";
-  ["exams", "exams_", "exams_c"].forEach((k) => { const L = LISTS[k]; if (!L) return; L.fields = FIELDS; delete L._gc; /* 열 목록 캐시(listCols) — 칸을 바꿨으니 다시 만든다 */ L.onSet = onSet; L.blank = blank; L.help = HELP_TXT; });
+  ["exams", "exams_", "exams_c"].forEach((k) => { const L = LISTS[k]; if (!L) return; L.fields = FIELDS; delete L._gc; /* 열 목록 캐시(listCols) — 칸을 바꿨으니 다시 만든다 */ L.onSet = onSet; L.blank = blank; L.help = HELP_TXT; L.dirtyFn = exDirty; });
   LISTS.exams_.rows = () => DB.exams.filter((x) => exKind(x) !== "모의고사");
   LISTS.exams_m = Object.assign({}, LISTS.exams_, { rows: () => DB.exams.filter((x) => exKind(x) === "모의고사"), blank: () => Object.assign(blank(), { testId: (alive(DB.tests).find((t) => t.kind === "모의고사") || {}).id || "" }) });
 
@@ -98,7 +101,7 @@
   window.exBox = exBox = function (x) {
     const gs = exGr(x), todo = exTodo(x), sc = gs.filter((g) => g.score !== "" && g.score != null);
     const lv = (g) => `<select class="inp exlv" data-gx="${g.id}" data-gf="level" aria-label="${esc(nmStu(g.sid))} 등급"><option value="">등급</option>${LEVELS.map((v) => `<option ${g.level === v ? "selected" : ""}>${v}</option>`).join("")}</select>`;
-    const st = live() && x._status ? `<div class="valline">${esc(x._status)}</div>` : "";
+    const st = ""; /* 노션 수식 응시학생 현황은 성적 줄을 만든 뒤에도 사본에 옛 값이 남아(시험정보 줄 편집 시각이 안 바뀜) 앱 셈과 엇갈렸음 — 앱 셈 한 줄만(같은 뜻) */
     return `<div class="box"><h3>성적 <span class="hint">${gs.length}명</span>${HELP("[응시학생 등록] = 같은 학년(학교를 골랐으면 그 학교)의 재원 학생 가운데 이 시험 성적이 없는 학생마다 성적 줄을 생성해요(노션 버튼과 같아요). 이미 있는 학생은 건드리지 않아요. 학생마다 점수 · 등수 · 응시인원 · 등급을 넣고 [저장]해요. 백분율은 노션 수식(저장 전엔 등수 ÷ 응시인원 × 100). 시험지 · 성적표는 줄 끝 링크로 노션에서 올려요.")}<span class="sp"></span><button type="button" class="btn sm" data-exgen="${x.id}" ${todo.length ? "" : "disabled"} title="${todo.length ? `응시학생 등록 — 아직 줄이 없는 학생 ${todo.length}명` : "응시학생 등록 — 등록할 학생이 없어요"}">${IC("plus", "s")}응시학생 등록 ${todo.length}</button></h3>${st}<div class="valline exst">${!gs.length && !todo.length ? "이 학년 재원 학생이 없어요" : todo.length ? `미응시 ${todo.length}명` : "전원 응시"}${sc.length ? ` · 평균 ${Math.round(sc.reduce((a, g) => a + +g.score, 0) / sc.length * 10) / 10}점 (입력 ${sc.length}/${gs.length}명)` : ""}</div>${gs.length ? `<div class="recst exgr"><div class="recrow exgh"><span class="nm">학생</span><span>점수</span><span>등수</span><span>응시인원</span></div>${gs.map((g) => `<div class="recrow"><span class="nm">${esc(nmStu(g.sid))}${g.state === "draft" ? ' <i class="tdot"></i>' : ""}</span><input class="inp recsc" data-gs="${g.id}" data-gf="score" inputmode="decimal" autocomplete="off" value="${g.score ?? ""}" placeholder="점수" aria-label="${esc(nmStu(g.sid))} 점수"><input class="inp recsc" data-gs="${g.id}" data-gf="rank" inputmode="numeric" autocomplete="off" value="${g.rank ?? ""}" placeholder="등수" aria-label="${esc(nmStu(g.sid))} 등수"><input class="inp recsc" data-gx="${g.id}" data-gf="total" inputmode="numeric" autocomplete="off" value="${g.total ?? ""}" placeholder="인원" aria-label="${esc(nmStu(g.sid))} 응시인원"><div class="exg2">${lv(g)}<span class="recpt" title="백분율 = 등수 ÷ 응시인원 × 100 (노션 수식)">백분율 ${pctOf(g) == null ? "—" : pctOf(g) + "%"}</span><span class="sp"></span>${fileCell(g)}</div></div>`).join("")}</div>` : ""}</div>`;
   };
 
@@ -109,7 +112,7 @@
     if (!p || !x || p.querySelector(".exmore")) return;
     const anchor = p.querySelector(".expd") || (p.querySelector('[data-hf="date"]') || {}).parentElement; if (!anchor) return;
     const L = x.periodId && live(), err = live() && x._err;
-    const h = `<div class="exmore"><div class="exrg">${IC("book", "s")}<span class="l">시험 범위</span><span class="v">${esc(unitLabel(x)) || '<span class="hint">비어 있어요</span>'}</span><button type="button" class="btn sm" data-exunits="${x.id}">범위 고르기</button></div>${live() ? `<div class="exrg">${IC("calendar", "s")}<span class="l">시험 기간</span><span class="v">${L ? "연결됨" : '<span class="hint">아직 연결 전</span>'}${x._live ? ` · ${esc(x._live)}` : ""}</span><button type="button" class="btn sm" data-exlink="${x.id}" title="노션 [시험 기간 연결]과 같아요 — 학교 · 이름이 맞는 그 해 시험 기간 일정 하나를 이어요">시험 기간 연결</button></div>${err ? `<div class="hint warn">⚠️ ${esc(err)}</div>` : ""}` : ""}</div>`;
+    const h = `<div class="exmore"><div class="exrg">${IC("book", "s")}<span class="l">시험 범위</span><span class="v">${esc(unitLabel(x)) || '<span class="hint">비어 있어요</span>'}</span><button type="button" class="btn sm" data-exunits="${x.id}">범위 고르기</button></div>${live() ? `<div class="exrg">${IC("calendar", "s")}<span class="l">시험 기간</span><span class="v">${L ? "연결됨" : '<span class="hint">아직 연결 전</span>'}</span><button type="button" class="btn sm" data-exlink="${x.id}" title="노션 [시험 기간 연결]과 같아요 — 학교 · 이름이 맞는 그 해 시험 기간 일정 하나를 이어요">시험 기간 연결</button></div>${err ? `<div class="hint warn">⚠️ ${esc(err)}</div>` : ""}` : ""}</div>`;
     anchor.insertAdjacentHTML("afterend", h);
   }
   ["exams", "exams_", "exams_m", "exams_c"].forEach((k) => { const L = LISTS[k]; if (!L) return; const m0 = L.mountX; L.mountX = (p, x) => { if (m0) m0(p, x); exMount2(p, x); }; });
