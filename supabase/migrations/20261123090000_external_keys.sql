@@ -72,7 +72,13 @@ begin
   return jsonb_build_object('ok',true,'tested_at',v_now);
  end if;
  if p_action='clear' then
-  delete from vault.secrets where name=v_secret;
+  -- Vault 줄을 지운다. 이 서버에서 vault.secrets DELETE 권한이 없으면 값을 빈 글자로 덮는다('read'는 빈 값을 건너뛴다).
+  begin
+   delete from vault.secrets where name=v_secret;
+  exception when insufficient_privilege then
+   select id into secret_id from vault.secrets where name=v_secret limit 1;
+   if secret_id is not null then perform vault.update_secret(secret_id, ''); end if;
+  end;
   delete from public.hada_external_keys where name=v_name;
   return jsonb_build_object('ok',true);
  end if;

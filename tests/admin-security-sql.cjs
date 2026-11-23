@@ -197,6 +197,14 @@ await db.exec(fs.readFileSync('supabase/migrations/20261123090000_external_keys.
  ok(await ek('read'),{keys:{NEIS_API_KEY:FAKE2}});ok((await raw("select count(*)::int as n from vault.secrets where name='hada_ext_KAKAO_REST_KEY'"))[0].n,0);
  ok((await raw("select count(*)::int as n from vault.secrets where name='sync_queue_admin_key'"))[0].n,1); // other Vault secrets untouched
  ok((await ek('nope',{name:'NEIS_API_KEY'})).status,400);
+ // vault.secrets DELETE 권한이 없는 서버: 값을 빈 글자로 덮고, read · status에서 사라진다. 다시 저장하면 같은 줄을 쓴다.
+ await db.exec("create function vault.no_delete() returns trigger language plpgsql as $$ begin raise insufficient_privilege; end $$; create trigger no_delete before delete on vault.secrets for each row execute function vault.no_delete()");
+ ok((await ek('clear',{name:'NEIS_API_KEY'})).ok,true);
+ ok((await raw("select secret from vault.secrets where name='hada_ext_NEIS_API_KEY'"))[0].secret,'');
+ ok(await ek('read'),{keys:{}});ok(await ek('status'),{keys:{}});
+ ok((await ek('set',{name:'NEIS_API_KEY',value:FAKE})).ok,true);ok(await ek('read'),{keys:{NEIS_API_KEY:FAKE}});
+ ok((await raw("select count(*)::int as n from vault.secrets where name='hada_ext_NEIS_API_KEY'"))[0].n,1);
+ await db.exec("drop trigger no_delete on vault.secrets");
  for(const role of ['anon','authenticated']){
   await db.exec('set role '+role);
   for(const query of ['select * from public.hada_external_keys',"select public.hada_external_key('read')","select public.hada_external_key('status')"]){let denied=false;try{await db.query(query);}catch{denied=true;}ok(denied,true);}

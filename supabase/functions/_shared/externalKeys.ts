@@ -15,8 +15,9 @@ export const isExternalKeyName = (v: unknown): v is ExternalKeyName => typeof v 
 export const CACHE_MS = 5000
 let cache: { at: number; keys: Record<string, string> } | null = null
 let pending: Promise<Record<string, string>> | null = null
+let generation = 0 // 저장 · 삭제 뒤 비우면 올라간다 — 그 전에 시작한 읽기 결과는 캐시에 넣지 않는다
 
-export function forgetExternalKeys(): void { cache = null; pending = null }
+export function forgetExternalKeys(): void { cache = null; pending = null; generation++ }
 
 // SQL hada_external_key(서비스 역할 전용)를 부른다. 실패 글에는 요청 · 응답 값을 넣지 않는다.
 export async function externalKeyRpc(action: string, data: Record<string, unknown> = {}): Promise<any> {
@@ -51,10 +52,12 @@ async function vaultKeys(): Promise<Record<string, string>> {
 export async function externalKey(name: ExternalKeyName): Promise<string> {
 	const now = Date.now()
 	if (!cache || now - cache.at > CACHE_MS) {
-		if (!pending) pending = vaultKeys().finally(() => { pending = null })
-		const p = pending
-		const keys = await p
+		const gen = generation
+		if (!pending) { const p: Promise<Record<string, string>> = vaultKeys().finally(() => { if (pending === p) pending = null }); pending = p }
+		const keys = await pending
+		if (gen !== generation) return externalKey(name) // 읽는 사이 저장 · 삭제가 있었으면 다시 읽는다
 		cache = { at: Date.now(), keys }
+		return keys[name] || Deno.env.get(name) || ""
 	}
 	return cache.keys[name] || Deno.env.get(name) || ""
 }
