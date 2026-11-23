@@ -403,6 +403,31 @@ export async function loadClassRecords(sessionId: string) {
 	return { records: records.map(({ start, ...r }) => ({ ...r, time: seoulTime(start) })) }
 }
 
+// (v2.8.0 학습생성결함 ②) 관리 앱 학습기록 메뉴: 기간(서울 날짜, 최대 42일) 안 수업의 학습기록 전부 — 노션 학습기록 DB 목록과 같은 줄.
+// 수업 창을 연 수업만이 아니라 그 기간 모든 수업(보강 수업 포함)의 기록. 줄마다 수업 id·수업 날짜·시각·클래스·시간표 id를 붙인다.
+export function rangeOf(from: string, to: string) {
+	const start = seoulDayRange(from).start, end = seoulDayRange(to).end
+	const span = Date.parse(end) - Date.parse(start)
+	if (span <= 0 || span > 42 * 86_400_000) throw new ClassRoomError(400, "기간이 올바르지 않습니다.")
+	return { start, end }
+}
+export async function loadRangeRecords(from: string, to: string) {
+	const { start, end } = rangeOf(from, to)
+	const sessions = await queryAllPages(DS_CLASS_SESSION, { and: [{ property: "수업일시", date: { on_or_after: start } }, { property: "수업일시", date: { before: end } }] }) as Page[]
+	if (!sessions.length) return { records: [] }
+	const byId = new Map(sessions.map((p) => [p.id as string, p]))
+	const pages = await sessionRecords(sessions), summaries = await withSubjects(pages)
+	const extra = await cardExtras(pages, [])
+	const records = pages.map((r, i) => {
+		const sid = rel(r, "수업").find((id) => byId.has(id)) ?? null, s = sid ? byId.get(sid)! : null
+		const at = s?.properties?.["수업일시"]?.date?.start ?? null
+		const { body: _drop, ...ex } = extra(r)
+		return { ...summaries[i], ...ex, sessionId: sid, date: seoulDate(at), start: at, classIds: s ? rel(s, "클래스") : rel(r, "클래스"), blockId: s ? rel(s, "시간표")[0] ?? null : null }
+	})
+	records.sort((a, b) => String(b.start ?? "").localeCompare(String(a.start ?? "")) || a.title.localeCompare(b.title, "ko"))
+	return { records: records.map(({ start, ...r }) => ({ ...r, time: seoulTime(start) })) }
+}
+
 // 반 주간 캘린더: 같은 반의 앞뒤 수업(9주 전 ~ 5주 뒤, 보강 수업 제외)과 수업별 출석 요약.
 // present = 출석 처리됐거나 등원한 학생, absent = 결석·보강, missing = 상태도 등원도 없는 학생. 반이 없는 보강 수업은 빈 목록.
 export async function loadClassSessions(sessionId: string, around?: string) {
@@ -844,6 +869,14 @@ function targetRegistrations(ctx: SessionContext, book: Page | null, chosen: str
 
 // 기록을 만든다. books가 있으면 교재마다 하나씩(템플릿 묶음 일괄 생성 포함), 없으면 교재 없는 기록 하나.
 // 같은 수업에 같은 구분·같은 교재(교재 없으면 같은 주제) 기록이 이미 있으면 새로 만들지 않고 그 기록을 돌려준다.
+// 교재 기록 제목의 교재 자리: 진도교재 이름(노션 `[편집] 학습기록 이름`과 같음 — 반·학생이 이미 들어 있어 반을 따로 붙이지 않음).
+// 진도교재 이름이 비었으면 예전처럼 라이브러리 이름 + 반.
+export function bookTitleSubject(book: Page, regularBook: Page | null): { text: string; byBook: boolean } {
+	const own = anyTitleText(book).trim()
+	if (own) return { text: own, byBook: true }
+	return { text: regularBook ? anyTitleText(regularBook) : "", byBook: false }
+}
+
 export async function createRecords(body: any) {
 	const kind = body?.kind
 	if (!(KINDS as readonly string[]).includes(kind)) throw new ClassRoomError(400, "학습·과제·평가 중에서 골라 주세요.")
@@ -876,9 +909,11 @@ export async function createRecords(body: any) {
 		const regularBookId = book ? libraryIds(book)[0] ?? null : null
 		const regularBook = regularBookId ? await getPage(regularBookId) as Page : null
 		const subjectIds = regularBook ? rel(regularBook, "과목") : []
-		const subject = book ? (regularBook ? anyTitleText(regularBook) : anyTitleText(book)) : topic || kind
+		// (v2.8.0 학습생성결함) 교재 기록 제목 = 노션 `[편집] 학습기록 이름`과 같은 "[구분] 진도교재 이름 MM.DD(요일)"
+		// (진도교재 이름 = "교재 · 반", 개별 교재는 "교재 · 학생 반"이라 학생이 들어간다). 교재 없는 기록은 예전 그대로.
+		const subject = book ? bookTitleSubject(book, regularBook) : { text: topic || kind, byBook: false }
 		const props: Record<string, unknown> = {
-			"학습": { title: [{ text: { content: recordTitle(kind, subject, ctx.className, ctx.date) } }] },
+			"학습": { title: [{ text: { content: recordTitle(kind, subject.text, subject.byBook ? "" : ctx.className, ctx.date) } }] },
 			"구분": { select: { name: kind } },
 			"출석": relation(attendanceIds),
 			"등록": relation(regs),
@@ -942,17 +977,17 @@ export async function updateRecord(body: any) {
 		const sessionId = rel(record, "수업")[0]
 		const session = sessionId ? await getPage(sessionId) as Page : null
 		const topic = body.topic !== undefined ? String(body.topic).trim() : plain(record, "주제")
-		let subject = topic || (selectName(record, "구분") ?? "")
+		let subject = { text: topic || (selectName(record, "구분") ?? ""), byBook: false }
 		if (bookId) {
+			const book = await getPage(bookId) as Page
 			if (!regularBook && body.bookId === undefined) {
-				const book = await getPage(bookId) as Page
 				const rb = libraryIds(book)[0]
 				regularBook = rb ? await getPage(rb) as Page : null
-				subject = regularBook ? anyTitleText(regularBook) : anyTitleText(book)
-			} else subject = regularBook ? anyTitleText(regularBook) : anyTitleText(await getPage(bookId) as Page)
+			}
+			subject = bookTitleSubject(book, regularBook) // (v2.8.0 학습생성결함) 노션 제목처럼 진도교재 이름 — 저장 뒤 학생 이름이 빠지지 않게
 		}
 		const kind = selectName(record, "구분") ?? "학습"
-		props["학습"] = { title: [{ text: { content: recordTitle(kind, subject, session ? await className(session) : "", session ? dateStart(session, "수업일시") : null) } }] }
+		props["학습"] = { title: [{ text: { content: recordTitle(kind, subject.text, subject.byBook ? "" : session ? await className(session) : "", session ? dateStart(session, "수업일시") : null) } }] }
 	}
 	await mirrorSaved("cr_records", [await updatePageProperties(record.id, props) as Page]) // 복사본 함께 쓰기(v2.5.115)
 	return { ok: true, unitsSaved: unitIds?.length ? unitsOn : undefined }
@@ -1171,6 +1206,7 @@ export async function handleClassRoom(body: any): Promise<unknown> {
 		case "classes": return await loadClasses(String(body.date ?? ""), body.teacherId)
 		case "class-sessions": return await loadClassSessions(body.sessionId, body.around)
 		case "class-records": return await loadClassRecords(body.sessionId)
+		case "range-records": return await loadRangeRecords(String(body.from ?? ""), String(body.to ?? ""))
 		case "roster": return await loadRoster(body.sessionId)
 		case "class-stats": return await loadClassStats(body.sessionId)
 		case "books": return await loadBooks(body.sessionId)

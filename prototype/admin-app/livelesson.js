@@ -52,7 +52,7 @@ function liveLessonInstall() {
 }
 /* 받은 것을 모두 버린다(새로 받기 · 읽기 실패 · 로그인 전) */
 function liveLessonReset() {
-  [LIVE_L, LIVE_LD, LIVE_LS, LIVE_LX, LIVE_LN, LIVE_MKD, LIVE_MKS].forEach((o) => Object.keys(o).forEach((k) => delete o[k]));
+  [LIVE_L, LIVE_LD, LIVE_LS, LIVE_LX, LIVE_LN, LIVE_MKD, LIVE_MKS, LIVE_RECM].forEach((o) => Object.keys(o).forEach((k) => delete o[k]));
   ["att", "made", "lov", "mkw", "lmsg", "lrep"].forEach((k) => { DB[k] = {}; });
   LIVE_MW.state = ""; LIVE_MW.byK = {}; LIVE_MW.list = [];
   if (Array.isArray(DB.mk)) DB.mk = DB.mk.filter((m) => !m._live);
@@ -525,4 +525,32 @@ function liveLessonNeed() {
   }
   else return;
   if (st.lsel && LIVE_L[st.lsel]) { liveLessonOpen(st.lsel); liveLessonNeighbors(st.lsel); }
+}
+
+/* 학습생성결함 ②(261124): 학습기록 메뉴 = 노션 학습기록 DB 목록. 수업 창을 연 수업의 기록(DB.recs)만이 아니라 보는 달의 모든 수업 기록을
+   class-room range-records(서버 사본, 없으면 노션)로 받는다. 달("YYYY-MM") → { state: loading|ok|fail, at, rows }. 60초 지나면 다시 받는다 */
+const LIVE_RECM = {};
+function liveRecRow(x) {
+  const norm = (v) => String(v || "").replace(/-/g, "").toLowerCase(), sid = norm(x.sessionId);
+  let key = sid ? Object.keys(LIVE_L).find((k) => norm(LIVE_L[k].id) === sid) || "" : "";
+  if (!key && x.blockId && x.date && byId(DB.blocks, x.blockId)) key = x.blockId + "|" + x.date;
+  return { id: x.id, key, classId: (x.classIds || [])[0] || "", d: x.date || "", kind: x.kind || "학습", bookId: x.bookId || "", range: x.range || "", content: x.content || "", acts: {}, state: "saved", _title: x.title || "", _hw: x.homework || null, _score: x.score || null, _act: {}, _live: true, _sessionId: x.sessionId || "" };
+}
+function liveRecMonth(m) { // m = 보는 달("YYYY.MM" 또는 "YYYY-MM")
+  m = String(m || "").replace(".", "-"); /* 화면의 달은 "YYYY.MM"(thisM · mKey) */
+  if (!window.LIVE_MODE || !(window.LIVE && window.LIVE.loaded) || !/^\d{4}-\d{2}$/.test(m)) return null;
+  const M = LIVE_RECM[m];
+  if (M && (M.state === "loading" || (M.state !== "fail" && Date.now() - M.at < 60000))) return M;
+  const [y, mo] = m.split("-").map(Number), last = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+  const N = LIVE_RECM[m] = { state: "loading", at: Date.now(), rows: M ? M.rows : [] };
+  liveLessonApi({ action: "range-records", from: m + "-01", to: m + "-" + String(last).padStart(2, "0") }).then((res) => {
+    if (LIVE_RECM[m] !== N) return;
+    N.rows = (res.records || []).map(liveRecRow); N.state = "ok"; N.at = Date.now();
+  }).catch((e) => { if (LIVE_RECM[m] !== N) return; N.state = "fail"; N.err = e.message; }).finally(() => { if (LIVE_RECM[m] === N && typeof render === "function" && activeTab && activeTab.screen === "records") render(); });
+  return N;
+}
+/* 학습기록 메뉴 줄: 받은 달의 기록 중 이 화면에 이미 있는 기록(수업 창에서 받은 것 · 고치는 중 · 지운 것)은 그쪽이 먼저 */
+function liveRecRows() {
+  const have = new Set((DB.recs || []).map((r) => r.id));
+  return Object.values(LIVE_RECM).flatMap((M) => M.rows || []).filter((r) => !have.has(r.id));
 }
