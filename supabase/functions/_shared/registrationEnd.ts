@@ -119,3 +119,11 @@ export function endNote(r: EndResult, books?: { unlinked?: unknown[]; deleted?: 
 	if (b) parts.push(`시작 안 한 교재 ${b}개 정리`)
 	return parts.join(" · ")
 }
+
+// 앱 확인 창 미리보기(읽기만): 이 종료일이면 빠질 앞으로 수업. endDate가 있으면 그 날짜, 없으면 등록 종료일 · 오늘.
+export async function previewEnd(reg: Page, deps: Pick<EndDeps, "today" | "sessionsFrom">, endDate?: string | null): Promise<{ basis: string; dates: string[] }> {
+	const basis = endDate && /^\d{4}-\d{2}-\d{2}$/.test(endDate) ? endDate : endBasis(reg, deps.today())
+	const targets = (await deps.sessionsFrom(String(reg.id), basis)).filter((s) => isTargetSession(s, basis))
+	const dates = targets.map((s) => kstDateOf(s?.properties?.[SESSION_PROP_DATE]?.date?.start)).sort()
+	return { basis, dates }
+}

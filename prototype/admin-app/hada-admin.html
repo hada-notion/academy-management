@@ -4023,7 +4023,7 @@ ${A.length?`<div class="unrows">${A.map((a,i)=>ED&&ED.id===e.id&&ED.i===i?`<div 
 <datalist id="adjWhy">${whys.map(w=>`<option value="${esc(w)}"></option>`).join("")}</datalist>
 <button type="button" class="pgaddc ln" data-act="adjAdd">${IC("plus","s")}조정 추가</button>
 <div class="adjsum tot"><span>달마다 청구할 금액</span><b>${(base+sum+clsEtc(c.id).reduce((n,z)=>n+z.amt,0)).toLocaleString()}원</b></div></div>
-${enStat(e)!=="end"&&!e.ended?`<div class="box"><h3>종료${HELP("종료 처리 = 내일부터의 수업에서 빠지고 시간표 연결이 풀려요(학생·등록 기록은 남아요).")}</h3><div class="row"><button class="btn sm danger" data-act="end">종료 처리</button></div></div>`:""}`}/* 327판: 등록 안내는 위 [등록 안내 전송] 하나로(미리보기 단추 없앰) */
+${enStat(e)!=="end"&&!e.ended?`<div class="box"><h3>종료${HELP("종료 처리 = 내일부터의 수업에서 빠지고 시간표 연결이 풀려요(학생·등록 기록은 남아요).")}</h3><div class="row"><button class="btn sm danger" data-act="end" data-rid="${e.id}">종료 처리</button></div></div>`:""}`}/* 327판: 등록 안내는 위 [등록 안내 전송] 하나로(미리보기 단추 없앰) */
 function enFeeBox(e){const tu=DB.tuition.filter(x=>x.studentId===e.studentId&&x.classId===e.classId&&!x.del).sort((a,b)=>String(b.month).localeCompare(String(a.month))),bf=DB.bookfees.filter(x=>x.studentId===e.studentId&&x.classId===e.classId&&!x.del);
   return `<div class="box"><h3>수강료 <span class="hint">${tu.length}건</span>${HELP("이 등록으로 생성한 달 수강료예요. 줄을 누르면 수강료 화면에서 열려요.")}</h3>${PANEL.rows(tu.map(x=>({attr:`data-gotu="${x.id}"`,title:"수강료 화면에서 열기",t:x.month,sub:`${WON(tuAmt(x))} · ${x.pay}${x.sent?"":" · 안내 전"}`})),"아직 생성한 수강료가 없어요 — 수강료 화면 [수강료 생성]으로 생성해요")}</div>
 <div class="box"><h3>청구 <span class="hint">${bf.length}건</span>${HELP("이 등록의 교재비 · 재료비 · 기타경비예요. 줄을 누르면 교재비·재료비는 교재비 화면, 기타경비는 청구 화면에서 열려요.")}</h3>${PANEL.rows(bf.map(x=>({attr:`data-gobf="${x.id}"`,title:`${bfCat(x)==="기타경비"?"청구":"교재비"} 화면에서 열기`,t:x.items||"",sub:`${bfCat(x)} · ${WON(x.total)} · ${x.paid>=x.total?"완료":"미납"}`})),"교재비 · 재료비 · 기타경비가 없어요")}</div>`}
@@ -4962,6 +4962,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del&&!z._virtual).
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="appdata.js?v=727"></script><script src="appsave.js?v=728"></script><script src="appview.js?v=727"></script><script src="livelesson.js?v=728"></script><script src="liveadmin.js?v=729"></script><script src="livebook.js?v=730"></script><script src="liveschool.js?v=727"></script><script src="live.js?v=731"></script><script src="liverefresh.js?v=731"></script><script src="livereq.js?v=731"></script>
+<script src="appdata.js?v=727"></script><script src="appsave.js?v=728"></script><script src="appview.js?v=727"></script><script src="livelesson.js?v=728"></script><script src="liveadmin.js?v=729"></script><script src="livebook.js?v=730"></script><script src="liveschool.js?v=727"></script><script src="live.js?v=732"></script><script src="liverefresh.js?v=731"></script><script src="livereq.js?v=732"></script>
 </body>
 </html>

@@ -93,9 +93,9 @@ import { authorizeKey, securityEnabled } from "../_shared/adminSecurity.ts"
 // 바꿨다 -- 이 라우트(index.ts)의 호출 방식 자체는 바뀌지 않는다. 자세한 내용은
 // _shared/registrationTextbookTarget.ts의 PART N-12 주석 참고.
 
-import { extractPageId, getPage, describeBody, todaySeoulDate, queryAllPages, fullRelationIds, updatePageProperties } from "../_shared/notionClient.ts"
-import { DS_CLASS_SESSION } from "../_shared/constants.ts"
-import { endRegistration, endNote, EndPartialError, SESSION_PROP_REG, SESSION_PROP_DATE, type EndDeps } from "../_shared/registrationEnd.ts"
+import { extractPageId, getPage, describeBody } from "../_shared/notionClient.ts"
+import { endRegistration, endNote, EndPartialError } from "../_shared/registrationEnd.ts"
+import { END_DEPS } from "../_shared/registrationEndNotion.ts"
 import {
 	TEXTBOOK_STATUS_SPEC,
 	cleanupUnusedBooksOnEnd,
@@ -110,20 +110,6 @@ import { runSyncWebhookForPage } from "../_shared/webhookIngest.ts"
 import { resolveAdminKeyFromRequest, getCurrentAdminKey } from "../_shared/adminShared.ts"
 import { runInBackground, respondAccepted } from "../_shared/backgroundTask.ts"
 import { isRunning, markRunning, markDone, markError } from "../_shared/statusTracking.ts"
-
-// 종료 처리 수업 단계(registrationEnd.ts)가 쓰는 노션 길
-const END_DEPS: EndDeps = {
-	today: todaySeoulDate,
-	sessionsFrom: (regId, from) => queryAllPages(DS_CLASS_SESSION, {
-		and: [
-			{ property: SESSION_PROP_REG, relation: { contains: regId } },
-			{ property: SESSION_PROP_DATE, date: { on_or_after: from } },
-		],
-	}),
-	relationAll: (page, prop) => fullRelationIds(page, prop),
-	patch: async (id, props) => { await updatePageProperties(id, props) },
-	log: (m) => console.warn(m),
-}
 
 async function processPage(pageId: string): Promise<void> {
 	const result = await createIndividualBooksForRegistration(pageId)

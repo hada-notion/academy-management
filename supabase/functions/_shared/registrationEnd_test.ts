@@ -1,5 +1,5 @@
 import { assertEquals, assertRejects } from "jsr:@std/assert@1"
-import { endBasis, endNote, endRegistration, EndPartialError, isTargetSession, kstDateOf, type EndDeps } from "./registrationEnd.ts"
+import { endBasis, endNote, endRegistration, EndPartialError, isTargetSession, kstDateOf, previewEnd, type EndDeps } from "./registrationEnd.ts"
 
 const REG = "aaaaaaaa-0000-0000-0000-000000000001"
 const OTHER = "bbbbbbbb-0000-0000-0000-000000000002"
@@ -108,4 +108,15 @@ Deno.test("다른 날짜 종료일: 종료일을 그대로 두고 그 다음 날
 	assertEquals(r.removed, ["b"])
 	assertEquals(r.registrationUpdated, false)
 	assertEquals(patches.length, 1)
+})
+
+Deno.test("미리보기: 고른 종료일 기준으로 빠질 수업 날짜(쓰기 없음) — 실제 처리와 같은 거름", async () => {
+	const ss = [session("a", "2026-12-10T19:00:00.000+09:00"), session("mk", "2026-12-11T19:00:00.000+09:00", "보강"), session("b", "2026-12-16T19:00:00.000+09:00")]
+	const { deps, patches } = fakeDeps(ss)
+	assertEquals(await previewEnd(reg(null), deps, "2026-12-09"), { basis: "2026-12-09", dates: ["2026-12-10", "2026-12-16"] })
+	assertEquals(await previewEnd(reg("2026-12-12"), deps), { basis: "2026-12-12", dates: ["2026-12-16"] })
+	assertEquals(await previewEnd(reg(null), deps, "잘못"), { basis: "2026-11-23", dates: ["2026-12-10", "2026-12-16"] })
+	assertEquals(patches.length, 0)
+	const r = await endRegistration(reg("2026-12-09"), deps)
+	assertEquals(r.removed, ["a", "b"])
 })
