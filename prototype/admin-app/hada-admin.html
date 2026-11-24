@@ -2265,8 +2265,18 @@ function schoolFind(){modal(`<h2>학교 검색${HELP("나이스에서 학교를 
     L.innerHTML=res.map((r,i)=>{const has=DB.schools.find(x=>!x.del&&x.name===r.name);return `<div class="ttrow" data-ns="${i}" style="cursor:pointer"><span class="t">${esc(r.name)}</span><span class="hint">${r.kind} · ${esc(r.addr)}${has?(has.code?" · 이미 있음":" · 있음 — 코드 붙이기"):""}</span></div>`}).join("");
     L.querySelectorAll("[data-ns]").forEach(el=>el.onclick=()=>{const r=res[+el.dataset.ns];let x=DB.schools.find(z=>!z.del&&z.name===r.name);if(x){x.code=true;x.kind=r.kind;if(!x.addr)x.addr=r.addr;x.state="draft"}else{x={id:uid("sc"),name:r.name,kind:r.kind,addr:r.addr,code:true,sync:"",state:"draft"};DB.schools.unshift(x)}close();activeTab.state.sel=x.id;commit();toast(`${r.name}을(를) 넣었어요 — 학교 코드가 붙어 [학사일정 가져오기]를 할 수 있어요(작성 중)`)})};
   q.oninput=draw;setTimeout(()=>q.focus({preventScroll:true}),0)})}
-LISTS.schools.acts=[{id:"aFind",icon:"search",plain:true,name:"학교 검색",n:()=>1,tip:()=>"학교 검색 — 나이스에서 찾아 넣어요(학교 코드가 붙어요)",run:()=>schoolFind()},{id:"aCal",icon:"cal",name:"학사일정 가져오기",n:()=>DB.schools.filter(s=>s.code&&s.sync!==TODAY).length,tip:n=>n?`학사일정 가져오기 — 오늘 아직 안 가져온 학교 ${n}곳(학교 코드가 있는 곳만, 나이스)`:"학사일정 가져오기 — 오늘 모두 가져왔거나 학교 코드가 있는 학교가 없어요",
-  run:n=>askRun("학사일정을 가져올까요?",`학교 코드가 있는 <b>${n}곳</b>의 학사일정을 나이스에서 가져와 일정에 넣어요(이미 있는 일정은 건너뜀).`,"가져오기",()=>{DB.schools.forEach(s=>{if(s.code)s.sync=TODAY});commit();toast(`${n}곳 학사일정을 가져왔어요(시제품: 날짜만 바뀜)`)})}];
+LISTS.schools.acts=[{id:"aFind",icon:"search",plain:true,name:"학교 검색",n:()=>1,tip:()=>"학교 검색 — 나이스에서 찾아 넣어요(학교 코드가 붙어요)",run:()=>schoolFind()}];
+/* 학사일정 가져오기(대표 261124 "공용창보다는 학교 개별 창에"): 학교 창 [학사일정] 묶음 = 가져올 시작일 · 종료일 + 그 학교만 [학사일정 가져오기] + 상태 글.
+   한 번에 한 학교(여러 학교를 잇달아 맡기면 서버 후속 처리가 한 곳만 돌고 멈춘 일이 있음 — 공용 창 묶음 단추는 두지 않음). 코드가 없거나 저장 전이면 꺼짐 + 이유 */
+function schCalState(r){const asked=typeof window.schCalAsked==="function"&&window.schCalAsked(r.id),per=r.nfrom||r.nto?`${r.nfrom?D10(r.nfrom):"…"} - ${r.nto?D10(r.nto):"…"}`:"학년도 전체";
+  if(!r.code)return {ok:false,hint:"학교 코드가 없어요 — [학교 검색]으로 붙여요"};
+  if(r.state==="draft")return {ok:false,hint:"먼저 [학교 저장] — 저장한 기간으로 가져와요"};
+  if(asked)return {ok:false,hint:"가져오기를 맡겼어요 — 몇 분 뒤 [동기화]하면 일정에 보여요"};
+  return {ok:true,hint:`${per} · ${r.sync?"마지막 가져온 날 "+D10(r.sync):"아직 가져온 적 없어요"}`}}
+function schCalHtml(r){const c=schCalState(r);return `<div class="hf rcpt schcal"><span class="hf-lbl">나이스 학사일정</span><button type="button" class="btn rcb" data-schcal="${esc(r.id)}" ${c.ok?"":"disabled"} title="이 학교 학사일정을 나이스에서 가져와 일정에 넣어요(이미 있는 일정은 건너뜀)">${IC("cal","s")}학사일정 가져오기</button><div class="hint ${c.ok?"":"mut"}">${esc(c.hint)}</div></div>`}
+LISTS.schools.secs=[{title:"학사일정",keys:["nfrom","nto"],post:r=>schCalHtml(r)}];
+window.schCalRun=id=>{const s=byId(DB.schools,id);if(!s||!schCalState(s).ok)return;askRun("학사일정을 가져올까요?",`<b>${esc(s.name)}</b>의 학사일정을 나이스에서 가져와 일정에 넣어요(이미 있는 일정은 건너뜀).`,"가져오기",()=>{s.sync=TODAY;commit();toast(`${s.name} 학사일정을 가져왔어요(시제품: 날짜만 바뀜)`)})};
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-schcal]");if(!b||b.disabled)return;e.preventDefault();window.schCalRun(b.dataset.schcal)});
 /* 기본 창(줄을 안 고른 창) 아래 단추 줄 = 화면 고유 일: 이름 + 할 수 있는 수, 0이면 꺼짐(이유는 마우스 올림 설명) */
 /* 261118(자율): 수강료 · 청구서의 [안내] 전송 상태는 보내기 단추가 바꾸는 값 — 손으로는 못 바꿈(꺼진 나눔) */
 queueMicrotask(()=>Object.values(LISTS).forEach(L=>{if(!L||!(L.fields||[]).some(f=>f[0]==="sent"&&f[1]==="안내"))return;const d0=L.dis;L.dis=(r,k)=>k==="sent"||(d0?d0(r,k):false)}));
@@ -5054,6 +5064,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del&&!z._virtual).
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="finance.js?v=790"></script><script src="finlive.js?v=755"></script><script src="exams.js?v=764"></script><script src="appdata.js?v=743"></script><script src="appsave.js?v=755"></script><script src="appview.js?v=773"></script><script src="livelesson.js?v=744"></script><script src="liveadmin.js?v=742"></script><script src="livebook.js?v=742"></script><script src="liveschool.js?v=742"></script><script src="liveteacher.js?v=747"></script><script src="live.js?v=791"></script><script src="liverefresh.js?v=767"></script><script src="livereq.js?v=742"></script>
+<script src="finance.js?v=790"></script><script src="finlive.js?v=755"></script><script src="exams.js?v=764"></script><script src="appdata.js?v=743"></script><script src="appsave.js?v=755"></script><script src="appview.js?v=773"></script><script src="livelesson.js?v=744"></script><script src="liveadmin.js?v=742"></script><script src="livebook.js?v=742"></script><script src="liveschool.js?v=795"></script><script src="liveteacher.js?v=747"></script><script src="live.js?v=795"></script><script src="liverefresh.js?v=767"></script><script src="livereq.js?v=742"></script>
 </body>
 </html>
