@@ -7,6 +7,7 @@
 // 월간 일정 안내는 학생 단위다(학생 월간 안내, _shared/monthlyNotice.ts). 이 파일의 한 줄·구역 함수를 같이 쓴다.
 // 큐 모양은 반별 보고서와 같다: 일정 1건이 학생 1건씩을 다시 넣고, 마지막 학생이 상태를 마친다(✅, 중간 실패가 있으면 ⚠️).
 // 발송 규칙은 수업 안내와 같다(설정 행이 꺼졌거나 비면 ⚠️, 연락처 없음 ⚠️, 발송 단계 실패는 다시 보내지 않음). 전송로그는 등록에.
+// (v2.8.0, 11/25) 전송로그 발송자 = 버튼을 누른 사람(일정 `실행자`, 없으면 봇), 전송로그 `일정`에 이 일정을 잇는다(일정 `전송 내역`).
 // (v2.8.0, 11/24) 상담 일정에 연결된 학생이 아직 등록 전(수강 중 등록 없음)이면 학생 페이지 연락처로 보내고 전송로그는 학생에.
 import { eventKind, categoryOf, categoryName, propName, isSchoolKind, kindSection, KIND, DETAIL_PROP } from "./scheduleCategory.ts"
 import { createSendLogEntry, extractErrorMessage, getBotUserId, type AlimtalkConfigCategory } from "./adminShared.ts"
@@ -187,10 +188,10 @@ async function finishParent(pageId: string, extra: Record<string, unknown>): Pro
 
 // 한 학생에게 보내기. 설정·연락처로 막히면 그 학생만 기록하고 넘어간다(다시 해도 같음). 발송 실패도 다시 보내지 않는다.
 // regId가 비고 studentId가 있으면 등록 전 학생(학생 페이지 연락처, 전송로그는 학생에).
-async function sendOne(code: "일정 안내", parentId: string, regId: string, studentName: string, variables: Record<string, string>, configCategory?: AlimtalkConfigCategory, studentId?: string): Promise<boolean> {
+async function sendOne(code: "일정 안내", parentId: string, regId: string, studentName: string, variables: Record<string, string>, configCategory?: AlimtalkConfigCategory, studentId?: string, clickerUserId?: string | null): Promise<boolean> {
 	const deps = scheduleDeps
-	const senderUserId = (await deps.botUser().catch(() => null)) ?? undefined
-	const who = regId ? { registrationId: regId } : { studentId }
+	const senderUserId = (clickerUserId || (await deps.botUser().catch(() => null))) ?? undefined
+	const who = { ...(regId ? { registrationId: regId } : { studentId }), eventId: parentId }
 	try {
 		await deps.send(code, regId, "", variables, configCategory, regId ? {} : { studentId })
 	} catch (err) {
@@ -229,15 +230,16 @@ export const noTargetMessage = (ev: any, linked: boolean): string => {
 	return "일정에 학생이나 클래스를 연결해 주세요(수강 중인 학생이 없습니다)."
 }
 
-export type EventPayload = { eventId: string }
+export type EventPayload = { eventId: string; clickerUserId?: string | null }
 // regId가 ""이면 studentId(등록 전 상담 학생)로 보낸다.
-export type EventStudentPayload = { eventId: string; regId: string; studentId?: string; vars: Record<string, string>; dateStart: string; last?: boolean }
+export type EventStudentPayload = { eventId: string; regId: string; studentId?: string; clickerUserId?: string | null; vars: Record<string, string>; dateStart: string; last?: boolean }
 
 export async function processScheduleEventItem(p: EventPayload): Promise<void> {
 	const deps = scheduleDeps
 	try {
 		await deps.markRunning(p.eventId)
 		const ev: any = await deps.getPage(p.eventId)
+		const clickerUserId = p.clickerUserId ?? ev?.properties?.["실행자"]?.people?.[0]?.id ?? null
 		const dateStart = String(ev?.properties?.["날짜"]?.date?.start ?? "")
 		if (!dateStart) return await deps.markError(p.eventId, "일정의 날짜가 비어 있습니다.")
 		const sentAt = String(ev?.properties?.[PROP_EVENT_SENT]?.date?.start ?? "")
@@ -283,7 +285,7 @@ export async function processScheduleEventItem(p: EventPayload): Promise<void> {
 		}
 		console.log(`[schedule-event] event=${p.eventId} 대상 ${targets.length}`)
 		for (let i = 0; i < targets.length; i++) {
-			const item: EventStudentPayload = { eventId: p.eventId, ...targets[i], vars, dateStart, ...(i === targets.length - 1 ? { last: true } : {}) }
+			const item: EventStudentPayload = { eventId: p.eventId, ...targets[i], ...(clickerUserId ? { clickerUserId } : {}), vars, dateStart, ...(i === targets.length - 1 ? { last: true } : {}) }
 			await deps.enqueue(TARGET_SCHEDULE_EVENT_STUDENT, item)
 		}
 	} catch (err) {
@@ -295,6 +297,6 @@ export async function processScheduleEventItem(p: EventPayload): Promise<void> {
 export async function processScheduleEventStudentItem(p: EventStudentPayload): Promise<void> {
 	const deps = scheduleDeps
 	const studentName = p.regId ? studentNameOf(await deps.getPage(p.regId)) : studentTitleOf(await deps.getPage(String(p.studentId)))
-	await sendOne("일정 안내", p.eventId, p.regId, studentName, { ...p.vars, "#{학생이름}": studentName }, "상담 일정 안내", p.studentId)
+	await sendOne("일정 안내", p.eventId, p.regId, studentName, { ...p.vars, "#{학생이름}": studentName }, "상담 일정 안내", p.studentId, p.clickerUserId)
 	if (p.last) await finishParent(p.eventId, { [PROP_EVENT_SENT]: { date: { start: p.dateStart } } })
 }

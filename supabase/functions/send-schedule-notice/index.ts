@@ -33,7 +33,9 @@ Deno.serve(async (req: Request) => {
 		const page = await getPage(pageId)
 		if (isRunning(page, SCHEDULE_NOTICE_STATUS_SPEC)) return json({ ok: true, message: "already_processing", pageId })
 		await markQueued(pageId, SCHEDULE_NOTICE_STATUS_SPEC)
-		await enqueueSync(TARGET_SCHEDULE_EVENT, { eventId: pageId })
+		// (11/25) 누른 사람: 버튼이 `실행자`에 넣은 사람(웹훅 본문). 없으면 서버가 일정 페이지에서 다시 읽고, 그래도 없으면 봇.
+		const clickerUserId = (body as any)?.data?.properties?.["실행자"]?.people?.[0]?.id ?? null
+		await enqueueSync(TARGET_SCHEDULE_EVENT, { eventId: pageId, clickerUserId })
 		wakeSyncQueueWorker()
 		return respondAccepted({ pageId, route })
 	} catch (err) {

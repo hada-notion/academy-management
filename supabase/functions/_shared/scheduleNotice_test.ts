@@ -65,8 +65,8 @@ function mock(pages: Record<string, any>, o: { academy?: any[]; regs?: any[]; al
 		fullRelationIds: async (page: any, name: string) => (page.properties?.[name]?.relation ?? []).map((r: any) => r.id),
 		enqueue: async (target: string, payload: any) => { c.enq.push({ target, payload }) },
 		send: async (code: string, regId: string, _phone: string, vars: any, _cfg?: string, opts: any = {}) => { if (o.sendThrows) throw o.sendThrows; c.sends.push({ code, regId, vars, ...(opts.studentId ? { studentId: opts.studentId } : {}) }) },
-		log: async (a: any) => { c.logs.push({ cat: a.category, status: a.status, reg: a.registrationId, ...(a.studentId ? { stu: a.studentId } : {}) }) },
-		botUser: async () => null,
+		log: async (a: any) => { c.logs.push({ cat: a.category, status: a.status, reg: a.registrationId, ...(a.studentId ? { stu: a.studentId } : {}), ev: a.eventId, by: a.senderUserId }) },
+		botUser: async () => "bot",
 		markRunning: async (id: string) => { c.marks.push(`running:${id}`) },
 		markDone: async (id: string) => { c.marks.push(`done:${id}`) },
 		markError: async (id: string, msg: string) => { c.marks.push(`error:${id}:${msg}`) },
@@ -148,13 +148,35 @@ Deno.test("v2.8.0 상담 일정 안내(11/24): 등록 전 학생은 학생 연�
 	const c4 = mock(p4)
 	await m.processScheduleEventStudentItem({ eventId: "e1", regId: "", studentId: "s9", vars: { "#{전달사항}": "없음" }, dateStart: "2026-11-26", last: true })
 	eq(c4.sends, [{ code: "일정 안내", regId: "", vars: { "#{전달사항}": "없음", "#{학생이름}": "이서준" }, studentId: "s9" }])
-	eq(c4.logs, [{ cat: "일정 안내", status: "성공", reg: undefined, stu: "s9" }])
+	eq(c4.logs, [{ cat: "일정 안내", status: "성공", reg: undefined, stu: "s9", ev: "e1", by: "bot" }])
 	eq(c4.marks, ["done:e1"])
 	// 연락처가 없으면 전송로그 없이 일정에 오류를 적고 ⚠️
 	const p5: Record<string, any> = { s9: stu("s9", [], "이서준"), e1: { id: "e1", properties: { "마지막 오류": rt("") } } }
 	const c5 = mock(p5, { sendThrows: new Error("연락처 오류: 우선 연락처가 비어 있습니다.") })
 	await m.processScheduleEventStudentItem({ eventId: "e1", regId: "", studentId: "s9", vars: {}, dateStart: "2026-11-26", last: true })
 	eq([c5.logs.length, c5.marks[0].startsWith("error:e1:이서준: 연락처 오류")], [0, true])
+})
+
+Deno.test("v2.8.0 상담 일정 안내(11/25): 누른 사람이 발송자, 전송로그는 일정에도 잇는다", async () => {
+	const stu = (id: string, regs: string[] = [], name = "") => ({ id, properties: { "학생이름": title(name), "등록": rel(...regs) } })
+	// 웹훅 본문의 실행자 → 학생 1건 payload까지 간다
+	const e1: any = ev("e1", { name: "상담", start: "2026-11-26", stu: ["s9"], label: "상담" })
+	const c = mock({ e1, s9: stu("s9") })
+	await m.processScheduleEventItem({ eventId: "e1", clickerUserId: "u-kang" })
+	eq(c.enq[0].payload.clickerUserId, "u-kang")
+	// 본문에 없으면 일정 페이지 `실행자`에서 읽는다, 그것도 없으면 payload에 넣지 않는다(봇)
+	const e2: any = ev("e1", { name: "상담", start: "2026-11-26", stu: ["s9"], label: "상담" })
+	e2.properties["실행자"] = { type: "people", people: [{ id: "u-page" }] }
+	const c2 = mock({ e1: e2, s9: stu("s9") })
+	await m.processScheduleEventItem({ eventId: "e1" })
+	eq(c2.enq[0].payload.clickerUserId, "u-page")
+	const c3 = mock({ e1: ev("e1", { name: "상담", start: "2026-11-26", stu: ["s9"], label: "상담" }), s9: stu("s9") })
+	await m.processScheduleEventItem({ eventId: "e1" })
+	eq("clickerUserId" in c3.enq[0].payload, false)
+	// 등록 있는 학생도 발송자 = 누른 사람, 전송로그 일정 = 이 일정
+	const c4 = mock({ r1: reg("r1", "s1", "김하윤"), e1: { id: "e1", properties: { "마지막 오류": rt("") } } })
+	await m.processScheduleEventStudentItem({ eventId: "e1", regId: "r1", clickerUserId: "u-kang", vars: {}, dateStart: "2026-11-26", last: true })
+	eq(c4.logs, [{ cat: "일정 안내", status: "성공", reg: "r1", ev: "e1", by: "u-kang" }])
 })
 
 Deno.test("v2.8.0 구역: 월간 일정 안내 목록은 첫 줄 점 없이(템플릿이 맡음), 둘째 줄부터 '  • ', 날짜와 이름 사이 두 칸", () => {
