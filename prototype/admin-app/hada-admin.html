@@ -6,7 +6,7 @@
 <title>관리 앱 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3C%2Fsvg%3E">
 <link rel="stylesheet" href="hada-tokens.css?v=760">
-<link rel="stylesheet" href="app.css?v=792">
+<link rel="stylesheet" href="app.css?v=797">
 <link rel="stylesheet" href="pick.css?v=742">
 <link rel="stylesheet" href="field.css?v=755">
 </head>
@@ -2498,8 +2498,8 @@ function renderMakeup(v,t){const st=t.state,tab=(st.mtab==="mk"?"cal":st.mtab)||
 /* 261124 홈 = 노션 홈과 같은 구성(대표 "노션홈 기준으로 앱홈 다시"): 위 할일 · 아래 대시보드.
    위 = 할일(노션 연결 보기 탭과 같은 이름 · 차례 · 거르기): 캘린더(달, 할 일 전부) · 담당자(보드) · 우선순위(보드 ‼️ 중요 → 보통 → 💤 보류) · 완료(표, 지난 한 달 또는 날짜 없음).
    아래 = 대시보드 6칸(노션 대시보드 위젯과 같은 이름 · 차례, 3칸 × 2줄): 최근 문의 · 등록 예정 · 최근 결석 / 오늘 일정 · 오늘 수업 · 오늘 등원.
-   할 일 두 칸 값 = 노션 선택지(‼️ 중요 · 💤 보류 · ✔️ 달성 · ✖️ 미달성) — 앱은 글자만 떼어 읽고(appview.js) 보일 때 아이콘을 붙인다. 앱은 보기만:
-   ✔️ · ✖️ 버튼과 끌어서 우선순위 바꾸기는 노션 홈에서(할일 머리 [노션에서 열기] 하나 — 카드마다 링크를 두지 않음). 보드 줄 = 노션 보드 필터와 같은 규칙:
+   할 일 두 칸 값 = 노션 선택지(‼️ 중요 · 💤 보류 · ✔️ 달성 · ✖️ 미달성) — 앱은 글자만 떼어 읽고(appview.js) 보일 때 아이콘을 붙인다. 저장은 글자만 보내고 서버가 아이콘 붙은 선택지로 맞춘다.
+   달성여부 · 우선순위는 오른쪽 창(일정 창 나눔 단추), 우선순위 · 담당자는 보드에서 끌어 놓기 — 서버가 두 칸을 받음(261124). 보드 줄 = 노션 보드 필터와 같은 규칙:
    달성여부 빔 · "매일" 태그인데 날짜가 지난 줄 빼기 · (날짜가 그날+7일까지(밀린 일 포함) 또는 날짜 없음 또는 우선순위 있음) */
 const isTodo=e=>!!e&&!e.del&&evSubOf(e)==="할일";
 const tdDaily=e=>(e.tags||[]).includes("매일");
@@ -2515,15 +2515,15 @@ const tdWho=e=>e.who?((tch(e.who)||{}).name||""):"";
 const tdPri=e=>e.pri?`<span class="rpill ${TD_PRI[e.pri]||""}">${esc(TD_LB[e.pri]||e.pri)}</span>`:"";
 const tdAch=e=>e.ach?`<span class="rpill ${e.ach==="달성"?"ok":""}">${esc(TD_LB[e.ach]||e.ach)}</span>`:`<span class="rpill">진행</span>`;
 const HTD_TABS=[["cal","캘린더"],["who","담당자"],["pri","우선순위"],["done","완료"]];
-/* 카드 = 노션 카드와 같은 칸 · 차례: 이름 · [✔️] · [✖️] / (우선순위 탭) 담당자 · 날짜, (담당자 탭) 날짜 · 우선순위. 261124 대표: 버튼 · 끌기도 앱에서(서버가 달성여부 · 우선순위를 받음) */
+/* 카드 = 이름 / (우선순위 탭) 담당자 · 날짜, (담당자 탭) 날짜 · 우선순위. 달성여부는 오른쪽 창에서(261124 대표: 카드 단추는 정신없어 뺌), 우선순위 · 담당자는 끌어서 */
 function homeTodoCard(e,d,k){const w=tdWho(e),dt=e.start?`<span class="hbd">${mdw(e.start)}</span>`:"";
-  return `<div class="hbcard${tdLate(e,d)?" late":""}" data-tev="${e.id}" draggable="true" title="누르면 오른쪽 창 · 끌어서 다른 열에 놓으면 ${k==="who"?"담당자":"우선순위"}가 바뀜 · Ctrl+누르기 = 일정 화면"><span class="hbtop"><b class="hbn">${esc(e.name)}</b><span class="hbact"><button type="button" class="hbtn" data-tach="달성" title="✔️ 달성 — 보드에서 빠지고 완료에 남아요">✔️</button><button type="button" class="hbtn" data-tach="미달성" title="✖️ 미달성 — 보드에서 빠지고 완료에 남아요">✖️</button></span></span><span class="hbm">${k==="who"?dt+tdPri(e):(w?`<span>${esc(w)}</span>`:"")+dt}</span></div>`}
+  return `<div class="hbcard${tdLate(e,d)?" late":""}" data-tev="${e.id}" draggable="true" title="누르면 오른쪽 창 · 끌어서 다른 열에 놓으면 ${k==="who"?"담당자":"우선순위"}가 바뀜 · Ctrl+누르기 = 일정 화면"><b class="hbn">${esc(e.name)}</b><span class="hbm">${k==="who"?dt+tdPri(e):(w?`<span>${esc(w)}</span>`:"")+dt}</span></div>`}
 function tdHold(e){e.start="";e.end="";e.ach=""}/* 우선순위 보류 = 날짜 · 달성여부 비움(노션 자동화와 같음, 다시 할 때 날짜를 새로) */
 const tdDoneRows=d=>DB.events.filter(e=>isTodo(e)&&e.ach&&(!e.start||e.start.slice(0,10)>=dPlus(d,-30))).sort((a,b)=>-tdByDate(a,b));
 function homeTodoBody(k,d){
   if(k==="pri"||k==="who"){const xs=homeTodos(d);
     const cols=k==="pri"?TD_COLS.map(([v,name,tone])=>({key:v,name,tone,xs:xs.filter(e=>(e.pri||"")===v)}))/* 열 셋은 늘 — 빈 열에도 끌어 놓을 수 있게 */
-      :(()=>{const m=new Map();xs.forEach(e=>{const w=e.who||"";if(!m.has(w))m.set(w,[]);m.get(w).push(e)});const nm=w=>w?((tch(w)||{}).name||""):"";return [...m.keys()].sort((a,b)=>!a?-1:!b?1:nm(a).localeCompare(nm(b),"ko")).map(w=>({key:w,name:nm(w)||"담당자 없음",tone:w?"":"mute",xs:m.get(w)}))})();/* 담당자 = 할 일 있는 사람만(노션 "빈 묶음 숨김"), 담당자 없음이 먼저 · 이름 차례(노션 보드와 같음) */
+      :(()=>{const m=new Map([["",[]],...DB.teachers.filter(t=>!t.del).map(t=>[t.id,[]])]);xs.forEach(e=>{const w=e.who||"";if(!m.has(w))m.set(w,[]);m.get(w).push(e)});const nm=w=>w?((tch(w)||{}).name||""):"";return [...m.keys()].sort((a,b)=>!a?-1:!b?1:nm(a).localeCompare(nm(b),"ko")).map(w=>({key:w,name:nm(w)||"담당자 없음",tone:w?"":"mute",xs:m.get(w)}))})();/* 261124 대표 "강사는 항상 열어 놓도록, 담당자 없음도" — 빈 열에도 놓을 수 있게 *//* 담당자 없음이 먼저 · 이름 차례(노션 보드와 같음) */
     if(!cols.length)return '<div class="hint hbnone">달성여부가 빈 할 일이 없어요</div>';
     return `<div class="hbcols">${cols.map(({key,name,tone,xs})=>`<div class="hbcol" data-hdrop="${k}:${esc(key)}"><div class="hbh"><span class="rpill ${tone}">${esc(name)}</span><span class="hint">${xs.length}</span></div>${xs.map(e=>homeTodoCard(e,d,k)).join("")||'<div class="hint hbnone">없어요</div>'}</div>`).join("")}</div>`}
   if(k==="cal"){const ym=hcalYm(d),xs=DB.events.filter(isTodo);
@@ -2533,7 +2533,7 @@ function homeTodoBody(k,d){
   return xs.length?`<div class="hdone"><div class="hdh"><span>달성여부</span><span>이름</span><span>날짜</span><span>담당자</span><span>우선순위</span></div>${xs.map(e=>`<div class="hdr" data-tev="${e.id}" title="누르면 오른쪽 창 · Ctrl+누르기 = 일정 화면"><span>${tdAch(e)}</span><b>${esc(e.name)}</b><span class="hbd">${e.start?mdw(e.start):"—"}</span><span>${esc(tdWho(e)||"—")}</span><span>${tdPri(e)||"—"}</span></div>`).join("")}</div>`:'<div class="hint hbnone">지난 한 달에 달성 · 미달성을 정한 할 일이 없어요</div>'}
 const hcalYm=d=>{const st=(activeTab&&activeTab.state)||{};return (st.month||d.slice(0,7)).replace(".","-")};/* 홈 캘린더 달 = ‹ ›로 옮긴 달, 없으면 그날의 달 */
 function homeTodoBox(st,d){const k=st.htab||"cal",ym=hcalYm(d),n=k==="done"?tdDoneRows(d).length:k==="cal"?DB.events.filter(e=>isTodo(e)&&e.start&&e.start.slice(0,7)===ym).length:homeTodos(d).length;
-  return `<section class="cbox hboard"><h3>${IC("check","l")}할일 <span class="hint">${n}</span>${HELP("노션 홈 위 할일 보기와 같은 탭이에요. 캘린더 = 할 일 전부, 담당자 · 우선순위 = 달성여부가 빈 할 일(그날부터 7일 안 · 밀린 일 · 날짜 없음 · 우선순위 있음), 완료 = 지난 한 달의 ✔️ 달성 · ✖️ 미달성. 카드를 누르면 오른쪽 창(일정 화면과 같은 창), 캘린더에서는 끌어서 날짜를 옮겨요. 카드의 ✔️ · ✖️로 달성여부, 끌어서 다른 열에 놓으면 우선순위 · 담당자가 바뀌어요(작성 중 → [저장]). 캘린더는 일정 달력처럼 − + 로 한 화면 주 수, 5 | 7로 요일, ‹ ›로 달을 옮겨요.")}<span class="seg htabs">${HTD_TABS.map(([v,t])=>`<button type="button" class="${k===v?"on":""}" data-htab="${v}">${t}</button>`).join("")}</span><span class="sp"></span>${k==="cal"?`${CALF.nav({label:`${ym.slice(0,4)}년 ${+ym.slice(5,7)}월`,prev:"앞 달",next:"다음 달",now:"이번 달",isNow:ym===TODAY.slice(0,7),attr:"data-hcm"})}${CALF.mZoom(CALF.mst())}`:""}</h3>
+  return `<section class="cbox hboard"><h3>${IC("check","l")}할일 <span class="hint">${n}</span>${HELP("노션 홈 위 할일 보기와 같은 탭이에요. 캘린더 = 할 일 전부, 담당자 · 우선순위 = 달성여부가 빈 할 일(그날부터 7일 안 · 밀린 일 · 날짜 없음 · 우선순위 있음), 완료 = 지난 한 달의 ✔️ 달성 · ✖️ 미달성. 카드를 누르면 오른쪽 창(일정 화면과 같은 창), 캘린더에서는 끌어서 날짜를 옮겨요. 카드를 누르면 오른쪽 창에서 달성여부 · 우선순위를 고르고, 끌어서 다른 열에 놓으면 우선순위 · 담당자가 바뀌어요(작성 중 → [저장]). 캘린더는 일정 달력처럼 − + 로 한 화면 주 수, 5 | 7로 요일, ‹ ›로 달을 옮겨요.")}<span class="seg htabs">${HTD_TABS.map(([v,t])=>`<button type="button" class="${k===v?"on":""}" data-htab="${v}">${t}</button>`).join("")}</span><span class="sp"></span>${k==="cal"?`${CALF.nav({label:`${ym.slice(0,4)}년 ${+ym.slice(5,7)}월`,prev:"앞 달",next:"다음 달",now:"이번 달",isNow:ym===TODAY.slice(0,7),attr:"data-hcm"})}${CALF.mZoom(CALF.mst())}`:""}</h3>
   ${homeTodoBody(k,d)}</section>`}
 /* 아래 = 대시보드 6칸(노션 대시보드 위젯과 같은 이름 · 차례 · 거르기):
    최근 문의(학생, 문의일이 지난 한 달 안, 최근 먼저 — 등록상태 · 이름 · 문의일) · 등록 예정(등록, 수강 대기 — 등록일 차례) · 최근 결석(출석, 지난 7일 결석, 최근 먼저 — 보강 여부)
@@ -2544,7 +2544,8 @@ const hsd=x=>x?String(x).slice(5,10).replace("-","/"):"—";/* 대시보드 줄 
 const HABS={need:["보강 필요","info"],pre:["판단 전","warn"],re:["보강도 결석","bad"],pend:["보강 잡힘",""],done:["보강 끝","ok"],none:["보강 없음",""]};
 function homeTodayLists(st,d){const its=dayItems(d).filter(x=>!x.e.off).sort((p,q)=>p.e.start-q.e.start||String((cls(p.b.classId)||{}).name).localeCompare(String((cls(q.b.classId)||{}).name),"ko"));
   const live=LIVE_ON()&&typeof LIVE_LS!=="undefined",got=x=>!live||!!(LIVE_LS[x.k]&&LIVE_LS[x.k].state==="ok"),miss=its.some(x=>!got(x));
-  const open=(k,tip)=>`<button type="button" class="btn sm" data-hgo="${k}" title="${tip}">열기</button>`;
+  const HGO_M={inq:"학생",pre:"등록",abs:"보강",ev:"일정",lesson:"수업",att:"수업"};/* 261124 대표: [열기] 대신 어느 메뉴로 가는지 + 화살표 */
+  const open=(k,tip)=>`<button type="button" class="btn sm hgo" data-hgo="${k}" title="${tip}">${HGO_M[k]} 메뉴${IC("rightc","s")}</button>`;
   const box=(k,title,n,go,rows,none)=>`<div class="hw hwl" data-hbox="${k}"><span class="hwt">${title} <span class="hint">${n}</span><span class="sp"></span>${go}</span>${rows||`<div class="hint hbnone">${none}</div>`}</div>`;
   const list=(xs,f)=>xs.length?`<div class="hwrows">${xs.map(f).join("")}</div>`:"";
   const inq=DB.students.filter(x=>!x.del&&x.inq&&x.inq.slice(0,10)>=dPlus(d,-30)&&x.inq.slice(0,10)<=d).sort((a,b)=>(b.inq||"").localeCompare(a.inq||""));
@@ -2552,34 +2553,33 @@ function homeTodayLists(st,d){const its=dayItems(d).filter(x=>!x.e.off).sort((p,
   const pre=DB.enrolls.filter(e=>!e.del&&e.state!=="draft"&&enStat(e)==="pre").sort((a,b)=>(a.start||"9").localeCompare(b.start||"9"));
   const bPre=box("pre","등록 예정",pre.length,open("pre","등록 화면에서 열어요"),list(pre,e=>`<div class="hwr" data-henr="${e.id}" title="누르면 오른쪽 창 · Ctrl+누르기 = 등록 화면"><span class="hbd">${hsd(e.start)}</span><b>${esc(nmStu(e.studentId))}</b><span>${esc(nmCls(e.classId))}</span>${enPill("pre")}</div>`),"수강 대기 중인 등록이 없어요");
   const abs=absAll(dPlus(d,-7)).filter(a=>a.d<=d).sort((a,b)=>b.d.localeCompare(a.d)||nmStu(a.sid).localeCompare(nmStu(b.sid),"ko"));
-  const bAbs=box("abs","최근 결석",abs.length,open("abs","보강 화면에서 열어요"),list(abs,a=>{const s2=HABS[absState(a.k)]||["",""];return `<div class="hwr" data-habs="${esc(a.k)}" title="보강 화면에서 열기"><span class="hbd">${hsd(a.d)}</span><b>${esc(nmStu(a.sid))}</b><span>${esc(nmCls(a.classId))}</span><span class="rpill ${s2[1]}">${s2[0]}</span></div>`}),"지난 7일에 결석이 없어요");
+  const bAbs=box("abs","최근 결석",abs.length,open("abs","보강 화면에서 열어요"),list(abs,a=>{const s2=HABS[absState(a.k)]||["",""];return `<div class="hwr" data-hp="students|${a.sid}" data-hctl="abs" title="누르면 오른쪽 창(학생) · Ctrl+누르기 = 보강 화면"><span class="hbd">${hsd(a.d)}</span><b>${esc(nmStu(a.sid))}</b><span>${esc(nmCls(a.classId))}</span><span class="rpill ${s2[1]}">${s2[0]}</span></div>`}),"지난 7일에 결석이 없어요");
   const evs=DB.events.filter(e=>!e.del&&!e.hide&&!isTodo(e)&&e.start&&e.start.slice(0,10)<=d&&(e.end||e.start).slice(0,10)>=d).sort((p,q)=>(p.start<q.start?-1:p.start>q.start?1:String(p.name).localeCompare(String(q.name),"ko")));
   const bEv=box("ev","오늘 일정",evs.length,open("ev","일정 화면에서 열어요"),list(evs,e=>`<div class="hwr" data-tev="${e.id}" title="누르면 오른쪽 창 · Ctrl+누르기 = 일정 화면"><span class="hbd">${e.start.length>10?e.start.slice(11,16):"하루"}</span><b>${esc(e.name)}</b><span class="rpill">${esc(evSubOf(e))}</span><span></span></div>`),"일정이 없어요");
   const bLes=box("lesson","오늘 수업",its.length,open("lesson","수업 › 오늘 수업에서 열어요"),list(its,x=>{const c=cls(x.b.classId)||{},r=got(x)?attSum(x.b,x.d0):null;
-      return `<div class="hwr" data-hles="${x.k}" title="수업 › 오늘 수업에서 열기"><span class="hbd">${fmt(x.e.start)}</span><b><i class="cdot" style="background:${clsHex(c)}"></i>${esc(c.name||"수업")}</b><span>${r?`출석 ${r.출석+r.보강} | 미등원 ${r.미입력}`:"—"}</span><span></span></div>`}),"수업이 없어요");
-  const kids=[];its.forEach(x=>{const c=cls(x.b.classId)||{};lessonRoster(x.b,x.d0).forEach(s=>{kids.push({x,c,name:s.name||"",a:got(x)?(attOf(x.b,x.d0,s.id)||"미입력"):null})})});
+      return `<div class="hwr" data-hp="classes|${x.b.classId}" data-hctl="lesson" title="누르면 오른쪽 창(클래스) · Ctrl+누르기 = 수업 › 오늘 수업"><span class="hbd">${fmt(x.e.start)}</span><b><i class="cdot" style="background:${clsHex(c)}"></i>${esc(c.name||"수업")}</b><span>${r?`출석 ${r.출석+r.보강} | 미등원 ${r.미입력}`:"—"}</span><span></span></div>`}),"수업이 없어요");
+  const kids=[];its.forEach(x=>{const c=cls(x.b.classId)||{};lessonRoster(x.b,x.d0).forEach(s=>{kids.push({x,c,sid:s.id,name:s.name||"",a:got(x)?(attOf(x.b,x.d0,s.id)||"미입력"):null})})});
   kids.sort((p,q)=>p.x.e.start-q.x.e.start||String(p.c.name).localeCompare(String(q.c.name),"ko")||String(p.name).localeCompare(String(q.name),"ko"));
-  const bAtt=box("att","오늘 등원",kids.length,open("att","수업 › 오늘 등원 학생에서 열어요"),list(kids,k=>`<div class="hwr" data-hatt="${k.x.k}" title="수업 › 오늘 등원 학생에서 열기"><span class="hbd">${fmt(k.x.e.start)}</span><b>${esc(k.name)}</b><span>${esc(k.c.name||"")}</span>${k.a?`<span class="rpill ${HATK[k.a]||""}">${esc(k.a)}</span>`:"<span>—</span>"}</div>`),"등원할 학생이 없어요");
-  return `<section class="cbox hacad"><h3>${IC("activity","l")}대시보드${HELP("노션 홈 아래 대시보드와 같은 6칸이에요 — 최근 문의(지난 한 달) · 등록 예정(수강 대기) · 최근 결석(지난 7일) / 오늘 일정 · 오늘 수업 · 오늘 등원. 줄을 누르면 그 화면으로 가요.")}</h3>
+  const bAtt=box("att","오늘 등원",kids.length,open("att","수업 › 오늘 등원 학생에서 열어요"),list(kids,k=>`<div class="hwr" data-hp="students|${k.sid}" data-hctl="att" title="누르면 오른쪽 창(학생) · Ctrl+누르기 = 수업 › 오늘 등원 학생"><span class="hbd">${fmt(k.x.e.start)}</span><b>${esc(k.name)}</b><span>${esc(k.c.name||"")}</span>${k.a?`<span class="rpill ${HATK[k.a]||""}">${esc(k.a)}</span>`:"<span>—</span>"}</div>`),"등원할 학생이 없어요");
+  return `<section class="cbox hacad"><h3>${IC("activity","l")}대시보드${HELP("노션 홈 아래 대시보드와 같은 6칸이에요 — 최근 문의(지난 한 달) · 등록 예정(수강 대기) · 최근 결석(지난 7일) / 오늘 일정 · 오늘 수업 · 오늘 등원. 줄을 누르면 오른쪽 창(학생 · 등록 · 일정 · 클래스), 오른쪽 위 [○○ 메뉴 →]는 그 메뉴로 가요.")}</h3>
   <div class="hwrow">${bInq}${bPre}${bAbs}</div><div class="hwrow">${bEv}${bLes}${bAtt}</div></section>`}
 function renderToday(v,t){const st=t.state,d=st.day||TODAY;
-  const hL=st.sel&&{events:LISTS.events,students:LISTS.students,enrolls:LISTS.enrolls}[st.hcoll],hRow=hL?(DB[st.hcoll]||[]).find(r=>r.id===st.sel&&!r.del)||null:null;if(st.sel&&!hRow)st.sel=null;/* 오른쪽 창에 연 줄(일정 · 학생 · 등록) */
+  const hL=st.sel&&{events:LISTS.events,students:LISTS.students,enrolls:LISTS.enrolls,classes:LISTS.classes}[st.hcoll],hRow=hL?(DB[st.hcoll]||[]).find(r=>r.id===st.sel&&!r.del)||null:null;if(st.sel&&!hRow)st.sel=null;/* 오른쪽 창에 연 줄(일정 · 학생 · 등록) */
   const closed=DB.events.some(e=>!e.del&&e.start<=d&&(e.end||e.start)>=d&&evSubOf(e)==="학원 휴원");
-  v.innerHTML=`<div class="top pg-ttl ttl"><h1>${pgIc("today")}홈</h1>${HELP("하루를 여기서 시작해요. 위는 할일(캘린더 · 담당자 · 우선순위 · 완료), 아래는 대시보드(최근 문의 · 등록 예정 · 최근 결석 · 오늘 일정 · 오늘 수업 · 오늘 등원) — 노션 홈과 같은 구성이에요. 입력 점검 숫자는 왼쪽 메뉴에 있어요. 카드 · 줄을 누르면 오른쪽 창, 캘린더 할 일은 끌어서 날짜를 옮겨요(일정 화면과 같은 동작). 할 일 카드의 ✔️ · ✖️ · 보드 끌기 · 창의 우선순위 · 달성여부도 [저장]하면 노션에 들어가요.")}${notionBtn("today")}${CALF.nav({label:`${D10(d)} (${DAYS[dow(d)]})`,prev:"앞 날",next:"다음 날",now:"오늘",isNow:d===TODAY,attr:"data-dn"})}${closed?'<span class="rpill ex">휴원일</span>':""}</div><div class="pg-bar"><span class="sp"></span><span class="tb-grp"><button class="btn icon tb-ic" id="undoB" title="실행 취소 Ctrl+Z">${IC("cul")}</button><button class="btn icon tb-ic" id="redoB" title="다시 실행 Ctrl+Y">${IC("cur")}</button></span>${rvBtn()}<button class="btn pri tb-num" id="saveAll" ${dirtyCount()?"":"disabled"} title="${dirtyTitle()}">${IC("save","s")}저장 <span class="num">${dirtyCount()}</span></button></div><div class="body"><div class="list cards home">
+  v.innerHTML=`<div class="top pg-ttl ttl"><h1>${pgIc("today")}홈</h1>${HELP("하루를 여기서 시작해요. 위는 할일(캘린더 · 담당자 · 우선순위 · 완료), 아래는 대시보드(최근 문의 · 등록 예정 · 최근 결석 · 오늘 일정 · 오늘 수업 · 오늘 등원) — 노션 홈과 같은 구성이에요. 입력 점검 숫자는 왼쪽 메뉴에 있어요. 카드 · 줄을 누르면 오른쪽 창, 캘린더 할 일은 끌어서 날짜를 옮겨요(일정 화면과 같은 동작). 할 일 보드 끌기 · 창의 우선순위 · 달성여부도 [저장]하면 노션에 들어가요. 아래 대시보드 줄도 누르면 오른쪽 창, [○○ 메뉴 →]는 그 메뉴로.")}${notionBtn("today")}${CALF.nav({label:`${D10(d)} (${DAYS[dow(d)]})`,prev:"앞 날",next:"다음 날",now:"오늘",isNow:d===TODAY,attr:"data-dn"})}${closed?'<span class="rpill ex">휴원일</span>':""}</div><div class="pg-bar"><span class="sp"></span><span class="tb-grp"><button class="btn icon tb-ic" id="undoB" title="실행 취소 Ctrl+Z">${IC("cul")}</button><button class="btn icon tb-ic" id="redoB" title="다시 실행 Ctrl+Y">${IC("cur")}</button></span>${rvBtn()}<button class="btn pri tb-num" id="saveAll" ${dirtyCount()?"":"disabled"} title="${dirtyTitle()}">${IC("save","s")}저장 <span class="num">${dirtyCount()}</span></button></div><div class="body"><div class="list cards home">
   ${homeTodoBox(st,d)}
   ${homeTodayLists(st,d)}
   ${d===TODAY?todayTodoBox():""}</div>${hRow?`<div class="panel" id="lp">${detailHtml(hL,hRow)}</div>`:""}</div>`;
   const nt=ev=>ev.ctrlKey||ev.metaKey;
-  if(hRow){const lp=v.querySelector("#lp");bindDetail(lp,hL,hRow,t);addResizer(lp);v.querySelectorAll(`[data-tev="${hRow.id}"],[data-hstu="${hRow.id}"],[data-henr="${hRow.id}"]`).forEach(x=>x.classList.add("sel"))}
+  if(hRow){const lp=v.querySelector("#lp");bindDetail(lp,hL,hRow,t);addResizer(lp);v.querySelectorAll(`[data-tev="${hRow.id}"],[data-hstu="${hRow.id}"],[data-henr="${hRow.id}"],[data-hp="${st.hcoll}|${hRow.id}"]`).forEach(x=>x.classList.add("sel"))}
   v.querySelector("#undoB").onclick=undo;v.querySelector("#redoB").onclick=redo;v.querySelector("#saveAll").onclick=()=>saveDialog(null);
   /* 261124 대표 "열었을 때 오른쪽 창 · 기존 장치와 똑같이": 누르면 이 화면 오른쪽 창(목록 화면과 같은 창), Ctrl+누르기 = 그 화면 새 탭 */
   const hOpen=(coll,scr,extra)=>x=>x.onclick=ev=>{const id=x.dataset[{events:"tev",students:"hstu",enrolls:"henr"}[coll]];if(nt(ev)){panelOpen=true;return openScreen(scr,true,Object.assign({sel:id},extra||{}))}st.sel=id;st.hcoll=coll;st.ltab="info";st.drill=[];render()};
   v.querySelectorAll("[data-dn]").forEach(x=>x.onclick=()=>{const k=+x.dataset.dn;st.day=k?dPlus(d,k):TODAY;render()});
   v.querySelectorAll("[data-htab]").forEach(x=>x.onclick=()=>{st.htab=x.dataset.htab;render()});
   v.querySelectorAll("[data-tev]").forEach(hOpen("events","events",{lf:{"다가오는 일정":false}}));
-  /* 261124 대표 "달성 미달성 버튼 · 담당자와 우선순위도 드래그앤 드롭": 노션 보드와 같은 동작을 작성 중으로(→ [저장]) */
+  /* 261124 대표 "담당자와 우선순위도 드래그앤 드롭": 노션 보드와 같은 동작을 작성 중으로(→ [저장]) */
   const ro=()=>document.body.classList.contains("live-ro");
-  v.querySelectorAll("[data-tach]").forEach(b=>b.onclick=ev=>{ev.stopPropagation();if(ro())return;const e=byId(DB.events,b.closest("[data-tev]").dataset.tev);if(!e)return;e.ach=b.dataset.tach;markDirty(LISTS.events,e);commit();toast(`${esc(e.name)} → ${TD_LB[e.ach]}(작성 중) — 보드에서 빠지고 완료에 남아요 · [저장]하면 반영 · Ctrl+Z로 되돌려요`)});
   if(!ro()){v.querySelectorAll(".hbcard[draggable]").forEach(c=>{c.ondragstart=ev=>{ev.dataTransfer.setData("text/plain",c.dataset.tev);ev.dataTransfer.effectAllowed="move";c.classList.add("dragging")};c.ondragend=()=>{c.classList.remove("dragging");v.querySelectorAll(".hbcol.drop").forEach(x=>x.classList.remove("drop"))}});
     v.querySelectorAll("[data-hdrop]").forEach(col=>{col.ondragover=ev=>{ev.preventDefault();ev.dataTransfer.dropEffect="move";col.classList.add("drop")};col.ondragleave=ev=>{if(!col.contains(ev.relatedTarget))col.classList.remove("drop")};
       col.ondrop=ev=>{ev.preventDefault();col.classList.remove("drop");const e=byId(DB.events,ev.dataTransfer.getData("text/plain"));if(!e)return;const i=col.dataset.hdrop.indexOf(":"),kk=col.dataset.hdrop.slice(0,i),val=col.dataset.hdrop.slice(i+1);
@@ -2589,9 +2589,10 @@ function renderToday(v,t){const st=t.state,d=st.day||TODAY;
   {const z=CALF.mst(),hb=v.querySelector(".hboard h3");if(hb){const zo=hb.querySelector("#cfZo"),zi=hb.querySelector("#cfZi");if(zo)zo.onclick=()=>CALF.mSet(z,z.cfW+1);if(zi)zi.onclick=()=>CALF.mSet(z,z.cfW-1);hb.querySelectorAll("[data-cfwkd]").forEach(b=>b.onclick=()=>CALF.setMode(z,b.dataset.cfwkd))}}
   v.querySelectorAll("[data-hstu]").forEach(hOpen("students","students"));
   v.querySelectorAll("[data-henr]").forEach(hOpen("enrolls","enrolls"));
-  v.querySelectorAll("[data-habs]").forEach(x=>x.onclick=ev=>openScreen("makeup",nt(ev)));
-  v.querySelectorAll("[data-hles]").forEach(x=>x.onclick=ev=>openScreen("timetable",nt(ev),{view:"lesson",lv:"today"}));
-  v.querySelectorAll("[data-hatt]").forEach(x=>x.onclick=ev=>openScreen("timetable",nt(ev),{view:"lesson",lv:"att"}));
+  /* 261124 대표 "아래도 클릭하면 바로 이동하지 말고 창먼저": 결석 · 등원 = 학생 창, 수업 = 클래스 창. Ctrl = 예전처럼 그 화면 */
+  v.querySelectorAll("[data-hp]").forEach(x=>x.onclick=ev=>{const i=x.dataset.hp.indexOf("|"),coll=x.dataset.hp.slice(0,i),id=x.dataset.hp.slice(i+1);
+    if(nt(ev)){const c=x.dataset.hctl;return c==="abs"?openScreen("makeup",true):openScreen("timetable",true,{view:"lesson",lv:c==="att"?"att":"today"})}
+    if(!id||!byId(DB[coll]||[],id))return;st.sel=id;st.hcoll=coll;st.ltab="info";st.drill=[];render()});
   v.querySelectorAll("[data-hgo]").forEach(x=>x.onclick=ev=>{const k=x.dataset.hgo;if(k==="ev")return openScreen("events",nt(ev));if(k==="inq")return openScreen("students",nt(ev));if(k==="pre")return openScreen("enrolls",nt(ev));if(k==="abs")return openScreen("makeup",nt(ev));openScreen("timetable",nt(ev),{view:"lesson",lv:k==="att"?"att":"today"})})}
 /* 200판: 출석부 격자 줄 — 등록마다 그 달 날짜별 기호. 휴강은 빈칸, 이 주만 옮긴 수업은 옮긴 날, 보강 수업은 △ */
 /* 203판: 영수증 원부 줄 — 일련번호는 결제한 해마다 결제일 순 순번, 대장 번호는 첫 등록일 순 */
@@ -5077,6 +5078,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del&&!z._virtual).
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="finance.js?v=790"></script><script src="finlive.js?v=755"></script><script src="exams.js?v=764"></script><script src="appdata.js?v=743"></script><script src="appsave.js?v=792"></script><script src="appview.js?v=773"></script><script src="livelesson.js?v=744"></script><script src="liveadmin.js?v=742"></script><script src="livebook.js?v=742"></script><script src="liveschool.js?v=795"></script><script src="liveteacher.js?v=747"></script><script src="live.js?v=796"></script><script src="liverefresh.js?v=767"></script><script src="livereq.js?v=742"></script>
+<script src="finance.js?v=790"></script><script src="finlive.js?v=755"></script><script src="exams.js?v=764"></script><script src="appdata.js?v=743"></script><script src="appsave.js?v=792"></script><script src="appview.js?v=773"></script><script src="livelesson.js?v=744"></script><script src="liveadmin.js?v=742"></script><script src="livebook.js?v=742"></script><script src="liveschool.js?v=795"></script><script src="liveteacher.js?v=747"></script><script src="live.js?v=797"></script><script src="liverefresh.js?v=767"></script><script src="livereq.js?v=742"></script>
 </body>
 </html>

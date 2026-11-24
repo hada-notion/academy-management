@@ -2816,6 +2816,7 @@ table.stt tr.sel,table.stt tr.sel:hover{background:var(--sel-bg)}
 .phead .pt h2 .phi svg.i{width:18px;height:18px}
 .phead .pt h2 .phi .cdot{display:block;width:12px;height:12px;border-radius:50%;margin:0}
 .phead .pt h2 .phn{flex:0 1 auto;min-width:0;max-width:60%;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal;word-break:keep-all;font-size:17px;font-weight:800;line-height:var(--head-line);color:var(--ink)}
+.phead .pt h2 .phn{line-height:1.3;max-height:2.6em}/* 261124 대표 "글자 깨짐": 이름 줄 높이를 글자 크기에 맞춤 — 22px로 묶여 있으면 글꼴이 크게 그려지는 PC에서 이름 둘째 줄이 아래 소속 줄과 겹쳤다(어사이드 실제 Chrome에서 21px로 재현 · 고친 뒤 겹침 0) */
 .phead .pt h2 .phn:has(input){display:inline-flex;align-items:center;max-width:none;overflow:visible;height:var(--head-line)}
 .phead .pt h2 .phn input.hname{field-sizing:content;width:auto;min-width:3ch;max-width:200px;margin:0 0 0 -7px}
 .phead .pt h2 .hchips{display:inline-flex;align-items:center;gap:var(--head-gap);height:var(--head-line)}
@@ -3551,8 +3552,7 @@ html:root .lj .ljh,html:root .lj dl{font-size:12px}
 .hboard h3 .sp{flex:1}
 .hbcols{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--space-3);align-items:start}
 .hbcols{grid-template-columns:repeat(auto-fill,240px)}/* 261124 대표: 우선순위도 담당자처럼 칸 폭 고정 */
-.hbtop{display:flex;align-items:flex-start;gap:var(--space-2);min-width:0}.hbtop .hbn{flex:1;min-width:0}.hbact{display:flex;gap:4px;flex:none}
-.hbtn{width:28px;height:28px;padding:0;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);cursor:pointer;font-size:13px;line-height:1}.hbtn:hover{border-color:var(--brand-border);background:var(--brand-tint)}
+.hwt .hgo{gap:2px;padding-right:var(--space-2)}.hwt .hgo svg.i{width:14px;height:14px}/* 대시보드 [○○ 메뉴 →] */
 .hwr .cdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:var(--space-2);vertical-align:-1px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}/* 오늘 수업 클래스 색 점 = 표의 점과 같은 크기 */
 .hbcard[draggable]{cursor:grab}.hbcard.dragging{opacity:.45}.hbcol.drop{outline:2px dashed var(--brand-deep);outline-offset:-2px}
 .hboard h3 .wknav,.hboard h3 .cfzoom{margin-left:var(--space-2)}.hcal .cfcal .scroll{height:600px}/* 홈 캘린더 = 일정 달력 부품, 한 화면 주 수는 이 높이 기준 */
