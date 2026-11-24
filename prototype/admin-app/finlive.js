@@ -124,18 +124,5 @@
   window.finAct = { pedit: (id) => editPay(id, false), bpedit: (id) => editPay(id, true), pnew: () => newPay(), cart };
 
 
-  /* 결제 내역 탭 위의 [＋ 결제 줄] — 실제 자료 연결에서만(예시는 표 위 + 단추) */
-  const dress = () => {
-    const v = document.getElementById("view"); if (!v) return;
-    const on = live() && typeof curScr === "function" && curScr() === "profit" && activeTab && activeTab.state && activeTab.state.sub === "c";
-    const has = v.querySelector(":scope > .finbar");
-    if (!on) { if (has) has.remove(); return; }
-    if (has) return;
-    const top = v.querySelector(":scope > .top"), bar = document.createElement("div"); bar.className = "finbar";
-    bar.innerHTML = '<button type="button" class="btn sm pri" data-fin="pnew">＋ 결제 줄</button><span class="hint">지출 · 청구서 결제 합계를 넣어요</span>';
-    (top && top.nextElementSibling ? top.nextElementSibling : v.firstChild).before(bar);
-  };
-  const mo = new MutationObserver(() => { try { dress(); } catch (_) {} });
-  const startObs = () => { const v = document.getElementById("view"); if (v) mo.observe(v, { childList: true }); else setTimeout(startObs, 400); };
-  startObs();
+  /* 결제 내역 탭 위 [＋ 결제 줄] 단추는 뺐다(대표 261124 "+결제줄 제거 — 나중에 + 활성화"). 넣기 창은 finAct.pnew 그대로 — 나중에 도구 줄 [+]에 붙임 */
 })();
