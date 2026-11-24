@@ -75,7 +75,7 @@ const FOUND = [
     assert.equal(await page.textContent('#pgStat .ro-line'), '이름 · 기간은 노션에서 고쳐요', '보기만 안내 = 상태 묶음 안 한 줄(제목 아래 설명 줄 없음)');
     assert.equal(await page.evaluate(() => !!document.querySelector('#view > .ro-line')), false, '제목 아래 설명 줄 없음');
     assert.equal(await page.isDisabled('#view [data-act2="aFind"]'), false, '[학교 검색] 눌림');
-    assert.equal(await page.isDisabled('#view [data-act2="aCal"]'), false, '[학사일정 가져오기] 눌림(코드 있는 예시중)');
+    assert.equal(await page.$('#view [data-act2="aCal"]'), null, '공용 창에 [학사일정 가져오기] 묶음 단추 없음(학교 창에서 한 곳씩)');
     await page.screenshot({ path: shots + 'school-live-list.png' });
     assert.deepEqual(errors, []); done.push('학교 화면'); await page.close();
   }
@@ -140,16 +140,23 @@ const FOUND = [
     assert.equal(of(calls, 'app-api', 'save').length, 1);
     assert.deepEqual(errors, []); done.push('연결 거절'); await page.close();
   }
-  // 5) [학사일정 가져오기]: 코드 있고 오늘 안 가져온 학교만 → sync-school-calendar start, 맡긴 뒤 숫자 0(두 번 맡기지 않음)
+  // 5) [학사일정 가져오기] = 학교 창 [학사일정] 묶음 안, 그 학교 하나만 → sync-school-calendar start, 맡긴 뒤 꺼짐(두 번 맡기지 않음) · 코드 없는 학교는 꺼짐 + 이유
   {
     const { page, calls, errors } = await open();
-    await act(page, 'aCal'); await page.waitForSelector('.dlg #co');
+    await page.evaluate((id) => { activeTab.state.sel = id; panelOpen = true; render(); }, B);
+    assert.equal(await page.isDisabled(`.panel [data-schcal="${B}"]`), true, '코드 없는 학교는 꺼짐');
+    assert.match(await page.textContent('.panel .schcal'), /학교 코드가 없어요/);
+    await page.evaluate((id) => { activeTab.state.sel = id; panelOpen = true; render(); }, A);
+    assert.equal(await page.isDisabled(`.panel [data-schcal="${A}"]`), false, '코드 있는 예시중은 눌림(보기만 화면이어도)');
+    await page.click(`.panel [data-schcal="${A}"]`); await page.waitForSelector('.dlg #co');
     assert.match(await page.textContent('.dlg'), /예시중/);
     await page.click('.dlg #co');
     await waitFor(page, () => of(calls, 'sync-school-calendar').length);
     assert.deepEqual(of(calls, 'sync-school-calendar').map((c) => c.body), [{ action: 'start', pageId: A }]);
     assert.equal(of(calls, 'sync-school-calendar')[0].key, 'sess-1');
-    await page.waitForFunction(() => document.querySelector('#view [data-act2="aCal"]').disabled, null, { timeout: 10000 });
+    await page.waitForFunction((id) => { const b = document.querySelector(`.panel [data-schcal="${id}"]`); return b && b.disabled; }, A, { timeout: 10000 });
+    assert.match(await page.textContent('.panel .schcal'), /맡겼어요/);
+    await page.screenshot({ path: shots + 'school-live-cal.png' });
     assert.deepEqual(errors, []); done.push('학사일정 가져오기'); await page.close();
   }
   // 6) 학교 칸 고치기는 보기만 그대로 · 학생에 없는 학교 이름을 적으면 앱이 학교를 만들지 않음(옛 안내 대신 [학교 › 학교 검색])
