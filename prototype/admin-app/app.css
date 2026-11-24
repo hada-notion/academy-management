@@ -3331,7 +3331,7 @@ html:root :is(.seg.pgam,.mwper){display:flex;width:100%}.krow2{height:40px;displ
 .rtcard::before{display:none}
 .rtcard>b{font-size:14px;color:var(--ink)}.rtcard>span{font-size:12px;color:var(--muted);line-height:1.6}.rtcard>span b{color:var(--ink)}.rtcard .btn{width:100%;justify-content:center;height:34px}.rtcard small{font-size:11px;color:var(--muted);line-height:1.5}
 .rtsub{font-size:11.5px;color:var(--muted);margin-top:2px}html:root .rtmore{display:block;margin:var(--gap-block) auto 0;padding:4px 10px;border:0;background:none;box-shadow:none;font-size:12px;color:var(--muted);cursor:pointer}html:root .rtmore:hover{color:var(--ink)}
-.rtempty{background:var(--tint,#FBF8F4);border:1px dashed var(--line);border-radius:10px;padding:16px;text-align:center;color:var(--muted);line-height:1.7;margin-bottom:10px}.rtempty b{color:var(--ink)}.rtempty small{display:block;font-size:11.5px;margin-top:6px}.rtempty .btn{display:flex;margin:10px auto 0;width:100%}
+.rtempty{background:var(--tint,#FBF8F4);border:1px dashed var(--line);border-radius:10px;padding:16px;text-align:center;color:var(--muted);line-height:1.7}.rtempty b{color:var(--ink)}.rtempty small{display:block;font-size:11.5px;margin-top:6px}.rtempty .btn{display:flex;margin:10px auto 0;width:100%}
 /* 결석 줄: 이름 줄 아래에 [보강 잡기]를 한 줄로(한 줄에 다 넣으면 출석/결석 단추가 잘림) */
 #panel .attrow:has(.mkin){flex-wrap:wrap;row-gap:4px}.attrow .btn.mkin{order:9;flex:0 0 auto;margin:0 0 4px 0;height:24px;padding:0 8px;font-size:11.5px;white-space:nowrap;color:var(--brand-deep,#5C4A3D)}
 /* 261119 대표: 보강 달력 [+] 추가 모드 — 날짜 칸 아래 잔상(점선 +), 일정 달력 .evaddg와 같은 모양 · 늘 옅게, 칸에 마우스를 올리면 진하게 */
