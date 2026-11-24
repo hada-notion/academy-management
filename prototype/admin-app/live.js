@@ -48,7 +48,7 @@ window.liveModeFor = function (search, hostname, protocol) {
   const MKW = gOn.has("P3b") && gOn.has("P3m"); window.LIVE_MKW = MKW;
   /* 시험 쓰기(칸 P2x — 화면 묶음 없음, P2와 함께 켤 때만, 261123 시험 보강): 켜면 시험 화면이 보기만에서 빠지고 저장 층(appsave tests · exams · grades)으로 노션에 씀 */
   const EXW = gOn.has("P2") && gOn.has("P2x"); window.LIVE_EXW = EXW;
-  const P2ON = gOn.has("P2"), RO = new Set([...GATES.P2, ...GATES.P3, ...GATES.P3b, "schools"].filter((s) => !(EVW && s === "events" /* 261124: 홈(today)은 보기만 — 할 일 바꾸기는 노션 홈 */) && !(MKW && s === "makeup") && !(EXW && s === "exams"))); /* P3 수업은 걸음 1 = 보기만 */
+  const P2ON = gOn.has("P2"), RO = new Set([...GATES.P2, ...GATES.P3, ...GATES.P3b, "schools"].filter((s) => !(EVW && (s === "events" || s === "today") /* 261124 대표 "기존 장치와 똑같이": 홈도 일정 화면처럼 — 오른쪽 창 · 캘린더 끌기(날짜). ✔️ · ✖️ · 우선순위는 노션 홈 */) && !(MKW && s === "makeup") && !(EXW && s === "exams"))); /* P3 수업은 걸음 1 = 보기만 */
   window.liveRO = (s) => RO.has(s);
   /* (강사계정 · 대표 261123 "댓글허용이면 보기만") 강사가 댓글허용에만 든 메뉴의 화면은 보기만 칸과 같은 잠금으로(liveteacher.js가 넣음). 서버도 쓰기 403 */
   window.liveTeacherRo = new Set();
@@ -198,7 +198,7 @@ window.liveModeFor = function (search, hostname, protocol) {
      창: 링크 · 도움말 · 노션 · 줄 열기/이동 · 접기 · 탭 · 할 일 줄. 위 줄: 날짜 · 달 · 주 이동, 보기 탭, 찾기, 엑셀 · 인쇄, 크기, 창 고정,
      그리고 입력 칸(P1)에서 고친 것을 다루는 실행 취소 · 다시 실행 · 모두 되돌리기 · 저장. */
   const RO_PASS0 = "a,[data-fin],[data-web],[data-asmv],#asBack,#syncBtn,[data-ft],#wdB,#cfZo,#cfZi,#mkFilT,[data-help],[data-notion],.hnot,[data-drill],[data-go],[data-gobook],[data-gochs],[data-gobill],[data-act^=go],[data-rpdo^=open],[data-rpdo^=notion],[data-pgfold],[data-entab],[data-ldn],[data-lmn],.ptabs,.ro-note,.tdr,.tdmore,.qhelp,summary,"
-    + "[data-dn],[data-hgo],[data-hatt],[data-hles],[data-htab],[data-tev],[data-mn],[data-sub],[data-cfnav],[data-mtab],[data-view],[data-wkd],[data-evsel],.foldchip,#lq,.sbx,#xlB,#prB,#undoB,#redoB,#rvAll,#saveAll,#panelT,#mkPanelT,#seaChip,#wkP,#wkN,#wkT,#lmAtt,#cbFind,#zOut,#zIn,#makeWeek,#lGen,[data-act2=aFind],[data-act2=aCal]"; /* [data-act2=aFind] · [aCal] = 학교 [학교 검색] · [학사일정 가져오기](261123 — 서버 school-api · sync-school-calendar를 앱에서 부름, liveschool.js). */ /* #makeWeek · #lGen(수업 메뉴 v559의 생성 단추) = 수업 생성: 노션 버튼과 같은 서버 함수(generate-classes)를 부르는 run이라 보기 화면에서도 켠다(대표 261117 "수업 생성은 앱에서도") */
+    + "[data-dn],[data-hgo],[data-hatt],[data-hles],[data-hstu],[data-henr],[data-habs],[data-htab],[data-tev],[data-mn],[data-sub],[data-cfnav],[data-mtab],[data-view],[data-wkd],[data-evsel],.foldchip,#lq,.sbx,#xlB,#prB,#undoB,#redoB,#rvAll,#saveAll,#panelT,#mkPanelT,#seaChip,#wkP,#wkN,#wkT,#lmAtt,#cbFind,#zOut,#zIn,#makeWeek,#lGen,[data-act2=aFind],[data-act2=aCal]"; /* [data-act2=aFind] · [aCal] = 학교 [학교 검색] · [학사일정 가져오기](261123 — 서버 school-api · sync-school-calendar를 앱에서 부름, liveschool.js). */ /* #makeWeek · #lGen(수업 메뉴 v559의 생성 단추) = 수업 생성: 노션 버튼과 같은 서버 함수(generate-classes)를 부르는 run이라 보기 화면에서도 켠다(대표 261117 "수업 생성은 앱에서도") */
   const RO_HIT = "button,input,select,textarea,label,[role],[tabindex],[contenteditable],.btn,.lnk,.hf-box";
   const roBlock = (e) => {
     if (!document.body.classList.contains("live-ro") || !e.target.closest) return;

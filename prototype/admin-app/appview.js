@@ -1,6 +1,7 @@
 /* 앱 보기 층(P2 보기 1:1): appdata.js 뒤에 불러, 아직 비어 있던 묶음(일정·보고서·가정통신문·수강료·청구서·청구 항목·비용·시험·성적·알림톡 설정·기타경비·자료)을 노션 복사본에서 읽어 채운다(읽기만). 칸 대응 표는 MAPPING-P2.md */
 
 // ---------- 보조 ----------
+const APPV_td = (v) => String(v || "").replace(/^[^가-힣]+/, "").trim();
 const APPV_DB = {
 	enroll: "등록(학원) DB", cls: "클래스(학원) DB", stu: "학생(학원) DB", lib: "라이브러리(학원) DB",
 	event: "일정(학원) DB", box: "알림톡 발송함(학원) DB", report: "보고서(학원) DB", letter: "가정통신문(학원) DB",
@@ -89,7 +90,7 @@ const APPVIEW = {
 				// 날짜 시작~끝 = 노션 값 그대로(끝이 없으면 "")
 				start, end, who: X.id1(p["담당자"]),
 				// 할 일 두 칸(261124 대표): 달성여부(달성 · 미달성, 비면 진행) · 우선순위(중요 · 보류, 비면 보통) · 태그(매일). 앱은 읽기만 — 바꾸기는 노션 홈 보드
-				ach: X.str(p["달성여부"]), pri: X.str(p["우선순위"]), tags: Array.isArray(p["태그"]) ? p["태그"].map(String) : [],
+				ach: APPV_td(X.str(p["달성여부"])), pri: APPV_td(X.str(p["우선순위"])), /* 노션 선택지 "✔️ 달성" · "‼️ 중요"처럼 앞에 아이콘이 붙음 — 글자만 떼어 앱 안에서는 달성 · 미달성 · 중요 · 보류로 */ tags: Array.isArray(p["태그"]) ? p["태그"].map(String) : [],
 				pub: !!p["학부모 공개"], memo: X.str(p["일정 안내 메모"]),
 				classIds: X.ids(p["클래스"]), school: X.title("학교(학원) DB", X.id1(p["학교"]), "이름"), state: "saved",
 				_time: X.dt(p["날짜"]).length > 10 ? X.dt(p["날짜"]).slice(11) : "", _students: X.ids(p["학생"]), _neis: !!X.str(p["NEIS 동기화키"]),
