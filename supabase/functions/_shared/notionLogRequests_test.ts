@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "jsr:@std/assert@1"
-import { handleLogRequest, isLogSource, logRequestOf, resetLogSourceCache, LOG_REQUEST_CATEGORY } from "./notionLogRequests.ts"
+import { handleLogRequest, isLogSource, logRequestOf, logTrashEnabled, resetLogSourceCache, LOG_REQUEST_CATEGORY } from "./notionLogRequests.ts"
 import { REQUEST_PROP, RESULT_PROP, STATE_DONE, STATE_FAILED, type RequestDeps } from "./notionRequests.ts"
 import { applyOne, buildTargets, type Deps, type QueueItem } from "./notionEventsApply.ts"
 
@@ -123,5 +123,79 @@ Deno.test("처리기: 자동화 로그의 다른 줄·연동이 만든 줄·칸 
 	assertEquals((await applyOne(qi("l1", DS_LOG, { own_bot: true }), deps)).result, "skip:no-copy")
 	assertEquals((await applyOne(qi("l1", DS_LOG, { event_type: "page.properties_updated" }), deps)).result, "skip:no-copy")
 	assertEquals(f.reads, [], "서버가 쓴 전송 기록·요청 줄 결과 쓰기는 노션을 읽지 않음")
+	assertEquals(f.handled, [])
+})
+
+// ---------- 성공한 요청 줄은 휴지통에 ----------
+Deno.test("휴지통: 성공한 요청 줄만 휴지통에, 대상 요청 결과는 그대로", async () => {
+	const f = fake()
+	const trashed: string[] = []
+	f.pages.set("s1", page("s1", { [REQUEST_PROP]: sel(""), [RESULT_PROP]: rt("") }, DS_SESSION))
+	f.pages.set("l1", logRow("l1", "session-record", "s1"))
+	assertEquals(await handleLogRequest(f.pages.get("l1"), (id) => f.readPage(id), f, { trash: async (id) => { trashed.push(id) } }), `log:session-record ${STATE_DONE} trashed`)
+	assertEquals(trashed, ["l1"])
+	assertEquals(f.pages.get("s1").properties[REQUEST_PROP].select.name, STATE_DONE)
+	assertEquals(f.pages.get("l1").properties["발송 상태"].select.name, "성공", "휴지통 전에 성공을 씀")
+})
+
+Deno.test("휴지통: 실패한 요청 줄은 남김(함수 실패 · 모르는 동작 · 대상 없음)", async () => {
+	const trashed: string[] = []
+	const trash = async (id: string) => { trashed.push(id) }
+	const f = fake(400, '{"error":"수업에 반이 비어 있습니다"}')
+	f.pages.set("s1", page("s1", { [REQUEST_PROP]: sel("") }, DS_SESSION))
+	for (const row of [logRow("l1", "session-record", "s1"), logRow("a", "없는-동작", "s1"), logRow("b", "session-record", ""), logRow("c", "session-record", "zz")]) {
+		f.pages.set(row.id, row)
+		await handleLogRequest(row, (id) => f.readPage(id), f, { trash })
+		assertEquals(f.pages.get(row.id).properties["발송 상태"].select.name, "실패")
+	}
+	assertEquals(trashed, [])
+})
+
+Deno.test("휴지통: 넣기가 실패하면 성공 상태를 남기고 로그만", async () => {
+	const f = fake()
+	const logs: string[] = []
+	f.log = (m: string) => { logs.push(m) }
+	f.pages.set("s1", page("s1", { [REQUEST_PROP]: sel("") }, DS_SESSION))
+	f.pages.set("l1", logRow("l1", "session-record", "s1"))
+	assertEquals(await handleLogRequest(f.pages.get("l1"), (id) => f.readPage(id), f, { trash: async () => { throw new Error("502") } }), `log:session-record ${STATE_DONE}`)
+	assertEquals(f.pages.get("l1").properties["발송 상태"].select.name, "성공")
+	assert(logs.some((m) => m.includes("휴지통 넣기 실패")))
+})
+
+Deno.test("휴지통: 알림톡 기록 줄(버튼 요청 아님)은 쓰지도 휴지통에 넣지도 않음", async () => {
+	const f = fake()
+	const trashed: string[] = []
+	f.pages.set("e", page("e", { "발송 구분": sel("알림톡"), 메모: rt("session-record"), 수업: rel("s1") }, DS_LOG))
+	assertEquals(await handleLogRequest(f.pages.get("e"), (id) => f.readPage(id), f, { trash: async (id) => { trashed.push(id) } }), null)
+	assertEquals(trashed, [])
+	assertEquals(f.patches, [])
+	assertEquals(f.forwards, [])
+})
+
+Deno.test("휴지통 스위치: NOTION_LOG_REQUEST_TRASH=off면 끔, 기본 켬", () => {
+	const before = Deno.env.get("NOTION_LOG_REQUEST_TRASH")
+	try {
+		Deno.env.delete("NOTION_LOG_REQUEST_TRASH")
+		assert(logTrashEnabled())
+		Deno.env.set("NOTION_LOG_REQUEST_TRASH", "off")
+		assert(!logTrashEnabled())
+		Deno.env.set("NOTION_LOG_REQUEST_TRASH", "on")
+		assert(logTrashEnabled())
+	} finally {
+		if (before === undefined) Deno.env.delete("NOTION_LOG_REQUEST_TRASH")
+		else Deno.env.set("NOTION_LOG_REQUEST_TRASH", before)
+	}
+})
+
+Deno.test("처리기: 휴지통에 넣은 요청 줄의 page.deleted · page.undeleted는 읽지도 지우지도 않음", async () => {
+	const { f, deps } = fakeApply()
+	let removed = 0
+	deps.removeEverywhere = async () => { removed++ }
+	f.notion.set("l1", { ...logRow("l1", "session-record", "s1"), in_trash: true })
+	for (const ev of ["page.deleted", "page.undeleted"]) for (const own_bot of [true, false]) {
+		assertEquals((await applyOne(qi("l1", DS_LOG, { event_type: ev, own_bot }), deps)).result, "skip:no-copy")
+	}
+	assertEquals(f.reads, [])
+	assertEquals(removed, 0)
 	assertEquals(f.handled, [])
 })

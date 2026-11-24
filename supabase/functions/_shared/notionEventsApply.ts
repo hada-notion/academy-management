@@ -18,7 +18,7 @@ import { fetchSupabaseWithRetry } from "./reportCacheShared.ts"
 import { appSources, pageRow, upsertRows, deleteIds, type AppDb } from "./appCopy.ts"
 import { COPY_TABLES, DS, toRows, upsertCopyRows, deleteCopyRows, type CopyTable } from "./classRoomCopy.ts"
 import { handleRequest, hasRequestProp, liveRequestDeps, requestOf, requestsEnabled } from "./notionRequests.ts"
-import { handleLogRequest, isLogSource } from "./notionLogRequests.ts"
+import { handleLogRequest, isLogSource, logTrashEnabled } from "./notionLogRequests.ts"
 
 type Page = Record<string, any>
 
@@ -290,6 +290,11 @@ export const liveRequest: NonNullable<Deps["request"]> = {
 }
 
 const SEND_LOG_DB = () => Deno.env.get("NOTION_SEND_LOG_DB_ID") ?? ""
+// 성공한 요청 줄을 휴지통에(영구 삭제 아님).
+async function trashLogRow(pageId: string) {
+	const res = await fetchWithRetry(`${NOTION_API}/pages/${pageId}`, { method: "PATCH", headers: notionHeaders(), body: JSON.stringify({ in_trash: true }) })
+	if (!res.ok) throw new Error(`${res.status} ${(await res.text()).slice(0, 200)}`)
+}
 export const liveLogRequest: NonNullable<Deps["logRequest"]> = {
 	isLogSource: (ds) => isLogSource(ds, {
 		dbId: SEND_LOG_DB(),
@@ -299,7 +304,7 @@ export const liveLogRequest: NonNullable<Deps["logRequest"]> = {
 			return await res.json()
 		},
 	}),
-	handle: (logPage, readTarget) => handleLogRequest(logPage, readTarget, liveRequestDeps),
+	handle: (logPage, readTarget) => handleLogRequest(logPage, readTarget, liveRequestDeps, logTrashEnabled() ? { trash: trashLogRow } : {}),
 }
 
 export const liveDeps: Deps = {
