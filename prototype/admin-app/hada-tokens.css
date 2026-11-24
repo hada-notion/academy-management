@@ -36,6 +36,18 @@
     반 이름 해시(h=h*31+글자)를 8로 나눈 나머지 +1번을 쓴다. 바탕 -bg, 글자 -fg */
  --class-1-bg:#F3E8FD;--class-1-fg:#7C3AED;--class-2-bg:#DBEAFE;--class-2-fg:#1D4ED8;--class-3-bg:#DCFCE7;--class-3-fg:#15803D;--class-4-bg:#FFEDD5;--class-4-fg:#C2410C;
  --class-5-bg:#FEE2E2;--class-5-fg:#B91C1C;--class-6-bg:#FEF9C3;--class-6-fg:#A16207;--class-7-bg:#EDE4DA;--class-7-fg:#78350F;--class-8-bg:#E2E8F0;--class-8-fg:#475569;
+ /* 노션 선택 옵션 색(노션 밝은 화면 태그 색과 같은 값) — 노션 색 이름 하나에 세 값: 바탕 --nc-<색> · 글자 --nc-<색>-ink · 진한 색 --nc-<색>-deep(노션 글자 색, 점·띠·섞기용).
+    앱이 노션 옵션 색을 보여 줄 때는 모두 이 값(표·고르기 칩 .nc-* · 일정 칩 .evn-*). default = 노션 "기본" */
+ --nc-default:#E3E2E0;--nc-default-ink:#32302C;--nc-default-deep:#787774;
+ --nc-gray:#E3E2E0;--nc-gray-ink:#32302C;--nc-gray-deep:#787774;
+ --nc-brown:#EEE0DA;--nc-brown-ink:#442A1E;--nc-brown-deep:#9F6B53;
+ --nc-orange:#FADEC9;--nc-orange-ink:#49290E;--nc-orange-deep:#D9730D;
+ --nc-yellow:#FDECC8;--nc-yellow-ink:#402C1B;--nc-yellow-deep:#CB912F;
+ --nc-green:#DBEDDB;--nc-green-ink:#1C3829;--nc-green-deep:#448361;
+ --nc-blue:#D3E5EF;--nc-blue-ink:#183347;--nc-blue-deep:#337EA9;
+ --nc-purple:#E8DEEE;--nc-purple-ink:#412454;--nc-purple-deep:#9065B0;
+ --nc-pink:#F5E0E9;--nc-pink-ink:#4C2337;--nc-pink-deep:#C14C8A;
+ --nc-red:#FFE2DD;--nc-red-ink:#5D1715;--nc-red-deep:#D44C47;
  /* 그림자: 리포트 기준(카드 0 1px 4px, 떠 있는 버튼, 대화상자·패널) */
  --overlay:rgba(25,31,40,.35);--shadow-card:0 1px 4px rgba(0,0,0,.06);--shadow-float:0 3px 10px rgba(107,93,77,.22);--shadow-md:0 2px 8px rgba(0,0,0,.12);--shadow-tabbar:0 -2px 10px rgba(0,0,0,.08);
  /* 글자 */
