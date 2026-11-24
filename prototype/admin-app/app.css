@@ -2316,16 +2316,16 @@ a.golink{color:inherit;text-decoration:none;border-radius:4px}
 a.golink:hover{text-decoration:underline;text-underline-offset:3px;color:var(--ink,#3D3530)}
 
 /* ═════ 252~253판 ═════ 노션 선택·다중 선택 색(노션 밝은 화면 태그 색과 같은 값) — 요일 칩·고르기 칸 공통 */
-.nc-default{background:rgba(227,226,224,.55)!important;color:#32302C!important}
-.nc-gray{background:#E3E2E0!important;color:#32302C!important}
-.nc-brown{background:#EEE0DA!important;color:#442A1E!important}
-.nc-orange{background:#FADEC9!important;color:#49290E!important}
-.nc-yellow{background:#FDECC8!important;color:#402C1B!important}
-.nc-green{background:#DBEDDB!important;color:#1C3829!important}
-.nc-blue{background:#D3E5EF!important;color:#183347!important}
-.nc-purple{background:#E8DEEE!important;color:#412454!important}
-.nc-pink{background:#F5E0E9!important;color:#4C2337!important}
-.nc-red{background:#FFE2DD!important;color:#5D1715!important}
+.nc-default{background:rgba(227,226,224,.55)!important;color:var(--nc-default-ink)!important}
+.nc-gray{background:var(--nc-gray)!important;color:var(--nc-gray-ink)!important}
+.nc-brown{background:var(--nc-brown)!important;color:var(--nc-brown-ink)!important}
+.nc-orange{background:var(--nc-orange)!important;color:var(--nc-orange-ink)!important}
+.nc-yellow{background:var(--nc-yellow)!important;color:var(--nc-yellow-ink)!important}
+.nc-green{background:var(--nc-green)!important;color:var(--nc-green-ink)!important}
+.nc-blue{background:var(--nc-blue)!important;color:var(--nc-blue-ink)!important}
+.nc-purple{background:var(--nc-purple)!important;color:var(--nc-purple-ink)!important}
+.nc-pink{background:var(--nc-pink)!important;color:var(--nc-pink-ink)!important}
+.nc-red{background:var(--nc-red)!important;color:var(--nc-red-ink)!important}
 .spill[class*="nc-"],.tchip[class*="nc-"]{border:0}
 /* 요일 칩: 월 노랑 · 화 빨강 · 수 파랑 · 목 초록 · 금 회색 · 토 갈색 · 일 보라 */
 .tchip.dmon{background:#FDECC8;color:#402C1B}.mwk-hd .dmon{color:#CB912F}
@@ -2794,16 +2794,16 @@ table.stt tr.sel,table.stt tr.sel:hover{background:var(--sel-bg)}
 .spill,.kpl,.sstag,.tag,.pill,.rpill,.gchip,.tchip,.stp,.mchip,.hfm-c,.hp-tag,.hp-g{border-radius:var(--pill-radius)!important}/* 261118 대표: 고르기 목록 학년 칩(.hp-g) · 태그(.hp-tag)도 같은 알약 모서리 */
 .spill,.kpl,.sstag,.tag,.pill,.rpill,.gchip,.tchip,.stp,.mchip{color:var(--pill-ink)!important;background-image:linear-gradient(var(--pill-veil),var(--pill-veil))}
 .kpl svg,.mchip svg,.spill svg,.sstag svg{color:var(--pill-ink)!important;stroke:currentColor}
-.nc-default{background:color-mix(in srgb, #E3E2E0 var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
-.nc-gray{background:color-mix(in srgb, #E3E2E0 var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
-.nc-brown{background:color-mix(in srgb, #EEE0DA var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
-.nc-orange{background:color-mix(in srgb, #FADEC9 var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
-.nc-yellow{background:color-mix(in srgb, #FDECC8 var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
-.nc-green{background:color-mix(in srgb, #DBEDDB var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
-.nc-blue{background:color-mix(in srgb, #D3E5EF var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
-.nc-purple{background:color-mix(in srgb, #E8DEEE var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
-.nc-pink{background:color-mix(in srgb, #F5E0E9 var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
-.nc-red{background:color-mix(in srgb, #FFE2DD var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
+.nc-default{background:color-mix(in srgb, var(--nc-default) var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
+.nc-gray{background:color-mix(in srgb, var(--nc-gray) var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
+.nc-brown{background:color-mix(in srgb, var(--nc-brown) var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
+.nc-orange{background:color-mix(in srgb, var(--nc-orange) var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
+.nc-yellow{background:color-mix(in srgb, var(--nc-yellow) var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
+.nc-green{background:color-mix(in srgb, var(--nc-green) var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
+.nc-blue{background:color-mix(in srgb, var(--nc-blue) var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
+.nc-purple{background:color-mix(in srgb, var(--nc-purple) var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
+.nc-pink{background:color-mix(in srgb, var(--nc-pink) var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
+.nc-red{background:color-mix(in srgb, var(--nc-red) var(--pill-mix), transparent)!important;color:var(--pill-ink)!important}
 .bkcov.one+.hfgrid{margin-top:12px}
 
 /* 420판(대표): 라이브러리 창 머리 2줄 — 한 줄에 과목 · 출판사 · 분량 · 가격(넘치면 출판사를 뺌) */
@@ -2987,10 +2987,12 @@ table.stt.mkt{table-layout:auto}.stt.mkt td{overflow:visible}
 /* 일정 달력(261118 대표 시안대로): 구분 색 · 여러 날 띠 · 휴원 바탕 · +n · 시즌 바탕 · 그날 창 · [보일 것] */
 /* 261118 대표: 일정 색 조금 더 진하게 — 옅은 바탕에 그 구분의 진한 색을 --ev-deep만큼 섞음(한 곳에서 조절) */
 :root{--ev-deep:18%}
-.evchip.evk-acad,.evcont.evk-acad,.evcf .evland.evk-acad{background:color-mix(in srgb,var(--info) var(--ev-deep),var(--info-soft))}.evchip.evk-todo,.evcont.evk-todo,.evcf .evland.evk-todo{background:color-mix(in srgb,var(--success) var(--ev-deep),var(--success-soft))}.evchip.evk-exam,.evcont.evk-exam,.evcf .evland.evk-exam{background:color-mix(in srgb,#F2B27A var(--ev-deep),var(--orange-soft))}.evchip.evk-event,.evcont.evk-event,.evcf .evland.evk-event{background:color-mix(in srgb,#E0A93B var(--ev-deep),#FBF1D2)}.evchip.evk-vac,.evcont.evk-vac{background:color-mix(in srgb,#9A8F87 var(--ev-deep),#ECE8E3);color:#5E554E}
+/* 261125 대표 "앱을 노션에": 일정 칩 색 = 노션 세부 구분 옵션 색(JS EV_SUB_NC 한 곳 → 칩에 evn-<노션 색> → 토큰 --nc-*). 갈래(evk-*)는 보이기·순서에만 쓰고 색은 안 정함 */
+.evn-default{--evn-bg:var(--nc-default);--evn-deep:var(--nc-default-deep)}.evn-gray{--evn-bg:var(--nc-gray);--evn-deep:var(--nc-gray-deep)}.evn-brown{--evn-bg:var(--nc-brown);--evn-deep:var(--nc-brown-deep)}.evn-orange{--evn-bg:var(--nc-orange);--evn-deep:var(--nc-orange-deep)}.evn-yellow{--evn-bg:var(--nc-yellow);--evn-deep:var(--nc-yellow-deep)}.evn-green{--evn-bg:var(--nc-green);--evn-deep:var(--nc-green-deep)}.evn-blue{--evn-bg:var(--nc-blue);--evn-deep:var(--nc-blue-deep)}.evn-purple{--evn-bg:var(--nc-purple);--evn-deep:var(--nc-purple-deep)}.evn-pink{--evn-bg:var(--nc-pink);--evn-deep:var(--nc-pink-deep)}.evn-red{--evn-bg:var(--nc-red);--evn-deep:var(--nc-red-deep)}
+.evchip[class*="evn-"],.evcf .evland[class*="evn-"]{background:color-mix(in srgb,var(--evn-deep) var(--ev-deep),var(--evn-bg))}.evs-nc{display:flex;flex-wrap:wrap;gap:4px;padding:2px 10px 6px}.evs-nc .tchip{cursor:pointer;border:0;font:inherit;font-size:12px;padding:2px 8px}.evsw[class*="evn-"]{background:color-mix(in srgb,var(--evn-deep) 45%,var(--evn-bg))}/* 견본 점(그날 창 · [보일 것]) — 작은 네모라 칩보다 진하게 */
 .expd{margin:-4px 0 10px;display:flex;flex-direction:column;gap:6px}.expd-h{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted,#7A6E66)}.expd-h b{color:var(--text-ink)}.expd-d{display:flex;flex-wrap:wrap;gap:6px}.expd .btn.on{background:var(--brand-deep,#6B4F3A);color:#fff;border-color:var(--brand-deep,#6B4F3A)}.expd .hint.warn{color:#B4532A}/* 시험정보 창 시험 기간 */
 .evcf .evchip.exper{opacity:.55;font-size:11px;min-height:18px;line-height:14px;cursor:default}.evcf .exsp{height:18px}/* 시험 메뉴 달력의 시험 기간 배경 막대 */
-.evchip.evk-exsub{background:#fff;border-left:3px solid #F2B27A!important;color:var(--text-ink)}/* 과목 시험일(시험정보) — 시험 기간 막대(주황 바탕)와 구분 */
+.evchip.evk-exsub{background:#fff;border-left:3px solid var(--evn-deep,var(--line))!important;color:var(--text-ink)}/* 과목 시험일(시험정보) — 흰 바탕 + 시험 세부 구분 색 띠, 시험 기간 막대(색 바탕)와 구분 */
 .evchip.hid{opacity:.55;border:1px dashed var(--line,#CBBBA6)}
 /* 261118 대표: 칩이 바탕에 묻히지 않게 옅은 테두리·그림자 / 여러 날 일정은 칸을 넘어 한 줄로(옆 칸 여백까지 늘림, 끝에서만 둥글게) */
 .evcf .evchip{border:1px solid rgba(61,53,48,.12);box-shadow:none;box-sizing:border-box;flex:none}/* 261118 대표: 그림자 뺌, 옅은 테두리만 */
@@ -3010,7 +3012,7 @@ table.stt.mkt{table-layout:auto}.stt.mkt td{overflow:visible}
 .evfloat .evlk{display:none}
 .evcf .evland{position:relative;z-index:6;display:block;flex:none;box-sizing:border-box;min-height:22px;font-size:12px;font-weight:700;line-height:18px;padding:1px 6px;color:var(--brand-deep,#6B4F3A);border:1.5px dashed var(--brand-mid,#A9825F);border-radius:6px;opacity:.85;pointer-events:none;white-space:nowrap;overflow:hidden}/* 놓일 자리 잔상(시간표 착지 상자처럼 점선, 같은 구분 색 바탕) */
 .evcf .evland.evbar{border-radius:0;margin-left:-5px;margin-right:-4px;width:calc(100% + 9px);border-left:0;border-right:0}.evcf .evland.evbar.bs{border-radius:6px 0 0 6px;margin-left:0;width:calc(100% + 4px);border-left:1.5px dashed var(--brand-mid,#A9825F)}.evcf .evland.evbar.be{border-radius:0 6px 6px 0;margin-right:0;width:calc(100% + 5px);border-right:1.5px dashed var(--brand-mid,#A9825F)}.evcf .evland.evbar.bs.be{border-radius:6px;width:100%}
-.evcf .evland.evk-acad{background:var(--info-soft)}.evcf .evland.evk-todo{background:var(--success-soft)}.evcf .evland.evk-exam{background:var(--orange-soft)}.evcf .evland.evk-event{background:#FBF1D2}.evcf .evland.evk-vac,.evcf .evland.evk-off{background:#ECE8E3}
+.evcf .evland[class*="evn-"]{background:var(--evn-bg)}
 .evcf .cfday.evdrop{background:inherit!important}
 .evcf .evland.mkghost{background:var(--canvas,#F7F5F2);min-height:36px}.mkcal [data-mkb]{cursor:grab;position:relative}/* 보강 블록 끌기(표준 달력) */
 .evcf .evchip.lockred{outline:2.5px solid #C9604A!important;outline-offset:-2.5px!important;z-index:7}
