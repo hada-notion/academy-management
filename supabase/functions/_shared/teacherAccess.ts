@@ -15,6 +15,14 @@ export const TEACHER_BLOCKED_DBS = new Set([
 ])
 // 강사가 쓸 수 없는 DB(읽기는 됨): 강사 DB(계정 아이디 = 연락처가 들어 있음).
 export const TEACHER_NO_WRITE_DBS = new Set([TEACHER_DB, ...TEACHER_BLOCKED_DBS])
+// (대표 261124 "퇴사 직원 로그인 막아줘") 강사 DB `퇴사일`이 오늘(한국 날짜)보다 앞이면 퇴사 — 노션 수식 `재직 상태`와 같은 규칙(퇴사일 당일까지는 재직).
+// 값은 노션 날짜({ start }) · 앱 사본 날짜({ start, end }) · 글자("2026-11-24") 어느 것이든 받는다. 칸이 없거나 비면 재직.
+export const kstToday = (now = Date.now()) => new Date(now + 9 * 3600000).toISOString().slice(0, 10)
+export function teacherLeft(quit: unknown, today = kstToday()): boolean {
+	const s = quit && typeof quit === "object" ? (quit as { start?: unknown }).start : quit
+	return typeof s === "string" && /^\d{4}-\d{2}-\d{2}/.test(s) && s.slice(0, 10) < today
+}
+export const TEACHER_LEFT_MSG = "퇴사 처리된 계정이에요 — 다시 쓰려면 원장에게 퇴사일을 지워 달라고 하세요."
 // 원장만 메뉴: 편집허용에 들어 있어도 강사에게 열지 않는다(화면과 서버 모두).
 export const OWNER_ONLY_MENUS = new Set(["수강료", "청구서", "손익 분석", "결제 · 손익", "법정 서류", "관리자 설정", "메뉴관리"])
 // 메뉴 → 그 메뉴 화면이 읽는 DB · 쓰는 DB. 강사 권한의 한 곳(담당 261123 결정): 서버가 이 표로 거르고,
@@ -129,6 +137,10 @@ export async function teacherSession(provided: string): Promise<Access | null> {
 		throw e
 	}
 	if (s?.kind !== "teacher" || s.must_change) return null // 첫 비밀번호 상태 = 비밀번호 바꾸기(admin-security) 밖은 모두 거절
+	// 퇴사일이 지난 강사는 로그인해 둔 세션도 그날부터 아무것도 못 함(앱 사본의 강사 줄로 — 노션을 부르지 않음)
+	const self = String(s.teacher_id ?? "").replace(/-/g, "")
+	const me = (await listApp(TEACHER_DB as any)).find((r: any) => String(r?.id ?? "").replace(/-/g, "") === self) as { props?: Record<string, unknown> } | undefined
+	if (me && teacherLeft(me.props?.["퇴사일"])) return null
 	const notionUsers = Array.isArray(s.notion_users) ? s.notion_users.map(String) : []
 	const { menus, editMenus } = teacherMenuAccess(await listApp(TEACHER_MENU_DB as any), notionUsers)
 	if (!menus.length) return null // 편집허용 · 댓글허용 어디에도 없으면 세션이 있어도 아무것도 못 함(로그인도 거절 — admin-security)

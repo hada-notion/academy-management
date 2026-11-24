@@ -2,7 +2,7 @@
 // 원장 SQL(hada_security_command)과 강사 SQL(hada_teacher_command)은 작은 모형으로 대신한다. 실제 SQL은 tests/teacher-accounts-sql.cjs(PGlite)가
 // 같은 경우(켜기 · 같은 번호 · 첫 로그인 · 바꾸기 · 강사별 잠김 · 되돌리기 · 끄기)를 시험한다.
 // adminSecurity_test.ts가 이 파일을 불러와 CI(web-checks)에서 함께 돈다.
-import { normalizePhone, teacherMenus, teacherMenuAccess, teacherRouteDeny, teacherAppDeny, maskTeacherRows, requireAccess, teacherWriteDbs, teacherReadDbs, MENU_DBS, TEACHER_ROUTES, TEACHER_BLOCKED_DBS } from "./teacherAccess.ts"
+import { teacherLeft, kstToday, TEACHER_LEFT_MSG, normalizePhone, teacherMenus, teacherMenuAccess, teacherRouteDeny, teacherAppDeny, maskTeacherRows, requireAccess, teacherWriteDbs, teacherReadDbs, MENU_DBS, TEACHER_ROUTES, TEACHER_BLOCKED_DBS } from "./teacherAccess.ts"
 import { sha256 } from "./adminSecurity.ts"
 import { WRITE_DBS } from "./appSave.ts"
 import { APP_DBS } from "./appCopy.ts"
@@ -104,6 +104,7 @@ const TEACHER_ROWS = [
 const TG = "9".repeat(32)
 const TDV = "8".repeat(32)
 const NOTION_USERS: Record<string, string[]> = { [TA]: ["u-a"], [TB]: [], [TG]: ["u-c"], [TDV]: ["u-d"] }
+const LEFT: Record<string, string> = {} // 노션 페이지 모형의 퇴사일(261124)
 type Acc = { teacher_id: string; phone: string; name: string; password_hash: string; must_change: boolean; enabled: boolean; fails: number; locked: boolean; version: number }
 function fakeServer() {
 	const accounts = new Map<string, Acc>(), sessions = new Map<string, { teacher_id: string; version: number; users: string[] }>()
@@ -163,7 +164,7 @@ function fakeServer() {
 			return j(db === "메뉴(학원) DB" ? MENU_ROWS.map((r, i) => ({ id: String(i), ...r })) : db === "강사(학원) DB" ? TEACHER_ROWS : [])
 		}
 		const page = /api\.notion\.com\/v1\/pages\/([0-9a-f-]+)/.exec(url)
-		if (page) { const id = page[1].replace(/-/g, ""); return j({ object: "page", id, properties: { "노션 계정": { type: "people", people: (NOTION_USERS[id] ?? []).map((u) => ({ id: u })) } } }) }
+		if (page) { const id = page[1].replace(/-/g, ""); return j({ object: "page", id, properties: { "노션 계정": { type: "people", people: (NOTION_USERS[id] ?? []).map((u) => ({ id: u })) }, "퇴사일": { type: "date", date: LEFT[id] ? { start: LEFT[id], end: null } : null } } }) }
 		return j({ error: "모형에 없는 주소 " + url }, 404)
 	}) as typeof fetch
 	return { accounts, sessions, calls, fetchFake }
@@ -363,4 +364,27 @@ Deno.test("teacher: 첫 로그인 뒤에도 비밀번호 바꾸기 — 현재 �
 	eq((await login("01012345678", "teacher-pass-a2")).status, 200)
 	eq((await change("teacher-pass-a2", "x", "")).status, 401) // 세션 없이는 못 바꿈
 	eq(srv.accounts.get(TA)!.must_change, false)
+}))
+
+Deno.test("퇴사 강사(261124): 퇴사일 당일까지 재직, 다음 날부터 로그인 거절 · 로그인해 둔 세션도 끊김", () => withServer(async (srv) => {
+	// 규칙: 노션 수식 `재직 상태`와 같음 — 날짜 · 앱 사본 · 노션 날짜 모양 모두
+	eq([teacherLeft("2026-11-23", "2026-11-24"), teacherLeft("2026-11-24", "2026-11-24"), teacherLeft({ start: "2026-11-25" }, "2026-11-24"), teacherLeft({ start: "2026-11-01", end: null }, "2026-11-24"), teacherLeft(null), teacherLeft(""), teacherLeft("엉뚱")], [true, false, false, true, false, false, false])
+	eq(kstToday(Date.UTC(2026, 10, 23, 15, 30)), "2026-11-24") // 한국 0시 30분 = 그날
+	eq((await sec({ action: "teacher-enable", teacher_id: TA }, OWNER)).status, 200)
+	const s1 = (await login("01012345678", "01012345678")).body.session as string
+	eq((await change("01012345678", "teacher-pass-1", s1)).status, 200)
+	const s2 = (await login("01012345678", "teacher-pass-1")).body.session as string
+	assert(!((await access("app-api", s2)) instanceof Response)) // 재직: 들어감
+	const row = TEACHER_ROWS[0] as { props: Record<string, unknown> }
+	try {
+		row.props["퇴사일"] = { start: kstToday(), end: null } // 오늘 퇴사 = 오늘까지 재직
+		assert(!((await access("app-api", s2)) instanceof Response))
+		row.props["퇴사일"] = { start: "2000-01-01", end: null }; LEFT[TA] = "2000-01-01"
+		eq(((await access("app-api", s2)) as Response).status, 401) // 로그인해 둔 세션도 다음 요청부터 거절
+		const again = await login("01012345678", "teacher-pass-1")
+		eq([again.status, again.body.error], [403, TEACHER_LEFT_MSG]) // 번호 · 비밀번호가 맞아도 세션 안 만듦
+		eq(srv.accounts.get(TA)!.fails, 0) // 틀린 비밀번호가 아니므로 잠금 횟수에 안 넣음
+		delete row.props["퇴사일"]; delete LEFT[TA]
+		eq((await login("01012345678", "teacher-pass-1")).status, 200) // 퇴사일을 지우면 다시 됨
+	} finally { delete row.props["퇴사일"]; delete LEFT[TA] }
 }))
