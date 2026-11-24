@@ -53,6 +53,7 @@ const APPMAP = {
 		row: (r, X, p = r.props) => ({
 			id: r.id, name: X.str(p["이름"]), role: X.str(p["직책"]), phone: X.str(p["연락처"]),
 			days: APP_DAYS.filter((d) => X.arr(p["출근 요일"]).includes(d)).join(","),
+			hire: X.d(p["입사일"]), quit: X.d(p["퇴사일"]), // 261124: 재직 상태는 노션 수식 — 앱은 같은 규칙으로 계산(tStat)
 		}),
 	},
 	areas: {
