@@ -1852,7 +1852,7 @@ function stuTodoRowIn(x,tab,ago,nm,firstEn){{let r="",sub="";
     else if(tab==="info"){r=`<span class="r w">${stuMiss(x).join(" · ")}</span>`;sub=[(STU_ST[stuStat(x)]||[""])[0],x.inq?`${md(x.inq)} 문의`:""].filter(Boolean).join(" · ")}
     else{const e=firstEn(x);r=`<span class="r">${e?esc((cls(e.classId)||{name:""}).name):""}</span>`;sub=e?`등록일 ${md(e.start)} · ${dAgo(e.start)<0?`${-dAgo(e.start)}일 뒤 시작`:""}`:""}
     return `<span class="tdr2"><span class="tdr2a">${nm(x)}${r}</span>${sub?`<span class="tdr2b">${sub}</span>`:""}</span>`}}
-const STU_TODO_FOOT=()=>`<div class="actions"><button class="btn" id="tdFormLink" title="학부모에게 보낼 상담 신청서 주소를 복사해요">${IC("link","s")}신청서 링크 복사</button><span class="sp"></span><button class="btn" id="tdAdd">${IC("plus","s")}학생 추가</button></div>`;
+const STU_TODO_FOOT=()=>`<div class="actions"><span class="sp"></span><button class="btn" id="tdAdd">${IC("plus","s")}학생 추가</button></div>`;
 /* 신청서 도착 시험 줄(시제품) — 옛 학생 할 일 창과 학생1이 같이 씀 */
 function stuFormArrive(){const N=["한서윤","오지호","배하율","문시우","권도아"],S=[["하다중","중1"],["바다초","초5"],["푸른중","중2"]];const i=DB.students.length%N.length,sc=S[i%S.length];const d=new Date();d.setMonth(d.getMonth()+1,1);
   const x={id:uid("st"),name:N[i],school:sc[0],grade:sc[1],route:"상담 신청서",consent:true,pre:"어머니",mom:"010-0000-19"+String(10+i),dad:"",sp:"",gp:"",gprel:"",hold:false,memo:"토요일 오전 상담 희망(신청서 추가 전달사항)",hope:d.toISOString().slice(0,10),inq:nowStamp(),unseen:true,rcpt:nowStamp()};
@@ -2588,7 +2588,7 @@ function attGridRows(){const [y,mo]=curM().split(".").map(Number),ym=`${y}-${Str
     const all=Object.values(day).flat();return {id:"la"+e.id,e,day,P:all.filter(g=>g==="○").length,A:all.filter(g=>g==="×").length,K:all.filter(g=>g==="△").length}})}
 function renderAcademy(v){cardScreen(v,{title:"학원 정보",scr:"academy",help:"이 학원의 이름·웹 화면 주소·도장·버전이에요. 주소는 학원마다 달라요.",boxes:[
   {icon:"home",title:"학원",help:"학원 이름은 노션 첫 페이지 제목이에요. 노션에서 그 제목을 바꾸면 관리 앱 맨 위·키오스크 이름이 따라 바뀌어요. 주소·전화는 이 시스템이 쓰지 않아 따로 두지 않아요.",rows:[["학원 이름","<b>하다 학원관리 v2.0</b>",cbtn("notionTitle","노션에서 바꾸기","notion")]]},
-  {icon:"link",title:"웹 화면 주소",rows:[["관리 앱","이 화면",cbtn("copy:관리 앱","주소 복사","copy")],["상담 신청서","학부모에게 보내는 신청서 — 내면 학생 화면 신규문의로 들어와요",cbtn("copy:상담 신청서","주소 복사","copy")],/* 378판 F-009 */["키오스크","등·하원 체크 — 학원 입구 기기에서 열어요",cbtn("open:키오스크","열기","ext")],["학부모 리포트","학생마다 주소가 달라요 — 수강 창 [리포트 열기]",""]]},
+  {icon:"link",title:"웹 화면 주소",rows:[["관리 앱","이 화면",cbtn("copy:관리 앱","주소 복사","copy")],/* 378판 F-009 */["키오스크","등·하원 체크 — 학원 입구 기기에서 열어요",cbtn("open:키오스크","열기","ext")],["학부모 리포트","학생마다 주소가 달라요 — 수강 창 [리포트 열기]",""]]},
   {icon:"award",title:"학원 도장",help:"영수증의 (서명 또는 인) 자리에 찍히는 도장 그림이에요. 배경이 투명한 PNG가 가장 깔끔해요. 이 기기에만 저장돼요(시제품).",rows:[["도장",stampOf()?`<img class="stampv" alt="학원 도장" src="${stampOf()}">`:'<span class="hint">아직 올린 도장이 없어요</span>',cbtn("stampUp",stampOf()?"바꾸기":"올리기","ul")+(stampOf()?cbtn("stampRm","삭제","trash"):"")]]},
   {icon:"info",title:"버전",help:"업데이트 번호예요. 학원 이름에 붙은 v2.0은 노션 제품 이름이라 업데이트 번호와 따로예요.",rows:[["업데이트 버전","v2.8.0",cbtn("ver","업데이트 확인","rotc")],["마지막 업데이트","2026.11.10",""]]},
   {icon:"notion",title:"노션 연결",rows:[["워크스페이스","하다 예시 학원",""],["연결 상태",'<span class="tag g">연결됨</span>',cbtn("ping","다시 확인","rotc")]]}]})}
@@ -4199,7 +4199,7 @@ Object.assign(LISTS.students,{subs:STU1_SUBS,/* 화면 단위 설정(보기 탭�
   todo:()=>{const T=stuTodoL();return [["new","신규문의"],["info","정보 누락"],["pre","등록 전"]].map(([k,n])=>({k,name:n,why:STU_TODO_HELP[k],rows:T[k],lab:x=>stuTodoRow(x,k),ltab:k==="pre"?"en":null}))},
   todoFoot:()=>STU_TODO_FOOT(),
   todoBind:(p,t,v)=>{const st=t.state;const a=p.querySelector("#tdAdd");if(a)a.onclick=()=>{const b=v.querySelector("#addRow");if(b)b.click()};
-    const fl=p.querySelector("#tdFormLink");if(fl)fl.onclick=()=>toast("상담 신청서 주소를 복사했어요(시제품: 주소 없음)");
+    
     const tf=p.querySelector("#tdForm");if(tf)tf.onclick=()=>{const x=stuFormArrive();st.sub="new";render();toast(`${x.name} — 상담 신청서로 문의가 들어왔어요 · 접수 안내 알림톡이 저절로 나갔어요(시제품: 보내지 않음)`)}}});
 const STU1_WHY={on:"수강 중인 등록이 있어요.",pre:"가장 최근 등록이 아직 시작 전이에요(등록일이 미래).",new:"등록이 없어요. 등록을 생성하면 바뀌어요.",hold:"[등록 보류]가 켜져 있어요. 끄면 등록에 따라 다시 정해져요.",end:"수강 중인 등록이 없고, 가장 최근 등록이 끝났어요.",err:"등록 날짜가 맞지 않아요. 등록을 열어 날짜를 고쳐 주세요."};
 const STU1_HEAD=x=>{const k=stuStat(x),s0=stuStart(x),e0=stuEnd(x);return {name:x.name||"새 학생",icon:IC("user"),chipsHtml:stPill(k),help:"등록상태는 자동이에요. "+(STU1_WHY[k]||"")+" 손으로 바꾸는 것은 [등록 보류]뿐이에요.",belong:`${x.school||"학교 빈칸"} ${x.grade||"학년 빈칸"}`,info:[s0?`${D10(s0)} - ${e0?D10(e0):"현재"}`:"",k==="on"||k==="pre"?"수강 "+DB.enrolls.filter(e=>!e.del&&!e.ended&&e.studentId===x.id).length+"개":"",x.route==="상담 신청서"?"신청서":""].filter(Boolean)}};
