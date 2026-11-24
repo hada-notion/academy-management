@@ -272,6 +272,8 @@ export async function createSendLogEntry(args: {
   textbookCartId?: string
   // (v2.8.0) 가정통신문 페이지 id. 전송로그 "가정통신문" 관계를 채워 가정통신문 "전송 내역"이 이 로그를 찾게 한다.
   letterId?: string
+  // (v2.8.0, 11/25) 일정 페이지 id(상담 일정 안내). 전송로그 "일정" 관계를 채워 일정 "전송 내역"이 이 로그를 찾게 한다.
+  eventId?: string
   senderUserId?: string
   attendanceType?: "등원" | "하원"
   title: string
@@ -314,6 +316,9 @@ export async function createSendLogEntry(args: {
     if (args.letterId) {
       properties["가정통신문"] = { relation: [{ id: args.letterId }] }
     }
+    if (args.eventId) {
+      properties["일정"] = { relation: [{ id: args.eventId }] }
+    }
     if (args.senderUserId) {
       properties["발송자"] = { people: [{ id: args.senderUserId }] }
     }
@@ -329,7 +334,7 @@ export async function createSendLogEntry(args: {
       properties["실패 사유"] = { rich_text: [{ text: { content: String(args.failReason).slice(0, 1900) } }] }
     }
 
-    const res = await fetchWithRetry(NOTION_API_BASE + "/pages", {
+    const post = () => fetchWithRetry(NOTION_API_BASE + "/pages", {
       method: "POST",
       headers: notionHeaders(),
       body: JSON.stringify({
@@ -337,6 +342,14 @@ export async function createSendLogEntry(args: {
         properties,
       }),
     })
+    let res = await post()
+    // (11/25) 전송로그에 `일정` 칸이 아직 없는 학원(코드 먼저 배포)은 그 칸만 빼고 다시 기록한다(로그가 통째로 빠지지 않게).
+    if (!res.ok && res.status === 400 && properties["일정"]) {
+      const text = await res.text()
+      console.error("전송로그 기록 실패(일정 칸 빼고 다시):", res.status, text)
+      delete properties["일정"]
+      res = await post()
+    }
     if (!res.ok) {
       console.error("전송로그 기록 실패:", res.status, await res.text())
     }
