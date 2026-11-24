@@ -40,7 +40,7 @@ window.liveModeFor = function (search, hostname, protocol) {
     (typeof tabs !== "undefined" ? tabs : []).forEach(fix); if (typeof activeTab !== "undefined") fix(activeTab);
   } catch (_) {}
   /* 보기만(P2 보기 칸): 이 칸의 화면은 노션 값을 보여 주기만 한다. 쓰는 단추는 끄고, 창의 칸은 잠그고, 그래도 값이 바뀌면 그 자리에서 되돌린다.
-     고칠 것은 창 위 [노션에서 열기]로. (이 묶음들은 저장 층 대상이 아니라 노션에 갈 길도 없다) */
+     고칠 것은 창 머리 [N](노션)으로. (이 묶음들은 저장 층 대상이 아니라 노션에 갈 길도 없다) */
   /* 0단계(대표 261117): 입력 칸(P1) 안에서도 노션 버튼 · 서버 동작이 따로 있는 화면은 보기만 — 라이브러리(교재 등록 = 서버가 단원까지) · 학교(학교 검색 = 학교 코드까지). 261123 학교 검색 · 학사일정 가져오기는 앱에서(liveschool.js) — 학교 칸 고치기만 보기만 */
   /* 일정 쓰기(칸 P2e — 화면 묶음 없음, P2와 함께 켤 때만, 261119 원본검수 Z2): 켜면 일정 화면은 보기만에서 빠지고 저장 층(appsave events)으로 노션에 씀. 꺼져 있으면 보기만 */
   const EVW = gOn.has("P2") && gOn.has("P2e"); window.LIVE_EVW = EVW;
@@ -101,12 +101,7 @@ window.liveModeFor = function (search, hostname, protocol) {
     /* 창 안의 누르는 것은 이동(RO_PASS)만 남기고 모두 끈다: 전송 · 삭제 · 생성 · 저장 · 켜고 끄기 · 고르기 */
     /* 화면 위 줄 · 달력 · 창 어디든: 허용 목록(이동 · 보기 바꾸기 · 찾기 · 인쇄 · 입력 칸 저장 단추)에 없는 단추는 모두 끈다 — 새 단추가 생겨도 기본이 꺼짐 */
     q("#view button,#view .hf-box,#view select").forEach((b) => { if (b.closest(roPass()) || recFree(b)) return; if ("disabled" in b) b.disabled = true; b.setAttribute("aria-disabled", "true"); b.title = why; });
-    const p = document.querySelector(".panel"), id = String((activeTab.state || {}).sel || "");
-    if (p && /^[0-9a-f-]{32,36}$/i.test(id) && !p.querySelector(".ro-note")) {
-      const n = document.createElement("div"); n.className = "ro-note";
-      n.innerHTML = `<a href="https://www.notion.so/${id.replace(/-/g, "")}" target="_blank" rel="noopener">노션에서 열기</a>`;
-      const body = p.querySelector(".pbody"); body ? body.insertBefore(n, body.firstChild) : p.appendChild(n);
-    }
+    /* 창 안 [노션에서 열기] 링크는 두지 않는다 — 창 머리 [N]이 같은 페이지를 연다(대표 261124 "여기도 중복 아냐?", 같은 일 단추는 하나) */
   };
   const roLock = () => {
     const t = typeof activeTab !== "undefined" ? activeTab : null, scr = liveScr(t), on = !!(t && window.LIVE && window.LIVE.loaded && RO.has(scr));
