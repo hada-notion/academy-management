@@ -88,11 +88,14 @@
   // 6. 줄 목록: 이름 ……… 정보 · 꼬리표 ›
   //   줄 = {attr(누를 때 쓸 속성 글자, 예: data-gobook="id"), title(툴팁), cls(덧붙는 클래스), check{attr,on}(체크 줄), lead(앞 그림 HTML), dot(색), t(이름), sub(정보 글) | subHtml, tag(꼬리표), trail(뒤 알약 HTML), arrow(false = 이동 없음)}
   //   empty = 빈 목록 안내 글 · opt = {ro(보기만 하는 목록), emptyRow(빈 목록도 목록 틀 안의 한 줄로)}
+  const ROW_STACK = 28;
   function rows(rs, empty, opt) {
     opt = opt || {};
     const arrow = typeof IC === "function" ? IC("right", "s") : IC_.rightc;
     if (!rs.length) return opt.emptyRow ? `<div class="ttrows${opt.ro ? " ro" : ""}"><div class="ttrow ro"><span class="t none">${esc(empty || "없음")}</span></div></div>` : `<div class="hint">${esc(empty || "아직 없어요")}</div>`;
-    return `<div class="ttrows${opt.ro ? " ro" : ""}">${rs.map(r => { const tag = r.check ? "label" : "div"; return `<${tag} class="ttrow${r.cls ? " " + esc(r.cls) : ""}"${r.attr ? " " + r.attr : r.go ? ` data-go="${esc(r.go)}"` : ""}${r.title ? ` title="${esc(r.title)}"` : ""}>${r.check ? `<input type="checkbox" ${r.check.attr || ""} ${r.check.on ? "checked" : ""}>` : ""}${r.lead || ""}${r.dot ? `<i class="cdot" style="background:${esc(r.dot)}"></i>` : ""}<span class="t">${esc(r.t)}</span>${r.subHtml != null ? `<span class="hint">${r.subHtml}</span>` : r.sub != null ? `<span class="hint">${esc(r.sub)}</span>` : ""}${r.tag ? `<span class="tag">${esc(r.tag)}</span>` : ""}${r.trail || ""}${r.arrow === false || r.check ? "" : arrow}</${tag}>`; }).join("")}</div>`;
+    /* 이름 + 정보 글이 합쳐 길면(ROW_STACK자 넘음) 이름 = 첫 줄 · 정보 = 아래 줄(이름이 세 줄로 꺾이지 않게, 관리앱-기준.md "줄 목록 글") */
+    const subTxt = r => r.subHtml != null ? String(r.subHtml).replace(/<[^>]*>/g, "") : r.sub != null ? String(r.sub) : "";
+    return `<div class="ttrows${opt.ro ? " ro" : ""}">${rs.map(r => { const tag = r.check ? "label" : "div"; const st = !!(r.stack || (subTxt(r) && String(r.t || "").length + subTxt(r).length > ROW_STACK)); return `<${tag} class="ttrow${st ? " stack" : ""}${r.cls ? " " + esc(r.cls) : ""}"${r.attr ? " " + r.attr : r.go ? ` data-go="${esc(r.go)}"` : ""}${r.title ? ` title="${esc(r.title)}"` : ""}>${r.check ? `<input type="checkbox" ${r.check.attr || ""} ${r.check.on ? "checked" : ""}>` : ""}${r.lead || ""}${r.dot ? `<i class="cdot" style="background:${esc(r.dot)}"></i>` : ""}${st ? `<span class="tt2">` : ""}<span class="t">${esc(r.t)}</span>${r.subHtml != null ? `<span class="hint">${r.subHtml}</span>` : r.sub != null ? `<span class="hint">${esc(r.sub)}</span>` : ""}${st ? "</span>" : ""}${r.tag ? `<span class="tag">${esc(r.tag)}</span>` : ""}${r.trail || ""}${r.arrow === false || r.check ? "" : arrow}</${tag}>`; }).join("")}</div>`;
   }
   // 6-3. 반복 줄 칸(보기 ↔ 편집): 학생마다 · 항목마다 같은 칸이 줄로 반복되는 묶음(시험 성적 등). 기준 관리앱-기준.md 5장 "반복 줄 칸"
   //   평소 = 정돈된 글(머리줄에 칸 이름 한 번, 숫자 오른쪽 정렬, 빈 값 "—"), 묶음 머리 [ㅇㅇ 편집] → 모든 줄이 입력칸(같은 열 폭) · [취소] [✓ 편집 완료]
