@@ -179,6 +179,7 @@ const APPSAVE = {
 		props: (r, X) => ({
 			"이름": X.str(r.name), "직책": X.str(r.role), "연락처": X.str(r.phone),
 			"출근 요일": APPS_DAYS.filter((d) => X.str(r.days).split(",").map((s) => s.trim()).includes(d)),
+			"입사일": X.range(r.hire), "퇴사일": X.range(r.quit), // 261124: 재직 상태(수식)는 보내지 않음 · 바뀐 칸만 감
 		}),
 	},
 	seasons: {
