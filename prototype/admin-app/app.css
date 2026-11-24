@@ -3593,3 +3593,16 @@ html:root .lj .ljh,html:root .lj dl{font-size:12px}
 .ttrow.stack .tt2{flex:1;min-width:0;display:flex;flex-direction:column;gap:var(--gap-in)}
 .ttrow.stack .tt2 .t{font-size:var(--text-label);font-weight:600;line-height:1.4;color:var(--ink)}
 .ttrow.stack .tt2 .hint{font-size:var(--text-caption);line-height:1.4;text-align:left}
+/* 단추 글자는 꺾지 않는다(대표 261124 "성적 편집"이 두 줄) — 구역 제목 줄에 자리가 모자라면 단추 묶음이 통째로 다음 줄 오른쪽 끝으로 */
+.btn,.lnk,.ptb,.tdsb,.pill,.tag,.spill,.kchip,.link-chip{white-space:nowrap}
+.box h3{flex-wrap:wrap;row-gap:var(--space-1)}
+.box h3:has(>.sp){justify-content:flex-end}/* 제목 줄 첫 줄은 .sp가 빈자리를 채우고, 다음 줄로 내려간 단추는 오른쪽 끝 */
+/* 반복 줄 칸 [편집] = 연필 아이콘 단추 32(테두리 없이, 올리면 바탕) — 구역 제목 줄의 다른 아이콘 단추와 같은 크기 */
+.box h3 .btn.icon.rged{width:32px;height:32px;border:0;box-shadow:none;background:none;color:var(--muted)}.box h3 .btn.icon.rged:hover{background:var(--field-bg);color:var(--ink)}.box h3 .btn.icon.rged svg.i{width:16px;height:16px}
+/* 창 아래 줄 아이콘 단추(삭제 · 저장): 40 정사각, 아이콘 18 — 저장은 진한 바탕 그대로, 고친 수 알약은 오른쪽 위 */
+.actions .btn.fic{width:40px;min-width:40px;height:40px;padding:0;justify-content:center;position:relative}.actions .btn.fic svg.i{width:18px;height:18px;margin:0}
+.actions .btn.fic .cnt{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--brand-deep);color:#fff;font-size:11px;line-height:18px;font-weight:700}
+/* 261124 눈 검수: A 마지막 구역 아래 선 없음(뒤에 오는 것이 없는데 선만 남던 것) · D 할 일 칩 줄 (?)는 늘 오른쪽 끝 · 보강 카드 머리 (?) 오른쪽 */
+.panel .box:not(:has(~ .box)){border-bottom:0}
+.tdsubs>.qhelp{margin-left:auto}
+.hp-todo .sp{flex:1}

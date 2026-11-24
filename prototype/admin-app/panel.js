@@ -92,7 +92,7 @@
   function rows(rs, empty, opt) {
     opt = opt || {};
     const arrow = typeof IC === "function" ? IC("right", "s") : IC_.rightc;
-    if (!rs.length) return opt.emptyRow ? `<div class="ttrows${opt.ro ? " ro" : ""}"><div class="ttrow ro"><span class="t none">${esc(empty || "없음")}</span></div></div>` : `<div class="hint">${esc(empty || "아직 없어요")}</div>`;
+    if (!rs.length) return opt.emptyRow ? `<div class="ttrows${opt.ro ? " ro" : ""}"><div class="ttrow ro"><span class="t none">${esc(empty || "없음")}</span></div></div>` : `<div class="hint empty">${esc(empty || "아직 없어요")}</div>`;
     /* 이름 + 정보 글이 합쳐 길면(ROW_STACK자 넘음) 이름 = 첫 줄 · 정보 = 아래 줄(이름이 세 줄로 꺾이지 않게, 관리앱-기준.md "줄 목록 글") */
     const subTxt = r => r.subHtml != null ? String(r.subHtml).replace(/<[^>]*>/g, "") : r.sub != null ? String(r.sub) : "";
     return `<div class="ttrows${opt.ro ? " ro" : ""}">${rs.map(r => { const tag = r.check ? "label" : "div"; const st = !!(r.stack || (subTxt(r) && String(r.t || "").length + subTxt(r).length > ROW_STACK)); return `<${tag} class="ttrow${st ? " stack" : ""}${r.cls ? " " + esc(r.cls) : ""}"${r.attr ? " " + r.attr : r.go ? ` data-go="${esc(r.go)}"` : ""}${r.title ? ` title="${esc(r.title)}"` : ""}>${r.check ? `<input type="checkbox" ${r.check.attr || ""} ${r.check.on ? "checked" : ""}>` : ""}${r.lead || ""}${r.dot ? `<i class="cdot" style="background:${esc(r.dot)}"></i>` : ""}${st ? `<span class="tt2">` : ""}<span class="t">${esc(r.t)}</span>${r.subHtml != null ? `<span class="hint">${r.subHtml}</span>` : r.sub != null ? `<span class="hint">${esc(r.sub)}</span>` : ""}${st ? "</span>" : ""}${r.tag ? `<span class="tag">${esc(r.tag)}</span>` : ""}${r.trail || ""}${r.arrow === false || r.check ? "" : arrow}</${tag}>`; }).join("")}</div>`;
@@ -111,7 +111,7 @@
     opt = opt || {}; const ic = (n) => (typeof IC === "function" ? IC(n, "s") : "");
     if (opt.off) return "";
     return RG[key] ? `<button type="button" class="lnk" data-rgx="${esc(key)}" title="편집을 시작하기 전 값으로 되돌려요">취소</button><button type="button" class="btn sm pri rgok" data-rgok="${esc(key)}" title="입력칸을 닫아요 — 노션에는 [저장]으로 들어가요">${ic("check")}편집 완료</button>`
-      : `<button type="button" class="lnk" data-rged="${esc(key)}" title="${esc(label)} 칸을 한꺼번에 편집해요">${ic("pen")}${esc(label)} 편집</button>`;
+      : `<button type="button" class="btn icon rged" data-rged="${esc(key)}" aria-label="${esc(label)} 편집" title="${esc(label)} 편집 — 칸을 한꺼번에 편집해요">${ic("pen")}</button>`;/* 편집 = 연필 아이콘만(대표 261124 "편집같은거는 아이콘만"), 이름은 마우스를 올리면 */
   }
   function rgrid(s) {
     const ed = !!s.always || !!RG[s.key], cols = s.cols || [];
@@ -153,10 +153,11 @@
   }, true);
   // 10. 아래 단추줄: 삭제 ……… 되돌리기 · ○○ 저장
   // 아래 줄 재료: 줄 창 = del · undo · save(+ ids, count) / 작업 창 = hint · back{id,label} · go{id,label,icon,off,title,count}
+  /* 창 아래 줄: [삭제] · [ㅇㅇ 저장]은 모든 창에 되풀이되는 기능이라 아이콘 단추(이름은 마우스를 올리면, 대표 261124 "반복적으로 나타나는 기능 저장 편집 등은 아이콘으로"). 보내기 · 생성 같은 일은 글자 그대로 */
   function foot(f) {
     if (!f) return "";
     const id = f.ids || {}, ic = Object.assign({}, IC_, f.icons || {}); const at = (k, t) => `${id[k] ? ` id="${id[k]}"` : ""}${t ? ` title="${esc(t)}"` : ""}`;
-    return `<div class="actions">${f.hint ? (typeof HELP === "function" ? HELP(f.hint) : `<span class="hint">${esc(f.hint)}</span>`) : ""}${f.del ? `<button class="btn danger" type="button"${at("del", f.delTitle || "이 줄 삭제(저장 전까지 되돌릴 수 있어요)")}${f.delOff ? " disabled" : ""}>${f.delIcon != null ? f.delIcon : ic.trash}${esc(f.delLabel || "삭제")}</button>` : ""}${f.back ? `<button class="btn" type="button"${f.back.id ? ` id="${esc(f.back.id)}"` : ""}>${esc(f.back.label || "취소")}</button>` : ""}${f.left || ""}<span class="sp"></span>${f.extra || ""}${f.undo ? `<button class="btn icon" type="button"${at("undo", f.undoTitle || "저장 상태로 되돌리기")}>${ic.undo}</button>` : ""}${f.save ? `<button class="btn big ${f.primary ? "pri" : "rowsave"}" type="button"${at("save", f.saveTitle || "이 줄에서 고친 것만 바로 저장해요. 다른 줄까지 모두 저장하려면 위 [저장]을 눌러요")} ${f.saveOn ? "" : "disabled"}>${ic.save}${esc(f.save)}${f.count ? ` <span class="cnt">${esc(f.count)}</span>` : ""}</button>` : ""}${f.go ? `<button class="btn pri big" type="button"${f.go.id ? ` id="${esc(f.go.id)}"` : ""}${f.go.title ? ` title="${esc(f.go.title)}"` : ""}${f.go.off ? " disabled" : ""}>${f.go.icon || ""}${esc(f.go.label)}${f.go.count ? ` <span class="cnt">${esc(f.go.count)}</span>` : ""}</button>` : ""}</div>`;
+    return `<div class="actions">${f.hint ? (typeof HELP === "function" ? HELP(f.hint) : `<span class="hint">${esc(f.hint)}</span>`) : ""}${f.del ? `<button class="btn danger icon fic" type="button" aria-label="${esc(f.delLabel || "삭제")}"${at("del", (f.delLabel || "삭제") + " — " + (f.delTitle || "이 줄 삭제(저장 전까지 되돌릴 수 있어요)"))}${f.delOff ? " disabled" : ""}>${f.delIcon != null && f.delIcon !== "" ? f.delIcon : ic.trash}</button>` : ""}${f.back ? `<button class="btn" type="button"${f.back.id ? ` id="${esc(f.back.id)}"` : ""}>${esc(f.back.label || "취소")}</button>` : ""}${f.left || ""}<span class="sp"></span>${f.extra || ""}${f.undo ? `<button class="btn icon" type="button"${at("undo", f.undoTitle || "저장 상태로 되돌리기")}>${ic.undo}</button>` : ""}${f.save ? `<button class="btn big icon fic ${f.primary ? "pri" : "rowsave"}" type="button" aria-label="${esc(f.save)}"${at("save", f.save + " — " + (f.saveTitle || "이 줄에서 고친 것만 바로 저장해요. 다른 줄까지 모두 저장하려면 위 [저장]을 눌러요"))} ${f.saveOn ? "" : "disabled"}>${ic.save}${f.count ? `<span class="cnt">${esc(f.count)}</span>` : ""}</button>` : ""}${f.go ? `<button class="btn pri big" type="button"${f.go.id ? ` id="${esc(f.go.id)}"` : ""}${f.go.title ? ` title="${esc(f.go.title)}"` : ""}${f.go.off ? " disabled" : ""}>${f.go.icon || ""}${esc(f.go.label)}${f.go.count ? ` <span class="cnt">${esc(f.go.count)}</span>` : ""}</button>` : ""}</div>`;
   }
   // 9. 선택 전 = 할 일 창
   // 9. 선택 전 = 할 일 창(299판 연결: 앱 todoPanel도 이 함수 하나로 그림)
