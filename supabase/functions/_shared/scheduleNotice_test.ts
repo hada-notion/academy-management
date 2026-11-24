@@ -64,8 +64,8 @@ function mock(pages: Record<string, any>, o: { academy?: any[]; regs?: any[]; al
 		update: async (id: string, props: any) => { c.updates.push({ id, props }); if (props["마지막 오류"] && pages[id]) pages[id].properties["마지막 오류"] = { type: "rich_text", rich_text: props["마지막 오류"].rich_text.map((t: any) => ({ plain_text: t.text.content })) } },
 		fullRelationIds: async (page: any, name: string) => (page.properties?.[name]?.relation ?? []).map((r: any) => r.id),
 		enqueue: async (target: string, payload: any) => { c.enq.push({ target, payload }) },
-		send: async (code: string, regId: string, _phone: string, vars: any) => { if (o.sendThrows) throw o.sendThrows; c.sends.push({ code, regId, vars }) },
-		log: async (a: any) => { c.logs.push({ cat: a.category, status: a.status, reg: a.registrationId }) },
+		send: async (code: string, regId: string, _phone: string, vars: any, _cfg?: string, opts: any = {}) => { if (o.sendThrows) throw o.sendThrows; c.sends.push({ code, regId, vars, ...(opts.studentId ? { studentId: opts.studentId } : {}) }) },
+		log: async (a: any) => { c.logs.push({ cat: a.category, status: a.status, reg: a.registrationId, ...(a.studentId ? { stu: a.studentId } : {}) }) },
 		botUser: async () => null,
 		markRunning: async (id: string) => { c.marks.push(`running:${id}`) },
 		markDone: async (id: string) => { c.marks.push(`done:${id}`) },
@@ -119,6 +119,42 @@ Deno.test("v2.8.0 일정 안내(학생): 학생 이름을 넣어 보내고, 마�
 	eq(c.sends[0].vars["#{학생이름}"], "김하윤")
 	eq(c.updates.at(-1), { id: "e1", props: { "일정 안내 일시": { date: { start: "2026-11-03" } } } })
 	eq(c.marks, ["done:e1"])
+})
+
+Deno.test("v2.8.0 상담 일정 안내(11/24): 등록 전 학생은 학생 연락처로, 등록 있는 학생·반은 그대로, 상담 아니면 그대로 거절", async () => {
+	const stu = (id: string, regs: string[] = [], name = "") => ({ id, properties: { "학생이름": title(name), "등록": rel(...regs) } })
+	// 등록 없는 학생만 연결된 상담 일정 → 학생 1건(regId "", studentId)
+	const pages: Record<string, any> = { e1: ev("e1", { name: "입학 상담", start: "2026-11-26T15:00:00+09:00", stu: ["s9"], label: "상담" }), s9: stu("s9", [], "이서준") }
+	const c = mock(pages)
+	await m.processScheduleEventItem({ eventId: "e1" })
+	eq(c.enq.map((e) => [e.payload.regId, e.payload.studentId, e.payload.last]), [["", "s9", true]])
+	eq(c.marks, ["running:e1"])
+	// 종료된 등록만 있는 학생도 등록 전과 같다. 등록 있는 학생·반 학생과 섞이면 학생마다 한 번.
+	const p2: Record<string, any> = {
+		e1: ev("e1", { name: "상담", start: "2026-11-26", stu: ["s1", "s8", "s9"], cls: ["cls"], label: "상담" }),
+		s1: stu("s1", ["r1"]), r1: reg("r1", "s1", "김하윤"), s8: stu("s8", ["r8"]), r8: reg("r8", "s8", "최유나", false), s9: stu("s9"),
+	}
+	const c2 = mock(p2, { regs: [reg("r1", "s1", "김하윤"), reg("r2", "s2", "박지민")] })
+	await m.processScheduleEventItem({ eventId: "e1" })
+	eq(c2.enq.map((e) => [e.payload.regId, e.payload.studentId ?? null]), [["r1", null], ["r2", null], ["", "s8"], ["", "s9"]])
+	eq(c2.enq.map((e) => !!e.payload.last), [false, false, false, true])
+	// 반 수강생이 등록 전 학생과 겹칠 수 없다(등록이 있으면 수강 중) — 반에도 있는 학생은 등록으로 한 번만.
+	// 상담 아닌 일정에 등록 없는 학생만 → 지금처럼 "수강 중인 학생이 없습니다"(학생 연락처로 보내지 않음).
+	const c3 = mock({ e1: ev("e1", { name: "보충", start: "2026-11-26", stu: ["s9"] }), s9: stu("s9") })
+	await m.processScheduleEventItem({ eventId: "e1" })
+	eq([c3.enq.length, c3.marks[1]], [0, "error:e1:연결된 학생·클래스에 수강 중인 학생이 없습니다."])
+	// 학생 1건 처리: 학생 페이지 이름으로, 학생 연락처로 보내고 전송로그는 학생에, 마지막이면 ✅
+	const p4: Record<string, any> = { s9: stu("s9", [], "이서준"), e1: { id: "e1", properties: { "마지막 오류": rt("") } } }
+	const c4 = mock(p4)
+	await m.processScheduleEventStudentItem({ eventId: "e1", regId: "", studentId: "s9", vars: { "#{전달사항}": "없음" }, dateStart: "2026-11-26", last: true })
+	eq(c4.sends, [{ code: "일정 안내", regId: "", vars: { "#{전달사항}": "없음", "#{학생이름}": "이서준" }, studentId: "s9" }])
+	eq(c4.logs, [{ cat: "일정 안내", status: "성공", reg: undefined, stu: "s9" }])
+	eq(c4.marks, ["done:e1"])
+	// 연락처가 없으면 전송로그 없이 일정에 오류를 적고 ⚠️
+	const p5: Record<string, any> = { s9: stu("s9", [], "이서준"), e1: { id: "e1", properties: { "마지막 오류": rt("") } } }
+	const c5 = mock(p5, { sendThrows: new Error("연락처 오류: 우선 연락처가 비어 있습니다.") })
+	await m.processScheduleEventStudentItem({ eventId: "e1", regId: "", studentId: "s9", vars: {}, dateStart: "2026-11-26", last: true })
+	eq([c5.logs.length, c5.marks[0].startsWith("error:e1:이서준: 연락처 오류")], [0, true])
 })
 
 Deno.test("v2.8.0 구역: 월간 일정 안내 목록은 첫 줄 점 없이(템플릿이 맡음), 둘째 줄부터 '  • ', 날짜와 이름 사이 두 칸", () => {
