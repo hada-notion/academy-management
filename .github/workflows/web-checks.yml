@@ -50,6 +50,11 @@ jobs:
       - name: Run regression guard checks
         run: bash scripts/check-known-regressions.sh
 
+      # (261124 통합 검수) 함수 시험 전부. 배포 워크플로는 시험 파일을 이름으로 골라 돌려 새 시험 25개
+      # (퇴사 강사 로그인 막기 teacherAccess_test 포함)가 CI 밖에 있었다. 새 시험이 저절로 들어오게 통째로 돈다.
+      - name: All function tests
+        run: deno test --allow-env --allow-read=scripts/clear-example-data.py supabase/functions/_shared/*_test.ts supabase/functions/*/index_test.ts
+
       # (v2.8.0 항목 74) 관리 앱 읽기 복사본: 병합 = 원본 자동 배포라 PR에서 먼저 확인한다.
       - name: Admin app read copy (types, unit, migration)
         run: |
