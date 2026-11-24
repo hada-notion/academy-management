@@ -72,7 +72,8 @@ const FOUND = [
     await page.evaluate(() => render()); // 안내 줄은 다음 그리기부터(화면을 연 첫 그리기는 노션 자료 받기 전 판정 — 기존 동작)
     const view = await page.textContent("#view");
     assert.doesNotMatch(view, /노션 학교 페이지의 \[학교 검색\]/, '옛 안내 없음');
-    assert.match(view, /\[학교 검색\]으로 해요/);
+    assert.equal(await page.textContent('#pgStat .ro-line'), '이름 · 기간은 노션에서 고쳐요', '보기만 안내 = 상태 묶음 안 한 줄(제목 아래 설명 줄 없음)');
+    assert.equal(await page.evaluate(() => !!document.querySelector('#view > .ro-line')), false, '제목 아래 설명 줄 없음');
     assert.equal(await page.isDisabled('#view [data-act2="aFind"]'), false, '[학교 검색] 눌림');
     assert.equal(await page.isDisabled('#view [data-act2="aCal"]'), false, '[학사일정 가져오기] 눌림(코드 있는 예시중)');
     await page.screenshot({ path: shots + 'school-live-list.png' });

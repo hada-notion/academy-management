@@ -121,25 +121,39 @@
   /* 그래프 = 한 탭, 칩 [손익 | 매출 | 지출 | 모두](대표 261123 — 노션은 보기 3개 그대로, 앱만 칩 한 탭). 결제 DB 월별 선 그래프 + 고른 칩에 맞춘 달별 표 */
   const SER = { p: { name: "손익", tone: "green", pick: (r) => r.net }, s: { name: "매출", tone: "blue", pick: (r) => r.tu + r.ot }, x: { name: "지출", tone: "red", pick: (r) => r.out } };
   const GM = [["p", "손익"], ["s", "매출"], ["x", "지출"], ["a", "모두"]];
-  const chart = (series, labels, title) => {
-    const all = series.flatMap((s) => s.vals), W = 760, H = 210, L = 64, R = 16, Tp = 16, Bt = 30, n = labels.length, hi = Math.max(0, ...all), lo = Math.min(0, ...all), span = hi - lo || 1;
-    const y = (v) => Tp + (1 - (v - lo) / span) * (H - Tp - Bt), x = (i) => L + (n > 1 ? i * (W - L - R) / (n - 1) : 0);
-    const fm = (v) => (Math.abs(v) >= 10000 ? Math.round(v / 10000).toLocaleString("ko-KR") + "만" : String(Math.round(v)));
-    const grid = [0, 1, 2, 3].map((k) => { const v = lo + span * k / 3; return `<line x1="${L}" y1="${y(v)}" x2="${W - R}" y2="${y(v)}" class="fcg"/><text x="${L - 8}" y="${y(v) + 4}" class="fct" text-anchor="end">${fm(v)}</text>`; }).join("");
-    const zero = lo < 0 ? `<line x1="${L}" y1="${y(0)}" x2="${W - R}" y2="${y(0)}" class="fcz"/>` : "";
-    const lines = series.map((s) => `<polyline points="${s.vals.map((v, i) => `${x(i)},${y(v)}`).join(" ")}" class="fcl t-${s.tone}"/>` + s.vals.map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="3.5" class="fcd t-${s.tone}"><title>${labels[i]} ${s.name} ${WON(v)}</title></circle>`).join("")).join("");
-    const xl = labels.map((l, i) => (n <= 13 || i % 2 === 0 ? `<text x="${x(i)}" y="${H - 8}" class="fct" text-anchor="middle">${mm(l)}월</text>` : "")).join("");
-    const lg = series.length > 1 ? `<span class="fcleg">${series.map((s) => `<i class="t-${s.tone}"></i>${s.name}`).join("")}</span>` : "";
-    return `<div class="finchart"><div class="fch"><b>${title}</b><small>월별 · 결제 금액 합계</small>${lg}</div><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${title} 월별 그래프">${grid}${zero}${lines}${xl}</svg></div>`;
+  /* 그래프 범위(대표 261124 "0에서 평평하다 한 달만 솟음"): 자료가 있는 첫 달부터 지금 달까지 — 3달보다 짧으면 3달, 12달보다 길면 최근 12달.
+     자료 없는 달은 0으로 찍지 않는다(점 · 선 없음, 표는 —) */
+  const gRange = () => { const all = monthRows(); const f = all.findIndex((r) => r.any); const from = f < 0 ? all.length - 3 : Math.min(f, all.length - 3); return all.slice(Math.max(0, from, all.length - 12)); };
+  /* 눈금 = 1 · 2 · 5 × 10^k 로 떨어지는 둥근 값(20만 · 13만 · 7만 같은 어중간한 칸 없게) */
+  const niceStep = (v) => { const p = Math.pow(10, Math.floor(Math.log10(v || 1))), f = v / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p; };
+  /* 그래프 폭 = 화면 본문 폭에 맞춘 실제 픽셀(늘이고 줄이지 않아 글자 크기가 늘 같다) */
+  const gWidth = (side) => { const v = document.getElementById("view"); const w = (v && v.clientWidth) || 1000; return Math.max(420, Math.min(1000, w - 2 * 16 /* 둘레 */ - 2 * 16 - 2 /* 그래프 상자 */ - 16 /* 스크롤 칸 */ - side)); };
+  const chart = (series, labels, title, W, has) => {
+    const all = series.flatMap((s) => s.vals.filter((v, i) => has[i])), H = 240, L = 56, R = 72 /* 마지막 점 오른쪽 금액 글 자리 */, Tp = 14, Bt = 30, n = labels.length;
+    const st0 = niceStep((Math.max(0, ...all) - Math.min(0, ...all)) / 4 || 10000), hi = Math.ceil(Math.max(0, ...all) / st0) * st0 || st0, lo = Math.floor(Math.min(0, ...all) / st0) * st0, span = hi - lo || 1;
+    const y = (v) => Tp + (1 - (v - lo) / span) * (H - Tp - Bt), x = (i) => L + 12 + (n > 1 ? i * (W - L - R - 24) / (n - 1) : (W - L - R - 24) / 2);
+    const fm = (v) => (v === 0 ? "0" : Math.abs(v) >= 10000 ? (v / 10000).toLocaleString("ko-KR", { maximumFractionDigits: 1 }) + "만" : v.toLocaleString("ko-KR"));
+    const ticks = []; for (let v = lo; v <= hi + 1e-6; v += st0) ticks.push(v);
+    const grid = ticks.map((v) => `<line x1="${L}" y1="${y(v)}" x2="${W - R}" y2="${y(v)}" class="${v === 0 ? "fcz" : "fcg"}"/><text x="${L - 8}" y="${y(v) + 4}" class="fct" text-anchor="end">${fm(v)}</text>`).join("");
+    const segs = (s) => { const out = []; let cur = []; s.vals.forEach((v, i) => { if (has[i]) cur.push(`${x(i)},${y(v)}`); else { if (cur.length) out.push(cur); cur = []; } }); if (cur.length) out.push(cur); return out; };
+    const lines = series.map((s) => segs(s).filter((g) => g.length > 1).map((g) => `<polyline points="${g.join(" ")}" class="fcl t-${s.tone}"/>`).join("") + s.vals.map((v, i) => !has[i] ? "" : `<circle cx="${x(i)}" cy="${y(v)}" r="4" class="fcd t-${s.tone}"><title>${labels[i]} ${s.name} ${WON(v)}</title></circle>`).join("")).join("");
+    const xl = labels.map((l, i) => `<text x="${x(i)}" y="${H - 8}" class="fct" text-anchor="middle">${i === 0 || mm(l) === 1 ? String(l).slice(2, 4) + "년 " : ""}${mm(l)}월</text>`).join("");
+    /* 자료 있는 마지막 달 값은 점 옆에 글로(달이 적어도 읽히게) (점 오른쪽) — 줄이 여럿이면 겹치지 않게 14px씩 띄움 */
+    const last = has.lastIndexOf(true), tags = last < 0 ? "" : series.map((s) => ({ s, v: s.vals[last] })).sort((a, b) => b.v - a.v).map(({ s, v }, k, arr) => { let ty = y(v) + 4; if (k > 0) ty = Math.max(ty, arr._py + 14); arr._py = ty; return `<text x="${x(last) + 9}" y="${ty}" class="fct fcv t-${s.tone}" text-anchor="start">${fm(v)}</text>`; }).join("");
+    const lg = series.length > 1 ? `<span class="fcleg">${series.map((s) => `<span><i class="t-${s.tone}"></i>${s.name}</span>`).join("")}</span>` : "";
+    return `<div class="finchart"><div class="fch"><b>${title}</b><small>월별 · 결제 금액 합계</small>${lg}</div><svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${title} 월별 그래프">${grid}${lines}${tags}${xl}</svg></div>`;
   };
   LISTS.profit_g = base(P, {
-    title: "결제 · 손익", cal: true, coll: "profit", ro: true, rows: () => [], fields: [], help: "결제(학원) DB를 달마다 모아 선 그래프로 봐요. 칩으로 손익 · 매출 · 지출을 고르고, [모두]는 세 줄을 겹쳐 봐요(노션은 보기 셋, 앱은 칩 한 탭 — 결과는 같아요). 숫자는 [결제 내역]에서 고쳐요.",
+    title: "결제 · 손익", cal: true, noEmpty: true, coll: "profit", ro: true, rows: () => [], fields: [], help: "결제(학원) DB를 달마다 모아 선 그래프로 봐요. 자료가 있는 첫 달부터 지금 달까지(적어도 3달, 많아야 12달) 보여요 — 자료 없는 달은 점을 찍지 않아요. 칩으로 손익 · 매출 · 지출을 고르고, [모두]는 세 줄을 겹쳐 봐요(노션은 보기 셋, 앱은 칩 한 탭 — 결과는 같아요). 숫자는 [결제 내역]에서 고쳐요.",
     calFn: (Lx, st) => {
-      const gm = (st && st.gm) || "p", keys = gm === "a" ? ["s", "x", "p"] : [gm], rs = monthRows().slice(-12), labels = rs.map((r) => r.m);
+      const gm = (st && st.gm) || "p", keys = gm === "a" ? ["s", "x", "p"] : [gm], rs = gRange(), labels = rs.map((r) => r.m);
       const chips = `<div class="vseg subseg finchips" role="group" aria-label="그래프 고르기">${GM.map(([k, t]) => `<button type="button" data-fin="gmode" data-id="${k}" class="${gm === k ? "on" : ""}" aria-pressed="${gm === k}">${t}</button>`).join("")}</div>`;
-      const th = keys.map((k) => `<th class="n">${SER[k].name}</th>`).join(""), tr = rs.slice().reverse().map((r) => `<tr><td>${r.m}</td>${keys.map((k) => `<td class="n">${r.any ? WON(SER[k].pick(r)) : "—"}</td>`).join("")}</tr>`).join("");
-      const title = gm === "a" ? "손익 · 매출 · 지출" : SER[gm].name;
-      return `<div class="finwrap">${chips}${chart(keys.map((k) => ({ name: SER[k].name, tone: SER[k].tone, vals: rs.map(SER[k].pick) })), labels, title)}<table class="t finsum"><thead><tr><th>달</th>${th}</tr></thead><tbody>${tr}</tbody></table></div>`;
+      const title = gm === "a" ? "손익 · 매출 · 지출" : SER[gm].name, ser = keys.map((k) => ({ name: SER[k].name, tone: SER[k].tone, vals: rs.map(SER[k].pick) })), has = rs.map((r) => !!r.any);
+      const cell = (r, k) => (r.any ? WON(SER[k].pick(r)) : "—");
+      /* 그래프 왼쪽 · 달별 표 오른쪽(같은 범위의 달만, 최근 달 위 — 12달이어도 표가 넘치지 않게 세로) */
+      const TW = 96 + keys.length * 116, W = gWidth(TW + 16);
+      const tb = `<table class="t finsum" style="width:${TW}px"><thead><tr><th>달</th>${keys.map((k) => `<th class="n">${SER[k].name}</th>`).join("")}</tr></thead><tbody>${rs.slice().reverse().map((r) => `<tr><td>${r.m}</td>${keys.map((k) => `<td class="n">${cell(r, k)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+      return `<div class="finwrap">${chips}<div class="finrowg">${chart(ser, labels, title, W, has)}${tb}</div></div>`;
     },
   });
 
