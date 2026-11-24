@@ -2518,12 +2518,14 @@ const HTD_TABS=[["cal","캘린더"],["who","담당자"],["pri","우선순위"],[
 /* 카드 = 이름 / (우선순위 탭) 담당자 · 날짜, (담당자 탭) 날짜 · 우선순위. 달성여부는 오른쪽 창에서(261124 대표: 카드 단추는 정신없어 뺌), 우선순위 · 담당자는 끌어서 */
 function homeTodoCard(e,d,k){const w=tdWho(e),dt=e.start?`<span class="hbd">${mdw(e.start)}</span>`:"";
   return `<div class="hbcard" data-tev="${e.id}" draggable="true" title="누르면 오른쪽 창 · 끌어서 다른 열에 놓으면 ${k==="who"?"담당자":"우선순위"}가 바뀜 · Ctrl+누르기 = 일정 화면"><b class="hbn">${esc(e.name)}</b><span class="hbm">${k==="who"?dt+tdPri(e):(w?`<span>${esc(w)}</span>`:"")+dt}</span></div>`}
+/* 261124 대표 "재직자만": 노션 직원 DB에 재직 칸이 없어 출근 요일이 있거나 맡은 클래스가 있으면 재직으로 봄(할 일을 들고 있는 사람은 열이 늘 생김 — 카드가 사라지지 않게) */
+const tdOnStaff=t=>!t.del&&(daysArr(t.days).length>0||DB.classes.some(c=>!c.del&&c.teacherId===t.id));
 function tdHold(e){e.start="";e.end="";e.ach=""}/* 우선순위 보류 = 날짜 · 달성여부 비움(노션 자동화와 같음, 다시 할 때 날짜를 새로) */
 const tdDoneRows=d=>DB.events.filter(e=>isTodo(e)&&e.ach&&(!e.start||e.start.slice(0,10)>=dPlus(d,-30))).sort((a,b)=>-tdByDate(a,b));
 function homeTodoBody(k,d){
   if(k==="pri"||k==="who"){const xs=homeTodos(d);
     const cols=k==="pri"?TD_COLS.map(([v,name,tone])=>({key:v,name,tone,xs:xs.filter(e=>(e.pri||"")===v)}))/* 열 셋은 늘 — 빈 열에도 끌어 놓을 수 있게 */
-      :(()=>{const m=new Map([["",[]],...DB.teachers.filter(t=>!t.del).map(t=>[t.id,[]])]);xs.forEach(e=>{const w=e.who||"";if(!m.has(w))m.set(w,[]);m.get(w).push(e)});const nm=w=>w?((tch(w)||{}).name||""):"";return [...m.keys()].sort((a,b)=>!a?-1:!b?1:nm(a).localeCompare(nm(b),"ko")).map(w=>({key:w,name:nm(w)||"담당자 없음",tone:w?"":"mute",xs:m.get(w)}))})();/* 261124 대표 "강사는 항상 열어 놓도록, 담당자 없음도" — 빈 열에도 놓을 수 있게 *//* 담당자 없음이 먼저 · 이름 차례(노션 보드와 같음) */
+      :(()=>{const m=new Map([["",[]],...DB.teachers.filter(tdOnStaff).map(t=>[t.id,[]])]);xs.forEach(e=>{const w=e.who||"";if(!m.has(w))m.set(w,[]);m.get(w).push(e)});const nm=w=>w?((tch(w)||{}).name||""):"";return [...m.keys()].sort((a,b)=>!a?-1:!b?1:nm(a).localeCompare(nm(b),"ko")).map(w=>({key:w,name:nm(w)||"담당자 없음",tone:w?"":"mute",xs:m.get(w)}))})();/* 261124 대표 "강사는 항상 열어 놓도록, 담당자 없음도" — 빈 열에도 놓을 수 있게 *//* 담당자 없음이 먼저 · 이름 차례(노션 보드와 같음) */
     if(!cols.length)return '<div class="hint hbnone">달성여부가 빈 할 일이 없어요</div>';
     return `<div class="hbcols">${cols.map(({key,name,tone,xs})=>`<div class="hbcol" data-hdrop="${k}:${esc(key)}"><div class="hbh"><span class="rpill ${tone}">${esc(name)}</span><span class="hint">${xs.length}</span></div>${xs.map(e=>homeTodoCard(e,d,k)).join("")||'<div class="hint hbnone">없어요</div>'}</div>`).join("")}</div>`}
   if(k==="cal"){const ym=hcalYm(d),xs=DB.events.filter(isTodo);
