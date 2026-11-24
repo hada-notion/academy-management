@@ -6,7 +6,7 @@
 <title>관리 앱 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3C%2Fsvg%3E">
 <link rel="stylesheet" href="hada-tokens.css?v=760">
-<link rel="stylesheet" href="app.css?v=766">
+<link rel="stylesheet" href="app.css?v=771">
 <link rel="stylesheet" href="pick.css?v=742">
 <link rel="stylesheet" href="field.css?v=755">
 </head>
@@ -20,7 +20,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=742"><script src="hada-rules.js?v=742"></script><script src="help.js?v=760"></script><script src="alim-preview.js?v=742"></script><script src="pick.js?v=742"></script><script src="field.js?v=742"></script><script src="panel.js?v=762"></script>
+<link rel="stylesheet" href="alim.css?v=742"><script src="hada-rules.js?v=742"></script><script src="help.js?v=760"></script><script src="alim-preview.js?v=742"></script><script src="pick.js?v=770"></script><script src="field.js?v=742"></script><script src="panel.js?v=770"></script>
 <script>
 "use strict";
 
@@ -2926,7 +2926,7 @@ function enGuideRun(r){const s=stu(r.studentId)||{},c=cls(r.classId)||{},tm=enTi
 function todoPanel(L,st){/* 299판(연결): 할 일 창 = 오른쪽 창 모듈 PANEL.todo 하나로 그림 — 여기선 자료만 */const P=LISTS[activeTab.screen]||{};const tf=L.todo||P.todo,sf=L.todoSum||P.todoSum;
   const hd={icon:panelIcon(),belong:L.panelName||(typeof TITLES!=="undefined"&&TITLES[activeTab.screen])||L.title||""};/* panelName = 한 메뉴 안 다른 자료 탭(일정 › 시즌)의 창 머리 이름 */{/* 261117 대표: 제목 옆 개수 대신 오른쪽 기본 창 머리에 "지금 보는 n개" */let n=null;try{n=listRows(L,st).filter(r=>!r.del).length}catch(_){}if(n!=null)hd.belong+=` · ${n}${L.unit||"개"}`}/* 머리 재료 = 화면 아이콘 · 화면 이름(기본 창과 같은 머리 부품이 그림) */
   const af=actsFoot(L);/* 261118: 위 줄에서 뺀 화면 고유 단추(생성 · 전송 · 가져오기)는 기본 창 아래 단추 줄에 */
-  if(!tf)return PANEL.todo(Object.assign({empty:L.ro?"":"줄을 누르면 여기서 고쳐요",footHtml:af||undefined},hd));
+  if(!tf)return PANEL.todo(Object.assign({view:st.todoV,empty:st.todoV==="todo"?"지금 할 일이 없어요":(L.ro?"":"줄을 누르면 여기서 고쳐요"),footHtml:af||undefined},hd));/* 할 일 정의가 없는 메뉴도 [할 일] 탭을 누르면 그 탭(빈 상태)으로 — 늘 [현황]에 머물던 것(261124 눈 검수 C) */
   const items=tf(st).map(t=>Object.assign({},t,{rows:(t.rows||[]).filter(x=>!x.del)}));const lf=L.todoList||P.todoList,tl=lf?lf(st):null;
   {const cur=items.find(t=>t.k===st.todoK)||items[0];st._todoLt=cur&&cur.ltab||null}/* 갈래마다 줄을 누르면 열 창 탭(학생1 "등록 전" → [등록]) */const tft=L.todoFoot||P.todoFoot;
   return PANEL.todo({icon:hd.icon,belong:hd.belong,on:st.todoK,view:st.todoV,summary:sf?sf(st):[],footHtml:(tft?tft(st):"")+af||undefined,groups:items.map(t=>{const lab=t.lab||(x=>pHeadOf(L,x));return {k:t.k,name:t.name,why:t.why,rows:t.rows.map(x=>({id:x.id,html:lab(x)}))}}),
@@ -4153,7 +4153,7 @@ function rtBox(c){const L=rtOf(c.id),on=L.filter(r=>!r.rest).length,ED=activeTab
     :`<div class="unrow rtv ${r.rest?"rest":""} ${r.state==="draft"?"draft":""}" data-rt="${r.id}" data-rted="${r.id}" title="누르면 편집"><span class="rtno">${i+1}</span><span class="unt">${esc(r.name||"이름 없음")}${r.desc?`<small>${esc(r.desc)}</small>`:""}</span><span class="unv">${r.rest?'<span class="tag">쉬는 중</span>':""}</span><span class="unx"><button type="button" class="anb" data-rtmv="${r.id}|-1" ${i?"":"disabled"} title="위로">${IC("up","s")}</button><button type="button" class="anb" data-rtmv="${r.id}|1" ${i<L.length-1?"":"disabled"} title="아래로">${IC("down","s")}</button><button type="button" class="anb" data-rted="${r.id}" title="이 루틴 편집">${IC("pen","s")}</button><button type="button" class="anb" data-rtrest="${r.id}" title="${r.rest?"다시 쓰기":"잠시 안 쓰기(쉬기)"}">${IC(r.rest?"play":"pause","s")||(r.rest?"▶":"⏸")}</button>${/* 261119 담당 · 앱서버: 루틴 삭제는 앱에서 하지 않음(루틴 체크가 있는 루틴을 지우면 리포트 루틴 칸이 깨짐) — 안 쓰면 [쉬기], 삭제는 그 루틴 노션 페이지 [삭제]. 아직 저장 전 새 줄만 x = 추가 취소 */r._new?`<button type="button" class="anb" data-rtdel="${r.id}" title="추가 취소 — 아직 저장 전인 새 루틴">${IC("x","s")}</button>`:/^[0-9a-f-]{32,36}$/i.test(String(r.id))?`<a class="anb" href="https://www.notion.so/${String(r.id).replace(/-/g,"")}" target="_blank" rel="noopener" title="노션 루틴 페이지 열기 — 삭제는 거기서 [삭제](안 쓰면 [쉬기])">${IC("notion","s")||"N"}</a>`:`<button type="button" class="anb" data-rtdel="${r.id}" title="삭제는 노션 루틴 페이지에서 — 안 쓰면 [쉬기]">${IC("notion","s")||"N"}</button>`}</span></div>`;
   return `<div class="box rtset"><h3>루틴 <span class="hint">쓰는 ${on} · 쉬기 ${L.length-on}</span>${HELP("수업마다 학생별로 체크할 이 클래스의 루틴이에요(노션 루틴 DB). 위에서부터 순서대로 체크해요 — 줄을 끌어 놓으면 순서가 바뀌어요. 줄을 누르면 그 줄만 입력칸이 열려요(Enter = 마침). 마우스를 올리면 뒤에 편집 · 쉬기(잠시 안 씀 = 루틴 체크가 생기지 않음) · 노션 페이지 열기가 나와요. 삭제는 노션 루틴 페이지 [삭제]에서 해요(루틴 체크가 있는 루틴을 지우면 리포트 루틴 칸이 깨져서 앱에서는 [쉬기]로 꺼요). 루틴 체크는 수업 창 [루틴] 탭 · 노션 [루틴 체크 생성]에서 생성해요.")}</h3>
     ${L.length?`<div class="ttrows rtrows2" data-rtlist="${c.id}">${L.map(row2).join("")}</div>`:'<div class="hint">아직 루틴이 없어요 — [루틴 추가]로 한 줄씩 넣어요</div>'}
-    <button type="button" class="pgaddc ln" data-rtadd="${c.id}">${IC("plus","s")}루틴 추가</button>${L.length?`<div class="hint rtnote">${IC("notion","s")||""}<span>삭제는 노션 루틴 페이지 [삭제]에서 해요 — <b>루틴 체크가 있으면 지우지 말고 [쉬기]로</b> 꺼 주세요(지우면 리포트 루틴 칸이 깨져요).</span></div>`:""}</div>`}
+    <button type="button" class="pgaddc ln" data-rtadd="${c.id}">${IC("plus","s")}루틴 추가</button></div>`}
 function rtDirty(r,redraw){r.state="draft"/* 루틴 줄이 작성 중 → 위 [저장] 수에 셈(XCOL routines) */;redraw?commit():commitQuiet()}
 /* 261119 대표: 루틴 순서 = 줄 끌어 놓기 — 놓은 자리 기준으로 순서(ord) 1부터 다시 매기고 바뀐 줄만 작성 중(↑↓와 같은 저장 길) */
 let RTDRAG=null;
