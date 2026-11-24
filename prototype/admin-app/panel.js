@@ -115,7 +115,8 @@
   }
   function rgrid(s) {
     const ed = !!s.always || !!RG[s.key], cols = s.cols || [];
-    const tpl = `minmax(72px,1fr) ${cols.map(c => (c.w || 56) + "px").join(" ")}`;
+    /* 칸 폭 = 최소 폭(c.w) 보장 + 창이 넓어지면 이름 2 : 칸 1로 같이 늘어남(창을 넓혀도 칸이 그대로 좁던 것) */
+    const tpl = `minmax(72px,2fr) ${cols.map(c => `minmax(${c.w || 56}px,1fr)`).join(" ")}`;
     const cell = (c, r) => {
       const cls = `rgc${c.num ? " num" : ""}`;
       if (ed && c.edit) {
