@@ -7,6 +7,7 @@
 // 월간 일정 안내는 학생 단위다(학생 월간 안내, _shared/monthlyNotice.ts). 이 파일의 한 줄·구역 함수를 같이 쓴다.
 // 큐 모양은 반별 보고서와 같다: 일정 1건이 학생 1건씩을 다시 넣고, 마지막 학생이 상태를 마친다(✅, 중간 실패가 있으면 ⚠️).
 // 발송 규칙은 수업 안내와 같다(설정 행이 꺼졌거나 비면 ⚠️, 연락처 없음 ⚠️, 발송 단계 실패는 다시 보내지 않음). 전송로그는 등록에.
+// (v2.8.0, 11/24) 상담 일정에 연결된 학생이 아직 등록 전(수강 중 등록 없음)이면 학생 페이지 연락처로 보내고 전송로그는 학생에.
 import { eventKind, categoryOf, categoryName, propName, isSchoolKind, kindSection, KIND, DETAIL_PROP } from "./scheduleCategory.ts"
 import { createSendLogEntry, extractErrorMessage, getBotUserId, type AlimtalkConfigCategory } from "./adminShared.ts"
 import { EVENT_NOTICE_MEMO, propRich } from "./propAlias.ts"
@@ -185,20 +186,22 @@ async function finishParent(pageId: string, extra: Record<string, unknown>): Pro
 }
 
 // 한 학생에게 보내기. 설정·연락처로 막히면 그 학생만 기록하고 넘어간다(다시 해도 같음). 발송 실패도 다시 보내지 않는다.
-async function sendOne(code: "일정 안내", parentId: string, regId: string, studentName: string, variables: Record<string, string>, configCategory?: AlimtalkConfigCategory): Promise<boolean> {
+// regId가 비고 studentId가 있으면 등록 전 학생(학생 페이지 연락처, 전송로그는 학생에).
+async function sendOne(code: "일정 안내", parentId: string, regId: string, studentName: string, variables: Record<string, string>, configCategory?: AlimtalkConfigCategory, studentId?: string): Promise<boolean> {
 	const deps = scheduleDeps
 	const senderUserId = (await deps.botUser().catch(() => null)) ?? undefined
+	const who = regId ? { registrationId: regId } : { studentId }
 	try {
-		await deps.send(code, regId, "", variables, configCategory)
+		await deps.send(code, regId, "", variables, configCategory, regId ? {} : { studentId })
 	} catch (err) {
 		const reason = extractErrorMessage(err)
 		if (!(err instanceof LessonConfigError) && !/연락처 오류/.test(reason)) {
-			await deps.log({ registrationId: regId, senderUserId, title: studentName || code, category: code, status: "실패", failReason: reason })
+			await deps.log({ ...who, senderUserId, title: studentName || code, category: code, status: "실패", failReason: reason })
 		}
-		await appendError(parentId, `${studentName || regId}: ${reason}`)
+		await appendError(parentId, `${studentName || regId || studentId}: ${reason}`)
 		return false
 	}
-	await deps.log({ registrationId: regId, senderUserId, title: studentName || code, category: code, status: "성공" })
+	await deps.log({ ...who, senderUserId, title: studentName || code, category: code, status: "성공" })
 	return true
 }
 
@@ -208,6 +211,13 @@ const studentNameOf = (reg: any): string => {
 		if (s) return s
 	}
 	return ""
+}
+
+// 학생 페이지의 이름(제목 칸 `학생이름`, 이름이 달라도 제목 칸을 찾는다).
+const studentTitleOf = (st: any): string => {
+	const props: Record<string, any> = st?.properties ?? {}
+	const t = props["학생이름"]?.title ?? (Object.values(props).find((v: any) => v?.type === "title") as any)?.title
+	return textOf(t).trim()
 }
 
 // ── 일정 안내(한 건) ───────────────────────────────────────────────────────
@@ -220,7 +230,8 @@ export const noTargetMessage = (ev: any, linked: boolean): string => {
 }
 
 export type EventPayload = { eventId: string }
-export type EventStudentPayload = { eventId: string; regId: string; vars: Record<string, string>; dateStart: string; last?: boolean }
+// regId가 ""이면 studentId(등록 전 상담 학생)로 보낸다.
+export type EventStudentPayload = { eventId: string; regId: string; studentId?: string; vars: Record<string, string>; dateStart: string; last?: boolean }
 
 export async function processScheduleEventItem(p: EventPayload): Promise<void> {
 	const deps = scheduleDeps
@@ -232,25 +243,33 @@ export async function processScheduleEventItem(p: EventPayload): Promise<void> {
 		const sentAt = String(ev?.properties?.[PROP_EVENT_SENT]?.date?.start ?? "")
 		if (sentAt && sameInstant(sentAt, dateStart)) return await deps.markError(p.eventId, `이미 이 날짜로 안내했습니다. 다시 보내려면 '${PROP_EVENT_SENT}'을 비우고 누르세요.`)
 		// 대상: 연결된 학생의 수강 중 등록(학생마다 하나) + 연결된 클래스의 수강 중 등록. 학생이 겹치면 한 번만.
-		const regs: any[] = []
+		// (v2.8.0, 11/24) 상담 일정이면 수강 중 등록이 없는 연결 학생(등록 전 상담)도 학생 페이지 연락처로 보낸다.
+		const counsel = eventLabel(ev) === "상담"
+		const regs: any[] = [], noRegStudents: string[] = []
 		const linkedStudents = await deps.fullRelationIds(ev, "학생"), linkedClasses = await deps.fullRelationIds(ev, "클래스")
 		for (const sid of linkedStudents) {
 			const st: any = await deps.getPage(sid)
 			const own = await Promise.all((await deps.fullRelationIds(st, "등록")).map((id: string) => deps.getPage(id)))
 			const active = own.filter(isActiveReg)
 			if (active[0]) regs.push(active[0])
+			else if (counsel && !st?.in_trash && !st?.archived) noRegStudents.push(String(st?.id ?? sid))
 		}
 		for (const cid of linkedClasses) regs.push(...await activeRegsOfClass(cid))
-		const seen = new Set<string>(), targets: any[] = []
+		const seen = new Set<string>(), targets: { regId: string; studentId?: string }[] = []
 		for (const r of regs) {
 			const sk = key(relIds(r.properties?.["학생정보"])[0] ?? r.id)
 			if (seen.has(sk)) continue
 			seen.add(sk)
-			targets.push(r)
+			targets.push({ regId: String(r.id) })
+		}
+		for (const sid of noRegStudents) {
+			if (seen.has(key(sid))) continue
+			seen.add(key(sid))
+			targets.push({ regId: "", studentId: sid })
 		}
 		if (!targets.length) return await deps.markError(p.eventId, noTargetMessage(ev, linkedStudents.length + linkedClasses.length > 0))
 		// (v2.8.0 구역, 10/30 사용자) 개별 일정 알림은 상담만. 휴강은 수업 [휴강 안내], 휴원·학원·학사 일정은 월간 일정 안내로 알린다.
-		if (eventLabel(ev) !== "상담") return await deps.markError(p.eventId, "일정 안내는 세부 구분이 상담인 일정만 보냅니다. 휴강은 수업의 [수업 안내 전송](수업 구분 휴강)으로, 휴원·학원·학사 일정은 월간 일정 안내로 알려 주세요.")
+		if (!counsel) return await deps.markError(p.eventId, "일정 안내는 세부 구분이 상담인 일정만 보냅니다. 휴강은 수업의 [수업 안내 전송](수업 구분 휴강)으로, 휴원·학원·학사 일정은 월간 일정 안내로 알려 주세요.")
 		// 다른 알림톡처럼 일정 페이지의 "변수(알림톡)" 수식 값을 보낸다(없으면 옛 (일정안내) 수식, 그것도 비면 같은 규칙으로 계산).
 		// (v2.8.0 통일안) 새 템플릿의 #{일정정보}와 옛 템플릿의 #{일정일시}·#{전달사항}을 함께 만든다. 보낼 때 템플릿에 있는 것만 남는다.
 		// (11/2) 예전 일정 `전달사항(일정안내)` 수식(메모 50자, 같은 값)은 읽지 않는다.
@@ -264,7 +283,7 @@ export async function processScheduleEventItem(p: EventPayload): Promise<void> {
 		}
 		console.log(`[schedule-event] event=${p.eventId} 대상 ${targets.length}`)
 		for (let i = 0; i < targets.length; i++) {
-			const item: EventStudentPayload = { eventId: p.eventId, regId: String(targets[i].id), vars, dateStart, ...(i === targets.length - 1 ? { last: true } : {}) }
+			const item: EventStudentPayload = { eventId: p.eventId, ...targets[i], vars, dateStart, ...(i === targets.length - 1 ? { last: true } : {}) }
 			await deps.enqueue(TARGET_SCHEDULE_EVENT_STUDENT, item)
 		}
 	} catch (err) {
@@ -275,8 +294,7 @@ export async function processScheduleEventItem(p: EventPayload): Promise<void> {
 
 export async function processScheduleEventStudentItem(p: EventStudentPayload): Promise<void> {
 	const deps = scheduleDeps
-	const reg: any = await deps.getPage(p.regId)
-	const studentName = studentNameOf(reg)
-	await sendOne("일정 안내", p.eventId, p.regId, studentName, { ...p.vars, "#{학생이름}": studentName }, "상담 일정 안내")
+	const studentName = p.regId ? studentNameOf(await deps.getPage(p.regId)) : studentTitleOf(await deps.getPage(String(p.studentId)))
+	await sendOne("일정 안내", p.eventId, p.regId, studentName, { ...p.vars, "#{학생이름}": studentName }, "상담 일정 안내", p.studentId)
 	if (p.last) await finishParent(p.eventId, { [PROP_EVENT_SENT]: { date: { start: p.dateStart } } })
 }

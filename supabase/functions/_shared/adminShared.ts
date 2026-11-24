@@ -259,7 +259,9 @@ function buildSendLogTitle(name: string, category: SendLogCategory, periodStart?
 }
 
 export async function createSendLogEntry(args: {
-  registrationId: string
+  // (v2.8.0, 11/24) 등록이 없는 학생(상담 일정 안내)은 registrationId 없이 studentId로 전송로그 "학생"에 잇는다.
+  registrationId?: string
+  studentId?: string
   attendanceId?: string
   reportId?: string
   tuitionId?: string
@@ -288,8 +290,9 @@ export async function createSendLogEntry(args: {
       "발송 상태": { select: { name: args.status } },
       "발송일시": { date: { start: new Date().toISOString() } },
       "발송 채널": { select: { name: "알림톡" } },
-      "등록": { relation: [{ id: args.registrationId }] },
     }
+    if (args.registrationId) properties["등록"] = { relation: [{ id: args.registrationId }] }
+    if (args.studentId) properties["학생"] = { relation: [{ id: args.studentId }] }
     if (args.category === "키오스크 알림톡" && args.attendanceType) {
       properties["출결 구분"] = { select: { name: args.attendanceType } }
     }

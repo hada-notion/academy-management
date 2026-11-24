@@ -96,6 +96,15 @@ Deno.test("v2.8.0 알림 수신 대상: 여럿이면 없는 번호는 건너뛰�
 		eq(err, "연락처 오류: 아버지 연락처가 비어 있습니다.")
 		// 예전 값 "모든 연락처"
 		eq((await resolveAlimtalkRecipients({ registrationId: "reg", recipientTarget: "모든 연락처" })).map((r) => r.label), ["어머니"])
+		// (11/24) 등록 전 학생(상담 일정 안내): 학생 페이지에서 바로. 우선 연락처(수식) → 없으면 우선 연락 대상의 연락처.
+		pages.stu3 = { id: "stu3", properties: { "우선 연락처": { type: "formula", formula: { type: "string", string: "010-5555-6666" } }, "학생 연락처": phone("010-7777-8888") } }
+		pages.stu4 = { id: "stu4", properties: { "우선 연락처": { type: "formula", formula: { type: "string", string: "" } }, "우선 연락 대상": { type: "select", select: { name: "아버지" } }, "아버지 연락처": phone("010-2222-3333") } }
+		eq((await resolveAlimtalkRecipients({ registrationId: "", studentId: "stu3", recipientTarget: "우선 연락 대상" })), [{ label: "우선 연락 대상", phone: "01055556666" }])
+		eq((await resolveAlimtalkRecipients({ registrationId: "", studentId: "stu3", recipientTarget: ["우선 연락 대상", "학생"] })).map((r) => r.label), ["우선 연락 대상", "학생"])
+		eq((await resolveAlimtalkRecipients({ registrationId: "", studentId: "stu4", recipientTarget: "우선 연락 대상" })).map((r) => r.phone), ["01022223333"])
+		err = ""
+		try { await resolveAlimtalkRecipients({ registrationId: "", studentId: "stu2", recipientTarget: "우선 연락 대상" }) } catch (e) { err = (e as Error).message }
+		eq(err.startsWith("연락처 오류"), true)
 	} finally {
 		globalThis.fetch = realFetch
 	}

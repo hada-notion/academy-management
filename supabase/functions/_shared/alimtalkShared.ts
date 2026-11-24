@@ -118,13 +118,25 @@ function getPropertyText(property: any): string {
   return ""
 }
 
+// 학생 페이지의 우선 연락처: `우선 연락처`(수식) → 없으면 `우선 연락 대상`(어머니·아버지·기타 보호자·학생)의 연락처.
+function studentPrimaryPhone(page: any, byLabel: Record<string, string>): string {
+  const props = page?.properties ?? {}
+  const direct = getPropertyText(props["우선 연락처"])
+  if (direct) return direct
+  const target = props["우선 연락 대상"]?.select?.name ?? ""
+  return byLabel[target] ? getPropertyText(props[byLabel[target]]) : ""
+}
+
 // 알림톡 설정의 수신 대상에 맞춰 연락처를 모은다. 우선 연락 대상은 등록 `학부모 연락처`(또는 넘겨받은 번호),
 // 어머니·아버지·기타 보호자·학생은 등록 → 학생정보의 각 연락처. 같은 번호는 한 번만 보낸다.
 // (10/31 사용자, 다중 선택) 대상을 하나만 골랐으면 그 번호가 없거나 잘못됐을 때 지금처럼 오류.
 // 여럿을 골랐으면 없는 사람은 건너뛰고(예: 휴대폰 없는 학생) 한 명에게도 못 보낼 때만 오류.
 // "모든 연락처"(예전 값)는 어머니·아버지·기타 보호자를 고른 것과 같다(그중 하나라도 있으면 보냄).
+// (v2.8.0, 11/24) 등록이 없는 학생(상담 일정 안내 — 아직 등록 전)은 registrationId 대신 studentId로 학생 페이지에서 바로 찾는다.
+// 우선 연락 대상은 학생 `우선 연락처`(비면 `우선 연락 대상`이 가리키는 연락처, 상담 신청 접수 안내와 같은 길).
 export async function resolveAlimtalkRecipients(args: {
   registrationId: string
+  studentId?: string
   primaryPhone?: string
   recipientTarget: AlimtalkRecipientTarget | AlimtalkRecipientTarget[]
 }): Promise<AlimtalkRecipient[]> {
@@ -139,7 +151,7 @@ export async function resolveAlimtalkRecipients(args: {
   let studentPage: any = null
   const student = async () => {
     if (studentPage) return studentPage
-    const studentId = getRelationFirstId(await registration(), "학생정보")
+    const studentId = args.studentId || getRelationFirstId(await registration(), "학생정보")
     if (!studentId) throw new Error("연락처 오류: 등록 페이지에 연결된 학생정보가 없습니다.")
     return (studentPage = await notionGetPage(studentId))
   }
@@ -152,7 +164,7 @@ export async function resolveAlimtalkRecipients(args: {
     let phone = ""
     if (label === "우선 연락 대상") {
       phone = args.primaryPhone ?? ""
-      if (!phone) phone = getRollupText(await registration(), PARENT_PHONE_PROPERTY)
+      if (!phone) phone = args.registrationId ? getRollupText(await registration(), PARENT_PHONE_PROPERTY) : studentPrimaryPhone(await student(), STUDENT_PROP)
     } else {
       phone = getPropertyText((await student()).properties?.[STUDENT_PROP[label]])
     }
