@@ -6,7 +6,7 @@
 <title>관리 앱 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3C%2Fsvg%3E">
 <link rel="stylesheet" href="hada-tokens.css?v=760">
-<link rel="stylesheet" href="app.css?v=797">
+<link rel="stylesheet" href="app.css?v=798">
 <link rel="stylesheet" href="pick.css?v=742">
 <link rel="stylesheet" href="field.css?v=755">
 </head>
@@ -1161,10 +1161,10 @@ const HEAD_DEF={/* 창 머리 재료(기준 4장 "창 머리 화면별 재료"):
 /* 표 화면 창의 머리 하나: 재료(목록의 headDef 또는 HEAD_DEF)만 모아 창 모듈에 넘긴다 */
 /* 261119 대표: 실제 자료 모드에서 줄 창 [N] = 그 줄의 노션 페이지(서버 사본 주소 _url, 없으면 노션 id로). 아직 저장 전 새 줄은 노션에 없으므로 흐리게 */
 function notionRowAttr(r){if(!(window.LIVE&&window.LIVE.loaded))return "";const u=r&&(r._url||(/^[0-9a-f-]{32,36}$/i.test(String(r.id))?"https://www.notion.so/"+String(r.id).replace(/-/g,""):""));return u?` data-nurl="${esc(u)}"`:` data-nnew="1" style="opacity:.4"`}
-function listHead(L,r,draft){const d=(L.headDef?L.headDef(r):HEAD_DEF[L.coll]?HEAD_DEF[L.coll](r):{})||{};const scr=activeTab.screen,nk=L.coll==="enrolls"?"enrolls":scr;
-  return PANEL.head({icon:d.dot?"":d.icon||panelIcon(),dot:d.dot,nameHtml:d.name!=null?esc(d.name):L.head?L.head(r):esc(L.cols[0][1](r)),draft,chipsHtml:d.chipsHtml,state:d.state,lock:d.lock||"",help:d.help,belong:d.belong,info:d.info,notion:NOTION[nk]?`data-notion="${nk}"${notionRowAttr(r)}`:""})}
+function listHead(L,r,draft){const d=(L.headDef?L.headDef(r):HEAD_DEF[L.coll]?HEAD_DEF[L.coll](r):{})||{};const scr=activeTab.screen==="today"?({events:"events",students:"students",enrolls:"enrolls",classes:"classes"}[L.coll]||"today")/* 261124: 홈에서 연 창은 그 화면 아이콘 · 노션 단추 */:activeTab.screen,nk=L.coll==="enrolls"?"enrolls":scr;
+  return PANEL.head({icon:d.dot?"":d.icon||panelIcon(scr),dot:d.dot,nameHtml:d.name!=null?esc(d.name):L.head?L.head(r):esc(L.cols[0][1](r)),draft,chipsHtml:d.chipsHtml,state:d.state,lock:d.lock||"",help:d.help,belong:d.belong,info:d.info,notion:NOTION[nk]?`data-notion="${nk}"${notionRowAttr(r)}`:""})}
 /* 296판(대표): 오른쪽 창 제목 앞 = 그 화면 아이콘(왼쪽 메뉴와 같음, 갈래별 학년 학사모·프로그램 모니터). 색 점이 있는 창(클래스·시간표·수업·보강·시즌)은 색 점만 */
-function panelIcon(){const s=curScr(),sub=activeTab&&activeTab.state&&activeTab.state.sub;const o={schools:{g:"gradcap"},books:{p:"package",b:"bookc","":"bookc",undefined:"bookc"}}[s];const n=o&&o[sub]||(MENU.flatMap(g=>g[1]).find(x=>x[0]===s)||[])[2];return n&&FEATHER[n]?IC(n):""}
+function panelIcon(s0){const s=s0||curScr(),sub=activeTab&&activeTab.state&&activeTab.state.sub;const o={schools:{g:"gradcap"},books:{p:"package",b:"bookc","":"bookc",undefined:"bookc"}}[s];const n=o&&o[sub]||(MENU.flatMap(g=>g[1]).find(x=>x[0]===s)||[])[2];return n&&FEATHER[n]?IC(n):""}
 
 // 오른쪽 창 닫기(261112 대표): ✕ 또는 창 바깥을 누르면 완전히 닫힘(다른 창으로 바뀌지 않음)
 // 시제품 오류는 화면에 바로 알림(원인 찾기용)
@@ -2504,7 +2504,7 @@ function renderMakeup(v,t){const st=t.state,tab=(st.mtab==="mk"?"cal":st.mtab)||
 const isTodo=e=>!!e&&!e.del&&evSubOf(e)==="할일";
 const tdDaily=e=>(e.tags||[]).includes("매일");
 const tdOpen=e=>isTodo(e)&&!e.ach;
-const tdLate=(e,d)=>tdOpen(e)&&!!e.start&&e.start<d&&!tdDaily(e);
+
 const tdByDate=(a,b)=>(a.start||"9")<(b.start||"9")?-1:(a.start||"9")>(b.start||"9")?1:String(a.name).localeCompare(String(b.name),"ko");
 const homeTodos=d=>DB.events.filter(e=>tdOpen(e)&&!(tdDaily(e)&&e.start&&e.start<d)&&(!e.start||e.start<=dPlus(d,7)||!!e.pri)).sort(tdByDate);
 /* 노션 선택지 이름 · 색 그대로: 우선순위 ‼️ 중요 빨강 · 💤 보류 노랑(비면 보통) / 달성여부 ✔️ 달성 초록 · ✖️ 미달성 회색 */
@@ -2517,7 +2517,7 @@ const tdAch=e=>e.ach?`<span class="rpill ${e.ach==="달성"?"ok":""}">${esc(TD_L
 const HTD_TABS=[["cal","캘린더"],["who","담당자"],["pri","우선순위"],["done","완료"]];
 /* 카드 = 이름 / (우선순위 탭) 담당자 · 날짜, (담당자 탭) 날짜 · 우선순위. 달성여부는 오른쪽 창에서(261124 대표: 카드 단추는 정신없어 뺌), 우선순위 · 담당자는 끌어서 */
 function homeTodoCard(e,d,k){const w=tdWho(e),dt=e.start?`<span class="hbd">${mdw(e.start)}</span>`:"";
-  return `<div class="hbcard${tdLate(e,d)?" late":""}" data-tev="${e.id}" draggable="true" title="누르면 오른쪽 창 · 끌어서 다른 열에 놓으면 ${k==="who"?"담당자":"우선순위"}가 바뀜 · Ctrl+누르기 = 일정 화면"><b class="hbn">${esc(e.name)}</b><span class="hbm">${k==="who"?dt+tdPri(e):(w?`<span>${esc(w)}</span>`:"")+dt}</span></div>`}
+  return `<div class="hbcard" data-tev="${e.id}" draggable="true" title="누르면 오른쪽 창 · 끌어서 다른 열에 놓으면 ${k==="who"?"담당자":"우선순위"}가 바뀜 · Ctrl+누르기 = 일정 화면"><b class="hbn">${esc(e.name)}</b><span class="hbm">${k==="who"?dt+tdPri(e):(w?`<span>${esc(w)}</span>`:"")+dt}</span></div>`}
 function tdHold(e){e.start="";e.end="";e.ach=""}/* 우선순위 보류 = 날짜 · 달성여부 비움(노션 자동화와 같음, 다시 할 때 날짜를 새로) */
 const tdDoneRows=d=>DB.events.filter(e=>isTodo(e)&&e.ach&&(!e.start||e.start.slice(0,10)>=dPlus(d,-30))).sort((a,b)=>-tdByDate(a,b));
 function homeTodoBody(k,d){
@@ -2564,7 +2564,7 @@ function homeTodayLists(st,d){const its=dayItems(d).filter(x=>!x.e.off).sort((p,
   return `<section class="cbox hacad"><h3>${IC("activity","l")}대시보드${HELP("노션 홈 아래 대시보드와 같은 6칸이에요 — 최근 문의(지난 한 달) · 등록 예정(수강 대기) · 최근 결석(지난 7일) / 오늘 일정 · 오늘 수업 · 오늘 등원. 줄을 누르면 오른쪽 창(학생 · 등록 · 일정 · 클래스), 오른쪽 위 [○○ 메뉴 →]는 그 메뉴로 가요.")}</h3>
   <div class="hwrow">${bInq}${bPre}${bAbs}</div><div class="hwrow">${bEv}${bLes}${bAtt}</div></section>`}
 function renderToday(v,t){const st=t.state,d=st.day||TODAY;
-  const hL=st.sel&&{events:LISTS.events,students:LISTS.students,enrolls:LISTS.enrolls,classes:LISTS.classes}[st.hcoll],hRow=hL?(DB[st.hcoll]||[]).find(r=>r.id===st.sel&&!r.del)||null:null;if(st.sel&&!hRow)st.sel=null;/* 오른쪽 창에 연 줄(일정 · 학생 · 등록) */
+  const hL=st.sel&&{events:LISTS.events,students:LISTS.students_all||LISTS.students/* 학생 화면과 같은 머리(STU1_HEAD) — 바탕 목록엔 머리 재료가 없어 표 첫 칸(@h:…)이 제목에 나왔다 */,enrolls:LISTS.enrolls,classes:LISTS.classes}[st.hcoll],hRow=hL?(DB[st.hcoll]||[]).find(r=>r.id===st.sel&&!r.del)||null:null;if(st.sel&&!hRow)st.sel=null;/* 오른쪽 창에 연 줄(일정 · 학생 · 등록) */
   const closed=DB.events.some(e=>!e.del&&e.start<=d&&(e.end||e.start)>=d&&evSubOf(e)==="학원 휴원");
   v.innerHTML=`<div class="top pg-ttl ttl"><h1>${pgIc("today")}홈</h1>${HELP("하루를 여기서 시작해요. 위는 할일(캘린더 · 담당자 · 우선순위 · 완료), 아래는 대시보드(최근 문의 · 등록 예정 · 최근 결석 · 오늘 일정 · 오늘 수업 · 오늘 등원) — 노션 홈과 같은 구성이에요. 입력 점검 숫자는 왼쪽 메뉴에 있어요. 카드 · 줄을 누르면 오른쪽 창, 캘린더 할 일은 끌어서 날짜를 옮겨요(일정 화면과 같은 동작). 할 일 보드 끌기 · 창의 우선순위 · 달성여부도 [저장]하면 노션에 들어가요. 아래 대시보드 줄도 누르면 오른쪽 창, [○○ 메뉴 →]는 그 메뉴로.")}${notionBtn("today")}${CALF.nav({label:`${D10(d)} (${DAYS[dow(d)]})`,prev:"앞 날",next:"다음 날",now:"오늘",isNow:d===TODAY,attr:"data-dn"})}${closed?'<span class="rpill ex">휴원일</span>':""}</div><div class="pg-bar"><span class="sp"></span><span class="tb-grp"><button class="btn icon tb-ic" id="undoB" title="실행 취소 Ctrl+Z">${IC("cul")}</button><button class="btn icon tb-ic" id="redoB" title="다시 실행 Ctrl+Y">${IC("cur")}</button></span>${rvBtn()}<button class="btn pri tb-num" id="saveAll" ${dirtyCount()?"":"disabled"} title="${dirtyTitle()}">${IC("save","s")}저장 <span class="num">${dirtyCount()}</span></button></div><div class="body"><div class="list cards home">
   ${homeTodoBox(st,d)}
