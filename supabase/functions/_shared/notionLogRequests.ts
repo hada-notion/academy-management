@@ -12,6 +12,9 @@
 // 처리(notion-events → 대기열 → notionEventsApply.applyOne): 자동화 로그 data source의 page.created면 그 줄을 읽고
 //   대상 줄을 다시 읽어 요청 칸 길과 똑같이 handleRequest(대상 `요청`·`요청 결과`도 지금과 같게) → 요청 줄 `발송 상태`·`발송일시`·`실패 사유`.
 // 요청 칸 길(다른 버튼·자동화)은 그대로다.
+// 성공한 요청 줄은 바로 휴지통에(영구 삭제 아님 — 노션 휴지통에서 되살림). 실패한 줄은 남겨 발송 상태·실패 사유를 본다.
+//   끄기: 함수 설정 NOTION_LOG_REQUEST_TRASH=off. 버튼 요청이 아닌 줄(알림톡 기록 등)은 읽기만 하고 건드리지 않는다.
+//   서버가 휴지통에 넣어 생기는 page.deleted는 처리기(applyOne)가 자동화 로그 data source라 읽지 않고 넘긴다(skip:no-copy).
 
 import { hasRequestProp, handleRequest, requestFromId, STATE_DONE, type RequestDeps } from "./notionRequests.ts"
 import { routeById } from "./webhookRoutes.ts"
@@ -49,8 +52,12 @@ export function logRequestOf(page: Page | null): { id: string; targetId: string 
 
 const textProp = (s: string) => ({ rich_text: [{ type: "text", text: { content: s.slice(0, 1900) } }] })
 
+// 성공한 요청 줄을 휴지통에 넣을까(기본 켬).
+export const logTrashEnabled = () => Deno.env.get("NOTION_LOG_REQUEST_TRASH") !== "off"
+
 // 요청 줄 하나 처리. readTarget = 사본 처리기와 같은 방식으로 읽기(넘기는 본문이 요청 칸 길과 같게).
-export async function handleLogRequest(logPage: Page, readTarget: (id: string) => Promise<Page | null>, deps: RequestDeps): Promise<string | null> {
+// opts.trash가 있으면 성공한 요청 줄을 그것으로 휴지통에 넣는다(실패하면 성공 상태를 남기고 로그만).
+export async function handleLogRequest(logPage: Page, readTarget: (id: string) => Promise<Page | null>, deps: RequestDeps, opts: { trash?: (pageId: string) => Promise<void> } = {}): Promise<string | null> {
 	const r = logRequestOf(logPage)
 	if (!r) return null
 	const finish = async (ok: boolean, reason: string) => {
@@ -68,8 +75,13 @@ export async function handleLogRequest(logPage: Page, readTarget: (id: string) =
 	if (!hasRequestProp(target)) { await finish(false, "대상 줄에 요청 칸이 없어요"); return "log:no-request-prop" }
 	const req = requestFromId(target, r.id)!
 	const out = await handleRequest(target, req, deps)
-	await finish(out.state === STATE_DONE, out.state === STATE_DONE ? "" : out.text)
-	return `log:${out.ids.join(",")} ${out.state}`
+	const ok = out.state === STATE_DONE
+	await finish(ok, ok ? "" : out.text)
+	let trashed = ""
+	if (ok && opts.trash) {
+		try { await opts.trash(logPage.id); trashed = " trashed" } catch (err) { deps.log(`[logRequests] ${logPage.id.slice(-6)} 요청 줄 휴지통 넣기 실패(성공 상태로 남김): ${(err as Error).message}`) }
+	}
+	return `log:${out.ids.join(",")} ${out.state}${trashed}`
 }
 
 // 자동화 로그 DB의 data source id 찾기: NOTION_SEND_LOG_DB_ID(데이터베이스 id)로 /databases를 읽어 data_sources[0].
