@@ -74,24 +74,16 @@ window.liveModeFor = function (search, hostname, protocol) {
   const snapRo = () => { const ks = roKeepKeys(); if (!ks.length) return snapshot(); const keep = {}; ks.forEach((k) => { keep[k] = DB[k]; DB[k] = Array.isArray(keep[k]) ? [] : {}; }); try { return snapshot(); } finally { Object.assign(DB, keep); } };
   window.liveRoReset = () => { roBase = null; };
   const roCss = document.createElement("style");
-  roCss.textContent = ".live-ro #view [data-gdel]{display:none!important}.ro-note{margin:0 0 10px;padding:8px 10px;border-radius:8px;background:#FFF6DA;color:#3A3226;font-size:13px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ro-note a{color:inherit;font-weight:600;text-decoration:underline}.ro-line{margin:-2px 0 8px;padding:0 4px;font-size:12px;color:#8A8378}";
+  roCss.textContent = ".live-ro #view [data-gdel]{display:none!important}.ro-note{margin:0 0 10px;padding:8px 10px;border-radius:8px;background:#FFF6DA;color:#3A3226;font-size:13px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ro-note a{color:inherit;font-weight:600;text-decoration:underline}";
   document.head.appendChild(roCss);
-  /* 보기 전용 화면 안내(261119 대표 "보기 중심인 화면에만 안내, 나머지는 다 사용 가능"): 수강료 · 청구서 · 손익 분석 · 법정 서류만(시험은 261123 쓰기 칸 P2x로 열림) 제목 줄 아래 작은 회색 한 줄(토스트 아님 · 닫기 없음).
-     어느 화면인지는 이 목록 한 곳이 기준 — 목록에 없는 화면(수업 · 일정 · 학생 · 클래스 · 등록 …)에는 보기만 칸이어도 안 뜬다 */
+  /* 보기 전용 화면 안내(대표 261124 "제목 아래 설명 줄은 모두 없애고, 노션에서 고쳐요는 필요한 곳만 자동 갱신 아래로"): 제목 아래 줄은 두지 않고,
+     제목 줄 오른쪽 상태 묶음(#pgStat — 자동 갱신 줄) 바로 아래 작은 글 한 줄. 어느 화면인지는 이 목록 한 곳이 기준 — 목록에 없는 화면에는 보기만 칸이어도 안 뜬다 */
   const RO_NOTE_SCREENS = new Set(["tuition", "bill", "bookfees", "charges", "etcs", "profit", "costs", "legal", "schools", "records", "reports", "completion", "letters", "files", "alims"]);
-  const RO_NOTE_TEXT = "이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요";
-  /* 261119 대표("라이브러리 [+] · [연필]이 막혀 있다"): [+] · [연필]이 꺼진 화면은 이유를 한 줄로 — 라이브러리 · 학교는 노션 버튼이 서버 동작(교재 단원 · 학교 코드)까지 해서 앱에서 직접 추가하지 않음 */
-  const RO_FIN_NOTE = "결제 · 청구는 이 화면의 단추로 노션에 써요 — 그 밖은 노션에서 고쳐요"; const RO_NOTE_BY = { tuition: RO_FIN_NOTE, bill: RO_FIN_NOTE, profit: RO_FIN_NOTE, schools: "학교 추가 · 학교 코드는 [학교 검색]으로 해요 — 이름 · 기간은 노션에서 고쳐요" };
-  const roNote = (show, scr) => {
-    const v = document.getElementById("view"); if (!v) return;
-    let n = v.querySelector(":scope > .ro-line");
-    if (!show) { if (n) n.remove(); return; }
-    const top = v.querySelector(":scope > .top"); if (!top) return;
-    const txt = tRo(scr) ? T_RO_TEXT : RO_NOTE_BY[scr] || RO_NOTE_TEXT;
-    if (n && n.textContent !== txt) n.textContent = txt;
-    if (!n) { n = document.createElement("div"); n.className = "ro-line"; n.textContent = txt; }
-    if (top.nextElementSibling !== n) top.after(n);
-  };
+  const RO_NOTE_TEXT = "고칠 것은 노션에서 고쳐요";
+  const RO_NOTE_BY = { schools: "이름 · 기간은 노션에서 고쳐요" }; /* 학교 추가 · 코드는 [학교 검색]이 하므로 노션에서 고칠 것만 */
+  const T_RO_LINE = "댓글 권한 — 편집허용은 원장에게 요청해요";
+  window.LIVE_RO_LINE = "";
+  const roNote = (show, scr) => { window.LIVE_RO_LINE = show ? (tRo(scr) ? T_RO_LINE : RO_NOTE_BY[scr] || RO_NOTE_TEXT) : ""; roLinePlace(); };
   const roDress = () => {
     const q = (s) => document.querySelectorAll(s), why = "이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요";
     q("#addRow,#tbEd,[data-act2]:not([data-act2=aFind]):not([data-act2=aCal])").forEach((b) => { b.disabled = true; b.title = why; });
@@ -514,16 +506,27 @@ function liveSyncTime(iso) { try { return new Date(iso).toLocaleTimeString("ko-K
 function liveSyncMount() {
   const sa = document.getElementById("saveAll");
   const on = !!(window.LIVE && window.LIVE.loaded);
-  let b = document.getElementById("syncBtn"), t = document.getElementById("syncAt");
-  if (!sa || !on) { if (b) b.remove(); if (t) t.remove(); return; }
-  if (b && b.parentElement !== sa.parentElement) { b.remove(); if (t) t.remove(); b = t = null; }
+  let b = document.getElementById("syncBtn"), t = document.getElementById("syncAt"), ps = document.getElementById("pgStat");
+  if (!sa || !on) { if (b) b.remove(); if (ps) ps.remove(); return; }
+  if (b && b.parentElement !== sa.parentElement) { b.remove(); if (ps) ps.remove(); b = t = ps = null; }
   if (!b) {
-    document.querySelectorAll("#syncAt").forEach((x) => x.remove());
-    sa.insertAdjacentHTML("beforebegin", `<span class="sync-at" id="syncAt"></span><button type="button" class="btn tb-sync ${window._liveSyncing ? "busy" : ""}" id="syncBtn" ${window._liveSyncing ? "disabled" : ""} title="동기화 — 노션에서 바뀐 것 · 지운 줄까지 이 화면의 자료를 통째로 맞춰요(오래 걸릴 수 있어요). 저장과는 달라요: 노션 → 앱 방향이에요">${IC("rotc", "s")}<span>${window._liveSyncing ? "맞추는 중…" : "동기화"}</span></button>`);
-    b = document.getElementById("syncBtn"); t = document.getElementById("syncAt"); b.onclick = liveSyncRun;
+    document.querySelectorAll("#pgStat,#syncAt").forEach((x) => x.remove());
+    /* 상태 묶음(#pgStat) = 자동 갱신 줄(점 + 글) 위 · 보기만 안내 아래 — 제목 줄 오른쪽 끝 한 자리(대표 261124 "초록색 원도 딱 정해진 위치에만") */
+    sa.insertAdjacentHTML("beforebegin", `<span class="pg-stat" id="pgStat"><span class="pg-live"><span class="sync-at" id="syncAt"></span></span></span><button type="button" class="btn tb-sync ${window._liveSyncing ? "busy" : ""}" id="syncBtn" ${window._liveSyncing ? "disabled" : ""} title="동기화 — 노션에서 바뀐 것 · 지운 줄까지 이 화면의 자료를 통째로 맞춰요(오래 걸릴 수 있어요). 저장과는 달라요: 노션 → 앱 방향이에요">${IC("rotc", "s")}<span>${window._liveSyncing ? "맞추는 중…" : "동기화"}</span></button>`);
+    b = document.getElementById("syncBtn"); t = document.getElementById("syncAt"); ps = document.getElementById("pgStat"); b.onclick = liveSyncRun;
   }
-  { const tr = document.querySelector("#view > .top.pg-ttl"); if (t && tr && t.parentElement !== tr) tr.appendChild(t); } /* 261123 대표: 자동 갱신 줄은 단추 줄이 아니라 제목 줄 오른쪽 끝(단추 묶음 바로 위) */
+  { const tr = document.querySelector("#view > .top.pg-ttl, #view > .ttl"); if (ps && tr && ps.parentElement !== tr) tr.appendChild(ps); } /* 모든 화면 같은 자리: 제목 줄(표 화면 .pg-ttl · 수업 화면 .ttl) 오른쪽 끝 */
   if (t) { const auto = typeof window.lrSyncText === "function" ? window.lrSyncText() : null; if (b) b.title = b.title.replace(/ \(마지막 동기화 [^)]*\)$/, "") + (auto && window.LIVE_SYNCED_AT ? ` (마지막 동기화 ${liveSyncTime(window.LIVE_SYNCED_AT)})` : ""); const txt = auto || (window.LIVE_SYNCED_AT ? `마지막 동기화 ${liveSyncTime(window.LIVE_SYNCED_AT)}` : ""); if (t.textContent !== txt || !t.dataset.f) { t.textContent = txt; t.dataset.f = "1"; try { if (typeof fitBars === "function") fitBars(); } catch (_) {} } } /* 단추 · 시각이 붙은 뒤 위 줄이 맞는지 다시 잰다 */
+  roLinePlace();
+}
+/* 보기만 안내 한 줄(live.js roNote가 글을 정함) — 상태 묶음 안 자동 갱신 줄 바로 아래. 묶음이 없는 화면(홈 · 관리자 설정)에는 두지 않는다 */
+function roLinePlace() {
+  const ps = document.getElementById("pgStat"), txt = window.LIVE_RO_LINE || "";
+  document.querySelectorAll("#view .ro-line").forEach((n) => { if (!ps || n.parentElement !== ps || !txt) n.remove(); });
+  if (!ps || !txt) return;
+  let n = ps.querySelector(":scope > .ro-line");
+  if (!n) { n = document.createElement("span"); n.className = "ro-line"; ps.appendChild(n); }
+  if (n.textContent !== txt) n.textContent = txt;
 }
 /* 시스템 타이틀 = 노션 최상위 페이지 제목(서버 status.rootTitle). 사이드바 제목 · 탭 제목 앞부분에 쓰고, 없으면 지금 글자 그대로. */
 function liveRootTitle(t) {
