@@ -86,7 +86,7 @@ window.liveModeFor = function (search, hostname, protocol) {
   const roNote = (show, scr) => { window.LIVE_RO_LINE = show ? (tRo(scr) ? T_RO_LINE : RO_NOTE_BY[scr] || RO_NOTE_TEXT) : ""; roLinePlace(); };
   const roDress = () => {
     const q = (s) => document.querySelectorAll(s), why = "이 화면은 보기만 해요 — 고칠 것은 노션에서 고쳐요";
-    q("#addRow,#tbEd,[data-act2]:not([data-act2=aFind]):not([data-act2=aCal])").forEach((b) => { b.disabled = true; b.title = why; });
+    q("#addRow,#tbEd,[data-act2]:not([data-act2=aFind])").forEach((b) => { b.disabled = true; b.title = why; });
     const recFree = (el) => recTab() && el.closest(REC_AREA); /* 학습기록 쓰기 칸이 켜진 하루 수업 페이지의 기록 탭은 잠그지 않음 */
     q(".panel input:not([type=checkbox]):not([type=radio]),.panel textarea").forEach((i) => { if (!recFree(i) && !(attw() && i.closest(".asfree"))) i.readOnly = true; });
     q(".panel select,.panel input[type=checkbox],.panel input[type=radio]").forEach((i) => { if (!recFree(i)) i.disabled = true; });
@@ -190,7 +190,7 @@ window.liveModeFor = function (search, hostname, protocol) {
      창: 링크 · 도움말 · 노션 · 줄 열기/이동 · 접기 · 탭 · 할 일 줄. 위 줄: 날짜 · 달 · 주 이동, 보기 탭, 찾기, 엑셀 · 인쇄, 크기, 창 고정,
      그리고 입력 칸(P1)에서 고친 것을 다루는 실행 취소 · 다시 실행 · 모두 되돌리기 · 저장. */
   const RO_PASS0 = "a,[data-fin],[data-web],[data-asmv],#asBack,#syncBtn,[data-ft],#wdB,#cfZo,#cfZi,#mkFilT,[data-help],[data-notion],.hnot,[data-drill],[data-go],[data-gobook],[data-gochs],[data-gobill],[data-act^=go],[data-rpdo^=open],[data-rpdo^=notion],[data-pgfold],[data-entab],[data-ldn],[data-lmn],.ptabs,.ro-note,.tdr,.tdmore,.qhelp,summary,"
-    + "[data-dn],[data-hcm],[data-hgo],[data-hatt],[data-hles],[data-hstu],[data-henr],[data-habs],[data-htab],[data-tev],[data-mn],[data-sub],[data-cfnav],[data-mtab],[data-view],[data-wkd],[data-evsel],.foldchip,#lq,.sbx,#xlB,#prB,#undoB,#redoB,#rvAll,#saveAll,#panelT,#mkPanelT,#seaChip,#wkP,#wkN,#wkT,#lmAtt,#cbFind,#zOut,#zIn,#makeWeek,#lGen,[data-act2=aFind],[data-act2=aCal]"; /* [data-act2=aFind] · [aCal] = 학교 [학교 검색] · [학사일정 가져오기](261123 — 서버 school-api · sync-school-calendar를 앱에서 부름, liveschool.js). */ /* #makeWeek · #lGen(수업 메뉴 v559의 생성 단추) = 수업 생성: 노션 버튼과 같은 서버 함수(generate-classes)를 부르는 run이라 보기 화면에서도 켠다(대표 261117 "수업 생성은 앱에서도") */
+    + "[data-dn],[data-hcm],[data-hgo],[data-hatt],[data-hles],[data-hstu],[data-henr],[data-habs],[data-htab],[data-tev],[data-mn],[data-sub],[data-cfnav],[data-mtab],[data-view],[data-wkd],[data-evsel],.foldchip,#lq,.sbx,#xlB,#prB,#undoB,#redoB,#rvAll,#saveAll,#panelT,#mkPanelT,#seaChip,#wkP,#wkN,#wkT,#lmAtt,#cbFind,#zOut,#zIn,#makeWeek,#lGen,[data-act2=aFind],[data-schcal]"; /* [data-act2=aFind] = 학교 [학교 검색] · [data-schcal] = 학교 창 [학사일정 가져오기](서버 school-api · sync-school-calendar를 앱에서 부름, liveschool.js). */ /* #makeWeek · #lGen(수업 메뉴 v559의 생성 단추) = 수업 생성: 노션 버튼과 같은 서버 함수(generate-classes)를 부르는 run이라 보기 화면에서도 켠다(대표 261117 "수업 생성은 앱에서도") */
   const RO_HIT = "button,input,select,textarea,label,[role],[tabindex],[contenteditable],.btn,.lnk,.hf-box";
   const roBlock = (e) => {
     if (!document.body.classList.contains("live-ro") || !e.target.closest) return;

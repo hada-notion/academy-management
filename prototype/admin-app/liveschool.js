@@ -134,8 +134,7 @@ function liveSchoolFind(target) {
     setTimeout(() => q.focus({ preventScroll: true }), 0);
   });
 }
-/* [학사일정 가져오기]: 노션 학교 버튼과 같은 서버 함수(sync-school-calendar start)를 학교마다 부른다 */
-const lsCalTargets = () => (DB.schools || []).filter((s) => !s.del && lsIsId(s.id) && s.code && String(s.sync || "").slice(0, 10) !== TODAY && !LSCH.asked.has(s.id));
+/* [학사일정 가져오기]: 노션 학교 버튼과 같은 서버 함수(sync-school-calendar start)를 고른 학교에 부른다(학교 창에서 한 곳씩) */
 async function liveSchoolCal(list) {
   const ok = [], bad = [];
   for (const s of list) {
@@ -144,25 +143,22 @@ async function liveSchoolCal(list) {
     catch (e) { bad.push(`${s.name}: ${e && (e.status === 401 || e.status === 403) ? "이 학원은 노션 학교 페이지의 [학사일정 가져오기] 버튼으로 해요" : lsErr(e)}`); }
   }
   render();
-  if (ok.length) toast(`${ok.length}곳 학사일정 가져오기를 맡겼어요 — 몇 분 뒤 위 [동기화]를 누르면 일정에 보여요${bad.length ? ` · 못 맡긴 곳 ${bad.join(" · ")}` : ""}`);
+  if (ok.length) toast(`${ok.map((x) => x.name).join(" · ")} 학사일정 가져오기를 맡겼어요 — 몇 분 뒤 위 [동기화]를 누르면 일정에 보여요${bad.length ? ` · 못 맡긴 곳 ${bad.join(" · ")}` : ""}`);
   else toast(`학사일정 가져오기를 맡기지 못했어요 — ${bad.join(" · ")}`);
 }
 (function lsInstall() {
   try {
     const find0 = schoolFind;
     schoolFind = function () { return lsLive() ? liveSchoolFind() : find0.apply(this, arguments); };
-    const A = LISTS.schools.acts || [], cal = A.find((a) => a.id === "aCal");
-    if (cal) {
-      const n0 = cal.n, tip0 = cal.tip, run0 = cal.run;
-      cal.n = () => (lsLive() ? lsCalTargets().length : n0());
-      cal.tip = (n) => (lsLive() ? (n ? `학사일정 가져오기 — 학교 코드가 있고 오늘 아직 안 가져온 학교 ${n}곳(나이스)` : "학사일정 가져오기 — 학교 코드가 있는 학교가 없거나 오늘 모두 맡겼어요") : tip0(n));
-      cal.run = (n) => {
-        if (!lsLive()) return run0(n);
-        const list = lsCalTargets();
-        if (!list.length) return;
-        askRun("학사일정을 가져올까요?", `${esc(list.map((s) => s.name).join(" · "))} <b>${list.length}곳</b>의 학사일정을 나이스에서 가져와 노션 일정에 넣어요(이미 있는 일정은 건너뜀). 몇 분 걸려요 — 끝나면 위 [동기화]로 앱에 보여요.`, "가져오기", () => liveSchoolCal(list));
-      };
-    }
+    /* 학교 창 [학사일정 가져오기](hada-admin.html schCalRun) — 실제 자료면 그 학교 하나만 서버(sync-school-calendar start)에 맡긴다. 맡긴 학교는 이 창에서 다시 못 누름 */
+    window.schCalAsked = (id) => lsLive() && LSCH.asked.has(id);
+    const run0 = window.schCalRun;
+    window.schCalRun = (id) => {
+      if (!lsLive()) return run0(id);
+      const s = (DB.schools || []).find((x) => x.id === id);
+      if (!s || !lsIsId(s.id) || !s.code || LSCH.asked.has(s.id)) return;
+      askRun("학사일정을 가져올까요?", `<b>${esc(s.name)}</b>의 학사일정을 나이스에서 가져와 노션 일정에 넣어요(이미 있는 일정은 건너뜀). 몇 분 걸려요 — 끝나면 [동기화]로 일정에 보여요.`, "가져오기", () => liveSchoolCal([s]));
+    };
   } catch (_) {}
   /* 노션 학교 페이지의 [학교 검색] 링크: hada-admin.html?live=1&school=<페이지 id> — 노션 자료를 받은 뒤 학교 화면에서 그 학교를 고르고,
      학교 코드가 없으면 [학교 검색] 창을 그 학교를 연결할 학교로 연다. 주소에서 school=은 지운다(새로고침해도 다시 열리지 않게) */
