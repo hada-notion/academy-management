@@ -44,7 +44,10 @@ export const hasRequestProp = (page: Page | null) => !!page?.properties && typeo
 
 // 이 줄의 요청: 아는 동작 ID면 { id, ids(넘길 것 전부) }, 아니면 null(비었음 · 처리 중 · 완료 · 실패 · 모르는 값).
 export function requestOf(page: Page | null): { id: string; ids: string[] } | null {
-	const id = propText(page?.properties?.[REQUEST_PROP]).trim()
+	return requestFromId(page, propText(page?.properties?.[REQUEST_PROP]).trim())
+}
+// 동작 ID 하나로 넘길 것 전부(웹훅 정보 규칙). 요청 칸 밖(자동화 로그 요청 줄, 261125 시험)에서 받은 ID도 같은 규칙.
+export function requestFromId(page: Page | null, id: string): { id: string; ids: string[] } | null {
 	if (!id || !routeById(id)) return null
 	const info = propText(page?.properties?.[INFO_PROP]).split(",").map((s) => s.trim()).filter((s) => s && routeById(s))
 	const ids = info.includes(id) ? [...new Set(info)] : [id]
@@ -151,7 +154,7 @@ export function rowErrorOf(now: Page | null, before: Page | null = null, t0 = 0)
 	return hasHangul(c) ? clip(c, 160) : "줄의 [마지막 오류]를 보고 고친 뒤 다시 눌러 주세요"
 }
 
-export type RequestOutcome = { state: typeof STATE_DONE | typeof STATE_FAILED; ids: string[]; results: ForwardResult[]; ms: number; overwritten: boolean }
+export type RequestOutcome = { state: typeof STATE_DONE | typeof STATE_FAILED; ids: string[]; results: ForwardResult[]; ms: number; overwritten: boolean; text: string }
 
 // 줄 하나의 요청 처리. page = 방금 다시 읽은 페이지(노션 API 모양 그대로).
 export async function handleRequest(page: Page, req: { id: string; ids: string[] }, deps: RequestDeps): Promise<RequestOutcome> {
@@ -210,7 +213,7 @@ export async function handleRequest(page: Page, req: { id: string; ids: string[]
 		await deps.patch(page.id, overwritten ? { [RESULT_PROP]: textProp(short) } : { [REQUEST_PROP]: selectProp(state), [RESULT_PROP]: textProp(short) })
 	}
 	deps.log(`[notionRequests] ${page.id.slice(-6)} ${req.ids.join(",")} → ${state} ${sec}s${rowError ? " (줄 ⚠️ 오류)" : ""}${overwritten ? " (새 요청 있음)" : ""}`)
-	return { state, ids: req.ids, results, ms, overwritten }
+	return { state, ids: req.ids, results, ms, overwritten, text: resultText }
 }
 
 // ---------- 자동 재시도 결과를 요청 칸에 (261123 출시 전 3번) ----------

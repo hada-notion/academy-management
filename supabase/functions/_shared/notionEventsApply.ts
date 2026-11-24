@@ -18,6 +18,7 @@ import { fetchSupabaseWithRetry } from "./reportCacheShared.ts"
 import { appSources, pageRow, upsertRows, deleteIds, type AppDb } from "./appCopy.ts"
 import { COPY_TABLES, DS, toRows, upsertCopyRows, deleteCopyRows, type CopyTable } from "./classRoomCopy.ts"
 import { handleRequest, hasRequestProp, liveRequestDeps, requestOf, requestsEnabled } from "./notionRequests.ts"
+import { handleLogRequest, isLogSource } from "./notionLogRequests.ts"
 
 type Page = Record<string, any>
 
@@ -99,6 +100,11 @@ export interface Deps {
 		hasProp(page: Page): boolean
 		handle(page: Page): Promise<string | null> // 넘겼으면 결과 글자(예: "session-record ✅ 완료"), 요청 없으면 null
 	}
+	// (261125 시험) 자동화 로그 DB에 새로 생긴 요청 줄(notionLogRequests.ts). 없으면 보지 않는다.
+	logRequest?: {
+		isLogSource(ds: string): Promise<boolean>
+		handle(logPage: Page, readTarget: (id: string) => Promise<Page | null>): Promise<string | null>
+	}
 }
 
 export type ApplyResult = { result: string; target?: string }
@@ -113,6 +119,15 @@ export async function applyOne(item: QueueItem, deps: Deps): Promise<ApplyResult
 		const fresh = await deps.targetsFresh()
 		if (fresh) { map = fresh; evTarget = targetOf(map, item.data_source_id) }
 	}
+	// (261125 시험) 자동화 로그 DB의 새 줄 = 버튼 요청일 수 있다. page.created만(묶이지 않는 알림).
+	// 이 학원 연동이 만든 줄(알림톡 전송 기록 등)은 버튼 요청이 아니라 읽지 않는다.
+	let logReq = ""
+	if (deps.logRequest && item.event_type === "page.created" && !item.own_bot && item.data_source_id && await deps.logRequest.isLogSource(item.data_source_id)) {
+		const logPage = await deps.readPage(item.page_id)
+		const r = logPage && !logPage.in_trash && !logPage.archived ? await deps.logRequest.handle(logPage, (id) => deps.readPage(id)) : null
+		if (!evTarget) return { result: r ?? "log:skip" }
+		if (r) logReq = `${r} `
+	}
 	// 요청 칸 DB인가: true · false · null(아직 모름 → 읽어 보고 기억)
 	const reqSource = deps.request && item.data_source_id && item.event_type !== "page.deleted" ? await deps.request.isSource(item.data_source_id) : false
 	if (!evTarget && reqSource === false && item.event_type !== "page.moved") return { result: "skip:no-copy" }
@@ -124,7 +139,7 @@ export async function applyOne(item: QueueItem, deps: Deps): Promise<ApplyResult
 	}
 	const page = await deps.readPage(item.page_id)
 	const gone = !page || page.in_trash || page.archived
-	let req = ""
+	let req = logReq
 	if (deps.request && !gone) {
 		if (reqSource === null && item.data_source_id) await deps.request.remember(item.data_source_id, deps.request.hasProp(page))
 		const r = await deps.request.handle(page)
@@ -274,6 +289,19 @@ export const liveRequest: NonNullable<Deps["request"]> = {
 	},
 }
 
+const SEND_LOG_DB = () => Deno.env.get("NOTION_SEND_LOG_DB_ID") ?? ""
+export const liveLogRequest: NonNullable<Deps["logRequest"]> = {
+	isLogSource: (ds) => isLogSource(ds, {
+		dbId: SEND_LOG_DB(),
+		async getDatabase(id) {
+			const res = await fetchWithRetry(`${NOTION_API}/databases/${id}`, { headers: notionHeaders() })
+			if (!res.ok) throw new Error(`${res.status}`)
+			return await res.json()
+		},
+	}),
+	handle: (logPage, readTarget) => handleLogRequest(logPage, readTarget, liveRequestDeps),
+}
+
 export const liveDeps: Deps = {
 	rpc: sbRpc,
 	targets: liveTargets,
@@ -306,6 +334,7 @@ export const liveDeps: Deps = {
 	sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
 	log: (m) => console.log(m),
 	request: requestsEnabled() ? liveRequest : undefined,
+	logRequest: requestsEnabled() && Deno.env.get("NOTION_EVENTS_LOG_REQUESTS") !== "off" ? liveLogRequest : undefined,
 }
 
 export const applyEnabled = () => Deno.env.get("NOTION_EVENTS_APPLY") !== "off"
