@@ -3557,6 +3557,7 @@ html:root .lj .ljh,html:root .lj dl{font-size:12px}
 .hbcard{display:flex;flex-direction:column;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:10px 12px;cursor:pointer;min-width:0}
 .hbcard:hover{border-color:var(--brand-border)}
 .hbcard.late{box-shadow:inset 3px 0 0 var(--danger)}
+.hbcard.sel{border-color:var(--brand-deep);box-shadow:inset 0 0 0 1px var(--brand-deep)}.hbcard.late.sel{box-shadow:inset 3px 0 0 var(--danger),inset 0 0 0 1px var(--brand-deep)}.hwr.sel,.hdr.sel{background:var(--sel-bg)}/* 오른쪽 창에 연 카드 · 줄 */
 .hbn{font-size:var(--text-small);font-weight:600;overflow-wrap:anywhere}
 .hbm{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:var(--text-caption);color:var(--muted);font-variant-numeric:tabular-nums}
 .hbm .rpill{display:inline-flex;align-items:center;height:20px;padding:0 var(--space-2);border-radius:var(--radius-pill);font-size:var(--text-micro);font-weight:700;background:var(--line2);color:var(--muted)}
@@ -3566,14 +3567,12 @@ html:root .lj .ljh,html:root .lj dl{font-size:12px}
 .hboard h3 .htabs{margin-left:var(--space-3)}
 .hbh .rpill.warn{background:var(--warning-soft);color:var(--warning-ink)}
 .hbm .rpill.bad,.hdone .rpill.bad{background:var(--danger-soft);color:var(--danger-ink)}.hbm .rpill.warn,.hdone .rpill.warn{background:var(--warning-soft);color:var(--warning-ink)}.hdone .rpill.ok{background:var(--success-soft);color:var(--success-ink)}
-.hbach{margin-left:auto;display:inline-flex;align-items:center;gap:2px;height:24px;padding:0 var(--space-2);border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--muted);font:inherit;font-size:var(--text-caption);font-weight:600;cursor:pointer}
-.hbach:hover{border-color:var(--brand-border);color:var(--brand-deep)}.hbach svg.i{width:14px;height:14px}
 .hcal .evchip.hcchip{border-left:3px solid var(--line)!important;background:var(--surface)}
 .hcal .evchip.tdp-imp{border-left-color:var(--danger)!important;background:var(--danger-soft)}.hcal .evchip.tdp-hold{border-left-color:var(--warning)!important;background:var(--warning-soft)}
 .hcal .evchip.tda-ok{opacity:.5}.hcal .evchip.tda-miss{text-decoration:line-through;opacity:.7}
 .hcleg{display:flex;gap:var(--space-3);align-items:center;margin-top:var(--space-2)}.hcleg>span[class]{padding-left:var(--space-2);border-left:3px solid var(--line)}.hcleg .tdp-imp{border-left-color:var(--danger)}.hcleg .tdp-hold{border-left-color:var(--warning)}
 .hdone{display:flex;flex-direction:column;border:1px solid var(--line2);border-radius:var(--radius-md);overflow:hidden}
-.hdh,.hdr{display:grid;grid-template-columns:minmax(0,1fr) 96px 150px 140px 96px;gap:var(--space-3);align-items:center;padding:var(--space-2) var(--space-3)}
+.hdh,.hdr{display:grid;grid-template-columns:110px minmax(0,1fr) 150px 140px 110px;gap:var(--space-3);align-items:center;padding:var(--space-2) var(--space-3)}
 .hdh{background:var(--canvas);font-size:var(--text-caption);color:var(--muted);font-weight:600}
 .hdr{border-top:1px solid var(--line2);cursor:pointer;font-size:var(--text-small);min-height:44px;box-sizing:border-box}.hdr:hover{background:var(--brand-tint)}.hdr b{font-weight:600;overflow-wrap:anywhere}
 .hdr .rpill{display:inline-flex;align-items:center;height:20px;padding:0 var(--space-2);border-radius:var(--radius-pill);font-size:var(--text-micro);font-weight:700;background:var(--line2);color:var(--muted)}
