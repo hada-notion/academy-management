@@ -2336,11 +2336,9 @@ const cbtn=(act,label,icon,cls)=>`<button type="button" class="btn sm ${cls||""}
 function dayItems(d){const out=[];DB.blocks.filter(b=>!b.del).forEach(b=>{for(let i=-6;i<=6;i++){const d0=dPlus(d,i);if(dow(d0)!==b.day||!lessonMade(b,d0))continue;const e=lessonEff(b,d0);if(e.d===d)out.push({b,d0,e,k:lkey(b,d0)})}});return out.sort((a,b)=>a.e.start-b.e.start)}
 /* 363판(연결): 화면별 할 일 숫자 = 한 곳. 왼쪽 메뉴 숫자 · 오늘 화면 [할 일] 카드가 같이 씀 */
 function todoOf(scr){const ss=DB.blocks.filter(b=>b.seasonId===curSeason());const LT=scr==="lesson"?lessonTodoNow():{un:0,ms:0,mk:0};const lu=LT.un,lw=LT.mk;const n=scr==="lesson"?LT.un+LT.ms+LT.mk:scr==="students"?stuTodoN():scr==="enrolls"?DB.enrolls.filter(e=>!e.ended&&!ss.some(b=>b.regs.includes(e.id))).length:scr==="timetable"?ss.filter(b=>b.state==="draft").length:0;const tip=scr==="lesson"?`이번 주 미입력 ${LT.un} · 수업 없음 ${LT.ms} · 보강 ${LT.mk}`:scr==="students"?"학년 빈칸·클래스 없는 학생":scr==="enrolls"?"시간표 없는 등록":scr==="timetable"?"저장 안 한 시간표":"";return {n,tip}}
-function todayTodoBox(){/* 363판(어사이드 "오늘 할 일 목록이 없어요"): 메뉴 숫자와 같은 할 일 + 신규문의 · 7일 안 등원 예정. 줄을 누르면 그 화면 */
-  const rows=[];MENU.forEach(([g,items])=>items.forEach(([scr,t,icn,later])=>{if(later)return;const o=todoOf(scr);if(o.n)rows.push([scr,t,icn,o.tip,o.n])}));
-  const nw=DB.students.filter(x=>!x.del&&stuStat(x)==="new").length;if(nw)rows.unshift(["students","신규문의","user","연락·상담할 학생",nw]);
-  const pre=DB.enrolls.filter(e=>!e.del&&!e.ended&&e.start>TODAY&&e.start<=dPlus(TODAY,7)).length;if(pre)rows.push(["enrolls","등원 예정","usercheck","7일 안에 수업을 시작하는 등록",pre]);
-  return `<section class="cbox todobox"><h3>${IC("check","l")}입력 점검 <span class="hint">${rows.reduce((a,r)=>a+r[4],0)}</span>${HELP("왼쪽 메뉴 숫자와 같은 입력 점검이에요 — 빠진 값 · 이어지지 않은 줄을 모아 보여요. 줄을 누르면 그 화면으로 가요.")}</h3>${rows.length?rows.map(([scr,t,icn,tip,n])=>`<div class="crow tdl" data-todogo="${scr}" title="${esc(t)} 화면에서 열기"><span class="cl">${IC(icn,"s")} ${esc(t)}</span><span class="cv">${esc(tip)}</span><span class="ca"><b class="todo">${n}</b>${IC("right","s")}</span></div>`).join(""):'<div class="hint">오늘 손볼 일이 없어요</div>'}</section>`}
+/* 261124 홈 알림(대표 개입 4 — 홈은 할 일 + 오늘 셋뿐, 입력 점검 목록은 왼쪽 메뉴 숫자로): 평소엔 그리지 않음.
+   실제 자료 모드에서 노션 요청 실패 · 구독 끊김이 있을 때만 liverefresh.js가 이 빈 상자에 줄을 넣어 보여 준다(그 알림이 다른 곳엔 없어서). */
+function todayTodoBox(){return ""}
 /* 480판: 보강 메뉴 = [결석 달력 | 보강 대기]. 결석·보강 상태는 수업 화면과 같은 곳(absAll · absState · mkWait)에서. 보강 생성는 수업 화면 보강 모드(학생 미리 고름) */
 const MK_ST={need:["보강 필요","red"],pre:["판단 전","yellow"],re:["보강도 결석","red"],pend:["보강 잡힘","gray"],done:["보강 끝","gray"],none:["보강 없음","gray"]};
 function mkGo(k){const a=absInfo(k);const nm=stu(a.sid)?(stu(a.sid)||{}).name:"학생";openScreen("timetable",false,{view:"lesson",lv:"week"/* 261118: 보강 잡기는 주간 보기에서 */});const st=activeTab.state;st.lmode="mk";st.mkPre={classId:a.classId,sids:[a.sid]};st.mkFrom=[k];st.lsel=null;toast(`${nm} 학생을 미리 골라 뒀어요 — 빈 칸을 끌어 보강 시간을 정해 주세요`);render()}
@@ -2489,9 +2487,7 @@ function renderMakeup(v,t){const st=t.state,tab=(st.mtab==="mk"?"cal":st.mtab)||
   mkCalBind(v,st);mkSideMount(v,st)}
 /* 261124 홈 = 할 일 크게 + 오늘 보기 셋(대표 개입 4 "할일만 크게 + 데이터 소스(오늘 수업, 오늘 등원, 오늘 일정)") — 노션 홈과 같은 구성, 숫자 칸 · 도넛 · 달성률 없음:
    위 = 할 일(노션 연결 보기 탭 4개와 같은 이름 · 순서 · 거르기): 우선순위(보드 중요 → 보통 → 보류) · 담당자(보드) · 캘린더(달) · 완료(달성 · 미달성 표)
-   아래 = 오늘 수업 · 오늘 등원 · 오늘 일정 목록 셋(노션 홈 아래 연결 보기 셋과 같은 이름 · 차례). 앱만: 날 이동 · 입력 점검(맨 아래).
-   위 = 할 일(노션 연결 보기 탭 4개와 같은 이름 · 순서 · 거르기): 우선순위(보드 중요 → 보통 → 보류) · 담당자(보드) · 캘린더(달) · 완료(달성 · 미달성 표)
-   아래 = 오늘 학원(노션 대시보드 3줄과 같은 위젯 · 순서): 밀린 할 일 · 오늘 수업 · 오늘 출결 / 신규 문의 · 등록 대기 · 이번 주 달성률 / 이번 주 일정. 앱만: 날 이동 · 입력 점검(맨 아래).
+   아래 = "오늘" 상자 하나에 오늘 수업 · 오늘 등원 · 오늘 일정 목록 셋(노션 홈 아래 대시보드 "오늘"의 위젯 셋과 같은 이름 · 차례). 앱만: 날 이동 · 실제 자료 알림(실패 때만).
    할 일 두 칸(대표 "2개만 하자"): 달성여부(달성 · 미달성, 비면 진행) · 우선순위(중요 · 보류, 비면 보통). 노션 기능만으로 바꾸므로(서버 안 씀) 앱은 보기만 —
    카드 [달성]과 끌어서 우선순위 바꾸기는 노션 홈에서(앱 [달성] = 노션에서 열기). 보드 줄 = 노션 보드 필터와 같은 규칙:
    달성여부 빔 · "매일" 태그인데 날짜가 지난 줄 빼기 · (날짜가 그날+7일까지(밀린 일 포함) 또는 날짜 없음 또는 우선순위 있음) */
@@ -2545,13 +2541,12 @@ function homeTodayLists(st,d){const its=dayItems(d).filter(x=>!x.e.off).sort((p,
   <div class="hwrow">${lesson}${att}${ev}</div></section>`}
 function renderToday(v,t){const st=t.state,d=st.day||TODAY;
   const closed=DB.events.some(e=>!e.del&&e.start<=d&&(e.end||e.start)>=d&&evSubOf(e)==="학원 휴원");
-  v.innerHTML=`<div class="top pg-ttl ttl"><h1>${pgIc("today")}홈</h1>${HELP("하루를 여기서 시작해요. 위는 할 일(우선순위 · 담당자 · 캘린더 · 완료), 아래는 오늘 수업 · 오늘 등원 · 오늘 일정 — 노션 홈과 같은 구성이에요. 할 일은 보기만 — 바꾸기는 노션 홈에서 해요.")}${notionBtn("today")}${CALF.nav({label:`${D10(d)} (${DAYS[dow(d)]})`,prev:"앞 날",next:"다음 날",now:"오늘",isNow:d===TODAY,attr:"data-dn"})}${closed?'<span class="rpill ex">휴원일</span>':""}</div><div class="body"><div class="list cards home">
+  v.innerHTML=`<div class="top pg-ttl ttl"><h1>${pgIc("today")}홈</h1>${HELP("하루를 여기서 시작해요. 위는 할 일(우선순위 · 담당자 · 캘린더 · 완료), 아래는 오늘(수업 · 등원 · 일정) — 노션 홈과 같은 구성이에요. 입력 점검 숫자는 왼쪽 메뉴에 있어요. 할 일은 보기만 — 바꾸기는 노션 홈에서 해요.")}${notionBtn("today")}${CALF.nav({label:`${D10(d)} (${DAYS[dow(d)]})`,prev:"앞 날",next:"다음 날",now:"오늘",isNow:d===TODAY,attr:"data-dn"})}${closed?'<span class="rpill ex">휴원일</span>':""}</div><div class="body"><div class="list cards home">
   ${homeTodoBox(st,d)}
   ${homeTodayLists(st,d)}
   ${d===TODAY?todayTodoBox():""}</div></div>`;
   v.querySelectorAll("[data-dn]").forEach(x=>x.onclick=()=>{const k=+x.dataset.dn;st.day=k?dPlus(d,k):TODAY;render()});
   v.querySelectorAll("[data-htab]").forEach(x=>x.onclick=()=>{st.htab=x.dataset.htab;render()});
-  v.querySelectorAll("[data-todogo]").forEach(x=>x.onclick=ev=>openScreen(x.dataset.todogo,ev.ctrlKey||ev.metaKey));
   v.querySelectorAll("[data-tev]").forEach(x=>x.onclick=ev=>{if(ev.target.closest("[data-notion]"))return;/* 카드 [달성] = 노션에서 열기(문서 전체 누르기 한 곳) */panelOpen=true;openScreen("events",ev.ctrlKey||ev.metaKey,{sel:x.dataset.tev,lf:{"다가오는 일정":false}})});
   v.querySelectorAll("[data-hles]").forEach(x=>x.onclick=ev=>openScreen("timetable",ev.ctrlKey||ev.metaKey,{view:"lesson",lv:"today"}));
   v.querySelectorAll("[data-hatt]").forEach(x=>x.onclick=ev=>openScreen("timetable",ev.ctrlKey||ev.metaKey,{view:"lesson",lv:"att"}));
@@ -5036,6 +5031,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del&&!z._virtual).
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="finance.js?v=748"></script><script src="finlive.js?v=755"></script><script src="exams.js?v=764"></script><script src="appdata.js?v=743"></script><script src="appsave.js?v=755"></script><script src="appview.js?v=755"></script><script src="livelesson.js?v=744"></script><script src="liveadmin.js?v=742"></script><script src="livebook.js?v=742"></script><script src="liveschool.js?v=742"></script><script src="liveteacher.js?v=747"></script><script src="live.js?v=766"></script><script src="liverefresh.js?v=742"></script><script src="livereq.js?v=742"></script>
+<script src="finance.js?v=748"></script><script src="finlive.js?v=755"></script><script src="exams.js?v=764"></script><script src="appdata.js?v=743"></script><script src="appsave.js?v=755"></script><script src="appview.js?v=755"></script><script src="livelesson.js?v=744"></script><script src="liveadmin.js?v=742"></script><script src="livebook.js?v=742"></script><script src="liveschool.js?v=742"></script><script src="liveteacher.js?v=747"></script><script src="live.js?v=766"></script><script src="liverefresh.js?v=767"></script><script src="livereq.js?v=742"></script>
 </body>
 </html>
