@@ -101,12 +101,13 @@
     note: (rows) => (rows.length ? `${rows.length}줄 · ${WON(rows.reduce((a, x) => a + (+x.amount || 0), 0))}` : "다 냈어요"),
     cols: [["이름", (x) => `${stuName(x.studentId)} · ${x.name || x.item || ""}`], ["등록", (x) => clsName(x.classId)], ["청구 월", (x) => x.month || "—"], ["종류", (x) => x.kind], ["교재비 금액", (x) => WON(x.amount)], ["결제금액", () => "—"], ["결제", (x) => btn("cpay", x.id, "결제")]],
   });
-  /* 결제 내역 — 결제 DB 이번 달, 구분 필터. [＋ 결제 줄]로 지출 · 청구서 결제 매출을 넣는다 */
+  /* 결제 내역 — 결제 DB 이번 달, 구분 필터. 새 줄 넣기(finAct.pnew)는 코드만 두고 화면 단추는 뺌(대표 261124 "나중에 + 활성화") */
   LISTS.profit_c = base(C, {
     title: "결제 · 손익", noAdd: 0, rows: () => (isLive() && Array.isArray(DB.pays) ? DB.pays.filter((x) => !x.del) : payRows()), byMonth: (x) => (typeof mKey === "function" ? mKey(x.date) : String(x.date).slice(0, 7).replace("-", ".")), roRow: (r) => !!r._der,
-    help: "그 달 결제 기록이에요(노션 결제(학원) DB). [＋ 결제 줄]로 지출(임대료 · 교재 구입)이나 청구서 결제를 매출로 옮겨 넣고, 줄을 눌러 결제일 · 수단 · 금액 · 비고를 고쳐요. 수강료 [결제]로 생긴 줄은 수강료 칸에서 고쳐요.",
+    help: "그 달 결제 기록이에요(노션 결제(학원) DB). 새 결제 줄(지출 · 청구서 결제 합계)은 노션 결제 DB에서 넣고, 줄을 눌러 결제일 · 수단 · 금액 · 비고를 고쳐요. 수강료 [결제]로 생긴 줄은 수강료 칸에서 고쳐요.",
     cols: [["결제일", (x) => D10(x.date), "date"], ["결제", (x) => x.name, "name"], ["구분", (x) => (x.kind === "지출" ? pill("red", "지출") : pill("blue", "매출")), "kind"], ["결제 수단", (x) => x.how || "—", "how"], ["결제 금액", (x) => WON(x.amount), "amount"], ["비고", (x) => x.memo || "—", "memo"], ["결제 줄 고치기", (x) => (isLive() && !x._der ? btn("pedit", x.id, "고치기") : "")]],
-    ftabs: [["지출", "지출", (x) => x.kind === "지출"], ["매출", "매출", (x) => x.kind === "매출"]], note: (rows) => `매출 ${WON(rows.filter((x) => x.kind === "매출").reduce((a, x) => a + x.amount, 0))} · 지출 ${WON(rows.filter((x) => x.kind === "지출").reduce((a, x) => a + x.amount, 0))}`,
+    ftabs: [["지출", "지출", (x) => x.kind === "지출"], ["매출", "매출", (x) => x.kind === "매출"]], /* 머리 합계 = 그 달 전체(261124 통합 검수: [지출] 탭에서 "매출 0원"으로 보이던 것 — 필터 탭과 상관없이) */
+    note: () => { const L = LISTS.profit_c, m = (activeTab && activeTab.state && activeTab.state.month) || thisM(), all = L.rows().filter((x) => L.byMonth(x) === m), sum = (k) => WON(all.filter((x) => x.kind === k).reduce((a, x) => a + (+x.amount || 0), 0)); return `매출 ${sum("매출")} · 지출 ${sum("지출")}`; },
     fields: C.fields, blank: () => ({ id: uid("co"), name: "새 결제", kind: "지출", date: TODAY, how: "카드", amount: 0, memo: "" }),
   });
   /* 청구서 결제 — 청구 결제 DB, 고른 달 결제일. 합계 줄(이 합계를 결제 내역에 매출 한 줄로 옮긴다) */
@@ -118,11 +119,11 @@
     note: (rows) => `합계 ${WON(rows.reduce((a, x) => a + (+x.amount || 0), 0))} · ${rows.length}건`,
     cols: [["이름", (x) => x._n || `${stuName(x.studentId)} · ${x.name || x.item || ""}`], ["결제상태", () => "🟢결제 완료"], ["결제일", (x) => D10(x.paidOn)], ["교재", (x) => x.name || x.item || "—"], ["결제 방법", (x) => x.how || "—"], ["결제 금액", (x) => WON(x.amount)], ["결제 줄 고치기", (x) => (isLive() && x._n !== undefined ? btn("bpedit", x.id, "고치기") : "")]],
   });
-  /* 그래프 = 한 탭, 칩 [손익 | 매출 | 지출 | 모두](대표 261123 — 노션은 보기 3개 그대로, 앱만 칩 한 탭). 결제 DB 월별 선 그래프 + 고른 칩에 맞춘 달별 표 */
+  /* 그래프 = 한 탭, 칩 [손익 | 매출 | 지출 | 모두](대표 261123 — 노션은 보기 3개 그대로, 앱만 칩 한 탭). 결제 DB 월별 선 그래프만(대표 261124 "그래프에는 그래프만" — 달별 표 없앰, 숫자는 [결제 내역]) */
   const SER = { p: { name: "손익", tone: "green", pick: (r) => r.net }, s: { name: "매출", tone: "blue", pick: (r) => r.tu + r.ot }, x: { name: "지출", tone: "red", pick: (r) => r.out } };
   const GM = [["p", "손익"], ["s", "매출"], ["x", "지출"], ["a", "모두"]];
   /* 그래프 범위(대표 261124 "0에서 평평하다 한 달만 솟음"): 자료가 있는 첫 달부터 지금 달까지 — 3달보다 짧으면 3달, 12달보다 길면 최근 12달.
-     자료 없는 달은 0으로 찍지 않는다(점 · 선 없음, 표는 —) */
+     자료 없는 달은 0으로 찍지 않는다(점 · 선 없음) */
   const gRange = () => { const all = monthRows(); const f = all.findIndex((r) => r.any); const from = f < 0 ? all.length - 3 : Math.min(f, all.length - 3); return all.slice(Math.max(0, from, all.length - 12)); };
   /* 눈금 = 1 · 2 · 5 × 10^k 로 떨어지는 둥근 값(20만 · 13만 · 7만 같은 어중간한 칸 없게) */
   const niceStep = (v) => { const p = Math.pow(10, Math.floor(Math.log10(v || 1))), f = v / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p; };
@@ -149,11 +150,9 @@
       const gm = (st && st.gm) || "p", keys = gm === "a" ? ["s", "x", "p"] : [gm], rs = gRange(), labels = rs.map((r) => r.m);
       const chips = `<div class="vseg subseg finchips" role="group" aria-label="그래프 고르기">${GM.map(([k, t]) => `<button type="button" data-fin="gmode" data-id="${k}" class="${gm === k ? "on" : ""}" aria-pressed="${gm === k}">${t}</button>`).join("")}</div>`;
       const title = gm === "a" ? "손익 · 매출 · 지출" : SER[gm].name, ser = keys.map((k) => ({ name: SER[k].name, tone: SER[k].tone, vals: rs.map(SER[k].pick) })), has = rs.map((r) => !!r.any);
-      const cell = (r, k) => (r.any ? WON(SER[k].pick(r)) : "—");
-      /* 그래프 왼쪽 · 달별 표 오른쪽(같은 범위의 달만, 최근 달 위 — 12달이어도 표가 넘치지 않게 세로) */
-      const TW = 96 + keys.length * 116, W = gWidth(TW + 16);
-      const tb = `<table class="t finsum" style="width:${TW}px"><thead><tr><th>달</th>${keys.map((k) => `<th class="n">${SER[k].name}</th>`).join("")}</tr></thead><tbody>${rs.slice().reverse().map((r) => `<tr><td>${r.m}</td>${keys.map((k) => `<td class="n">${cell(r, k)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
-      return `<div class="finwrap">${chips}<div class="finrowg">${chart(ser, labels, title, W, has)}${tb}</div></div>`;
+      /* 그래프가 본문 폭을 다 씀(옛 오른쪽 달별 표 자리까지) */
+      const W = gWidth(0);
+      return `<div class="finwrap">${chips}${chart(ser, labels, title, W, has)}</div>`;
     },
   });
 
