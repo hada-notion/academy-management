@@ -326,9 +326,11 @@ function lrTick() {
       let h = t0.apply(this, arguments);
       try {
         const add = lrLive() ? lrHomeRows() : []; if (!add.length) return h;
+        /* 261124: 홈 입력 점검 목록을 뺌 — 실패 · 끊김이 있을 때만 "알림" 상자로 */
+        if (!h) h = `<section class="cbox todobox"><h3>${IC("alert", "l")}알림 <span class="hint">0</span></h3></section>`;
         const html = add.map(([k, t, tip, n]) => `<div class="crow tdl" data-lrreq="${k}" title="${lrEsc(t)} 목록 열기"><span class="cl">${IC("alert", "s")} ${lrEsc(t)}</span><span class="cv">${lrEsc(tip)}</span><span class="ca"><b class="todo">${n}</b>${IC("right", "s")}</span></div>`).join("");
         h = h.replace('<div class="hint">오늘 손볼 일이 없어요</div>', "");
-        h = h.replace(/(입력 점검 <span class="hint">)(\d+)(<\/span>)/, (_, a, n, b) => a + (+n + add.reduce((s, r) => s + r[3], 0)) + b);
+        h = h.replace(/((?:입력 점검|알림) <span class="hint">)(\d+)(<\/span>)/, (_, a, n, b) => a + (+n + add.reduce((s, r) => s + r[3], 0)) + b);
         const at = h.lastIndexOf("</section>"); h = h.slice(0, at) + html + h.slice(at);
       } catch (_) {}
       return h;
