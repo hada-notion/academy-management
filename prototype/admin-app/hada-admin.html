@@ -1852,7 +1852,7 @@ function stuTodoRowIn(x,tab,ago,nm,firstEn){{let r="",sub="";
     else if(tab==="info"){r=`<span class="r w">${stuMiss(x).join(" · ")}</span>`;sub=[(STU_ST[stuStat(x)]||[""])[0],x.inq?`${md(x.inq)} 문의`:""].filter(Boolean).join(" · ")}
     else{const e=firstEn(x);r=`<span class="r">${e?esc((cls(e.classId)||{name:""}).name):""}</span>`;sub=e?`등록일 ${md(e.start)} · ${dAgo(e.start)<0?`${-dAgo(e.start)}일 뒤 시작`:""}`:""}
     return `<span class="tdr2"><span class="tdr2a">${nm(x)}${r}</span>${sub?`<span class="tdr2b">${sub}</span>`:""}</span>`}}
-const STU_TODO_FOOT=()=>`<div class="actions"><button class="btn" id="tdFormLink" title="학부모에게 보낼 상담 신청서 주소를 복사해요">${IC("link","s")}신청서 링크 복사</button><button class="btn icon" id="tdForm" title="시험용 — 상담 신청서 하나가 들어온 것처럼 생성해요(신청서 도착 시험)" aria-label="신청서 도착 시험">${IC("send","s")||IC("msg","s")}</button><span class="sp"></span><button class="btn" id="tdAdd">${IC("plus","s")}학생 추가</button></div>`;
+const STU_TODO_FOOT=()=>`<div class="actions"><button class="btn" id="tdFormLink" title="학부모에게 보낼 상담 신청서 주소를 복사해요">${IC("link","s")}신청서 링크 복사</button><span class="sp"></span><button class="btn" id="tdAdd">${IC("plus","s")}학생 추가</button></div>`;
 /* 신청서 도착 시험 줄(시제품) — 옛 학생 할 일 창과 학생1이 같이 씀 */
 function stuFormArrive(){const N=["한서윤","오지호","배하율","문시우","권도아"],S=[["하다중","중1"],["바다초","초5"],["푸른중","중2"]];const i=DB.students.length%N.length,sc=S[i%S.length];const d=new Date();d.setMonth(d.getMonth()+1,1);
   const x={id:uid("st"),name:N[i],school:sc[0],grade:sc[1],route:"상담 신청서",consent:true,pre:"어머니",mom:"010-0000-19"+String(10+i),dad:"",sp:"",gp:"",gprel:"",hold:false,memo:"토요일 오전 상담 희망(신청서 추가 전달사항)",hope:d.toISOString().slice(0,10),inq:nowStamp(),unseen:true,rcpt:nowStamp()};
