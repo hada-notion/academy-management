@@ -221,6 +221,16 @@ Deno.test("칸 이름 바꾼 뒤(261124): 옛 이름 진행상태로 와도 새 
   assertEquals(toNotionProps({ 진행상태: "완료" }, { 진행상태: { type: "status" } } as never), { 진행상태: { status: { name: "완료" } } })
 })
 
+Deno.test("일정 할 일 두 칸(261124): 달성여부 · 우선순위 받고 리포트 맞추기 안 함, 아이콘 붙은 선택지로 맞춤", () => {
+  checkAllowedProps(EV, { 달성여부: "달성", 우선순위: "" })
+  assertEquals([eventAffectsReport(EV, { 달성여부: "달성" }), eventAffectsReport(EV, { 우선순위: "중요" })], [false, false])
+  const sch = { 달성여부: { type: "select", options: ["✔️ 달성", "✖️ 미달성"] }, 우선순위: { type: "select", options: ["‼️ 중요", "💤 보류"] } } as never
+  assertEquals(toNotionProps({ 달성여부: "미달성", 우선순위: "중요" }, sch), { 달성여부: { select: { name: "✖️ 미달성" } }, 우선순위: { select: { name: "‼️ 중요" } } })
+  assertEquals(toNotionProps({ 달성여부: "", 우선순위: "" }, sch), { 달성여부: { select: null }, 우선순위: { select: null } })
+  assertEquals(toNotionProps({ 달성여부: "달성" }, { 달성여부: { type: "select", options: ["달성", "미달성"] } } as never), { 달성여부: { select: { name: "달성" } } })
+  assertThrows(() => toNotionProps({ 달성여부: "보통" }, sch), SaveError)
+})
+
 // ---------- 라이브러리(교재) 입력: 새 교재는 textbook-api, 고치기는 save + 라이브러리 복사본 맞추기 ----------
 Deno.test("라이브러리: 새 교재는 save로 만들지 않고, 고치면 라이브러리 복사본 맞추기를 부른다", async () => {
   const LIB = "라이브러리(학원) DB"
