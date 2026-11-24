@@ -1,6 +1,6 @@
 // 관리 앱 반복 줄 칸(PANEL.rgrid, 관리앱-기준 5장 "반복 줄 칸") — 평소 = 정돈된 글, [ㅇㅇ 편집]으로만 입력칸.
 // 예시 데이터(시제품 모드)만, 서버·네트워크 없음. PC 1280 · 1440.
-// 확인: 시험 [성적] 평소 입력칸 0 · 머리줄과 줄의 열 위치 같음 · 숫자 오른쪽 정렬 · 넘침 없음 → [성적 편집] 입력칸 · 열 위치 보기와 같음 ·
+// 확인: 시험 [성적] 평소 입력칸 0 · 머리줄과 줄의 열 위치 같음 · 정렬 왼쪽 통일 · 넘침 없음 → [성적 편집] 입력칸 · 열 위치 보기와 같음 ·
 //       Enter = 아래 줄 같은 칸 · Esc = 편집 전 값 · [편집 완료] = 값 남고 작성 중 → 수업 창 평가 카드 정답 줄도 같은 부품(늘 편집 갈래).
 // 사용: ROOT=<저장소 폴더> NODE_PATH=<playwright 있는 node_modules> node tests/admin-rgrid.cjs  (SHOTS=<폴더>면 캡처 저장)
 const { chromium } = require('playwright'), http = require('http'), fs = require('fs'), path = require('path'), assert = require('node:assert/strict');
@@ -21,7 +21,7 @@ const root = process.env.ROOT || path.resolve(__dirname, '..'), shots = process.
     assert.equal(await p.locator('#lp .rgrid input, #lp .rgrid select').count(), 0, '평소 입력칸 0');
     assert.match(await p.textContent('#lp .rgrow.rgh'), /학생\s*점수\s*등수\s*백분율\s*등급/);
     const v = await cols(); v.forEach((r, i) => assert.deepEqual(r.slice(1), v[0].slice(1), `보기 ${i}줄 열 위치`));
-    assert.equal(await p.evaluate(() => getComputedStyle(document.querySelector('#lp .rgrow:not(.rgh) .rgc.num')).textAlign), 'right', '숫자 오른쪽 정렬');
+    assert.equal(await p.evaluate(() => getComputedStyle(document.querySelector('#lp .rgrow:not(.rgh) .rgc.num')).textAlign), 'left', '정렬 한쪽(왼쪽) 통일 — 대표 261124');
     assert.equal(await over(), 0, '보기 넘침 없음');
     assert.equal(await p.evaluate(() => document.querySelector('#lp .rgrow:not(.rgh)').getBoundingClientRect().height), 40, '줄 40');
     if (shots) await p.locator('#lp').screenshot({ path: path.join(shots, `rgrid-exam-view-${W}.png`) });

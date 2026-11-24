@@ -2099,10 +2099,13 @@ table.stt.gt.grid{width:auto}
 .rgrow.rgh .rgnt,.rgrow.rgh .rgn{font-weight:600}
 .rgrow .rgns{flex:none;font-size:var(--text-micro);color:var(--muted)}
 .rgrow .rgc{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
-.rgrow .rgc.num{text-align:right}
+/* 정렬은 한쪽(왼쪽)으로 통일 — 머리줄 · 보기 글 · 입력칸 · 고르기 모두 같은 왼쪽 선(대표 261124 "정렬도 한쪽으로 통일하자") */
+.rgrow .rgc,.rgrow .rgc.num,.rgrow .rgi,.rgrow .rgi.num{text-align:left!important}
+.rgrow span.rgc{padding-left:7px}.rgrow.rgh .rgc{overflow:visible;text-overflow:clip}/* 입력칸 글자 시작(테두리 1 + 안쪽 6)과 같은 선 */
 .rgrow .rgc.none{color:var(--subtle)}
 #lp .rgrow .rgi,.rgrow .rgi{width:100%;min-width:0;height:32px;box-sizing:border-box;border:1px solid var(--field-line);border-radius:var(--radius-sm);padding:0 6px;font-size:var(--text-small);background-color:var(--field-bg);color:var(--ink)}
-#lp .rgrow select.rgi,.rgrow select.rgi{padding:0 16px 0 6px!important;background-position:right 4px center;background-size:12px 12px}
+/* 반복 줄 칸의 고르기(등급 등): 칸이 좁아 뒤 목록 아이콘은 두지 않음(대표 261124 "뒤에 리스트 아이콘도 빼줘") — 누르면 목록이 뜨는 것은 그대로 */
+#lp .rgrow select.rgi,.rgrow select.rgi,:is(.panel,#lp) .rgrow select.rgi.inp{padding:0 6px!important;background-image:none!important;-webkit-appearance:none;appearance:none}
 .rgrow .rgi:focus{outline:2px solid var(--brand-deep);outline-offset:-1px}
 .box h3 .rgok{margin-left:var(--space-1)}
 @media (hover:none){.unrow .unx{opacity:1}}
@@ -3603,3 +3606,8 @@ html:root .lj .ljh,html:root .lj dl{font-size:12px}
 /* 카드형 설정 화면(cardScreen — 관리자 설정 · 학원 정보, 관리앱-기준.md "카드 화면 폭"): 화면 폭에 맞춰 넓히고 최대 --setcards-max. 줄 = 이름 · 값 · 단추 한 줄 */
 #view .list.cards.setcards{max-width:var(--setcards-max)}
 .setcards .crow .cl{width:160px}.setcards .crow .ca{flex-wrap:nowrap}
+/* 줄 목록 글(PANEL.rows): 이름 + 정보가 길면 두 줄 — 이름 13/600 첫 줄, 정보 12 흐리게 아래 줄(칸 안 간격 --gap-in), 줄 위아래 8 */
+.ttrow.stack{padding-top:var(--space-2);padding-bottom:var(--space-2)}
+.ttrow.stack .tt2{flex:1;min-width:0;display:flex;flex-direction:column;gap:var(--gap-in)}
+.ttrow.stack .tt2 .t{font-size:var(--text-label);font-weight:600;line-height:1.4;color:var(--ink)}
+.ttrow.stack .tt2 .hint{font-size:var(--text-caption);line-height:1.4;text-align:left}
