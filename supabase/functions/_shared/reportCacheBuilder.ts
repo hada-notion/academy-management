@@ -340,10 +340,11 @@ export function standaloneEvalIso(evalStart: string | null, evalEnd: string | nu
   return day ? `${day}T00:00:00+09:00` : null
 }
 
-// (v2.8.0) 클래스 '리포트 숨김'(다중선택: 시간표·출결·학습·평가): 고른 것만 그 반 학부모 리포트에서 숨긴다(비우면 모두 보임).
-// 출결·학습·평가를 모두 고르면 반 카드도 숨고(시간표만 보이는 반), 넷 다 고르면 리포트에서 그 반이 안 보인다(화면이 판단).
+// (v2.8.0) 클래스 '리포트 숨김'(다중선택: 반 목록·시간표·출결·학습·평가): 고른 것만 그 반 학부모 리포트에서 숨긴다(비우면 모두 보임).
+// 반 목록 = 첫 화면 반 카드를 뺀다(들어갈 수 없으니 출결·학습·평가도 싣지 않음). 출결·학습·평가를 모두 골라도 카드가 빠진다.
+// 반 목록만 고르면 "시간표만 보이는 반", 시간표까지 고르면 리포트에서 그 반이 안 보인다(화면이 판단).
 // 옛 칸 '리포트 구성'이 "평가만"이고 '리포트 숨김'이 비었으면 출결·학습을 고른 것으로 읽는다(legacy: 데이터는 예전처럼 다 싣는다).
-export const REPORT_HIDE_KINDS = ["시간표", "출결", "학습", "평가"] as const
+export const REPORT_HIDE_KINDS = ["반 목록", "시간표", "출결", "학습", "평가"] as const
 export type ReportHideKind = typeof REPORT_HIDE_KINDS[number]
 export function reportHideOf(cls: any): { hide: ReportHideKind[]; legacy: boolean } {
   const picked = new Set<string>(((cls?.properties?.["리포트 숨김"]?.multi_select ?? []) as any[]).map((o) => String(o?.name ?? "").trim()))
@@ -359,15 +360,21 @@ export function reportModeOf(cls: any): "all" | "tests_only" {
 }
 // 숨긴 것은 캐시에 싣지 않는다(학부모 응답에 나가지 않음). 옛 "평가만"(legacy)은 예전처럼 다 싣고 화면만 줄인다.
 // 학부모 리포트 화면용 캐시만 바꾼다. 알림톡(send-report 등)은 보고서 한마디(report_comments)만 읽고, 그것은 그대로 둔다.
-export function hideOverview<T extends Record<string, any>>(overview: T, hide: readonly string[], legacy: boolean): T {
+// 반 목록을 고르면 카드로 들어갈 수 없으므로 출결·학습·평가도 고른 것으로 본다.
+function withCardHide(hide: readonly string[]): readonly string[] {
+  return hide.includes("반 목록") ? [...new Set([...hide, "출결", "학습", "평가"])] : hide
+}
+export function hideOverview<T extends Record<string, any>>(overview: T, hide0: readonly string[], legacy: boolean): T {
   if (legacy) return overview
+  const hide = withCardHide(hide0)
   const out: Record<string, any> = { ...overview }
   if (hide.includes("시간표")) out.schedule = []
   if (hide.includes("학습")) out.books = []
   return out as T
 }
-export function hideDetail<T extends Record<string, any>>(detail: T, hide: readonly string[], legacy: boolean): T {
+export function hideDetail<T extends Record<string, any>>(detail: T, hide0: readonly string[], legacy: boolean): T {
   if (legacy) return detail
+  const hide = withCardHide(hide0)
   const out: Record<string, any> = { ...detail }
   if (hide.includes("출결")) {
     out.attendance_summary = { present: 0, makeup: 0, absent: 0 }

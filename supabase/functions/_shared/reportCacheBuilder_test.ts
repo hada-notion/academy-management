@@ -28,6 +28,7 @@ Deno.test("v2.8.0 리포트 숨김: 다중선택 그대로(순서 고정·모르
 	eq(reportHideOf({ properties: { "리포트 숨김": ms("평가"), "리포트 구성": { type: "select", select: { name: "평가만" } } } }), { hide: ["평가"], legacy: false })
 	eq(reportModeOf({ properties: { "리포트 숨김": ms("출결", "학습") } }), "tests_only")
 	eq(reportModeOf({ properties: { "리포트 숨김": ms("평가") } }), "all")
+	eq(reportHideOf({ properties: { "리포트 숨김": ms("시간표", "반 목록") } }), { hide: ["반 목록", "시간표"], legacy: false })
 })
 
 Deno.test("v2.8.0 리포트 숨김: 숨긴 것은 캐시에 싣지 않고, 보고서 한마디(알림톡)는 그대로. legacy는 모두 싣는다", () => {
@@ -45,6 +46,11 @@ Deno.test("v2.8.0 리포트 숨김: 숨긴 것은 캐시에 싣지 않고, 보�
 	eq([o1.schedule, o1.books, o1.class_name], [[], [], "중2 A"])
 	eq(hideOverview(overview, ["출결", "학습"], true), overview)
 	eq((hideOverview(overview, ["평가"], false) as any).schedule, [{ day: "월" }])
+	// 반 목록 = 카드가 없으니 출결·학습·평가도 싣지 않음, 시간표는 남김(시간표만 보이는 반)
+	const d3: any = hideDetail(detail, ["반 목록"], false)
+	eq([d3.attendance_rows, d3.study_logs, d3.homework, d3.tests, d3.report_comments], [[], [], [], [], [1]])
+	const o3: any = hideOverview(overview, ["반 목록"], false)
+	eq([o3.schedule, o3.books], [[{ day: "월" }], []])
 })
 
 // 서울 기준 n일 전 날짜(YYYY-MM-DD). 리포트는 최근 몇 달·오늘까지만 싣는다.

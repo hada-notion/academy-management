@@ -106,13 +106,13 @@ function testKind(t) {
   return t && ["주간 평가", "월간 평가"].includes(t.evalType) ? t.evalType : "일일 평가"
 }
 // (v2.8.0) 클래스 '리포트 숨김'(시간표·출결·학습·평가): 고른 것만 그 반 리포트에서 숨긴다. 숨긴 기록은 서버가 싣지 않고, 화면은 그 구역·탭을 뺀다.
-const REPORT_HIDE_KINDS = ["시간표", "출결", "학습", "평가"]
+const REPORT_HIDE_KINDS = ["반 목록", "시간표", "출결", "학습", "평가"]
 function hides(r, kind) {
   return !!r && Array.isArray(r.report_hide) && r.report_hide.includes(kind)
 }
-// 출결·학습·평가를 모두 숨긴 반은 반 카드(반 목록)도 없다. 시간표까지 숨기면 리포트에서 그 반이 아예 안 보인다.
+// '반 목록'을 고르거나 출결·학습·평가를 모두 숨긴 반은 반 카드(첫 화면·메뉴 반 목록)가 없다. 시간표까지 숨기면 리포트에서 그 반이 아예 안 보인다.
 function isClassCardHidden(r) {
-  return hides(r, "출결") && hides(r, "학습") && hides(r, "평가")
+  return hides(r, "반 목록") || (hides(r, "출결") && hides(r, "학습") && hides(r, "평가"))
 }
 // (v2.8.0) 출결·학습을 숨긴 반(옛 '리포트 구성' "평가만" 포함): 출결·과제·일간 보고서를 숨기고 평가 중심으로 보여 준다.
 function isTestsOnly(r) {
