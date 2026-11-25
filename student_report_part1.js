@@ -354,6 +354,7 @@ function normalizeFeedSpans(rawSpans, fallbackText) {
     })
     .filter(Boolean)
 }
+const CALLOUT_TONES = ["gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red"]
 function normalizeFeedBody(rawBody) {
   if (!Array.isArray(rawBody)) return []
   return rawBody
@@ -394,6 +395,8 @@ function normalizeFeedBody(rawBody) {
         spans: normalizeFeedSpans(b.spans, t),
         checked: !!b.checked,
         icon: b.icon ? String(b.icon) : "",
+        // (v2.8.0 항목 149) 노션 콜아웃 색(알려진 이름만)
+        tone: CALLOUT_TONES.includes(String(b.tone || "")) ? String(b.tone) : "",
         language: b.language ? String(b.language) : "",
         children,
       }
@@ -566,7 +569,7 @@ function buildFeedBodyHtml(body) {
     else if (style === "heading_4") parts.push(`<div class="feed-heading feed-h4">${renderFeedSpans(it.spans)}</div>`)
     else if (style === "quote") parts.push(`<div class="feed-quote">${renderFeedSpans(it.spans)}</div>`)
     else if (style === "to_do") parts.push(`<div class="feed-todo${it.checked ? " checked" : ""}"><span class="feed-todo-box">${it.checked ? "☑" : "☐"}</span><span>${renderFeedSpans(it.spans)}</span></div>`)
-    else if (style === "callout") parts.push(`<div class="feed-callout">${it.icon ? `<span class="feed-callout-icon">${esc(it.icon)}</span>` : ""}<div class="feed-callout-main">${it.spans.length ? `<div>${renderFeedSpans(it.spans)}</div>` : ""}${buildFeedBodyHtml(it.children)}</div></div>`)
+    else if (style === "callout") parts.push(`<div class="feed-callout${it.tone ? ` tone-${it.tone}` : ""}">${it.icon ? `<span class="feed-callout-icon">${esc(it.icon)}</span>` : ""}<div class="feed-callout-main">${it.spans.length ? `<div>${renderFeedSpans(it.spans)}</div>` : ""}${buildFeedBodyHtml(it.children)}</div></div>`)
     else if (style === "code") parts.push(`<pre class="feed-code"><code>${esc(it.text)}</code></pre>`)
     // 옛 데이터(마이그레이션 전 style="heading"/"bullet")와도 호환되게 유지한다.
     else if (style === "heading") parts.push(`<div class="feed-heading feed-h3">${renderFeedSpans(it.spans)}</div>`)

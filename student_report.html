@@ -710,6 +710,19 @@ body:not(.reg-expanded) .cal-hint { animation: calExtraFadeIn 0.26s ease both; }
 /* 펼친 베이지 칸(.log-extra) 안의 콜아웃은 칸과 같은 베이지라 묻힌다 → 흰 바탕 + 카드와 같은 옅은 그림자(11/11 대표 시안 E1). 펼친 칸 안 흰 카드(수료 구역) 속 콜아웃은 그대로 베이지 */
 .log-extra .feed-callout { background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
 .log-extra .card .feed-callout { background: var(--brand-tint); box-shadow: none; }
+/* (v2.8.0 항목 149, 대표 261125) 노션 콜아웃 색: 흰 바탕에서는 노션 색 바탕(띠 없음), 베이지 칸(.log-extra) 안에서는 흰 바탕 + 그림자 + 왼쪽 3px 색 선(A′). 색이 없으면 위 베이지 그대로 */
+.feed-callout.tone-gray   { --c-bg: #F1F1EF; --c-line: #D3D1CB; }
+.feed-callout.tone-brown  { --c-bg: #F4EEEE; --c-line: #D9C8BE; }
+.feed-callout.tone-orange { --c-bg: #FBECDD; --c-line: #F1C79B; }
+.feed-callout.tone-yellow { --c-bg: #FBF3DB; --c-line: #EDD58A; }
+.feed-callout.tone-green  { --c-bg: #EDF3EC; --c-line: #B7D3B4; }
+.feed-callout.tone-blue   { --c-bg: #E7F3F8; --c-line: #A8CFE0; }
+.feed-callout.tone-purple { --c-bg: #F6F3F9; --c-line: #CDBDE0; }
+.feed-callout.tone-pink   { --c-bg: #FAF1F5; --c-line: #E7BCD0; }
+.feed-callout.tone-red    { --c-bg: #FDEBEC; --c-line: #F1B7B9; }
+.feed-callout[class*="tone-"] { background: var(--c-bg); }
+.log-extra .feed-callout[class*="tone-"] { background: #fff; border-left: 3px solid var(--c-line); }
+.log-extra .card .feed-callout[class*="tone-"] { background: var(--c-bg); border-left: none; }
 .feed-callout-main { flex: 1; min-width: 0; }
 .feed-callout-main .feed-body { border-top: none; padding-top: 0; margin-top: 6px; }
 .feed-callout-main > .feed-body:first-child { margin-top: 0; }
@@ -1123,7 +1136,7 @@ body:not(.reg-expanded) .cal-hint { animation: calExtraFadeIn 0.26s ease both; }
 </div>
 
 <script src="hada_config.js"></script>
-<script src="student_report_part1.js?v=10e10bf5"></script>
+<script src="student_report_part1.js?v=c0aec3f4"></script>
 <script src="student_report_part2.js?v=71661831"></script>
 </body>
 </html>
