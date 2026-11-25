@@ -695,17 +695,37 @@ function studentLetters() {
 function letterKey(month) {
   return String(month)
 }
+// (261125 대표) 첫 화면 마지막 칸: 가장 최근 달 가정통신문 본문을 바로 펼쳐 보이고(들어가는 페이지 없음),
+// 칸이 길면 그대로 아래로 스크롤, 맨 아래 [목록]을 누를 때만 달 목록 페이지로 간다.
+function latestLetterMonth() {
+  return studentLetters()[0]?.month || ""
+}
+function introLetterBodyHtml() {
+  const month = latestLetterMonth()
+  if (!month) return ""
+  const key = letterKey(month)
+  if (!letterCache[key]) { letterCache[key] = { loading: true }; fetchLetter(month) }
+  const state = letterCache[key]
+  if (state.failed) return `<div class="card"><div class="empty">가정통신문을 불러오지 못했어요</div><button type="button" class="letter-action" onclick="retryIntroLetter()">다시 시도</button></div>`
+  return letterBodyHtml(state).trim() || `<div class="card"><div class="empty">안내 내용이 없어요</div></div>`
+}
+function retryIntroLetter() {
+  delete letterCache[letterKey(latestLetterMonth())]
+  const slot = document.getElementById("letter-inline")
+  if (slot) slot.innerHTML = introLetterBodyHtml()
+}
 function buildIntroLetterHtml() {
-  const letters = studentLetters()
-  if (!letters.length) return ""
-  const rows = letters.slice(0, LETTER_INTRO_ROWS).map((l) => letterRowHtml(l.month, false)).join("")
-  const more = letters.length > LETTER_INTRO_ROWS ? `<button type="button" class="letter-action" onclick="openLetterList()">모두 보기</button>` : ""
+  const month = latestLetterMonth()
+  if (!month) return ""
   return `
       <div class="snap-section schedule-section letter-section" id="letter-section">
         <button class="hamburger-btn dark" onclick="openMenu()" aria-label="메뉴 열기"><svg class="header-icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
-        <h2><span class="page-title-icon">${LETTER_ICON}</span>가정통신문</h2>
-        <div class="section-hint">학원에서 보낸 가정통신문을 달별로 볼 수 있어요</div>
-        <div class="letter-intro-list"><div class="card">${rows}</div>${more}</div>
+        <h2><span class="page-title-icon">${LETTER_ICON}</span>${esc(letterLabel(month))}</h2>
+        <div class="section-hint">학원에서 보낸 가장 최근 가정통신문이에요</div>
+        <div class="letter-intro-list">
+          <div class="letter-inline" id="letter-inline">${introLetterBodyHtml()}</div>
+          <button type="button" class="letter-action" onclick="openLetterList()">목록</button>
+        </div>
         <div class="up-hint" onclick="scrollToSchedule()"><span class="chevron"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="17 11 12 6 7 11"></polyline><polyline points="17 18 12 13 7 18"></polyline></svg></span>이전으로</div>
       </div>`
 }
@@ -730,6 +750,9 @@ async function fetchLetter(month) {
     letterCache[key] = { failed: true }
   }
   if (view === "letter" && letterKey(selectedLetterMonth) === key) renderApp()
+  // 첫 화면 칸은 다시 그리지 않고 본문 자리만 채운다(스크롤 위치 그대로).
+  const slot = document.getElementById("letter-inline")
+  if (slot && key === letterKey(latestLetterMonth())) slot.innerHTML = introLetterBodyHtml()
 }
 // (v2.8.0, 11/10 대표) 선생님 한마디 카드: 한마디 + 작은 글씨(선생님·기간) + 펼치면 본문. 학습기록 카드와 같은 모양(.log-card).
 //  - 주간·월간 보고서: 반 전체(반 발송함 본문) → 선 → ○○ 학생(보고서 본문)
@@ -829,7 +852,7 @@ function openLetter(month, fromList) {
   view = "letter"
   const key = letterKey(selectedLetterMonth)
   if (!letterCache[key] || letterCache[key].failed) {
-    delete letterCache[key]
+    letterCache[key] = { loading: true }
     fetchLetter(selectedLetterMonth)
   }
   renderApp()
@@ -875,7 +898,7 @@ function reportSkeletonHtml() {
   </div>`
 }
 function letterBodyHtml(state) {
-  if (!state) return letterSkeletonHtml()
+  if (!state || state.loading) return letterSkeletonHtml()
   if (state.failed) return `<div class="card"><div class="empty">가정통신문을 불러오지 못했어요</div><button type="button" class="letter-action" onclick="openLetter(${jsArg(selectedLetterMonth)}, ${letterFromList})">다시 시도</button></div>`
   const l = state.letter
   const s = l.schedule || {}
@@ -913,7 +936,7 @@ function renderLetterDetail() {
   const state = letterCache[letterKey(selectedLetterMonth)]
   return letterPageHtml("가정통신문", letterLabel(selectedLetterMonth), `
         ${letterBodyHtml(state)}
-        ${state ? `<button type="button" class="letter-action" onclick="openLetterList()">목록으로</button>` : ""}`)
+        ${state && !state.loading ? `<button type="button" class="letter-action" onclick="openLetterList()">목록으로</button>` : ""}`)
 }
 function renderLetterList() {
   const letters = studentLetters()
