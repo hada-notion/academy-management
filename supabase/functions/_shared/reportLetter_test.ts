@@ -1,5 +1,5 @@
 // (v2.8.0 항목 148) 학부모 리포트 가정통신문: 학생당 한 장 — 달마다 한 줄, 본문은 다니는 반 전부의 일정·반별 전달사항.
-import { buildLetterList, buildLetterView, reportLetterDeps } from "./reportLetter.ts"
+import { buildLetterList, buildLetterView, buildPlanList, buildPlanView, reportLetterDeps } from "./reportLetter.ts"
 
 function eq(a: unknown, b: unknown) {
 	if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`다름\n 실제: ${JSON.stringify(a)}\n 기대: ${JSON.stringify(b)}`)
@@ -82,4 +82,24 @@ Deno.test("v2.8.0 가정통신문 본문: 전달사항은 발송함 공통 안�
 	eq(await buildLetterView("r1", "s1", "2026-11"), null)
 	const v = await buildLetterView("r1", "s1", "2026-12")
 	eq([v?.note, v?.classBody], ["", []])
+})
+
+// ── (v2.8.0 항목 150) 월별 학습계획서: 반 × 달 발송함 하나, 학생 장 없음 ──
+Deno.test("v2.8.0 항목 150 월별 학습계획서 목록: 그 등록의 반 학습계획 발송함 중 내용(메모·본문)이 있는 달만, 최근 달부터, 같은 달은 먼저 만든 것", async () => {
+	const box = (id: string, month: string, created: string, memo = "", trash = false) => ({ id, created_time: created, in_trash: trash, properties: { "기간": { date: { start: `${month}-01` } }, "가정통신문 안내 메모": { rich_text: memo ? [{ plain_text: memo }] : [] } } })
+	const boxes = [box("b12", "2026-12", "2026-11-20"), box("b12dup", "2026-12", "2026-11-21", "나중 것"), box("b11", "2026-11", "2026-10-20", "11월 계획"), box("b10", "2026-10", "2026-09-20"), box("bt", "2027-01", "2026-11-22", "지움", true)]
+	const filters: any[] = []
+	Object.assign(reportLetterDeps, {
+		getPage: (id: string) => Promise.resolve(id === "reg1" ? { id, properties: { "클래스": rel("cls1") } } : { id, properties: {} }),
+		batchDataSourceId: () => Promise.resolve("batches"),
+		queryAllPages: (_ds: string, filter: any) => { filters.push(filter); return Promise.resolve(boxes) },
+		hasBody: (id: string) => Promise.resolve(id === "b12"),
+		body: (id: string) => Promise.resolve(id === "b12" ? [{ type: "paragraph", text: "12월에는 분수를 배워요" }] : []),
+	})
+	eq(await buildPlanList("reg1"), [{ month: "2026-12" }, { month: "2026-11" }])
+	eq(filters[0], { and: [{ property: "클래스", relation: { contains: "cls1" } }, { property: "구분", select: { equals: "월별 학습계획" } }] })
+	const v = await buildPlanView("reg1", "2026-12")
+	eq([v?.label, v?.note, v?.classBody], ["12월", "", [{ type: "paragraph", text: "12월에는 분수를 배워요" }]])
+	eq(await buildPlanView("reg1", "2027-03"), null)
+	eq(await buildPlanList("regNoClass"), [])
 })

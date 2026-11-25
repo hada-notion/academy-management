@@ -955,6 +955,165 @@ function renderLetterList() {
         <div class="card">${letters.length ? letters.map((l) => letterRowHtml(l.month, true)).join("") : `<div class="empty">아직 받은 가정통신문이 없어요.</div>`}</div>`)
 }
 
+// ===== 월별 학습계획서 (반 화면 홈 탭 맨 아래 → 본문 → 목록) =====
+// (v2.8.0 항목 150, 261125 대표 "이름만 바꾸고 똑같이 작동하게") 항목 148 전 반별 가정통신문 칸을 그대로 되살려 이름만 바꿨다.
+// 반마다 따로 보인다: 영어반을 열면 영어반 학습계획서만. 반 × 달 발송함(구분 "월별 학습계획") 하나라 학생 장·캐시가 없다 —
+// 홈 탭을 열 때 목록(내용이 있는 달)을, 누를 때 본문을 get-report-letter(kind "plan")에서 읽는다.
+let selectedPlanMonth = ""
+let planFromList = false
+const planListCache = {}
+const planCache = {}
+const PLAN_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><line x1="8" y1="14" x2="13" y2="14"></line><line x1="8" y1="18" x2="16" y2="18"></line></svg>`
+function planLabel(month) {
+  const [y, m] = String(month).split("-")
+  return `${y === MOCK_TODAY.slice(0, 4) ? "" : `${y}년 `}${Number(m)}월 월별 학습계획서`
+}
+function planRowHtml(month, fromList) {
+  return `<button type="button" class="letter-row" onclick="openPlan(${jsArg(month)}, ${fromList})"><b>${esc(planLabel(month))}</b>${LETTER_CHEVRON}</button>`
+}
+function planRegId() {
+  return currentReg()?.registration_id || ""
+}
+function regPlans() {
+  return planListCache[planRegId()]?.plans || []
+}
+function planKey(month) {
+  return `${planRegId()}:${month}`
+}
+async function planFetch(body) {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/get-report-letter`, {
+    method: "POST",
+    headers: {
+      "apikey": SUPABASE_ANON_KEY,
+      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ token: REPORT_ACCESS_TOKEN, kind: "plan", registrationId: planRegId(), ...body }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+  return data
+}
+// 홈 탭 맨 아래 칸: 목록을 아직 안 읽었으면 읽고, 받으면 이 칸만 다시 그린다(내용이 없으면 칸을 두지 않음).
+function buildHomePlanHtml() {
+  const regId = planRegId()
+  if (!regId || !SUPABASE_URL || !REPORT_ACCESS_TOKEN) return ""
+  if (!planListCache[regId]) fetchPlanList(regId)
+  return `<div id="plan-home-slot" data-reg="${esc(regId)}">${homePlanInnerHtml()}</div>`
+}
+function homePlanInnerHtml() {
+  const plans = regPlans()
+  if (!plans.length) return ""
+  return `
+      <h3 class="sec-title"><span class="sec-icon">${PLAN_ICON}</span>월별 학습계획서</h3>
+      <div class="card">${planRowHtml(plans[0].month, false)}</div>`
+}
+async function fetchPlanList(regId) {
+  planListCache[regId] = { loading: true, plans: [] }
+  try {
+    const data = await planFetch({ registrationId: regId })
+    planListCache[regId] = { plans: Array.isArray(data.plans) ? data.plans : [] }
+  } catch (err) {
+    // 목록은 덧붙는 칸이라 실패하면 칸 없이 두고, 다음에 이 반을 열 때 다시 읽는다.
+    console.error("fetchPlanList failed", err)
+    delete planListCache[regId]
+    return
+  }
+  const slot = document.getElementById("plan-home-slot")
+  if (slot && slot.dataset.reg === regId) slot.innerHTML = homePlanInnerHtml()
+  if (view === "plans") renderApp()
+}
+async function fetchPlan(month) {
+  const key = planKey(month)
+  try {
+    const data = await planFetch({ month })
+    if (!data.plan) throw new Error("no plan")
+    planCache[key] = { plan: data.plan }
+  } catch (err) {
+    console.error("fetchPlan failed", err)
+    planCache[key] = { failed: true }
+  }
+  if (view === "plan" && planKey(selectedPlanMonth) === key) renderApp()
+}
+function openPlan(month, fromList) {
+  selectedPlanMonth = String(month)
+  planFromList = !!fromList
+  view = "plan"
+  const key = planKey(selectedPlanMonth)
+  if (!planCache[key] || planCache[key].failed) {
+    delete planCache[key]
+    fetchPlan(selectedPlanMonth)
+  }
+  renderApp()
+  letterToTop()
+}
+function openPlanList() {
+  view = "plans"
+  planFromList = false
+  renderApp()
+  letterToTop()
+}
+function closePlan() {
+  view = "detail"
+  regTab = "home"
+  planFromList = false
+  renderApp()
+  letterToTop()
+}
+function planBack() {
+  return view === "plan" && planFromList ? openPlanList() : closePlan()
+}
+function planSkeletonHtml() {
+  return `<div class="skel-wrap">${SKEL_STATUS("월별 학습계획서를 불러오는 중이에요")}
+    <span class="skel skel-title"></span>
+    <div class="card"><span class="skel skel-line w80"></span><span class="skel skel-line"></span><span class="skel skel-line w60"></span><span class="skel skel-box"></span></div>
+  </div>`
+}
+function planBodyHtml(state) {
+  if (!state) return planSkeletonHtml()
+  if (state.failed) return `<div class="card"><div class="empty">월별 학습계획서를 불러오지 못했어요</div><button type="button" class="letter-action" onclick="openPlan(${jsArg(selectedPlanMonth)}, ${planFromList})">다시 시도</button></div>`
+  const p = state.plan
+  const memo = p.note ? `<div class="letter-note">${esc(p.note)}</div>` : ""
+  const body = buildFeedBodyHtml(p.classBody)
+  return memo || body ? `<div class="card letter-body">${memo}${body}</div>` : `<div class="card"><div class="empty">안내 내용이 없어요</div></div>`
+}
+function planPageHtml(current, title, inner) {
+  const r = currentReg()
+  return `
+    <div class="reg-detail-page">
+      <div class="reg-header-bar">
+        <div class="reg-header-top">
+          <button class="reg-back-btn" onclick="planBack()" aria-label="뒤로가기"><svg class="header-icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg></button>
+          <div class="reg-breadcrumb">
+            <span class="crumb" onclick="goIntro()">${esc(STUDENT.student_name)}</span>
+            <span class="crumb-sep">›</span>
+            <span class="crumb" onclick="closePlan()">${esc(r ? r.class_name : "")}</span>
+            <span class="crumb-sep">›</span>
+            <span class="crumb current">${esc(current)}</span>
+          </div>
+        </div>
+      </div>
+      <div class="reg-tab-content"><div class="feed-narrow-wrap">
+        <h2><span class="page-title-icon">${PLAN_ICON}</span>${esc(title)}</h2>
+        ${inner}
+      </div></div>
+    </div>
+    ${regTabbarHtml("home", true)}
+  `
+}
+function renderPlanDetail() {
+  const state = planCache[planKey(selectedPlanMonth)]
+  return planPageHtml("월별 학습계획서", planLabel(selectedPlanMonth), `
+        ${planBodyHtml(state)}
+        ${state ? `<button type="button" class="letter-action" onclick="openPlanList()">목록으로</button>` : ""}`)
+}
+function renderPlanList() {
+  const plans = regPlans()
+  return planPageHtml("월별 학습계획서", "월별 학습계획서", `
+        <div class="section-hint">반 학습계획서를 달별로 볼 수 있어요</div>
+        <div class="card">${plans.length ? plans.map((p) => planRowHtml(p.month, true)).join("") : `<div class="empty">아직 받은 월별 학습계획서가 없어요.</div>`}</div>`)
+}
+
 function buildHomeTabHtml(r) {
   const todayAtt = (r.attendance_rows || []).find((a) => a.date === MOCK_TODAY)
   const todayPlanned = isPlannedClassDate(r, MOCK_TODAY, closedDateSet())
@@ -995,7 +1154,7 @@ function buildHomeTabHtml(r) {
           <div class="progress-line"><div class="track"><div class="fill" style="width:${b.progress ?? 0}%"></div></div><b>${b.progress ?? 0}%</b></div>
         </div>`).join("") : `<div class="empty">진행 중인 ${josa(regBookNoun(r), "이", "가")} 없어요.</div>`}</div>`}
       <h3 class="sec-title"><span class="sec-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg></span>선생님 한마디</h3>
-      <div class="card">${comment ? `<div class="speech">${esc(comment.text)}<small>${esc([comment.by, comment.date ? shortDateDow(comment.date) : ""].filter(Boolean).join(" · "))}</small></div>` : `<div class="empty">아직 등록된 한마디가 없어요.</div>`}</div>
+      <div class="card">${comment ? `<div class="speech">${esc(comment.text)}<small>${esc([comment.by, comment.date ? shortDateDow(comment.date) : ""].filter(Boolean).join(" · "))}</small></div>` : `<div class="empty">아직 등록된 한마디가 없어요.</div>`}</div>${buildHomePlanHtml()}
     </div>
   `
 }
@@ -1732,6 +1891,9 @@ function renderApp() {
   } else if (view === "letter" || view === "letters") {
     app.innerHTML = view === "letter" ? renderLetterDetail() : renderLetterList()
     attachRegScrollShrink()
+  } else if (view === "plan" || view === "plans") {
+    app.innerHTML = view === "plan" ? renderPlanDetail() : renderPlanList()
+    attachRegScrollShrink()
   } else {
     detachRegScrollShrink()
     app.innerHTML = renderIntro()
@@ -1739,8 +1901,8 @@ function renderApp() {
   }
   // 하단 탭바가 있는 등록 상세에는 안전 여백을 적용하고,
   // 등록/교재 상세에서는 새로고침 버튼을 상단 헤더 오른쪽에 배치한다.
-  document.body.classList.toggle("has-tabbar", view === "detail" || view === "book")
-  document.body.classList.toggle("has-detail-header", view === "detail" || view === "book" || view === "letter" || view === "letters")
+  document.body.classList.toggle("has-tabbar", view === "detail" || view === "book" || view === "plan" || view === "plans")
+  document.body.classList.toggle("has-detail-header", view === "detail" || view === "book" || view === "letter" || view === "letters" || view === "plan" || view === "plans")
 }
 
 async function initApp() {
@@ -1765,6 +1927,8 @@ function reportDepth() {
   if (view === "book") return (regTab === "home" ? 1 : 2) + 1
   if (view === "letters") return 1
   if (view === "letter") return letterFromList ? 2 : 1
+  if (view === "plans") return 2
+  if (view === "plan") return planFromList ? 3 : 2
   if (view !== "detail") return 0
   return (regTab === "home" ? 1 : 2) + (regTab === "calendar" && selectedCalDate ? 1 : 0)
 }
@@ -1836,6 +2000,7 @@ reportWrapLayer("image", "openFeedImage", "closeFeedImage", () => !!document.que
 function reportGoUp() {
   if (view === "book") return closeBookDetail()
   if (view === "letter" || view === "letters") return letterBack()
+  if (view === "plan" || view === "plans") return planBack()
   if (view !== "detail") return
   if (regTab === "calendar" && selectedCalDate) return clearCalDay()
   if (regTab !== "home") return setRegTab("home")
