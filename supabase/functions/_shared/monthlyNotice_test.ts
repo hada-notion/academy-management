@@ -350,3 +350,40 @@ Deno.test("261125 발송함 [일정 다시 가져오기]: 가정통신문 발송
 	eq(m.pickUnlinked(rows, "S", "G1", "2026-12").map((e: any) => e.id), ["a", "b", "d"])
 	eq(m.pickUnlinked(rows, undefined, undefined, "2026-12").map((e: any) => e.id), ["a"])
 })
+
+Deno.test("v2.8.0 항목 150 [가정통신문 생성] + 안내 구분 월별 학습계획: 반 × 달 발송함 하나(다시 눌러도 하나), 학생 장·큐 없음", async () => {
+	const sel = (s: string) => ({ type: "select", select: s ? { name: s } : null })
+	const pages: Record<string, any> = { cP: { id: "cP", properties: { "클래스명": title("중1 수학"), "안내 구분": sel("월별 학습계획"), "마지막 오류": rt("") } } }
+	const boxes: any[] = []
+	const q = (ds: string, filter: any) => {
+		if (ds === "batches") return boxes.filter((b) => filter.and[0].relation.contains === "cP" && b.properties["구분"].select.name === filter.and[1].select.equals)
+		throw new Error(`unexpected query ${ds}`)
+	}
+	const c = mock(pages, q)
+	await m.processLetterCreateClassItem({ classId: "cP", month: "2026-12" })
+	eq(c.created.length, 1)
+	const made = c.created[0]
+	eq([made.ds, made.props["이름"].title[0].text.content, made.props["구분"].select.name, made.props["클래스"].relation, made.props["기간"].date],
+		["batches", "중1 수학 월별 학습계획 26.12", "월별 학습계획", [{ id: "cP" }], { start: "2026-12-01", end: "2026-12-31" }])
+	boxes.push(pages.new1)
+	await m.processLetterCreateClassItem({ classId: "cP", month: "2026-12" })
+	eq([c.created.length, c.enq.length], [1, 0])
+	eq(c.marks.filter((x) => x.startsWith("done")), ["done:cP", "done:cP"])
+	// 안내 구분이 비거나 가정통신문이면 지금 그대로(등록 조회부터)
+	pages.cP.properties["안내 구분"] = sel("")
+	let asked = ""
+	const c2 = mock(pages, (ds: string) => { asked = ds; return [] })
+	await m.processLetterCreateClassItem({ classId: "cP", month: "2026-12" })
+	eq([asked, c2.created.length, c2.marks[1].startsWith("error:cP")], ["registrations", 0, true])
+})
+
+Deno.test("v2.8.0 항목 150 월별 학습계획 발송함에 든 장은 보내지 않음(LetterBlocked)", async () => {
+	const rA = reg("rA", { student: "s1", name: "테스트학생", cls: "cA", clsName: "수학반" })
+	const letter = { id: "l1", properties: { "기간": date("2026-12-01", "2026-12-31"), "등록": rel("rA"), "학원 일정": rel(), "알림톡 발송함": rel("pbox"), "같은 달 가정통신문": rel() } }
+	const pages: Record<string, any> = { rA, l1: letter, pbox: { id: "pbox", properties: { "구분": { type: "select", select: { name: "월별 학습계획" } } } } }
+	const c = mock(pages, () => [rA])
+	let msg = ""
+	try { await m.buildLetterNotice(letter) } catch (e) { msg = (e as Error).message; eq(e instanceof m.LetterBlocked, true) }
+	eq(msg.includes("월별 학습계획은 알림톡을 보내지 않습니다"), true)
+	eq(c.sends, [])
+})

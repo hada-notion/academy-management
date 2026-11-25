@@ -24,6 +24,12 @@ import { noteText } from "./lessonNotice.ts"
 import { alimtalkVar, BULLET, NO_NOTE } from "./noticeBlocks.ts"
 
 export const KIND_MONTHLY = "가정통신문"
+// (v2.8.0 항목 150, 261125 대표) 월별 학습계획: 클래스 `안내 구분`이 "월별 학습계획"이면 [가정통신문 생성]이 반 × 달 발송함 하나만 만든다.
+//   학생 장은 만들지 않고 알림톡도 없다(보낼 장이 없어 [일괄 전송]이 아무것도 보내지 않고, 보내기 길에서도 막는다).
+//   내용은 그 발송함 페이지 본문(+ `가정통신문 안내 메모`)에 적고, 학부모 리포트 반 화면 홈 맨 아래 "월별 학습계획서"에서 읽는다.
+export const KIND_PLAN = "월별 학습계획"
+export const PROP_CLASS_NOTICE_KIND = "안내 구분"
+export const isPlanClass = (cls: any) => String(cls?.properties?.[PROP_CLASS_NOTICE_KIND]?.select?.name ?? "") === KIND_PLAN
 // (10/28) 수강료 생성은 보고서처럼 반 발송함(구분 "수강료", 반 × 달)을 만든다.
 export const KIND_TUITION = "수강료"
 // 클래스 [월 수강료 생성]
@@ -406,6 +412,13 @@ export async function processLetterCreateClassItem(p: CreateClassPayload): Promi
 	const spec = CLASS_LETTER_GEN_STATUS_SPEC
 	try {
 		await deps.markRunning(p.classId, spec)
+		const cls: any = await deps.getPage(p.classId)
+		if (isPlanClass(cls)) {
+			// 월별 학습계획: 반 × 달 발송함 하나(다시 눌러도 하나). 학생 장·알림톡 없음.
+			const box = await findClassMailbox(p.classId, p.month, { className: anyTitleText(cls).trim() || "클래스" }, KIND_PLAN)
+			console.log(`[letter-create] class=${p.classId} ${p.month} 월별 학습계획 발송함 ${box?.id}`)
+			return await deps.markDone(p.classId, spec)
+		}
 		const regs = (await deps.queryAllPages(DS_REGISTRATION, { property: "클래스", relation: { contains: p.classId } })).filter((r: any) => inMonthReg(r, p.month))
 		console.log(`[letter-create] class=${p.classId} ${p.month} 대상 등록 ${regs.length}`)
 		if (!regs.length) return await deps.markError(p.classId, spec, `${monthLabel(p.month)}에 이 반을 다니는 학생이 없습니다.`)
@@ -632,6 +645,12 @@ export async function buildLetterNotice(letter: any): Promise<{ registrationId: 
 	if (!registrationId) throw new LetterBlocked("이 가정통신문에 연결된 등록이 없습니다.")
 	const month = String(seoulDay(letter?.properties?.[PROP_LETTER_PERIOD]?.date?.start) ?? "").slice(0, 7)
 	if (!month) throw new LetterBlocked("가정통신문 '기간'이 비어 있습니다.")
+	// (항목 150) 월별 학습계획 발송함에 든 장은 보내지 않는다(학습계획은 알림톡이 없다).
+	const boxId = mailboxOf(letter)
+	if (boxId) {
+		const box: any = await deps.getPage(boxId).catch(() => null)
+		if (String(box?.properties?.[PROP_MAILBOX_KIND]?.select?.name ?? "") === KIND_PLAN) throw new LetterBlocked("월별 학습계획은 알림톡을 보내지 않습니다(학부모 리포트 반 화면에서 봅니다).")
+	}
 	const reg: any = await deps.getPage(registrationId)
 	const studentId = relIds(reg?.properties?.["학생정보"])[0]
 	if (!studentId) throw new LetterBlocked("등록에 학생이 연결되어 있지 않습니다.")

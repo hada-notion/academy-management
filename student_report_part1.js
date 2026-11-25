@@ -807,7 +807,7 @@ async function loadReportFromServer() {
 
 // ===================== 상태 =====================
 const app = document.getElementById("app")
-let view = "intro" // "intro" | "detail" | "schedule" | "book" | "letter" | "letters"
+let view = "intro" // "intro" | "detail" | "schedule" | "book" | "letter" | "letters" | "plan" | "plans"
 let selectedToken = null
 let selectedBookTitle = null
 let selectedBookId = "" // (v2.8.0) 진도교재 ID. 같은 교재·프로그램을 두 번 하면 이름이 같아 ID로 나눈다.
