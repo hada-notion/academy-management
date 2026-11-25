@@ -109,3 +109,31 @@ Deno.test("v2.8.0 알림 수신 대상: 여럿이면 없는 번호는 건너뛰�
 		globalThis.fetch = realFetch
 	}
 })
+
+Deno.test("261125 가정통신문 새 템플릿 행: 켜져 있으면 그 행(code = 반 없음), 꺼져 있으면 옛 '월간 일정 안내' 행(code = 옛 것), 둘 다 없으면 기본값(code 없음)", async () => {
+	const { LETTER_CONFIG_NO_CLASS } = await import("./adminShared.ts")
+	const realFetch = globalThis.fetch
+	const run = async (newActive: boolean | null, oldRow: boolean) => {
+		const asked: string[] = []
+		globalThis.fetch = (async (_url: string, init: any) => {
+			const code = JSON.parse(init.body).filter.rich_text.equals
+			asked.push(code)
+			const results = code === LETTER_CONFIG_NO_CLASS && newActive !== null
+				? [{ id: "row-new", properties: { "활성 여부": { checkbox: newActive }, "템플릿 ID": rt("tpl-new") } }]
+				: code === "월간 일정 안내" && oldRow ? [{ id: "row-old", properties: { "활성 여부": { checkbox: true }, "템플릿 ID": rt("tpl-old") } }] : []
+			return new Response(JSON.stringify({ results }), { status: 200, headers: { "Content-Type": "application/json" } })
+		}) as typeof fetch
+		const mod = await import("./adminShared.ts")
+		mod.clearAlimtalkConfigCache()
+		const c = await mod.getAlimtalkConfig(LETTER_CONFIG_NO_CLASS, { pfId: "", templateId: "", senderNumber: "" }, ["월간 일정 안내"])
+		return [c.templateId, c.code ?? null, asked]
+	}
+	try {
+		eq(await run(true, true), ["tpl-new", LETTER_CONFIG_NO_CLASS, [LETTER_CONFIG_NO_CLASS]])
+		eq(await run(false, true), ["tpl-old", "월간 일정 안내", [LETTER_CONFIG_NO_CLASS, "월간 일정 안내"]])
+		eq(await run(null, true), ["tpl-old", "월간 일정 안내", [LETTER_CONFIG_NO_CLASS, "월간 일정 안내"]])
+		eq(await run(null, false), ["", null, [LETTER_CONFIG_NO_CLASS, "월간 일정 안내"]])
+	} finally {
+		globalThis.fetch = realFetch
+	}
+})

@@ -25,6 +25,7 @@ import {
 	extractErrorMessage,
 	getAlimtalkConfig,
 	getBotUserId,
+	LETTER_CONFIG_NO_CLASS,
 	notionGetPage,
 	notionPatchPageProperties,
 	type AlimtalkConfigCategory,
@@ -72,7 +73,8 @@ type Prepared = {
 	// 설정 행이 없을 때 Secrets 기본 템플릿을 쓰지 않는다(수료 보고서: 맞는 기본 템플릿이 없음 → 템플릿 ID 없음 오류).
 	noEnvTemplate?: boolean
 	primaryPhone: string
-	variables: (notice: string) => Record<string, string>
+	// config = 고른 설정 행(가정통신문: 새 템플릿 행이면 #{클래스}를 빼고 보낸다)
+	variables: (notice: string, config: { code?: AlimtalkConfigCategory }) => Record<string, string>
 	log: { reportId?: string; tuitionId?: string; textbookCartId?: string; letterId?: string; periodStart?: string; periodEnd?: string }
 	clearBulkSelect: boolean
 	// 보낸 뒤 ✅ 완료와 함께 쓸 칸(진도 평가: 안내 일시)
@@ -245,15 +247,24 @@ async function prepareTextbook(page: any): Promise<Prepared> {
 	}
 }
 
+// 새 템플릿에는 #{클래스}가 없다. 템플릿을 읽어 맞추는 길(templateFit)이 실패해도 없는 변수를 보내지 않게 여기서 뺀다.
+export function letterVariablesFor(variables: Record<string, string>, config: { code?: AlimtalkConfigCategory }): Record<string, string> {
+	if (config.code !== LETTER_CONFIG_NO_CLASS) return variables
+	const { ["#{클래스}"]: _drop, ...rest } = variables
+	return rest
+}
+
 async function prepareLetter(page: any): Promise<Prepared> {
 	const built = await noticeDeps.letter(page)
 	return {
 		registrationId: built.registrationId,
 		title: built.title,
 		logCategory: "월간 일정 안내",
-		configCategory: "월간 일정 안내",
+		// (가정통신문 새 템플릿) "월간 일정 안내(반 없음)" 행이 켜져 있으면 그 템플릿(🏛 클래스 줄 없음), 아니면 옛 "월간 일정 안내" 행.
+		configCategory: LETTER_CONFIG_NO_CLASS,
+		configFallback: ["월간 일정 안내"],
 		primaryPhone: "", // 가정통신문에는 연락처 롤업이 없다 → 우선 연락 대상이면 등록을 한 번 읽는다
-		variables: () => built.variables,
+		variables: (_notice, config) => letterVariablesFor(built.variables, config),
 		log: { letterId: page.id, periodStart: built.period.start, periodEnd: built.period.end },
 		afterSent: built.afterSent,
 		clearBulkSelect: false,
@@ -319,7 +330,7 @@ export async function processNoticeQueueItem(payload: NoticePayload): Promise<vo
 		throw err
 	}
 	const senderUserId = (payload.clickerUserId ?? page.properties?.["실행자"]?.people?.[0]?.id ?? (await noticeDeps.botUserId().catch(() => null))) ?? undefined
-	const variables = prep.variables(config.notice ?? "")
+	const variables = prep.variables(config.notice ?? "", config)
 	const logBase = { registrationId: prep.registrationId, senderUserId, title: prep.title, category: prep.logCategory, ...prep.log }
 
 	// 발송 단계: 실패해도 다시 보내지 않는다(이미 나갔을 수 있음).

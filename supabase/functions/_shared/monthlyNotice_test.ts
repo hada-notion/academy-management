@@ -242,6 +242,12 @@ Deno.test("v2.8.0 항목 148 보내기: 반별 전달사항은 클래스 칸에�
 	eq(m.parseSentNote(pages.l1.properties["보낸 전달사항"].rich_text[0].plain_text), [{ name: "수학반", text: "단원평가 3단원" }, { name: "영어반", text: "교재 지참" }])
 	// 반 하나면 머리글 없이 문장만
 	eq(m.classNoteText([{ classId: "cB", name: "영어반", text: "교재 지참" }]), "교재 지참")
+	// 다시 보낼 때: 반 칸이 비어도 박아 둔 글을 그대로 보내고, 박아 둔 글을 빈 글로 덮지 않음
+	pages.cB.properties["가정통신문 전달사항"] = rt("")
+	const again = await m.buildLetterNotice(pages.l1)
+	eq(again.variables["#{전달사항}"], "🏛 수학반\n  • 단원평가 3단원\n🏛 영어반\n  • 교재 지참")
+	await again.afterSent!()
+	eq(pages.l1.properties["보낸 전달사항"].rich_text[0].plain_text, "🏛 수학반\n단원평가 3단원\n🏛 영어반\n교재 지참")
 	eq(c.sends, [])
 })
 
@@ -285,6 +291,21 @@ Deno.test("v2.8.0 가정통신문 보내기 변수: 학원 일정을 다시 넣�
 	let msg = ""
 	try { await m.buildLetterNotice(letter) } catch (e) { msg = (e as Error).message; eq(e instanceof m.LetterBlocked, true) }
 	eq(msg.includes("일정과 전달사항이 없어 보내지 않았습니다"), true)
+})
+
+Deno.test("261125 옛 템플릿 #{클래스}: 반이 3개까지는 ' · '로 잇고, 넘으면 '첫 반 외 n개'(이름순 첫 반)", async () => {
+	eq(m.letterClassText([]), "")
+	eq(m.letterClassText(["수학반"]), "수학반")
+	eq(m.letterClassText(["국어반", "수학반", "영어반"]), "국어반 · 수학반 · 영어반")
+	eq(m.letterClassText(["국어 1학년", "국어 2학년", "수학 A", "영어 B"]), "국어 1학년 외 3개")
+	const names = ["영어 B", "국어 1학년", "과학 C", "수학 A", "사회 D"]
+	const regs = names.map((n, i) => reg(`r${i}`, { student: "s1", name: "예시학생", cls: `c${i}`, clsName: n }))
+	const letter = { id: "lA", properties: { "기간": date("2026-12-01", "2026-12-31"), "등록": rel("r0"), "학원 일정": rel(), "알림톡 발송함": rel("bA"), "같은 달 가정통신문": rel() } }
+	const pages: Record<string, any> = { lA: letter, s1: { id: "s1", properties: { "학교": rel(), "학년": rel() } }, bA: { id: "bA", properties: { "가정통신문 안내 메모": rt("교재 지참") } } }
+	for (const r of regs) pages[r.id] = r
+	mock(pages, (ds) => (ds === "registrations" ? regs : []))
+	const built = await m.buildLetterNotice(letter)
+	eq(built.variables["#{클래스}"], "과학 C 외 4개")
 })
 
 Deno.test("261125 발송함 [일정 다시 가져오기]: 발송함 가정통신문마다 학원 일정을 다시 맞추고(다시 눌러도 같음), 세부 구분 빈 일정은 이름으로, 보내지 않음", async () => {

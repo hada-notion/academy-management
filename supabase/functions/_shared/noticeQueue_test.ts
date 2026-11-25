@@ -226,3 +226,23 @@ Deno.test("261112 재시도를 다 쓴 안내: ⚪ 대기면 ⚠️ 오류와 �
 		eq(done.calls.patches.length, 0)
 	} finally { done.restore() }
 })
+
+Deno.test("261125 가정통신문 새 템플릿: '월간 일정 안내(반 없음)' 행 → 옛 '월간 일정 안내' 순으로 고르고, 새 행이면 #{클래스}를 보내지 않음", async () => {
+	const { LETTER_CONFIG_NO_CLASS } = await import("./adminShared.ts")
+	const letterPage = (id: string) => ({ id, properties: { "안내문 전송 상태": select("⚪ 대기"), "이름": { type: "title", title: [{ plain_text: `26.12 예시학생 가정통신문` }] }, 등록: rel(`reg-${id}`) } })
+	const built = { registrationId: "reg-lA", title: "예시학생", period: { start: "2026-12-01", end: "2026-12-31" }, variables: { "#{학생이름}": "예시학생", "#{클래스}": "국어 1학년 외 9개", "#{안내월}": "12월" } }
+	for (const [code, hasClass] of [[LETTER_CONFIG_NO_CLASS, false], ["월간 일정 안내", true], [undefined, true]] as const) {
+		const page = letterPage("lA")
+		const t = fake(page)
+		noticeDeps.letter = async () => built
+		noticeDeps.config = (async (...args: any[]) => { t.calls.config.push(args.filter((x) => typeof x === "string" || Array.isArray(x))); return { pfId: "pf", templateId: "tpl", senderNumber: "0200000000", notice: "", recipientTarget: ["우선 연락 대상"], ...(code ? { code } : {}) } }) as any
+		try {
+			await processNoticeQueueItem({ kind: "letter", pageId: "lA" })
+			eq(t.calls.config, [[LETTER_CONFIG_NO_CLASS, ["월간 일정 안내"]]])
+			eq(["#{클래스}" in t.calls.sent[0].vars, t.calls.sent[0].vars["#{학생이름}"], t.calls.sent[0].vars["#{안내월}"]], [hasClass, "예시학생", "12월"])
+			eq(t.calls.logs.map((l) => l.category), ["월간 일정 안내"])
+		} finally { t.restore() }
+	}
+	// 보낼 변수 원본은 그대로(같은 묶음을 옛 템플릿으로 보낼 때 쓸 수 있게)
+	eq("#{클래스}" in built.variables, true)
+})

@@ -422,11 +422,18 @@ export type AlimtalkConfig = {
   notice: string
   // 발송 종류별 실제 수신자를 Notion 설정에서 선택한다. 미설정은 우선 연락 대상으로 처리한다.
   recipientTarget: AlimtalkRecipientTarget[]
+  // (v2.8.0 가정통신문 새 템플릿) 실제로 고른 설정 행의 `코드`. 행을 못 찾아 기본값(Secrets)으로 갔으면 없음.
+  // 같은 발송에서 템플릿마다 변수가 다를 때(새 월간 일정 안내는 #{클래스} 없음) 보내는 쪽이 이걸 본다.
+  code?: AlimtalkConfigCategory
 }
 
 const alimtalkConfigCache = new Map<string, { value: AlimtalkConfigRow | null; expiresAt: number }>()
 // (v2.6.20) 일일 보고서를 큐로 차례로 보낼 때 같은 설정을 다시 읽지 않도록 5분 재사용(설정은 거의 바뀌지 않음).
 const ALIMTALK_CONFIG_CACHE_MS = 5 * 60_000
+// 시험용: 설정 행 캐시를 비운다.
+export function clearAlimtalkConfigCache() {
+  alimtalkConfigCache.clear()
+}
 // (v2.8.0) 캐시에는 행에 적힌 값만 두고 기본값(fallback)은 부를 때마다 채운다. 예전에는 처음 부른 쪽의 기본값이 함께
 // 저장돼, 빈 기본값으로 먼저 읽으면(가정통신문 수강료 안내의 안내멘트 읽기) 같은 함수 안 다음 발송이 발신번호 빈 값으로
 // 나가 Solapi가 요청 모양 오류로 거절했다(10/28 원본 실테스트).
@@ -452,6 +459,11 @@ export type AlimtalkConfigCategory = SendLogCategory | "보고서" | "일일 활
   | "보강 수업 안내" | "수업 일정 안내" | "휴강 안내"
   // 일정 안내(v2.8.0 구역): 개별 일정은 상담만 "상담 일정 안내"로. 없거나 꺼져 있으면 옛 "일정 안내" 행.
   | "상담 일정 안내"
+  // 가정통신문(v2.8.0 항목 148 뒤): 학생당 한 장이라 반이 많으면 #{클래스}가 길어져 [기본 정보] 🏛 클래스 줄을 뺀 새 템플릿.
+  // 이 행이 켜져 있으면 새 템플릿(#{클래스}를 보내지 않음), 없거나 꺼져 있으면 옛 "월간 일정 안내" 행.
+  | typeof LETTER_CONFIG_NO_CLASS
+
+export const LETTER_CONFIG_NO_CLASS = "월간 일정 안내(반 없음)" as const
 
 // [NEW, 복원 2026-09-18] "알림톡 설정(학원) DB"에서 발송 구분별 행 ID와 안내멘트만 가져온다.
 // generate-tuition/textbookDistributionTarget이 표시용 "알림톡 설정" 관계를 채울 rowId로,
@@ -588,7 +600,7 @@ export async function getAlimtalkConfig(
       return { ...fallback, notice: "", recipientTarget: ["우선 연락 대상"] }
     }
     console.log(`[getAlimtalkConfig][${category}] pageId=${row.id}, noticeLength=${row.value.notice.length}`)
-    return withConfigFallback(row.value, fallback)
+    return { ...withConfigFallback(row.value, fallback), code: category }
   } catch (e) {
     console.error(`[getAlimtalkConfig][${category}] 조회 실패, Secrets 기본값 사용:`, e)
     return { ...fallback, notice: "", recipientTarget: ["우선 연락 대상"] }

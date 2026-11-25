@@ -595,6 +595,12 @@ export class LetterBlocked extends Error {}
 
 // 같은 학생의 그 달 반 이름(이름순, 같은 이름은 한 번). #{클래스}에 쓴다.
 const classNamesOf = (regs: any[]) => Array.from(new Set(regs.map(classNameOfReg).filter(Boolean))).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
+// (261125 대표 "보내는 메세지에 클래스도 너무 많다") 옛 템플릿의 #{클래스}: 반이 3개까지는 " · "로 잇고, 넘으면 "첫 반 외 n개".
+// Notion 가정통신문 `클래스목록(알림톡)` 수식도 같은 규칙(미리보기용, 서버는 이 값을 읽지 않음).
+export const LETTER_CLASS_MAX = 3
+export function letterClassText(names: string[]): string {
+	return names.length > LETTER_CLASS_MAX ? `${names[0]} 외 ${names.length - 1}개` : names.join(" · ")
+}
 
 // (v2.8.0 항목 148) 반별 전달사항(새 방식): 그 장 '등록'의 반마다 클래스 '가정통신문 전달사항'(빈 반 빠짐, 반 이름순).
 // regs = 그 학생의 그 달 등록들(있으면 다시 읽지 않음).
@@ -645,6 +651,7 @@ export async function afterLetterSent(letter: any, notes: ClassNote[]): Promise<
 	const letters = (await deps.queryAllPages(await deps.letterDataSourceId(), { property: PROP_LETTER_MAILBOX, relation: { contains: mailboxId } }).catch(() => null))
 	if (!letters) return
 	for (const n of notes) {
+		if (!n.classId) continue
 		try {
 			const regIds = new Set((await deps.queryAllPages(DS_REGISTRATION, { property: "클래스", relation: { contains: n.classId } })).map((r: any) => key(r.id)))
 			const waiting = letters.filter((l: any) => alive(l) && key(l.id) !== key(letterId) && !sentLetter(l) && relIds(l?.properties?.[PROP_LETTER_REG]).some((id) => regIds.has(key(id))))
@@ -707,7 +714,10 @@ export async function buildLetterNotice(letter: any): Promise<{ registrationId: 
 	const f = (name: string, fallback: string) => alimtalkVar(fresh, name, fallback)
 	const studentName = studentNameOf(reg)
 	// (v2.8.0 항목 148) 새 방식: 그 장 반들의 클래스 `가정통신문 전달사항`(수식은 옛 반 발송함 메모를 읽으므로 쓰지 않음). 없으면 옛 길.
-	const classNotes = await classNotesOf(fresh, regs)
+	// 다시 보낼 때(반 칸은 이미 비움): 그 장 `보낸 전달사항`의 글을 그대로 쓴다(빈 글로 덮어쓰지 않게, 반 칸은 건드리지 않음).
+	const liveNotes = await classNotesOf(fresh, regs)
+	const classNotes: ClassNote[] = liveNotes.length ? liveNotes
+		: parseSentNote(textOf(fresh?.properties?.[PROP_LETTER_SENT_NOTE]?.rich_text)).map((n) => ({ classId: "", name: n.name, text: n.text }))
 	const note = classNotes.length ? classNoteText(classNotes) : f("전달사항", await letterNote(fresh, regs))
 	if (!lines.length && (!note.trim() || note.trim() === NO_NOTE)) throw new LetterBlocked(`${monthLabel(month)} 학부모 공개 일정과 전달사항이 없어 보내지 않았습니다. 일정이나 클래스 가정통신문 전달사항을 넣은 뒤 [안내문 전송]을 누르세요.`)
 	return {
@@ -716,7 +726,7 @@ export async function buildLetterNotice(letter: any): Promise<{ registrationId: 
 		period: monthRange(month),
 		variables: {
 			"#{학생이름}": f("학생이름", studentName),
-			"#{클래스}": f("클래스", classNamesOf(regs).join(" · ")),
+			"#{클래스}": f("클래스", letterClassText(classNamesOf(regs))),
 			// 옛 (일정안내) 수식은 ": 반" 모양이라 읽지 않는다. 둘 이상이면 "• 반" 목록.
 			// (10/29 다시 신청한 본문) 머리줄 "🏛 클래스"까지 담는 블록. 값이 공백으로 시작하지 않게.
 			"#{안내월}": f("안내월", monthLabel(month)),
