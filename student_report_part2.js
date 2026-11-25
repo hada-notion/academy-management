@@ -220,6 +220,7 @@ function setTtClassColor(i) {
 
 function renderIntro() {
   const s = STUDENT
+  const letterHtml = buildIntroLetterHtml()
   // (v2.8.0) '리포트 숨김'으로 출결·학습·평가를 모두 숨긴 반은 반 카드를 만들지 않는다(시간표만 보이는 반).
   const active = s.registrations.filter((r) => r.status === "수강중" && !isClassCardHidden(r)).slice().sort((a, b) => (a.start || "").localeCompare(b.start || ""))
   return `
@@ -258,7 +259,9 @@ function renderIntro() {
         <div class="section-hint">학원 일정과 학교 일정을 확인할 수 있어요</div>
         <div id="schedule-cal-area" style="width:100%">${buildScheduleCalendarHtml()}</div>
         <div class="up-hint" onclick="scrollToTimetable()"><span class="chevron"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="17 11 12 6 7 11"></polyline><polyline points="17 18 12 13 7 18"></polyline></svg></span>이전으로</div>
+        ${letterHtml ? `<div class="swipe-hint" onclick="document.getElementById('letter-section')?.scrollIntoView({ behavior: 'smooth' })">가정통신문 보기<span class="chevron"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="7 13 12 18 17 13"></polyline><polyline points="7 6 12 11 17 6"></polyline></svg></span></div>` : ""}
       </div>
+      ${letterHtml}
     </div>
   `
 }
@@ -668,13 +671,15 @@ function buildHomeHeroHtml(r) {
     </div>
   `
 }
-// ===== 가정통신문 (홈 탭 맨 아래 → 본문 → 목록) =====
-// (v2.8.0, 11/6 사용자) 반마다 따로 보인다: 영어반을 열면 영어반 내용만. 목록은 캐시에 있고, 본문은 누를 때 읽는다(get-report-letter).
+// ===== 가정통신문 (첫 화면 일정 아래 → 본문 → 목록) =====
+// (v2.8.0 항목 146, 261125 대표) 학생당 한 장: 반에 들어가기 전 첫 화면 일정 아래에서 달마다 한 줄. 반 화면에는 없다.
+// 목록은 캐시에 있고(달마다 한 줄), 본문은 누를 때 읽는다(get-report-letter).
 let selectedLetterMonth = ""
 let letterFromList = false
 const letterCache = {}
 const LETTER_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M22 7l-10 6L2 7"></path></svg>`
 const LETTER_CHEVRON = `<svg class="letter-chevron" viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 6 15 12 9 18"></polyline></svg>`
+const LETTER_INTRO_ROWS = 3
 function letterLabel(month) {
   const [y, m] = String(month).split("-")
   return `${y === MOCK_TODAY.slice(0, 4) ? "" : `${y}년 `}${Number(m)}월 가정통신문`
@@ -682,22 +687,30 @@ function letterLabel(month) {
 function letterRowHtml(month, fromList) {
   return `<button type="button" class="letter-row" onclick="openLetter(${jsArg(month)}, ${fromList})"><b>${esc(letterLabel(month))}</b>${LETTER_CHEVRON}</button>`
 }
-function regLetters() {
-  const id = currentReg()?.registration_id
-  return (STUDENT.letters || []).filter((l) => l.registrationId === id).sort((a, b) => b.month.localeCompare(a.month))
+function studentLetters() {
+  const byMonth = new Map()
+  for (const l of STUDENT.letters || []) if (!byMonth.has(l.month)) byMonth.set(l.month, l)
+  return Array.from(byMonth.values()).sort((a, b) => b.month.localeCompare(a.month))
 }
 function letterKey(month) {
-  return `${currentReg()?.registration_id || ""}:${month}`
+  return String(month)
 }
-function buildHomeLetterHtml() {
-  const letters = regLetters()
+function buildIntroLetterHtml() {
+  const letters = studentLetters()
   if (!letters.length) return ""
+  const rows = letters.slice(0, LETTER_INTRO_ROWS).map((l) => letterRowHtml(l.month, false)).join("")
+  const more = letters.length > LETTER_INTRO_ROWS ? `<button type="button" class="letter-action" onclick="openLetterList()">모두 보기</button>` : ""
   return `
-      <h3 class="sec-title"><span class="sec-icon">${LETTER_ICON}</span>가정통신문</h3>
-      <div class="card">${letterRowHtml(letters[0].month, false)}</div>`
+      <div class="snap-section schedule-section letter-section" id="letter-section">
+        <button class="hamburger-btn dark" onclick="openMenu()" aria-label="메뉴 열기"><svg class="header-icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
+        <h2><span class="page-title-icon">${LETTER_ICON}</span>가정통신문</h2>
+        <div class="section-hint">학원에서 보낸 가정통신문을 달별로 볼 수 있어요</div>
+        <div class="letter-intro-list"><div class="card">${rows}</div>${more}</div>
+        <div class="up-hint" onclick="scrollToSchedule()"><span class="chevron"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="17 11 12 6 7 11"></polyline><polyline points="17 18 12 13 7 18"></polyline></svg></span>이전으로</div>
+      </div>`
 }
 async function fetchLetter(month) {
-  const registrationId = currentReg()?.registration_id
+  const registrationId = (STUDENT.letters || []).find((l) => l.month === month)?.registrationId || ""
   const key = letterKey(month)
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/get-report-letter`, {
@@ -828,12 +841,11 @@ function openLetterList() {
   renderApp()
   letterToTop()
 }
+// 첫 화면으로 돌아가 가정통신문 칸을 보인다.
 function closeLetter() {
-  view = "detail"
-  regTab = "home"
   letterFromList = false
-  renderApp()
-  letterToTop()
+  goIntro()
+  document.getElementById("letter-section")?.scrollIntoView()
 }
 function letterBack() {
   return view === "letter" && letterFromList ? openLetterList() : closeLetter()
@@ -870,14 +882,16 @@ function letterBodyHtml(state) {
   const schedule = [letterLinesHtml("휴원 일정", s.rest), letterLinesHtml("학원 일정", s.academy), letterLinesHtml("학사 일정", s.school)].join("")
   const common = buildFeedBodyHtml(l.classBody)
   const own = buildFeedBodyHtml(l.studentBody)
+  // (v2.8.0 항목 146) 위 학원 일정, 아래 반별 전달사항(반이 둘 이상이면 반 이름 머리글).
+  const notes = Array.isArray(l.notes) && l.notes.length ? l.notes : (l.note ? [{ name: "", text: l.note }] : [])
+  const noteHtml = notes.map((n) => `${notes.length > 1 && n.name ? `<div class="rep-sub">${esc(n.name)}</div>` : ""}<div class="letter-note">${esc(n.text)}</div>`).join("")
   return `
     ${common ? `<h3 class="sec-title">안내</h3><div class="card letter-body">${common}</div>` : ""}
-    ${l.note ? `<h3 class="sec-title">전달 사항</h3><div class="card letter-note">${esc(l.note)}</div>` : ""}
     ${schedule ? `<h3 class="sec-title">일정 안내</h3><div class="card">${schedule}</div>` : ""}
+    ${noteHtml ? `<h3 class="sec-title">전달 사항</h3><div class="card letter-notes">${noteHtml}</div>` : ""}
     ${own ? `<h3 class="sec-title">${esc(STUDENT.student_name)} 학생 안내</h3><div class="card letter-body">${own}</div>` : ""}`
 }
 function letterPageHtml(current, title, inner) {
-  const r = currentReg()
   return `
     <div class="reg-detail-page">
       <div class="reg-header-bar">
@@ -885,8 +899,6 @@ function letterPageHtml(current, title, inner) {
           <button class="reg-back-btn" onclick="letterBack()" aria-label="뒤로가기"><svg class="header-icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg></button>
           <div class="reg-breadcrumb">
             <span class="crumb" onclick="goIntro()">${esc(STUDENT.student_name)}</span>
-            <span class="crumb-sep">›</span>
-            <span class="crumb" onclick="closeLetter()">${esc(r ? r.class_name : "")}</span>
             <span class="crumb-sep">›</span>
             <span class="crumb current">${esc(current)}</span>
           </div>
@@ -897,7 +909,6 @@ function letterPageHtml(current, title, inner) {
         ${inner}
       </div></div>
     </div>
-    ${regTabbarHtml("home", true)}
   `
 }
 function renderLetterDetail() {
@@ -907,7 +918,7 @@ function renderLetterDetail() {
         ${state ? `<button type="button" class="letter-action" onclick="openLetterList()">목록으로</button>` : ""}`)
 }
 function renderLetterList() {
-  const letters = regLetters()
+  const letters = studentLetters()
   return letterPageHtml("가정통신문", "가정통신문", `
         <div class="section-hint">보낸 가정통신문을 달별로 볼 수 있어요</div>
         <div class="card">${letters.length ? letters.map((l) => letterRowHtml(l.month, true)).join("") : `<div class="empty">아직 받은 가정통신문이 없어요.</div>`}</div>`)
@@ -953,7 +964,7 @@ function buildHomeTabHtml(r) {
           <div class="progress-line"><div class="track"><div class="fill" style="width:${b.progress ?? 0}%"></div></div><b>${b.progress ?? 0}%</b></div>
         </div>`).join("") : `<div class="empty">진행 중인 ${josa(regBookNoun(r), "이", "가")} 없어요.</div>`}</div>`}
       <h3 class="sec-title"><span class="sec-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg></span>선생님 한마디</h3>
-      <div class="card">${comment ? `<div class="speech">${esc(comment.text)}<small>${esc([comment.by, comment.date ? shortDateDow(comment.date) : ""].filter(Boolean).join(" · "))}</small></div>` : `<div class="empty">아직 등록된 한마디가 없어요.</div>`}</div>${buildHomeLetterHtml()}
+      <div class="card">${comment ? `<div class="speech">${esc(comment.text)}<small>${esc([comment.by, comment.date ? shortDateDow(comment.date) : ""].filter(Boolean).join(" · "))}</small></div>` : `<div class="empty">아직 등록된 한마디가 없어요.</div>`}</div>
     </div>
   `
 }
@@ -1696,7 +1707,7 @@ function renderApp() {
   }
   // 하단 탭바가 있는 등록 상세에는 안전 여백을 적용하고,
   // 등록/교재 상세에서는 새로고침 버튼을 상단 헤더 오른쪽에 배치한다.
-  document.body.classList.toggle("has-tabbar", view === "detail" || view === "book" || view === "letter" || view === "letters")
+  document.body.classList.toggle("has-tabbar", view === "detail" || view === "book")
   document.body.classList.toggle("has-detail-header", view === "detail" || view === "book" || view === "letter" || view === "letters")
 }
 
@@ -1720,8 +1731,8 @@ async function initApp() {
 const reportNav = { idx: 0, depth: 0, layers: [], pending: 0, skip: false, popping: false, fromPop: false }
 function reportDepth() {
   if (view === "book") return (regTab === "home" ? 1 : 2) + 1
-  if (view === "letters") return 2
-  if (view === "letter") return letterFromList ? 3 : 2
+  if (view === "letters") return 1
+  if (view === "letter") return letterFromList ? 2 : 1
   if (view !== "detail") return 0
   return (regTab === "home" ? 1 : 2) + (regTab === "calendar" && selectedCalDate ? 1 : 0)
 }
