@@ -199,6 +199,31 @@ Deno.test("v2.8.0 가정통신문(letter): 같은 달 가정통신문을 한 통
 		eq(b.calls.sent.length, 0)
 		eq(b.calls.patched[0].props["마지막 오류"].rich_text[0].text.content.startsWith("같은 달 가정통신문(다른 반 포함)을 이미 보냈습니다"), true)
 	} finally { b.restore() }
+	// (항목 148) 학생당 한 장: 같은 달 장이 없어도 이 장 전송로그에 성공한 알림톡이 있으면 ⚪ 대기여도 다시 안 보냄. 개별 전송이면 보냄.
+	const logOk = { id: "log1", properties: { "발송 구분": select("월간 일정 안내"), "발송 상태": select("성공") } }
+	const logReq = { id: "log2", properties: { "발송 구분": select("버튼 요청"), "발송 상태": select("성공") } }
+	const sentOnce = letterPage("lA", "⚪ 대기", { "전송로그": sibs("log2", "log1") })
+	const e = fake(sentOnce, { pages: { lA: sentOnce, log1: logOk, log2: logReq } })
+	noticeDeps.letter = async () => built
+	try {
+		await processNoticeQueueItem({ kind: "letter", pageId: "lA" })
+		eq(e.calls.sent.length, 0)
+		eq(e.calls.patched[0].props["마지막 오류"].rich_text[0].text.content.startsWith("이 가정통신문은 이미 보냈습니다"), true)
+	} finally { e.restore() }
+	const onlyReq = letterPage("lA", "⚪ 대기", { "전송로그": rel("log2") })
+	const g = fake(onlyReq, { pages: { lA: onlyReq, log2: logReq } })
+	noticeDeps.letter = async () => built
+	try {
+		await processNoticeQueueItem({ kind: "letter", pageId: "lA" })
+		eq(g.calls.sent.length > 0, true)
+	} finally { g.restore() }
+	const again = letterPage("lA", "⚪ 대기", { "전송로그": rel("log1"), "개별 전송": { checkbox: true } })
+	const h = fake(again, { pages: { lA: again, log1: logOk } })
+	noticeDeps.letter = async () => built
+	try {
+		await processNoticeQueueItem({ kind: "letter", pageId: "lA" })
+		eq(h.calls.sent.length > 0, true)
+	} finally { h.restore() }
 	// 일정 0건: 보내지 않고 ⚠️, 예외 없음(큐 재시도 안 함), 개별 전송은 끔
 	const { LetterBlocked } = await import("./monthlyNotice.ts")
 	const forced = letterPage("lA", "⚪ 대기", { "개별 전송": { checkbox: true } })
@@ -225,4 +250,24 @@ Deno.test("261112 재시도를 다 쓴 안내: ⚪ 대기면 ⚠️ 오류와 �
 		await onNoticeFinalFailure({ kind: "report", pageId: "report-1" }, "x")
 		eq(done.calls.patches.length, 0)
 	} finally { done.restore() }
+})
+
+Deno.test("261125 가정통신문 새 템플릿: '월간 일정 안내(반 없음)' 행 → 옛 '월간 일정 안내' 순으로 고르고, 새 행이면 #{클래스}를 보내지 않음", async () => {
+	const { LETTER_CONFIG_NO_CLASS } = await import("./adminShared.ts")
+	const letterPage = (id: string) => ({ id, properties: { "안내문 전송 상태": select("⚪ 대기"), "이름": { type: "title", title: [{ plain_text: `26.12 예시학생 가정통신문` }] }, 등록: rel(`reg-${id}`) } })
+	const built = { registrationId: "reg-lA", title: "예시학생", period: { start: "2026-12-01", end: "2026-12-31" }, variables: { "#{학생이름}": "예시학생", "#{클래스}": "국어 1학년 외 9개", "#{안내월}": "12월" } }
+	for (const [code, hasClass] of [[LETTER_CONFIG_NO_CLASS, false], ["월간 일정 안내", true], [undefined, true]] as const) {
+		const page = letterPage("lA")
+		const t = fake(page)
+		noticeDeps.letter = async () => built
+		noticeDeps.config = (async (...args: any[]) => { t.calls.config.push(args.filter((x) => typeof x === "string" || Array.isArray(x))); return { pfId: "pf", templateId: "tpl", senderNumber: "0200000000", notice: "", recipientTarget: ["우선 연락 대상"], ...(code ? { code } : {}) } }) as any
+		try {
+			await processNoticeQueueItem({ kind: "letter", pageId: "lA" })
+			eq(t.calls.config, [[LETTER_CONFIG_NO_CLASS, ["월간 일정 안내"]]])
+			eq(["#{클래스}" in t.calls.sent[0].vars, t.calls.sent[0].vars["#{학생이름}"], t.calls.sent[0].vars["#{안내월}"]], [hasClass, "예시학생", "12월"])
+			eq(t.calls.logs.map((l) => l.category), ["월간 일정 안내"])
+		} finally { t.restore() }
+	}
+	// 보낼 변수 원본은 그대로(같은 묶음을 옛 템플릿으로 보낼 때 쓸 수 있게)
+	eq("#{클래스}" in built.variables, true)
 })
