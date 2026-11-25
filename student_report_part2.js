@@ -50,7 +50,8 @@ function ttClassColor(name) {
   return CLASS_COLOR_PALETTE[v] || pickClassColorPalette(name)
 }
 function buildWeekGridHtml(regs) {
-  const active = regs.filter((r) => r.status === "수강중")
+  // (v2.8.0) '리포트 숨김' 시간표인 반은 통합 시간표에 넣지 않는다.
+  const active = regs.filter((r) => r.status === "수강중" && !hides(r, "시간표"))
   const byDay = {}
   DAYS.forEach((d) => (byDay[d] = []))
   active.forEach((r) => {
@@ -219,7 +220,8 @@ function setTtClassColor(i) {
 
 function renderIntro() {
   const s = STUDENT
-  const active = s.registrations.filter((r) => r.status === "수강중").slice().sort((a, b) => (a.start || "").localeCompare(b.start || ""))
+  // (v2.8.0) '리포트 숨김'으로 출결·학습·평가를 모두 숨긴 반은 반 카드를 만들지 않는다(시간표만 보이는 반).
+  const active = s.registrations.filter((r) => r.status === "수강중" && !isClassCardHidden(r)).slice().sort((a, b) => (a.start || "").localeCompare(b.start || ""))
   return `
     <div class="scroll-container">
       <div class="snap-section intro-section" id="intro-section">
@@ -928,24 +930,28 @@ function buildHomeTabHtml(r) {
       <div class="card">${recentTests.length ? recentTests.map((t) => kindBlockHtml("평가", { title: testTitle(t), pill: testPillText(t), pillTone: testPillTone(t), sub: [shortDateDow(t.date), testEvalRow(t)].filter(Boolean).join(" · ") })).join("") : `<div class="empty">아직 평가 기록이 없어요.</div>`}</div>
       <h3 class="sec-title"><span class="sec-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></span>최근 평가 추이</h3>
       <div class="card">${buildTestTrendChartHtml(computeRecentTestPoints(r.tests || [], MOCK_TODAY, 5))}</div>` : ""
+  // (v2.8.0) '리포트 숨김': 출결이면 출석, 학습이면 남은 과제·진도, 시간표면 다음 수업을 뺀다.
+  const stats = [
+    hides(r, "출결") ? "" : `<div class="home-stat ${attTone}"><b>${esc(attText)}</b><small>출석</small></div>`,
+    hides(r, "학습") ? "" : `<div class="home-stat ${pending.length ? "bad" : ""}"><b>${pending.length}개</b><small>남은 과제</small></div>`,
+    hides(r, "시간표") ? "" : `<div class="home-stat"><b>${esc(nextClassInfo(r))}</b><small>다음 수업</small></div>`,
+  ].filter(Boolean)
   return `
     <div class="feed-narrow-wrap">${topHtml}${isTestsOnly(r) ? "" : `
       <h3 class="sec-title"><span class="sec-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line></svg></span>오늘 ${esc(formatDateLabel(MOCK_TODAY).replace(/^\d+년 /, ""))}</h3>
       <div class="card">
-        <div class="home-stats">
-          <div class="home-stat ${attTone}"><b>${esc(attText)}</b><small>출석</small></div>
-          <div class="home-stat ${pending.length ? "bad" : ""}"><b>${pending.length}개</b><small>남은 과제</small></div>
-          <div class="home-stat"><b>${esc(nextClassInfo(r))}</b><small>다음 수업</small></div>
+        <div class="home-stats${stats.length < 3 ? ` n${stats.length}` : ""}">
+          ${stats.join("\n          ")}
         </div>${homeRoutineHtml(r)}
-      </div>
+      </div>${hides(r, "학습") ? "" : `
       <h3 class="sec-title"><span class="sec-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span>남은 과제</h3>
-      <div class="card">${pending.length ? pending.slice(0, 3).map((h) => kindBlockHtml("과제", { title: [h.book, h.range].filter(Boolean).join(" · ") || "과제", pill: h.status, pillTone: homeworkPillTone(h.status), sub: `마감 ${shortDateDow(h.due)}` })).join("") : `<div class="empty">남은 과제가 없어요.</div>`}</div>`}
+      <div class="card">${pending.length ? pending.slice(0, 3).map((h) => kindBlockHtml("과제", { title: [h.book, h.range].filter(Boolean).join(" · ") || "과제", pill: h.status, pillTone: homeworkPillTone(h.status), sub: `마감 ${shortDateDow(h.due)}` })).join("") : `<div class="empty">남은 과제가 없어요.</div>`}</div>`}`}${hides(r, "학습") ? "" : `
       <h3 class="sec-title"><span class="sec-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg></span>진도</h3>
       <div class="card">${books.length ? books.map((b) => `
         <div class="home-progress-row" onclick="openBookStudy(${jsArg(b.title)}, ${jsArg(b.id)})" style="cursor:pointer">
           <div class="home-progress-title">${esc(b.title)}</div>
           <div class="progress-line"><div class="track"><div class="fill" style="width:${b.progress ?? 0}%"></div></div><b>${b.progress ?? 0}%</b></div>
-        </div>`).join("") : `<div class="empty">진행 중인 ${josa(regBookNoun(r), "이", "가")} 없어요.</div>`}</div>
+        </div>`).join("") : `<div class="empty">진행 중인 ${josa(regBookNoun(r), "이", "가")} 없어요.</div>`}</div>`}
       <h3 class="sec-title"><span class="sec-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg></span>선생님 한마디</h3>
       <div class="card">${comment ? `<div class="speech">${esc(comment.text)}<small>${esc([comment.by, comment.date ? shortDateDow(comment.date) : ""].filter(Boolean).join(" · "))}</small></div>` : `<div class="empty">아직 등록된 한마디가 없어요.</div>`}</div>${buildHomeLetterHtml()}
     </div>
@@ -1319,7 +1325,11 @@ function routinePeriodHtml(r, start, end) {
 function buildReportTabHtml(r) {
   // (v2.8.0) 평가만 보는 반은 일간 보고서가 없다(출석이 없음). 주간부터 보여 준다.
   const testsOnly = isTestsOnly(r)
-  if (testsOnly && reportPeriod === "day") reportPeriod = "week"
+  // (v2.8.0) '리포트 숨김' 출결이면 일간 보고서가 없다(출석이 없음). 도넛은 숨기지 않은 것만(출석률=출결, 과제이행률=학습, 평가 평균=평가).
+  const noDay = testsOnly || hides(r, "출결")
+  if (noDay && reportPeriod === "day") reportPeriod = "week"
+  const showAtt = !testsOnly && !hides(r, "출결"), showHw = !testsOnly && !hides(r, "학습"), showTest = !hides(r, "평가")
+  const donutCount = [showAtt, showHw, showTest].filter(Boolean).length
   const homework = r.homework || []
   const tests = r.tests || []
   const reportComments = r.report_comments || []
@@ -1342,7 +1352,7 @@ function buildReportTabHtml(r) {
   const periodLabel = reportPeriodButtonLabel()
   const segToggleHtml = `
     <div class="seg-toggle">
-      ${testsOnly ? "" : `<button class="${reportPeriod === "day" ? "active" : ""}" onclick="setReportPeriod('day')">일간 보고서</button>`}
+      ${noDay ? "" : `<button class="${reportPeriod === "day" ? "active" : ""}" onclick="setReportPeriod('day')">일간 보고서</button>`}
       <button class="${reportPeriod === "week" ? "active" : ""}" onclick="setReportPeriod('week')">주간 보고서</button>
       <button class="${reportPeriod === "month" ? "active" : ""}" onclick="setReportPeriod('month')">월간 보고서</button>
     </div>
@@ -1368,7 +1378,7 @@ function buildReportTabHtml(r) {
   }
   return `
     <h2><span class="page-title-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg></span>보고서</h2>
-    <div class="section-hint">${testsOnly ? "주간·월간" : "일간·주간·월간"} 보고서를 볼 수 있어요</div>
+    <div class="section-hint">${noDay ? "주간·월간" : "일간·주간·월간"} 보고서를 볼 수 있어요</div>
     <div class="feed-narrow-wrap">
     ${segToggleHtml}
     <div class="cal-month-nav">
@@ -1379,24 +1389,24 @@ function buildReportTabHtml(r) {
         <button class="cal-nav-btn" ${reportOffset === 0 ? "disabled" : ""} onclick="navigateReportPeriod(-1)">›</button>
       </div>
     </div>
-    <div class="report-donut-row${testsOnly ? "" : " three"}">
-      ${testsOnly ? "" : `<div class="donut-card">
+    ${donutCount ? `<div class="report-donut-row${donutCount === 3 ? " three" : ""}">
+      ${showAtt ? `<div class="donut-card">
         <div class="donut-title"><span class="inline-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></span>출석률</div>
         <div class="donut" style="background: conic-gradient(${bandChartColor(attRate)} 0% ${attRate}%, var(--brand-soft) ${attRate}% 100%)"><div class="donut-hole">${attRate}%</div></div>
         <div class="donut-count-below">(${presentCount}/${countedAttendanceRows.length})</div>
-      </div>
-      <div class="donut-card clickable" onclick="showHomeworkPeriodModal('${rangeStart}','${rangeEnd}','${esc(periodLabel)} 과제이행률')">
+      </div>` : ""}
+      ${showHw ? `<div class="donut-card clickable" onclick="showHomeworkPeriodModal('${rangeStart}','${rangeEnd}','${esc(periodLabel)} 과제이행률')">
         <div class="donut-title"><span class="inline-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg></span>과제이행률</div>
         <div class="donut" style="background: conic-gradient(${bandChartColor(hwRate)} 0% ${hwRate}%, var(--brand-soft) ${hwRate}% 100%)"><div class="donut-hole">${hwRate}%</div></div>
         <div class="donut-count-below">(${doneHomework}/${homeworkItems.length})</div>
-      </div>`}
-      <div class="donut-card${testItems.length ? " clickable" : ""}"${testItems.length ? ` onclick="showTestPeriodModal('${rangeStart}','${rangeEnd}','${esc(periodLabel)} 평가','')"` : ""}>
+      </div>` : ""}
+      ${showTest ? `<div class="donut-card${testItems.length ? " clickable" : ""}"${testItems.length ? ` onclick="showTestPeriodModal('${rangeStart}','${rangeEnd}','${esc(periodLabel)} 평가','')"` : ""}>
         <div class="donut-title"><span class="inline-icon">${KIND_ICONS["평가"]}</span>평가 평균</div>
         <div class="donut" style="background: conic-gradient(${bandChartColor(testAvg ?? 0)} 0% ${testAvg ?? 0}%, var(--brand-soft) ${testAvg ?? 0}% 100%)"><div class="donut-hole">${testAvg !== null ? testAvg.toFixed(1) + "점" : "–"}</div></div>
         <div class="donut-count-below">${scoredTests.length ? `(평가 ${scoredTests.length}개)` : "(평가 없음)"}</div>
-      </div>
-    </div>
-    ${computePeriodTrendPoints(tests, reportPeriod, rangeEnd).some((p) => p.count) ? `<h3 class="sec-title"><span class="sec-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></span>${TREND_TITLE[reportPeriod]}</h3>
+      </div>` : ""}
+    </div>` : ""}
+    ${showTest && computePeriodTrendPoints(tests, reportPeriod, rangeEnd).some((p) => p.count) ? `<h3 class="sec-title"><span class="sec-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></span>${TREND_TITLE[reportPeriod]}</h3>
     <div class="card">
       ${buildTestTrendChartHtml(computePeriodTrendPoints(tests, reportPeriod, rangeEnd))}
     </div>` : ""}
@@ -1566,6 +1576,17 @@ function renderDetail() {
   const studyLogs = r.study_logs || []
   const tabs = regTabsList()
   if (!tabs.some((t) => t.id === regTab)) regTab = "home"
+  // (v2.8.0) '리포트 숨김': 출결이면 과제 현황만, 학습이면 출석 현황만(전환 버튼 없음).
+  if (hides(r, "출결")) calMode = "homework"
+  else if (hides(r, "학습")) calMode = "attendance"
+  const calToggleHtml = hides(r, "출결") || hides(r, "학습") ? "" : `<div class="seg-toggle">
+        <button class="${calMode === "attendance" ? "active" : ""}" onclick="setCalMode('attendance')">출석 현황</button>
+        <button class="${calMode === "homework" ? "active" : ""}" onclick="setCalMode('homework')">과제 현황</button>
+      </div>`
+  // (v2.8.0) 학습기록 탭: 학습을 숨기면 평가만(평가만 반과 같음), 평가를 숨기면 전체·학습·과제.
+  const studyOnlyTests = isTestsOnly(r) || hides(r, "학습")
+  const studyFilters = hides(r, "평가") ? ["전체", "학습", "과제"] : ["전체", "학습", "과제", "평가"]
+  if (!studyFilters.includes(studyLogFilter)) studyLogFilter = "전체"
   const tabBodies = {
     home: buildHomeTabHtml(r),
     books: buildBooksTabHtml(r),
@@ -1573,28 +1594,19 @@ function renderDetail() {
     calendar: selectedCalDate ? `
       <h2><span class="page-title-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></span>캘린더</h2>
       <div class="section-hint">날짜를 누르면 그날 기록을 볼 수 있어요</div>
-      <div class="seg-toggle">
-        <button class="${calMode === "attendance" ? "active" : ""}" onclick="setCalMode('attendance')">출석 현황</button>
-        <button class="${calMode === "homework" ? "active" : ""}" onclick="setCalMode('homework')">과제 현황</button>
-      </div>
+      ${calToggleHtml}
       <div class="attendance-cal-wrap day-mode" id="reg-cal-area">${buildRegCalendarHtml(r, calMode)}</div>
     ` : `
       <h2><span class="page-title-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></span>캘린더</h2>
       <div class="section-hint">날짜를 누르면 그날 기록을 볼 수 있어요</div>
-      <div class="seg-toggle">
-        <button class="${calMode === "attendance" ? "active" : ""}" onclick="setCalMode('attendance')">출석 현황</button>
-        <button class="${calMode === "homework" ? "active" : ""}" onclick="setCalMode('homework')">과제 현황</button>
-      </div>
+      ${calToggleHtml}
       <div class="attendance-cal-wrap" id="reg-cal-area">${buildRegCalendarHtml(r, calMode)}</div>
     `,
     study: `
       <h2><span class="page-title-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg></span>학습기록</h2>
-      <div class="section-hint">${isTestsOnly(r) ? "평가 기록을 최근 순서로 보여줘요" : "학습 · 과제 · 평가 기록을 최근 순서로 보여줘요"}</div>
-      ${isTestsOnly(r) ? "" : `<div class="seg-toggle">
-        <button class="${studyLogFilter === "전체" ? "active" : ""}" onclick="setStudyLogFilter('전체')">전체</button>
-        <button class="${studyLogFilter === "학습" ? "active" : ""}" onclick="setStudyLogFilter('학습')">학습</button>
-        <button class="${studyLogFilter === "과제" ? "active" : ""}" onclick="setStudyLogFilter('과제')">과제</button>
-        <button class="${studyLogFilter === "평가" ? "active" : ""}" onclick="setStudyLogFilter('평가')">평가</button>
+      <div class="section-hint">${studyOnlyTests ? "평가 기록을 최근 순서로 보여줘요" : hides(r, "평가") ? "학습 · 과제 기록을 최근 순서로 보여줘요" : "학습 · 과제 · 평가 기록을 최근 순서로 보여줘요"}</div>
+      ${studyOnlyTests ? "" : `<div class="seg-toggle">
+        ${studyFilters.map((f) => `<button class="${studyLogFilter === f ? "active" : ""}" onclick="setStudyLogFilter('${f}')">${f}</button>`).join("\n        ")}
       </div>`}
       <div class="feed-narrow-wrap">
       ${(() => {
@@ -1602,7 +1614,7 @@ function renderDetail() {
         studyLogs.forEach((l) => items.push(logItemOfStudy(l)))
         homework.forEach((h) => items.push(logItemOfHomework(h)))
         tests.forEach((t) => items.push(logItemOfTest(t)))
-        const filter = isTestsOnly(r) ? "평가" : studyLogFilter
+        const filter = studyOnlyTests ? "평가" : studyLogFilter
         const filtered = filter === "전체" ? items : items.filter((it) => it.type === filter)
         // (v2.5.103) 오늘이 맨 위 → 지난 날짜 최근부터 → 앞으로 날짜는 가까운 날부터 맨 아래
         const rank = (d) => (d === MOCK_TODAY ? 0 : d < MOCK_TODAY ? 1 : 2)

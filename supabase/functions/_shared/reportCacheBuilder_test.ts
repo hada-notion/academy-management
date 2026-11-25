@@ -1,7 +1,7 @@
 // All network calls are mocked. No live Notion/Supabase writes or secret values are used.
 for (const [key, value] of Object.entries({ NOTION_TOKEN: "test-only", ADMIN_SECRET: "test-only", SB_URL: "https://mock.supabase", SB_SERVICE_ROLE_KEY: "test-only", DATA_SOURCE_STUDY_ACTIVITY_ID: "activities", DATA_SOURCE_REPORT_ID: "reports", DATA_SOURCE_ATTENDANCE_ID: "attendance" })) Deno.env.set(key, value)
 const eq = (a: unknown, b: unknown) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`) }
-const { buildRegistrationDetail, reportModeOf, standaloneEvalIso } = await import("./reportCacheBuilder.ts")
+const { buildRegistrationDetail, reportModeOf, reportHideOf, hideOverview, hideDetail, standaloneEvalIso } = await import("./reportCacheBuilder.ts")
 
 Deno.test("v2.8.0 출석 없는 평가 날짜: 평가 기간 끝(하루면 그날), 서울 자정 ISO", () => {
 	eq(standaloneEvalIso("2026-10-12", "2026-10-18"), "2026-10-18T00:00:00+09:00")
@@ -15,6 +15,42 @@ Deno.test("v2.8.0 리포트 구성: 평가만이면 tests_only, 비었거나 칸
 	eq(reportModeOf({ properties: { "리포트 구성": { type: "select", select: { name: "전체" } } } }), "all")
 	eq(reportModeOf({ properties: { "리포트 구성": { type: "select", select: null } } }), "all")
 	eq(reportModeOf({ properties: {} }), "all")
+})
+
+Deno.test("v2.8.0 리포트 숨김: 다중선택 그대로(순서 고정·모르는 값 버림), 비었고 옛 평가만이면 출결·학습(legacy)", () => {
+	const ms = (...names: string[]) => ({ type: "multi_select", multi_select: names.map((name) => ({ name })) })
+	eq(reportHideOf({ properties: { "리포트 숨김": ms("평가", "출결", "학습") } }), { hide: ["출결", "학습", "평가"], legacy: false })
+	eq(reportHideOf({ properties: { "리포트 숨김": ms("시간표", "엉뚱한 값") } }), { hide: ["시간표"], legacy: false })
+	eq(reportHideOf({ properties: { "리포트 숨김": ms() } }), { hide: [], legacy: false })
+	eq(reportHideOf({ properties: {} }), { hide: [], legacy: false })
+	eq(reportHideOf({ properties: { "리포트 숨김": ms(), "리포트 구성": { type: "select", select: { name: "평가만" } } } }), { hide: ["출결", "학습"], legacy: true })
+	// 새 칸이 있으면 옛 칸보다 먼저
+	eq(reportHideOf({ properties: { "리포트 숨김": ms("평가"), "리포트 구성": { type: "select", select: { name: "평가만" } } } }), { hide: ["평가"], legacy: false })
+	eq(reportModeOf({ properties: { "리포트 숨김": ms("출결", "학습") } }), "tests_only")
+	eq(reportModeOf({ properties: { "리포트 숨김": ms("평가") } }), "all")
+	eq(reportHideOf({ properties: { "리포트 숨김": ms("시간표", "반 목록") } }), { hide: ["반 목록", "시간표"], legacy: false })
+})
+
+Deno.test("v2.8.0 리포트 숨김: 숨긴 것은 캐시에 싣지 않고, 보고서 한마디(알림톡)는 그대로. legacy는 모두 싣는다", () => {
+	const detail = { attendance_summary: { present: 3, makeup: 1, absent: 0 }, attendance_rows: [1], routines: [1], study_logs: [1], gallery: [1], homework: [1], homework_days: [1], tests: [1], teacher_comments: [1], report_comments: [1], report_mode: "all" }
+	const overview = { class_name: "중2 A", schedule: [{ day: "월" }], books: [{ id: "b" }] }
+	const d1: any = hideDetail(detail, ["시간표", "출결", "학습", "평가"], false)
+	eq([d1.attendance_rows, d1.routines, d1.study_logs, d1.gallery, d1.homework, d1.homework_days, d1.tests], [[], [], [], [], [], [], []])
+	eq(d1.attendance_summary, { present: 0, makeup: 0, absent: 0 })
+	eq([d1.teacher_comments, d1.report_comments], [[1], [1]])
+	const d2: any = hideDetail(detail, ["평가"], false)
+	eq([d2.attendance_rows, d2.study_logs, d2.homework, d2.tests], [[1], [1], [1], []])
+	eq(hideDetail(detail, ["출결", "학습"], true), detail)
+	eq(hideDetail(detail, [], false), detail)
+	const o1: any = hideOverview(overview, ["시간표", "학습"], false)
+	eq([o1.schedule, o1.books, o1.class_name], [[], [], "중2 A"])
+	eq(hideOverview(overview, ["출결", "학습"], true), overview)
+	eq((hideOverview(overview, ["평가"], false) as any).schedule, [{ day: "월" }])
+	// 반 목록 = 카드가 없으니 출결·학습·평가도 싣지 않음, 시간표는 남김(시간표만 보이는 반)
+	const d3: any = hideDetail(detail, ["반 목록"], false)
+	eq([d3.attendance_rows, d3.study_logs, d3.homework, d3.tests, d3.report_comments], [[], [], [], [], [1]])
+	const o3: any = hideOverview(overview, ["반 목록"], false)
+	eq([o3.schedule, o3.books], [[{ day: "월" }], []])
 })
 
 // 서울 기준 n일 전 날짜(YYYY-MM-DD). 리포트는 최근 몇 달·오늘까지만 싣는다.
