@@ -32,6 +32,8 @@ Deno.test("요청 줄: 발송 구분이 버튼 요청일 때만, 동작 표 DB �
 	// 이름이 다른 관계 칸만 있으면 값이 있는 첫 관계
 	assertEquals(logRequestOf(page("l", { "발송 구분": sel(LOG_REQUEST_CATEGORY), 메모: rt("session-record"), 등록: rel(), 기타: rel("s9") }, DS_LOG))!.targetId, "s9")
 	assertEquals(logRequestOf(logRow("l", "session-record", ""))!.targetId, "")
+	// (261125) 발송함 [일정 다시 가져오기]: 연결 칸 이름은 "알림톡 발송함"(가정통신문 칸에 값이 있어도 그쪽을 먼저)
+	assertEquals(logRequestOf(page("l", { "발송 구분": sel(LOG_REQUEST_CATEGORY), 메모: rt("mailbox-letter-events"), 가정통신문: rel("x"), "알림톡 발송함": rel("box1") }, DS_LOG)), { id: "mailbox-letter-events", targetId: "box1" })
 })
 
 Deno.test("요청 줄 처리: 요청 칸 길과 같은 함수·같은 본문(대상 줄), 대상 요청 결과와 요청 줄 발송 상태", async () => {
