@@ -714,6 +714,16 @@ function retryIntroLetter() {
   const slot = document.getElementById("letter-inline")
   if (slot) slot.innerHTML = introLetterBodyHtml()
 }
+// (261125 대표 "쭉 스크롤") 가정통신문 칸은 본문이 길다. 위 칸들은 한 칸씩 맞춰 넘기지만(scroll-snap),
+// 가정통신문 칸 안에서는 맞춤을 꺼 아무 곳에서나 멈추게 한다. 칸 위로 다시 올라가면 맞춤을 켠다.
+function attachLetterFreeScroll() {
+  const sc = document.querySelector(".scroll-container")
+  const sec = document.getElementById("letter-section")
+  if (!sc || !sec) return
+  const update = () => sc.classList.toggle("free-scroll", sc.scrollTop >= sec.offsetTop - 2)
+  sc.addEventListener("scroll", update, { passive: true })
+  update()
+}
 function buildIntroLetterHtml() {
   const month = latestLetterMonth()
   if (!month) return ""
@@ -1725,6 +1735,7 @@ function renderApp() {
   } else {
     detachRegScrollShrink()
     app.innerHTML = renderIntro()
+    attachLetterFreeScroll()
   }
   // 하단 탭바가 있는 등록 상세에는 안전 여백을 적용하고,
   // 등록/교재 상세에서는 새로고침 버튼을 상단 헤더 오른쪽에 배치한다.
