@@ -353,6 +353,11 @@ export function reportHideOf(cls: any): { hide: ReportHideKind[]; legacy: boolea
   if (cls?.properties?.["리포트 구성"]?.select?.name === "평가만") return { hide: ["출결", "학습"], legacy: true }
   return { hide: [], legacy: false }
 }
+// (v2.8.0) 반 평균 숨김: 체크박스 '반 평균 숨김'이 켜져 있거나 '리포트 숨김'에 "반 평균"이 있으면 숨긴다(OR). 칸이 없으면 보여 준다.
+export function classAverageHiddenOf(cls: any): boolean {
+  if (cls?.properties?.["반 평균 숨김"]?.checkbox === true) return true
+  return ((cls?.properties?.["리포트 숨김"]?.multi_select ?? []) as any[]).some((o) => String(o?.name ?? "").trim() === "반 평균")
+}
 // (v2.8.0) 출결·학습을 숨기면(옛 "평가만" 포함) 화면이 평가 중심으로 줄인다.
 export function reportModeOf(cls: any): "all" | "tests_only" {
   const { hide } = reportHideOf(cls)
@@ -416,7 +421,7 @@ export async function buildRegistrationDetail(reg: any, cachedGetPage: (id: stri
   let reportHide: { hide: ReportHideKind[]; legacy: boolean } = { hide: [], legacy: false }
   if (classId) {
     const cls = await cachedGetPage(classId)
-    hideClassAverage = cls.properties?.["반 평균 숨김"]?.checkbox === true
+    hideClassAverage = classAverageHiddenOf(cls)
     report_mode = reportModeOf(cls)
     reportHide = reportHideOf(cls)
     const teacherId = firstRelationId(cls.properties["담당강사"])
