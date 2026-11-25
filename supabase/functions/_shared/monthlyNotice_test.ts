@@ -169,7 +169,7 @@ const relFilter = (filter: any) => {
 	return f ? `${f.property}:${f.relation.contains}` : ""
 }
 
-Deno.test("v2.8.0 항목 147 [가정통신문 생성]: 그 달 발송함 하나에 반이 쌓이고(클래스), 학생은 한 장에 반 등록이 더해짐, 학원 일정은 만들 때 한 번에", async () => {
+Deno.test("v2.8.0 항목 148 [가정통신문 생성]: 그 달 발송함 하나에 반이 쌓이고(클래스), 학생은 한 장에 반 등록이 더해짐, 학원 일정은 만들 때 한 번에", async () => {
 	const rA = reg("rA", { student: "s1", name: "테스트학생", cls: "cA", clsName: "수학반" })
 	const rB = reg("rB", { student: "s1", name: "테스트학생", cls: "cB", clsName: "영어반" })
 	const rC = reg("rC", { student: "s2", name: "예시학생", cls: "cB", clsName: "영어반" })
@@ -217,7 +217,7 @@ Deno.test("v2.8.0 항목 147 [가정통신문 생성]: 그 달 발송함 하나�
 	eq(c.sends, [])
 })
 
-Deno.test("v2.8.0 항목 147 보내기: 반별 전달사항은 클래스 칸에서(반 이름 머리글), 보낸 뒤 장에 박아 두고 그 반 장이 모두 보냄이면 반 칸을 비움", async () => {
+Deno.test("v2.8.0 항목 148 보내기: 반별 전달사항은 클래스 칸에서(반 이름 머리글), 보낸 뒤 장에 박아 두고 그 반 장이 모두 보냄이면 반 칸을 비움", async () => {
 	const rA = reg("rA", { student: "s1", name: "테스트학생", cls: "cA", clsName: "수학반" })
 	const rB = reg("rB", { student: "s1", name: "테스트학생", cls: "cB", clsName: "영어반" })
 	const rC = reg("rC", { student: "s2", name: "예시학생", cls: "cB", clsName: "영어반" })

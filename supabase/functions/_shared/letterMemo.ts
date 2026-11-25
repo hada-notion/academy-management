@@ -1,6 +1,6 @@
 // _shared/letterMemo.ts
 //
-// (v2.8.0 항목 147) 가정통신문 "그 달 발송함 하나 → 학생당 한 장"의 페이지 기억(표 letter_month_pages).
+// (v2.8.0 항목 148) 가정통신문 "그 달 발송함 하나 → 학생당 한 장"의 페이지 기억(표 letter_month_pages).
 // 노션 조회가 방금 만든 페이지를 늦게 잡아 같은 달 발송함·같은 학생 장이 둘 생기는 것을 막는다.
 // 표를 쓸 수 없으면(Secret 없음·일시 장애) null을 돌려주고 호출하는 쪽은 노션 조회로 이어 간다.
 import { fetchSupabaseWithRetry } from "./reportCacheShared.ts"
