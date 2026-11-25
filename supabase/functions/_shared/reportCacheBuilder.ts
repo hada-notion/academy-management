@@ -244,10 +244,12 @@ async function buildRegistrationOverview(reg: any, accessToken: string, cachedGe
   const classId = firstRelationId(p["클래스"])
   let className = "",
     teacherName = ""
+  let reportHide: { hide: ReportHideKind[]; legacy: boolean } = { hide: [], legacy: false }
   if (classId) {
     const cls = await cachedGetPage(classId)
     const cp = cls.properties
     className = [text(cp["이모지"]), text(cp["클래스명"])].filter(Boolean).join(" ")
+    reportHide = reportHideOf(cls)
     const teacherId = firstRelationId(cp["담당강사"])
     if (teacherId) {
       const teacher = await cachedGetPage(teacherId)
@@ -314,7 +316,7 @@ async function buildRegistrationOverview(reg: any, accessToken: string, cachedGe
       }),
   )
 
-  return {
+  return hideOverview({
     access_token: accessToken,
     class_name: className,
     class_mode: classMode,
@@ -324,7 +326,9 @@ async function buildRegistrationOverview(reg: any, accessToken: string, cachedGe
     end_date: endDate,
     schedule,
     books,
-  }
+    // (v2.8.0) 클래스 '리포트 숨김'. 화면이 반 카드·통합 시간표·탭을 거른다(다른 반 카드도 이 값으로 판단해 overview에 싣는다). 옛 "평가만"은 빈 값(report_mode가 맡음).
+    report_hide: reportHide.legacy ? [] : reportHide.hide,
+  }, reportHide.hide, reportHide.legacy)
 }
 
 // (v2.8.0) 출석 없이 만든 평가(클래스 [평가 만들기], 평가 전용 반)의 날짜: 학습기록 '평가 기간'의 끝 날짜(하루면 그날).
@@ -336,9 +340,55 @@ export function standaloneEvalIso(evalStart: string | null, evalEnd: string | nu
   return day ? `${day}T00:00:00+09:00` : null
 }
 
-// (v2.8.0) 클래스 '리포트 구성': "평가만"이면 화면이 평가 중심으로 줄인다. 비었거나 칸이 없으면 전체.
+// (v2.8.0) 클래스 '리포트 숨김'(다중선택: 반 목록·시간표·출결·학습·평가): 고른 것만 그 반 학부모 리포트에서 숨긴다(비우면 모두 보임).
+// 반 목록 = 첫 화면 반 카드를 뺀다(들어갈 수 없으니 출결·학습·평가도 싣지 않음). 출결·학습·평가를 모두 골라도 카드가 빠진다.
+// 반 목록만 고르면 "시간표만 보이는 반", 시간표까지 고르면 리포트에서 그 반이 안 보인다(화면이 판단).
+// 옛 칸 '리포트 구성'이 "평가만"이고 '리포트 숨김'이 비었으면 출결·학습을 고른 것으로 읽는다(legacy: 데이터는 예전처럼 다 싣는다).
+export const REPORT_HIDE_KINDS = ["반 목록", "시간표", "출결", "학습", "평가"] as const
+export type ReportHideKind = typeof REPORT_HIDE_KINDS[number]
+export function reportHideOf(cls: any): { hide: ReportHideKind[]; legacy: boolean } {
+  const picked = new Set<string>(((cls?.properties?.["리포트 숨김"]?.multi_select ?? []) as any[]).map((o) => String(o?.name ?? "").trim()))
+  const hide = REPORT_HIDE_KINDS.filter((k) => picked.has(k))
+  if (hide.length) return { hide, legacy: false }
+  if (cls?.properties?.["리포트 구성"]?.select?.name === "평가만") return { hide: ["출결", "학습"], legacy: true }
+  return { hide: [], legacy: false }
+}
+// (v2.8.0) 출결·학습을 숨기면(옛 "평가만" 포함) 화면이 평가 중심으로 줄인다.
 export function reportModeOf(cls: any): "all" | "tests_only" {
-  return cls?.properties?.["리포트 구성"]?.select?.name === "평가만" ? "tests_only" : "all"
+  const { hide } = reportHideOf(cls)
+  return hide.includes("출결") && hide.includes("학습") ? "tests_only" : "all"
+}
+// 숨긴 것은 캐시에 싣지 않는다(학부모 응답에 나가지 않음). 옛 "평가만"(legacy)은 예전처럼 다 싣고 화면만 줄인다.
+// 학부모 리포트 화면용 캐시만 바꾼다. 알림톡(send-report 등)은 보고서 한마디(report_comments)만 읽고, 그것은 그대로 둔다.
+// 반 목록을 고르면 카드로 들어갈 수 없으므로 출결·학습·평가도 고른 것으로 본다.
+function withCardHide(hide: readonly string[]): readonly string[] {
+  return hide.includes("반 목록") ? [...new Set([...hide, "출결", "학습", "평가"])] : hide
+}
+export function hideOverview<T extends Record<string, any>>(overview: T, hide0: readonly string[], legacy: boolean): T {
+  if (legacy) return overview
+  const hide = withCardHide(hide0)
+  const out: Record<string, any> = { ...overview }
+  if (hide.includes("시간표")) out.schedule = []
+  if (hide.includes("학습")) out.books = []
+  return out as T
+}
+export function hideDetail<T extends Record<string, any>>(detail: T, hide0: readonly string[], legacy: boolean): T {
+  if (legacy) return detail
+  const hide = withCardHide(hide0)
+  const out: Record<string, any> = { ...detail }
+  if (hide.includes("출결")) {
+    out.attendance_summary = { present: 0, makeup: 0, absent: 0 }
+    out.attendance_rows = []
+  }
+  if (hide.includes("학습")) {
+    out.study_logs = []
+    out.homework = []
+    out.homework_days = []
+    out.gallery = []
+    out.routines = []
+  }
+  if (hide.includes("평가")) out.tests = []
+  return out as T
 }
 
 // (10/30 사용자, 일일 기록 기반) 리포트는 최근 6개월 평가를 모두 싣는다(평가 추이: 일간 7일·주간 4주·월간 6달, 기간마다 모든 평가 평균).
@@ -363,10 +413,12 @@ export async function buildRegistrationDetail(reg: any, cachedGetPage: (id: stri
   // (v2.8.0) 클래스의 '반 평균 숨김'을 체크하면 이 반 학생 리포트에 반 평균을 싣지 않는다(칸이 없으면 보여 준다).
   let hideClassAverage = false
   let report_mode: "all" | "tests_only" = "all"
+  let reportHide: { hide: ReportHideKind[]; legacy: boolean } = { hide: [], legacy: false }
   if (classId) {
     const cls = await cachedGetPage(classId)
     hideClassAverage = cls.properties?.["반 평균 숨김"]?.checkbox === true
     report_mode = reportModeOf(cls)
+    reportHide = reportHideOf(cls)
     const teacherId = firstRelationId(cls.properties["담당강사"])
     if (teacherId) {
       const teacher = await cachedGetPage(teacherId)
@@ -761,7 +813,7 @@ export async function buildRegistrationDetail(reg: any, cachedGetPage: (id: stri
     return [] as RoutineRow[]
   })).filter((r) => r.date >= sinceIso && r.date <= todayIso)
 
-  return {
+  return hideDetail({
     attendance_summary,
     attendance_rows,
     routines,
@@ -773,8 +825,9 @@ export async function buildRegistrationDetail(reg: any, cachedGetPage: (id: stri
     teacher_comments,
     report_comments,
     report_mode,
+    report_hide: reportHide.legacy ? [] : reportHide.hide,
     updated_at: new Date().toISOString(),
-  }
+  }, reportHide.hide, reportHide.legacy)
 }
 
 export async function buildCacheRowForRegistration(
