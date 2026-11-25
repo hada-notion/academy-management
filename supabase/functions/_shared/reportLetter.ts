@@ -9,7 +9,7 @@ import { LETTER_NOTICE_MEMO, propRich } from "./propAlias.ts"
 import { fetchWithRetry, getPage, notionHeaders, queryAllPages, relIds } from "./notionClient.ts"
 import { NOTION_API } from "./constants.ts"
 import { resolveBatchDataSourceId, seoulDay } from "./classReportPlan.ts"
-import { KIND_PLAN, resolveLetterDataSourceId, studentMonthEvents, studentRegsInMonth } from "./monthlyNotice.ts"
+import { KIND_PLAN, letterSentByLogs, resolveLetterDataSourceId, studentMonthEvents, studentRegsInMonth } from "./monthlyNotice.ts"
 import { dotDate, monthLabel, type Section } from "./scheduleNotice.ts"
 
 const PROP_PERIOD = "기간"
@@ -38,14 +38,19 @@ export const reportLetterDeps = {
 const alive = (p: any) => !!p && !p.in_trash && !p.archived
 const monthOf = (letter: any) => String(seoulDay(letter?.properties?.[PROP_PERIOD]?.date?.start) ?? "").slice(0, 7)
 
+// 보낸 장: 상태 ✅이거나, 상태가 손으로 바뀌었어도 전송로그에 성공한 알림톡이 있는 장(다시 보내기 잠금과 같은 판단). 한 번도 안 보낸 장은 제외.
 async function sentLettersOfReg(ds: string, regId: string): Promise<any[]> {
 	const pages = await reportLetterDeps.queryAllPages(ds, {
 		and: [
 			{ property: PROP_REG, relation: { contains: regId } },
-			{ property: PROP_STATUS, select: { equals: SENT } },
+			{ or: [{ property: PROP_STATUS, select: { equals: SENT } }, { property: "전송로그", relation: { is_not_empty: true } }] },
 		],
 	})
-	return pages.filter(alive)
+	const out: any[] = []
+	for (const p of pages.filter(alive)) {
+		if (p?.properties?.[PROP_STATUS]?.select?.name === SENT || await letterSentByLogs(p, (id) => reportLetterDeps.getPage(id))) out.push(p)
+	}
+	return out
 }
 
 // 캐시에 싣는 목록: 보낸 달, 최근 달부터. (v2.8.0 항목 148) 학생당 한 장이라 같은 달은 한 줄(registrationId = 그 장이 걸린 등록 하나).

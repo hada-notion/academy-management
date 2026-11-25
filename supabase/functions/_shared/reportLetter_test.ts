@@ -7,7 +7,7 @@ function eq(a: unknown, b: unknown) {
 const rel = (...ids: string[]) => ({ type: "relation", relation: ids.map((id) => ({ id })), has_more: false })
 const letter = (id: string, regs: string[], month: string, box?: string, sent = "") => ({
 	id,
-	properties: { "기간": { date: { start: `${month}-01` } }, "등록": rel(...regs), "알림톡 발송함": rel(...(box ? [box] : [])), "보낸 전달사항": { rich_text: sent ? [{ plain_text: sent }] : [] } },
+	properties: { "안내문 전송 상태": { select: { name: "✅ 완료" } }, "기간":{ date: { start: `${month}-01` } }, "등록": rel(...regs), "알림톡 발송함": rel(...(box ? [box] : [])), "보낸 전달사항": { rich_text: sent ? [{ plain_text: sent }] : [] } },
 })
 
 function mock(rows: Record<string, any[]>, opts: { memos?: Record<string, string>; bodies?: Record<string, unknown[]>; lines?: any[]; regs?: any[] } = {}) {
@@ -42,7 +42,29 @@ Deno.test("v2.8.0 항목 148 가정통신문 목록: 보낸 달마다 한 줄(�
 		{ month: "2026-12", registrationId: "r1" },
 		{ month: "2026-10", registrationId: "r1" },
 	])
-	eq(filters[0].and[1], { property: "안내문 전송 상태", select: { equals: "✅ 완료" } })
+	eq(filters[0].and[1].or[0], { property: "안내문 전송 상태", select: { equals: "✅ 완료" } })
+})
+
+Deno.test("261125 가정통신문 목록: 상태가 ⚠️·⚪로 바뀌었어도 성공한 알림톡 전송로그가 있으면 보낸 장, 한 번도 안 보낸 장은 제외", async () => {
+	const withStatus = (l: any, status: string, ...logs: string[]) => ({ ...l, properties: { ...l.properties, "안내문 전송 상태": { select: { name: status } }, "전송로그": rel(...logs) } })
+	const { filters } = mock({
+		r1: [
+			withStatus(letter("a", ["r1"], "2026-12", "box"), "⚠️ 오류", "logOk"),
+			withStatus(letter("b", ["r1"], "2026-11", "box"), "⚠️ 오류", "logReq"),
+			withStatus(letter("c", ["r1"], "2026-10", "box"), "✅ 완료"),
+			withStatus(letter("d", ["r1"], "2026-09", "box"), "⚪ 대기"),
+		],
+	})
+	const logs: Record<string, any> = {
+		logOk: { id: "logOk", properties: { "발송 구분": { select: { name: "월간 일정 안내" } }, "발송 상태": { select: { name: "성공" } } } },
+		logReq: { id: "logReq", properties: { "발송 구분": { select: { name: "버튼 요청" } }, "발송 상태": { select: { name: "성공" } } } },
+	}
+	reportLetterDeps.getPage = ((id: string) => Promise.resolve(logs[id] ?? null)) as any
+	eq(await buildLetterList(["r1"]), [
+		{ month: "2026-12", registrationId: "r1" },
+		{ month: "2026-10", registrationId: "r1" },
+	])
+	eq(filters[0].and[1].or[1], { property: "전송로그", relation: { is_not_empty: true } })
 })
 
 Deno.test("v2.8.0 가정통신문 목록: 등록이 없으면 조회하지 않고, 조회 실패해도 동기화를 막지 않는다", async () => {

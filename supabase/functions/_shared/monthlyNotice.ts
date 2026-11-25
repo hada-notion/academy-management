@@ -23,7 +23,19 @@ import { eventLine, inMonth, isAcademyWide, monthFilter, monthLabel, nextMonthKe
 import { noteText } from "./lessonNotice.ts"
 import { alimtalkVar, BULLET, NO_NOTE } from "./noticeBlocks.ts"
 
-export const KIND_MONTHLY = "가정통신문"
+// 가정통신문 장의 전송로그 중 성공한 알림톡(발송 구분 "월간 일정 안내", 발송 상태 "성공")이 있나 = "보낸 적 있음".
+// 다시 보내기 잠금(noticeQueue)과 학부모 리포트의 보낸 장 판단(reportLetter)이 같이 쓴다. 버튼 요청 줄은 발송 구분이 달라 세지 않는다.
+export async function letterSentByLogs(page: any, getLog: (id: string) => Promise<any>): Promise<boolean> {
+	const ids = (page?.properties?.["전송로그"]?.relation ?? []).map((r: any) => String(r.id))
+	for (const id of ids) {
+		const log: any = await getLog(id).catch(() => null)
+		if (!log || log.archived || log.in_trash) continue
+		if (log.properties?.["발송 구분"]?.select?.name === "월간 일정 안내" && log.properties?.["발송 상태"]?.select?.name === "성공") return true
+	}
+	return false
+}
+
+export const KIND_MONTHLY ="가정통신문"
 // (v2.8.0 항목 150, 261125 대표) 월별 학습계획: 클래스 `안내 구분`이 "월별 학습계획"이면 [월간 안내 생성]이 반 × 달 발송함 하나만 만든다.
 //   학생 장은 만들지 않고 알림톡도 없다(보낼 장이 없어 [일괄 전송]이 아무것도 보내지 않고, 보내기 길에서도 막는다).
 //   내용은 그 발송함 페이지 본문(+ `가정통신문 안내 메모`)에 적고, 학부모 리포트 반 화면 홈 맨 아래 "월별 학습계획서"에서 읽는다.
