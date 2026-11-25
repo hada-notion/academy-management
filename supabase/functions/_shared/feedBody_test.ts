@@ -21,6 +21,13 @@ Deno.test("v2.8.0 본문: 콜아웃의 둘째 줄부터(하위 블록)와 글이
 	])
 })
 
+Deno.test("v2.8.0 항목 149 본문: 콜아웃 노션 색을 tone으로 싣는다(배경·글자 색 같은 이름, 기본·모르는 색은 없음)", async () => {
+	children({})
+	const c = (id: string, color?: string) => ({ id, type: "callout", has_children: false, callout: { rich_text: rt(id), ...(color ? { color } : {}) } })
+	const out = await blocksToFeedBody([c("a", "blue_background"), c("b", "red"), c("c", "default"), c("d"), c("e", "teal_background")]) as any[]
+	eq(out.map((i) => i.tone ?? null), ["blue", "red", null, null, null])
+})
+
 Deno.test("v2.8.0 본문: 중첩 글·단은 이어 붙이고, 깊이 3단계를 넘으면 더 읽지 않는다", async () => {
 	children({
 		col: [{ id: "c", type: "column", has_children: true, column: {} }],

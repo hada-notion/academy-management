@@ -46,6 +46,8 @@ export const feedBodyDeps = { getBlockChildren }
 const MAX_BODY_DEPTH = 3
 const CONTAINER_TYPES = new Set(["column_list", "column", "synced_block"])
 const CHILD_READS = 5
+// 노션 콜아웃 색 이름(배경·글자 색 모두 같은 이름). 리포트가 tone-<이름>으로 그린다.
+const CALLOUT_TONES = new Set(["gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red"])
 export async function blocksToFeedBody(blocks: any[], depth = 0): Promise<unknown[]> {
   const items: unknown[] = []
   // 하위 블록은 한 번에 몇 개씩 동시에 읽고(본문이 길면 하나씩 읽을 때 여는 데 오래 걸린다), 아래에서는 순서대로 붙인다.
@@ -121,11 +123,14 @@ export async function blocksToFeedBody(blocks: any[], depth = 0): Promise<unknow
     }
     if (type === "callout") {
       const icon = b.callout?.icon?.type === "emoji" ? b.callout.icon.emoji : undefined
+      // (v2.8.0 항목 149, 대표 261125) 노션 콜아웃 색: "blue_background"·"blue" → tone "blue". 기본(default)은 싣지 않음.
+      const color = String(b.callout?.color || "default").replace(/_background$/, "")
+      const tone = CALLOUT_TONES.has(color) ? { tone: color } : {}
       const children = childrenOf(b)
       // 글이 하위 블록에만 있는 콜아웃도 있어서, 첫 줄이 비어도 하위가 있으면 싣는다.
-      const item = textBlockItem(type, b.callout?.rich_text, { ...(icon ? { icon } : {}), ...(children.length ? { children } : {}) })
+      const item = textBlockItem(type, b.callout?.rich_text, { ...(icon ? { icon } : {}), ...tone, ...(children.length ? { children } : {}) })
       if (item) items.push(item)
-      else if (children.length) items.push({ type: "text", style: type, text: "", spans: [], ...(icon ? { icon } : {}), children })
+      else if (children.length) items.push({ type: "text", style: type, text: "", spans: [], ...(icon ? { icon } : {}), ...tone, children })
       continue
     }
     if (type === "code") {
