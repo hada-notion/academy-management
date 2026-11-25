@@ -4,7 +4,7 @@
 //   클래스 `수강료 기간`의 달(비면 누른 날의 다음 달, 서울)의 반 수강료 발송함(구분 "수강료", 반 × 달)을 찾거나 만들고,
 //   그 반을 다니는 등록마다 그 달 수강료가 없으면 만들어 발송함에 연결한다. 같은 학생의 그 달 다른 반
 //   수강료와 `같은 달 수강료`로 서로 잇는다. 보내기는 수강료 DB 큐(_shared/noticeQueue.ts)가 같은 달 수강료를 한 통으로 보낸다.
-// (10/28) 가정통신문(월간 일정 안내)도 같은 모양이다: 클래스 [가정통신문 생성](send-monthly-notice/create-letter) → 클래스 `안내 기간`의
+// (10/28) 가정통신문(월간 일정 안내)도 같은 모양이다: 클래스 [월간 안내 생성](send-monthly-notice/create-letter) → 클래스 `안내 기간`의
 //   달의 반 가정통신문 발송함(구분 "가정통신문") → 등록마다 가정통신문 한 장 → 같은 학생의 그 달 다른 반 가정통신문과 `같은 달 가정통신문`.
 //   학생·반에 연결된 일정은 Notion 수식이 모으고, 연결 안 된 일정(학원 전체, 학생의 학교·학년)은 서버가 `학원 일정`에 넣는다
 //   (만들 때 한 번, 보내기 직전에 다시). 보내기는 수강료와 같은 큐(_shared/noticeQueue.ts, kind "letter")다.
@@ -24,7 +24,7 @@ import { noteText } from "./lessonNotice.ts"
 import { alimtalkVar, BULLET, NO_NOTE } from "./noticeBlocks.ts"
 
 export const KIND_MONTHLY = "가정통신문"
-// (v2.8.0 항목 150, 261125 대표) 월별 학습계획: 클래스 `안내 구분`이 "월별 학습계획"이면 [가정통신문 생성]이 반 × 달 발송함 하나만 만든다.
+// (v2.8.0 항목 150, 261125 대표) 월별 학습계획: 클래스 `안내 구분`이 "월별 학습계획"이면 [월간 안내 생성]이 반 × 달 발송함 하나만 만든다.
 //   학생 장은 만들지 않고 알림톡도 없다(보낼 장이 없어 [일괄 전송]이 아무것도 보내지 않고, 보내기 길에서도 막는다).
 //   내용은 그 발송함 페이지 본문(+ `가정통신문 안내 메모`)에 적고, 학부모 리포트 반 화면 홈 맨 아래 "월별 학습계획서"에서 읽는다.
 export const KIND_PLAN = "월별 학습계획"
@@ -36,7 +36,7 @@ export const KIND_TUITION = "수강료"
 export const CLASS_TUITION_GEN_STATUS_SPEC: StatusSpec = { statusProp: "수강료 생성 상태", errorProp: PROP_LAST_ERROR, startedAtProp: "수강료 생성 처리 시작 시각" }
 export const TARGET_MONTHLY_CREATE_CLASS = "monthly-create-class"
 export const TARGET_MONTHLY_CREATE_REG = "monthly-create-reg"
-// 클래스 [가정통신문 생성]
+// 클래스 [월간 안내 생성]
 export const CLASS_LETTER_GEN_STATUS_SPEC: StatusSpec = { statusProp: "가정통신문 생성 상태", errorProp: PROP_LAST_ERROR, startedAtProp: "가정통신문 생성 처리 시작 시각" }
 export const TARGET_LETTER_CREATE_CLASS = "letter-create-class"
 export const TARGET_LETTER_CREATE_REG = "letter-create-reg"
@@ -86,7 +86,7 @@ export function monthFromClass(cls: any, now = new Date(), prop = PROP_CLASS_NOT
 }
 // 클래스 [월 수강료 생성]의 달: 클래스 '수강료 기간'(비면 다음 달).
 export const tuitionMonthFromClass = (cls: any, now = new Date()) => monthFromClass(cls, now, PROP_CLASS_TUITION_PERIOD)
-// 클래스 [가정통신문 생성]의 달: 클래스 '안내 기간'(비면 다음 달).
+// 클래스 [월간 안내 생성]의 달: 클래스 '안내 기간'(비면 다음 달).
 export const letterMonthFromClass = (cls: any, now = new Date()) => monthFromClass(cls, now, PROP_CLASS_NOTICE_PERIOD)
 
 // "2026-12" → { start: "2026-12-01", end: "2026-12-31" }
@@ -355,7 +355,7 @@ export async function processMonthlyCreateRegItem(p: CreateRegPayload): Promise<
 	}
 }
 
-// ── 2) 클래스 [가정통신문 생성] ─────────────────────────────────────────────────
+// ── 2) 클래스 [월간 안내 생성] ─────────────────────────────────────────────────
 // (v2.8.0 항목 148, 261125 대표) 그 달 발송함 하나 → 학생당 한 장. 반마다 눌러도 같은 달 발송함에 반이 더해지고(`클래스`),
 // 학생은 그 달 한 장에 이 반 등록이 더해진다(`등록`). 클래스 `요청` = class-letter-create를 여러 줄 한꺼번에 바꿔도 같은 길.
 // 큐는 한 번에 하나씩이라 두 반을 거의 같이 눌러도 차례로 돌고, 방금 만든 발송함·장은 표 letter_month_pages로 찾는다.
@@ -512,7 +512,7 @@ export async function processLetterCreateRegItem(p: CreateRegPayload): Promise<v
 			await finishParent(p.classId, CLASS_LETTER_GEN_STATUS_SPEC)
 		}
 	} catch (err) {
-		const message = `가정통신문 생성 실패(다시 누르면 빠진 학생만 만듭니다): ${(err as Error).message}`
+		const message = `월간 안내 생성 실패(다시 누르면 빠진 학생만 만듭니다): ${(err as Error).message}`
 		await appendError(p.classId, message)
 		if (p.last) await deps.markError(p.classId, CLASS_LETTER_GEN_STATUS_SPEC, message).catch(() => {})
 		throw err
@@ -552,7 +552,7 @@ export async function refetchMailboxEvents(mailboxId: string): Promise<RefetchRe
 	const boxMonth = String(seoulDay(box?.properties?.[PROP_MAILBOX_PERIOD]?.date?.start) ?? "").slice(0, 7)
 	if (!boxMonth) throw new LetterBlocked("발송함 '기간'이 비어 있어요.")
 	const letters = (await deps.queryAllPages(await deps.letterDataSourceId(), { property: PROP_LETTER_MAILBOX, relation: { contains: mailboxId } })).filter(alive)
-	if (!letters.length) throw new LetterBlocked("이 발송함에 가정통신문이 없어요. 클래스 [가정통신문 생성]을 먼저 눌러 주세요.")
+	if (!letters.length) throw new LetterBlocked("이 발송함에 가정통신문이 없어요. 클래스 [월간 안내 생성]을 먼저 눌러 주세요.")
 	const monthRows = new Map<string, any[]>()
 	const rowsOf = async (month: string) => {
 		if (!monthRows.has(month)) monthRows.set(month, await eventQuery(month)(null))

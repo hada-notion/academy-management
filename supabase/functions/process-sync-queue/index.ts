@@ -166,7 +166,7 @@ const HANDLERS: Record<string, (payload: any, cachedGetPage: (id: string) => Pro
   // (v2.8.0) 가정통신문 → send-monthly-notice. 클래스 1건이 등록(학생) 1건씩을, 발송함 1건이 가정통신문 1건씩을 다시 넣는다.
   "monthly-create-class": processMonthlyCreateClassItem,
   "monthly-create-reg": processMonthlyCreateRegItem,
-  // (v2.8.0) 클래스 [가정통신문 생성] → send-monthly-notice/create-letter. 클래스 1건이 등록 1건씩을 다시 넣는다.
+  // (v2.8.0) 클래스 [월간 안내 생성] → send-monthly-notice/create-letter. 클래스 1건이 등록 1건씩을 다시 넣는다.
   "letter-create-class": processLetterCreateClassItem,
   "letter-create-reg": processLetterCreateRegItem,
   // (v2.8.0) 관리자 설정 [예시 데이터 비우기] → clear-example-data. 한 항목이 DB 하나에서 60건씩 지우고 다음 항목을 다시 넣는다.
