@@ -672,7 +672,7 @@ function buildHomeHeroHtml(r) {
   `
 }
 // ===== 가정통신문 (첫 화면 일정 아래 → 본문 → 목록) =====
-// (v2.8.0 항목 146, 261125 대표) 학생당 한 장: 반에 들어가기 전 첫 화면 일정 아래에서 달마다 한 줄. 반 화면에는 없다.
+// (v2.8.0 항목 147, 261125 대표) 학생당 한 장: 반에 들어가기 전 첫 화면 일정 아래에서 달마다 한 줄. 반 화면에는 없다.
 // 목록은 캐시에 있고(달마다 한 줄), 본문은 누를 때 읽는다(get-report-letter).
 let selectedLetterMonth = ""
 let letterFromList = false
@@ -882,7 +882,7 @@ function letterBodyHtml(state) {
   const schedule = [letterLinesHtml("휴원 일정", s.rest), letterLinesHtml("학원 일정", s.academy), letterLinesHtml("학사 일정", s.school)].join("")
   const common = buildFeedBodyHtml(l.classBody)
   const own = buildFeedBodyHtml(l.studentBody)
-  // (v2.8.0 항목 146) 위 학원 일정, 아래 반별 전달사항(반이 둘 이상이면 반 이름 머리글).
+  // (v2.8.0 항목 147) 위 학원 일정, 아래 반별 전달사항(반이 둘 이상이면 반 이름 머리글).
   const notes = Array.isArray(l.notes) && l.notes.length ? l.notes : (l.note ? [{ name: "", text: l.note }] : [])
   const noteHtml = notes.map((n) => `${notes.length > 1 && n.name ? `<div class="rep-sub">${esc(n.name)}</div>` : ""}<div class="letter-note">${esc(n.text)}</div>`).join("")
   return `

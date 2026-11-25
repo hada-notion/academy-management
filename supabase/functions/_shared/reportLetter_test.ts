@@ -1,4 +1,4 @@
-// (v2.8.0 항목 146) 학부모 리포트 가정통신문: 학생당 한 장 — 달마다 한 줄, 본문은 다니는 반 전부의 일정·반별 전달사항.
+// (v2.8.0 항목 147) 학부모 리포트 가정통신문: 학생당 한 장 — 달마다 한 줄, 본문은 다니는 반 전부의 일정·반별 전달사항.
 import { buildLetterList, buildLetterView, reportLetterDeps } from "./reportLetter.ts"
 
 function eq(a: unknown, b: unknown) {
@@ -37,7 +37,7 @@ const oneLetter = {
 	r2: [letter("a", ["r1", "r2"], "2026-12", "box")],
 }
 
-Deno.test("v2.8.0 항목 146 가정통신문 목록: 보낸 달마다 한 줄(두 등록에 걸린 한 장도 한 줄), 최근 달부터", async () => {
+Deno.test("v2.8.0 항목 147 가정통신문 목록: 보낸 달마다 한 줄(두 등록에 걸린 한 장도 한 줄), 최근 달부터", async () => {
 	const { filters } = mock(oneLetter)
 	eq(await buildLetterList(["r1", "r2"]), [
 		{ month: "2026-12", registrationId: "r1" },
@@ -54,7 +54,7 @@ Deno.test("v2.8.0 가정통신문 목록: 등록이 없으면 조회하지 않�
 	eq(await buildLetterList(["r1"]), [])
 })
 
-Deno.test("v2.8.0 항목 146 가정통신문 본문: 다니는 반 전부의 일정, 보낸 때 박아 둔 반별 전달사항 + 보낸 뒤 더해진 반, 파일 blockId는 뺀다", async () => {
+Deno.test("v2.8.0 항목 147 가정통신문 본문: 다니는 반 전부의 일정, 보낸 때 박아 둔 반별 전달사항 + 보낸 뒤 더해진 반, 파일 blockId는 뺀다", async () => {
 	const { eventRegs } = mock({ r1: [letter("a", ["r1", "r2"], "2026-12", "box", "🏛 수학반\n보강을 엽니다.")] }, {
 		bodies: {
 			box: [{ type: "paragraph", text: "12월 안내" }, { type: "pdf", blockId: "blk", url: "https://f/a.pdf", name: "a.pdf" }],

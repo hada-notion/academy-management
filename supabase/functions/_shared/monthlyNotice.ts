@@ -350,7 +350,7 @@ export async function processMonthlyCreateRegItem(p: CreateRegPayload): Promise<
 }
 
 // ── 2) 클래스 [가정통신문 생성] ─────────────────────────────────────────────────
-// (v2.8.0 항목 146, 261125 대표) 그 달 발송함 하나 → 학생당 한 장. 반마다 눌러도 같은 달 발송함에 반이 더해지고(`클래스`),
+// (v2.8.0 항목 147, 261125 대표) 그 달 발송함 하나 → 학생당 한 장. 반마다 눌러도 같은 달 발송함에 반이 더해지고(`클래스`),
 // 학생은 그 달 한 장에 이 반 등록이 더해진다(`등록`). 클래스 `요청` = class-letter-create를 여러 줄 한꺼번에 바꿔도 같은 길.
 // 큐는 한 번에 하나씩이라 두 반을 거의 같이 눌러도 차례로 돌고, 방금 만든 발송함·장은 표 letter_month_pages로 찾는다.
 // 그 반이 이미 든 옛 반별 발송함(반 × 달)이 있으면 그 반은 그대로 옛 발송함을 쓴다(이미 만든 장을 옮기지 않음).
@@ -596,7 +596,7 @@ export class LetterBlocked extends Error {}
 // 같은 학생의 그 달 반 이름(이름순, 같은 이름은 한 번). #{클래스}에 쓴다.
 const classNamesOf = (regs: any[]) => Array.from(new Set(regs.map(classNameOfReg).filter(Boolean))).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
 
-// (v2.8.0 항목 146) 반별 전달사항(새 방식): 그 장 '등록'의 반마다 클래스 '가정통신문 전달사항'(빈 반 빠짐, 반 이름순).
+// (v2.8.0 항목 147) 반별 전달사항(새 방식): 그 장 '등록'의 반마다 클래스 '가정통신문 전달사항'(빈 반 빠짐, 반 이름순).
 // regs = 그 학생의 그 달 등록들(있으면 다시 읽지 않음).
 export type ClassNote = { classId: string; name: string; text: string }
 export async function classNotesOf(letter: any, regs: any[] = []): Promise<ClassNote[]> {
@@ -706,7 +706,7 @@ export async function buildLetterNotice(letter: any): Promise<{ registrationId: 
 	// (11/2) 가정통신문 (일정안내) 수식은 (알림톡)으로 이름을 바꿨다. 예전 이름은 읽지 않는다.
 	const f = (name: string, fallback: string) => alimtalkVar(fresh, name, fallback)
 	const studentName = studentNameOf(reg)
-	// (v2.8.0 항목 146) 새 방식: 그 장 반들의 클래스 `가정통신문 전달사항`(수식은 옛 반 발송함 메모를 읽으므로 쓰지 않음). 없으면 옛 길.
+	// (v2.8.0 항목 147) 새 방식: 그 장 반들의 클래스 `가정통신문 전달사항`(수식은 옛 반 발송함 메모를 읽으므로 쓰지 않음). 없으면 옛 길.
 	const classNotes = await classNotesOf(fresh, regs)
 	const note = classNotes.length ? classNoteText(classNotes) : f("전달사항", await letterNote(fresh, regs))
 	if (!lines.length && (!note.trim() || note.trim() === NO_NOTE)) throw new LetterBlocked(`${monthLabel(month)} 학부모 공개 일정과 전달사항이 없어 보내지 않았습니다. 일정이나 클래스 가정통신문 전달사항을 넣은 뒤 [안내문 전송]을 누르세요.`)
