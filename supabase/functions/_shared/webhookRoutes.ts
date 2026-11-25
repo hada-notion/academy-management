@@ -47,6 +47,8 @@ export const WEBHOOK_ROUTES: WebhookRoute[] = [
   { id: "session-attendance-queue", db: "수업(학원)", name: "[웹훅] 출석 조정", kind: "automation", fn: "fix-attendance", path: "/queue" },
   { id: "session-date-move", db: "수업(학원)", name: "[웹훅] 수업 날짜 이동", kind: "automation", fn: "fix-attendance", path: "/session-date" },
   { id: "session-delete", db: "수업(학원)", name: "[웹훅] 삭제", kind: "automation", fn: "cascade-delete", path: "" },
+  // (261126) 출석 한 장의 학습기록: 그 학생 등록의 진행 중 개별 진도 교재만(항목 151). 수업 전체를 만드는 session-record와 따로.
+  { id: "attendance-learning-record", db: "출석(학원)", name: "학습기록 생성", kind: "button", fn: "create-learning-record", path: "/attendance" },
   { id: "attendance-report-queue", db: "출석(학원)", name: "[웹훅] 보고서 전송", kind: "automation", fn: "send-daily-report", path: "/queue" },
   { id: "attendance-lesson-notice-queue", db: "출석(학원)", name: "[웹훅] 수업 안내", kind: "automation", fn: "send-lesson-notice", path: "/queue" },
   { id: "attendance-delete", db: "출석(학원)", name: "[웹훅] 삭제", kind: "automation", fn: "cascade-delete", path: "" },

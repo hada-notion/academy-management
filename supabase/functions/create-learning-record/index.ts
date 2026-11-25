@@ -53,6 +53,7 @@ import { getPage, relIds as relIdsFromProp, extractPageId, describeBody } from "
 import { respondAccepted } from "../_shared/backgroundTask.ts"
 import { enqueueSync, wakeSyncQueueWorker } from "../_shared/syncQueue.ts"
 import { DS_ATTENDANCE } from "../_shared/constants.ts"
+import { createLearningRecordForAttendance } from "../_shared/attendanceLearningRecord.ts"
 import { resolveAdminKeyFromRequest, getCurrentAdminKey } from "../_shared/adminShared.ts"
 import {
 	PROP_ATTENDANCE_SESSION,
@@ -101,6 +102,21 @@ async function handleRequest(req: Request): Promise<Response> {
 	if (!clickedId) {
 		console.error("Could not extract clicked pageId from payload", body)
 		return new Response(JSON.stringify({ error: "missing_page_id" }), { status: 400 })
+	}
+
+	// (v2.8.0 항목 151, 261126) 출석 한 장의 학습기록: 주소 끝 /attendance(동작 attendance-learning-record).
+	// 클릭된 출석의 등록에 연결된 진행 중 개별 진도 교재만, 그 출석 하나의 학습기록. 수업 전체로 바꾸지 않는다.
+	// 몇 번의 읽기·쓰기라 큐 없이 바로 처리해 결과(만든 수·안내)를 요청 결과 칸에 돌려준다. 못 만들면 4xx(다시 넘기지 않음).
+	if (new URL(req.url).pathname.replace(/\/$/, "").endsWith("/attendance")) {
+		const json = (status: number, b: unknown) => new Response(JSON.stringify(b), { status, headers: { "Content-Type": "application/json" } })
+		try {
+			const r = await createLearningRecordForAttendance(clickedId)
+			if (!r.ok) return json(400, { ok: false, error: r.message })
+			return json(200, { ok: true, created: r.created.length, skipped: r.skipped.length, note: r.created.length ? `학습기록 ${r.created.length}개 만듦` : r.message })
+		} catch (err) {
+			console.error("attendance learning record failed", err)
+			return json(500, { ok: false, error: (err as Error)?.message ?? String(err) })
+		}
 	}
 
 	// 클릭된 페이지가 출석 페이지면, 그 출석이 연결된 수업(세션) 페이지 id로 바꿔치기한다.
