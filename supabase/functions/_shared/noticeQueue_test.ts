@@ -199,6 +199,31 @@ Deno.test("v2.8.0 가정통신문(letter): 같은 달 가정통신문을 한 통
 		eq(b.calls.sent.length, 0)
 		eq(b.calls.patched[0].props["마지막 오류"].rich_text[0].text.content.startsWith("같은 달 가정통신문(다른 반 포함)을 이미 보냈습니다"), true)
 	} finally { b.restore() }
+	// (항목 148) 학생당 한 장: 같은 달 장이 없어도 이 장 전송로그에 성공한 알림톡이 있으면 ⚪ 대기여도 다시 안 보냄. 개별 전송이면 보냄.
+	const logOk = { id: "log1", properties: { "발송 구분": select("월간 일정 안내"), "발송 상태": select("성공") } }
+	const logReq = { id: "log2", properties: { "발송 구분": select("버튼 요청"), "발송 상태": select("성공") } }
+	const sentOnce = letterPage("lA", "⚪ 대기", { "전송로그": sibs("log2", "log1") })
+	const e = fake(sentOnce, { pages: { lA: sentOnce, log1: logOk, log2: logReq } })
+	noticeDeps.letter = async () => built
+	try {
+		await processNoticeQueueItem({ kind: "letter", pageId: "lA" })
+		eq(e.calls.sent.length, 0)
+		eq(e.calls.patched[0].props["마지막 오류"].rich_text[0].text.content.startsWith("이 가정통신문은 이미 보냈습니다"), true)
+	} finally { e.restore() }
+	const onlyReq = letterPage("lA", "⚪ 대기", { "전송로그": rel("log2") })
+	const g = fake(onlyReq, { pages: { lA: onlyReq, log2: logReq } })
+	noticeDeps.letter = async () => built
+	try {
+		await processNoticeQueueItem({ kind: "letter", pageId: "lA" })
+		eq(g.calls.sent.length > 0, true)
+	} finally { g.restore() }
+	const again = letterPage("lA", "⚪ 대기", { "전송로그": rel("log1"), "개별 전송": { checkbox: true } })
+	const h = fake(again, { pages: { lA: again, log1: logOk } })
+	noticeDeps.letter = async () => built
+	try {
+		await processNoticeQueueItem({ kind: "letter", pageId: "lA" })
+		eq(h.calls.sent.length > 0, true)
+	} finally { h.restore() }
 	// 일정 0건: 보내지 않고 ⚠️, 예외 없음(큐 재시도 안 함), 개별 전송은 끔
 	const { LetterBlocked } = await import("./monthlyNotice.ts")
 	const forced = letterPage("lA", "⚪ 대기", { "개별 전송": { checkbox: true } })

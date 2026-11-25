@@ -209,6 +209,16 @@ const LOCK_REASON: Partial<Record<NoticeKind, string>> = {
 	tuition: "같은 달 수강료 안내(다른 반 포함)를 이미 보냈습니다. 다시 보내려면 [안내문 전송]을 누르세요.",
 	letter: "같은 달 가정통신문(다른 반 포함)을 이미 보냈습니다. 다시 보내려면 [안내문 전송]을 누르세요.",
 }
+// 가정통신문 장의 전송로그 중 성공한 알림톡(발송 구분 "월간 일정 안내", 발송 상태 "성공")이 있나. 버튼 요청 줄은 발송 구분이 달라 세지 않는다.
+export async function alreadySentLetter(page: any): Promise<boolean> {
+	const ids = (page?.properties?.["전송로그"]?.relation ?? []).map((r: any) => String(r.id))
+	for (const id of ids) {
+		const log: any = await noticeDeps.getPage(id).catch(() => null)
+		if (!log || log.archived || log.in_trash) continue
+		if (log.properties?.["발송 구분"]?.select?.name === "월간 일정 안내" && log.properties?.["발송 상태"]?.select?.name === "성공") return true
+	}
+	return false
+}
 // 수강료·가정통신문 [안내문 전송](개별)이 켠다. 켜져 있으면 같은 달 장을 이미 보냈어도 보낸다.
 const isForced = (page: any) => page?.properties?.["개별 전송"]?.checkbox === true
 
@@ -312,6 +322,11 @@ export async function processNoticeQueueItem(payload: NoticePayload): Promise<vo
 		const sent = siblings.find((p: any) => statusOf(p, kind) === DONE)
 		if (sent && !forced) {
 			return await finish(kind, pageId, "⚠️ 오류", LOCK_REASON[kind] ?? "같은 달 안내를 이미 보냈습니다.", bulkReset)
+		}
+		// (v2.8.0 항목 148) 가정통신문은 학생당 한 장이라 같은 달 장이 없다. 이 장 전송로그에 성공한 알림톡이 있으면
+		// 상태를 손으로 ⚪ 대기로 되돌려도 다시 보내지 않는다(다시 보내려면 [안내문 전송] = 개별 전송).
+		if (kind === "letter" && !forced && await alreadySentLetter(page)) {
+			return await finish(kind, pageId, "⚠️ 오류", "이 가정통신문은 이미 보냈습니다. 다시 보내려면 [안내문 전송]을 누르세요.", false)
 		}
 	}
 
