@@ -202,13 +202,16 @@ Deno.test("v2.8.0 가정통신문(letter): 같은 달 가정통신문을 한 통
 	// (항목 148) 학생당 한 장: 같은 달 장이 없어도 이 장 전송로그에 성공한 알림톡이 있으면 ⚪ 대기여도 다시 안 보냄. 개별 전송이면 보냄.
 	const logOk = { id: "log1", properties: { "발송 구분": select("월간 일정 안내"), "발송 상태": select("성공") } }
 	const logReq = { id: "log2", properties: { "발송 구분": select("버튼 요청"), "발송 상태": select("성공") } }
-	const sentOnce = letterPage("lA", "⚪ 대기", { "전송로그": sibs("log2", "log1") })
-	const e = fake(sentOnce, { pages: { lA: sentOnce, log1: logOk, log2: logReq } })
+	const sentOnce = letterPage("lA", "⚪ 대기", { "전송로그": sibs("log2", "log1"), "알림톡 발송함": rel("box1") })
+	const e =fake(sentOnce, { pages: { lA: sentOnce, log1: logOk, log2: logReq } })
 	noticeDeps.letter = async () => built
 	try {
 		await processNoticeQueueItem({ kind: "letter", pageId: "lA" })
 		eq(e.calls.sent.length, 0)
-		eq(e.calls.patched[0].props["마지막 오류"].rich_text[0].text.content.startsWith("이 가정통신문은 이미 보냈습니다"), true)
+		// 잠금이 걸린 장: ⚠️가 아니라 ✅ 완료(마지막 오류 비움), 이유는 발송함 요청 결과에 한 줄
+		const pg = e.calls.patched.find((p: any) => p.id === "lA")!
+		eq([pg.props["안내문 전송 상태"].select.name, pg.props["마지막 오류"].rich_text], ["✅ 완료", []])
+		eq(e.calls.patched.find((p: any) => p.id === "box1")!.props["요청 결과"].rich_text[0].text.content, "이미 보낸 가정통신문이라 다시 보내지 않았어요. 다시 보내려면 [안내문 전송]을 누르세요.")
 	} finally { e.restore() }
 	const onlyReq = letterPage("lA", "⚪ 대기", { "전송로그": rel("log2") })
 	const g = fake(onlyReq, { pages: { lA: onlyReq, log2: logReq } })
