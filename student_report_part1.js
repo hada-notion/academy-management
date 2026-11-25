@@ -105,9 +105,18 @@ function testEvalRow(t) {
 function testKind(t) {
   return t && ["주간 평가", "월간 평가"].includes(t.evalType) ? t.evalType : "일일 평가"
 }
-// (v2.8.0) 클래스 '리포트 구성'이 "평가만"인 반: 출결·과제·일간 보고서를 숨기고 평가 중심으로 보여 준다.
+// (v2.8.0) 클래스 '리포트 숨김'(시간표·출결·학습·평가): 고른 것만 그 반 리포트에서 숨긴다. 숨긴 기록은 서버가 싣지 않고, 화면은 그 구역·탭을 뺀다.
+const REPORT_HIDE_KINDS = ["시간표", "출결", "학습", "평가"]
+function hides(r, kind) {
+  return !!r && Array.isArray(r.report_hide) && r.report_hide.includes(kind)
+}
+// 출결·학습·평가를 모두 숨긴 반은 반 카드(반 목록)도 없다. 시간표까지 숨기면 리포트에서 그 반이 아예 안 보인다.
+function isClassCardHidden(r) {
+  return hides(r, "출결") && hides(r, "학습") && hides(r, "평가")
+}
+// (v2.8.0) 출결·학습을 숨긴 반(옛 '리포트 구성' "평가만" 포함): 출결·과제·일간 보고서를 숨기고 평가 중심으로 보여 준다.
 function isTestsOnly(r) {
-  return !!r && r.report_mode === "tests_only"
+  return !!r && (r.report_mode === "tests_only" || (hides(r, "출결") && hides(r, "학습")))
 }
 // (10/30 사용자) 평가 점수는 막대 대신 글 두 줄: "• 점수  85점 (17/20)", 반 평균이 있으면 "• 반 평균  80점 (6명 응시)".
 // 막대 비교는 평가 추이 그래프에서만 한다(그래프 범례도 "점수 / 반 평균"). 일일 보고서 알림톡 평가 줄과 같은 이름.
@@ -700,6 +709,7 @@ function mapRegistration(reg) {
     // 주간/월간 보고서: 보고서(학원) DB 자체의 "선생님 한마디"를 보고서 구분·학습 기간과 함께 보관한다.
     report_comments: (reg.report_comments || []).map((c) => ({ id: c.id || "", kind: c.kind || "", start: c.start || null, end: c.end || c.start || null, comment: c.comment || "", bookId: c.book_id || "" })),
     report_mode: reg.report_mode === "tests_only" ? "tests_only" : "all",
+    report_hide: Array.isArray(reg.report_hide) ? reg.report_hide.filter((k) => REPORT_HIDE_KINDS.includes(k)) : [],
     // (v2.8.0 작품 모아보기) 프로그램 사진(수업 순서). blockId는 만료된 주소를 새로 받을 때 쓴다.
     gallery: (reg.gallery || []).map((g) => ({ bookId: g.book_id || "", date: isoToKstDate(g.iso) || (g.iso ? String(g.iso).slice(0, 10) : ""), range: g.range || "", url: g.url || "", caption: g.caption || "", blockId: g.block_id || "", mine: !!g.mine })).filter((g) => g.url),
     // (v2.8.0 루틴, 항목 18) 루틴 체크: 루틴 이름·날짜(서울)·완료. 루틴을 안 쓰는 반은 빈 목록이고 화면에 루틴 칸이 없다.
@@ -777,6 +787,7 @@ async function loadReportFromServer() {
               report_comments: detail.report_comments,
               gallery: detail.gallery,
               report_mode: detail.report_mode,
+              report_hide: detail.report_hide || r.report_hide,
             }
           : r
       ))
@@ -935,15 +946,17 @@ function inBook(item, title, id) {
   return normBookTitle(item.book) === normBookTitle(title)
 }
 function regTabsList() {
-  // (v2.8.0) 평가만 보는 반은 출결·과제 달력이 없어 캘린더 탭을 뺀다.
-  const testsOnly = typeof currentReg === "function" && isTestsOnly(currentReg())
+  // (v2.8.0) 평가만 보는 반은 출결·과제 달력이 없어 캘린더 탭을 뺀다. '리포트 숨김' 학습이면 진도 탭, 학습·평가 둘 다면 학습기록 탭도 뺀다.
+  const cur = typeof currentReg === "function" ? currentReg() : null
+  const testsOnly = isTestsOnly(cur)
+  const off = { calendar: testsOnly || (hides(cur, "출결") && hides(cur, "학습")), books: hides(cur, "학습"), study: hides(cur, "학습") && hides(cur, "평가") }
   return [
     { id: "home", icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>`, label: "홈" },
     { id: "books", icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>`, label: "진도" },
     { id: "calendar", icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`, label: "캘린더" },
     { id: "study", icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>`, label: "학습기록" },
     { id: "report", icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>`, label: "보고서" },
-  ].filter((t) => !(testsOnly && t.id === "calendar"))
+  ].filter((t) => !off[t.id])
 }
 function regTabbarHtml(activeId, fromBook) {
   const tabs = regTabsList()
@@ -1178,7 +1191,7 @@ function basicInfoBodyHtml() {
 
 function registrationsBodyHtml() {
   const statusOrder = { "수강중": 0, "수강종료": 1, "수강대기": 2 }
-  const regs = STUDENT.registrations.slice().sort((a, b) => {
+  const regs = STUDENT.registrations.filter((r) => !isClassCardHidden(r)).sort((a, b) => {
     const sa = statusOrder[a.status] ?? 3
     const sb = statusOrder[b.status] ?? 3
     if (sa !== sb) return sa - sb
