@@ -8,7 +8,7 @@ import { readPageBodyBlocks } from "./feedBody.ts"
 import { LETTER_NOTICE_MEMO, propRich } from "./propAlias.ts"
 import { getPage, queryAllPages, relIds } from "./notionClient.ts"
 import { seoulDay } from "./classReportPlan.ts"
-import { classNotesOf, parseSentNote, PROP_LETTER_SENT_NOTE, resolveLetterDataSourceId, studentMonthEvents, studentRegsInMonth } from "./monthlyNotice.ts"
+import { resolveLetterDataSourceId, studentMonthEvents, studentRegsInMonth } from "./monthlyNotice.ts"
 import { dotDate, monthLabel, type Section } from "./scheduleNotice.ts"
 
 const PROP_PERIOD = "기간"
@@ -25,7 +25,6 @@ export const reportLetterDeps = {
 	events: (studentId: string, month: string, regs: any[]) => studentMonthEvents(studentId, month, regs),
 	body: readPageBodyBlocks,
 	regsInMonth: (studentId: string, month: string) => studentRegsInMonth(studentId, month),
-	classNotes: (letter: any, regs: any[]) => classNotesOf(letter, regs),
 }
 
 const alive = (p: any) => !!p && !p.in_trash && !p.archived
@@ -78,8 +77,6 @@ export type LetterView = {
 	label: string
 	schedule: { rest: string[]; academy: string[]; school: string[] }
 	note: string
-	// (v2.8.0 항목 148) 반별 전달사항(반 이름순). 보낸 때 박아 둔 것 + 보낸 뒤 더해진 반은 지금 클래스 칸.
-	notes: { name: string; text: string }[]
 	classBody: unknown[]
 	studentBody: unknown[]
 }
@@ -99,17 +96,13 @@ export async function buildLetterView(regId: string, studentId: string, month: s
 	])
 	const lines = await deps.events(studentId, month, regs.length ? regs : [await deps.getPage(regId)])
 	const ofSection = (sec: Section) => lines.filter((l) => l.sec === sec).sort((a, b) => a.day.localeCompare(b.day)).map((l) => eventText(l.line))
-	const sent = parseSentNote(propRich(letter, [PROP_LETTER_SENT_NOTE]).map((t: any) => t?.plain_text ?? "").join(""))
-	const later = (await deps.classNotes(letter, regs)).filter((n) => !sent.some((s) => s.name === n.name))
-	const notes = [...sent, ...later.map((n) => ({ name: n.name, text: n.text }))].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
-	// 반별 전달사항이 없으면 발송함 메모(전 반 공통 안내).
+	// (v2.8.0 항목 148, 대표 261125) 전달사항은 발송함 공통 안내(`가정통신문 안내 메모`)만. 반별 전달사항은 없다.
 	const boxNote = propRich(box as any, LETTER_NOTICE_MEMO).map((t: any) => t?.plain_text ?? "").join("").trim()
 	return {
 		month,
 		label: monthLabel(month),
 		schedule: { rest: ofSection("휴원"), academy: ofSection("학원"), school: ofSection("학교") },
-		note: notes.length ? notes.map((n) => (notes.length > 1 ? `${n.name}\n${n.text}` : n.text)).join("\n\n") : boxNote,
-		notes,
+		note: boxNote,
 		classBody: publicBody(classBody),
 		studentBody: publicBody(studentBody),
 	}

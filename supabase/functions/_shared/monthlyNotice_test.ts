@@ -217,37 +217,19 @@ Deno.test("v2.8.0 항목 148 [가정통신문 생성]: 그 달 발송함 하나�
 	eq(c.sends, [])
 })
 
-Deno.test("v2.8.0 항목 148 보내기: 반별 전달사항은 클래스 칸에서(반 이름 머리글), 보낸 뒤 장에 박아 두고 그 반 장이 모두 보냄이면 반 칸을 비움", async () => {
+Deno.test("v2.8.0 항목 148 보내기: 학생 한 장(두 반)의 #{전달사항}은 그 달 발송함 공통 안내 메모만, 클래스 칸은 읽지도 비우지도 않음(대표 261125)", async () => {
 	const rA = reg("rA", { student: "s1", name: "테스트학생", cls: "cA", clsName: "수학반" })
 	const rB = reg("rB", { student: "s1", name: "테스트학생", cls: "cB", clsName: "영어반" })
-	const rC = reg("rC", { student: "s2", name: "예시학생", cls: "cB", clsName: "영어반" })
 	const sel = (s: string) => ({ type: "select", select: s ? { name: s } : null })
 	const letter = { id: "l1", properties: { "기간": date("2026-11-01", "2026-11-30"), "등록": rel("rA", "rB"), "학원 일정": rel(), "알림톡 발송함": rel("box"), "같은 달 가정통신문": rel(), "안내문 전송 상태": sel("⚪ 대기") } }
-	const other = { id: "l2", properties: { "기간": date("2026-11-01", "2026-11-30"), "등록": rel("rC"), "알림톡 발송함": rel("box"), "안내문 전송 상태": sel("") } }
-	const pages: Record<string, any> = { rA, rB, rC, l1: letter, l2: other, s1: { id: "s1", properties: { "학교": rel(), "학년": rel() } },
-		cA: { id: "cA", properties: { "가정통신문 전달사항": rt("단원평가 3단원") } }, cB: { id: "cB", properties: { "가정통신문 전달사항": rt("교재 지참") } }, box: { id: "box", properties: { "가정통신문 안내 메모": rt("") } } }
-	const q = (ds: string, filter: any) => {
-		if (ds === "registrations") { const c = filter?.relation?.contains; return c === "cA" ? [rA] : c === "cB" ? [rB, rC] : [rA, rB] }
-		if (ds === "letters") return [pages.l1, pages.l2]
-		return []
-	}
+	const pages: Record<string, any> = { rA, rB, l1: letter, s1: { id: "s1", properties: { "학교": rel(), "학년": rel() } },
+		cA: { id: "cA", properties: { "가정통신문 전달사항": rt("반 글") } }, box: { id: "box", properties: { "가정통신문 안내 메모": rt("겨울방학 특강 신청을 받습니다.") } } }
+	const q = (ds: string, filter: any) => (ds === "registrations" ? [rA, rB] : [])
 	const c = mock(pages, q)
 	const built = await m.buildLetterNotice(letter)
-	eq(built.variables["#{전달사항}"], "🏛 수학반\n  • 단원평가 3단원\n🏛 영어반\n  • 교재 지참")
-	pages.l1.properties["안내문 전송 상태"] = sel("✅ 완료")
-	await built.afterSent!()
-	eq(pages.l1.properties["보낸 전달사항"].rich_text[0].plain_text, "🏛 수학반\n단원평가 3단원\n🏛 영어반\n교재 지참")
-	// 수학반은 장이 모두 보냄 → 비움, 영어반은 예시학생 장이 아직 → 그대로
-	eq([textOfRt(pages.cA.properties["가정통신문 전달사항"]), textOfRt(pages.cB.properties["가정통신문 전달사항"])], ["", "교재 지참"])
-	eq(m.parseSentNote(pages.l1.properties["보낸 전달사항"].rich_text[0].plain_text), [{ name: "수학반", text: "단원평가 3단원" }, { name: "영어반", text: "교재 지참" }])
-	// 반 하나면 머리글 없이 문장만
-	eq(m.classNoteText([{ classId: "cB", name: "영어반", text: "교재 지참" }]), "교재 지참")
-	// 다시 보낼 때: 반 칸이 비어도 박아 둔 글을 그대로 보내고, 박아 둔 글을 빈 글로 덮지 않음
-	pages.cB.properties["가정통신문 전달사항"] = rt("")
-	const again = await m.buildLetterNotice(pages.l1)
-	eq(again.variables["#{전달사항}"], "🏛 수학반\n  • 단원평가 3단원\n🏛 영어반\n  • 교재 지참")
-	await again.afterSent!()
-	eq(pages.l1.properties["보낸 전달사항"].rich_text[0].plain_text, "🏛 수학반\n단원평가 3단원\n🏛 영어반\n교재 지참")
+	eq(built.variables["#{전달사항}"], "겨울방학 특강 신청을 받습니다.")
+	eq(built.afterSent, undefined)
+	eq(textOfRt(pages.cA.properties["가정통신문 전달사항"]), "반 글")
 	eq(c.sends, [])
 })
 

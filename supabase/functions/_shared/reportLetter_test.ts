@@ -10,7 +10,7 @@ const letter = (id: string, regs: string[], month: string, box?: string, sent = 
 	properties: { "기간": { date: { start: `${month}-01` } }, "등록": rel(...regs), "알림톡 발송함": rel(...(box ? [box] : [])), "보낸 전달사항": { rich_text: sent ? [{ plain_text: sent }] : [] } },
 })
 
-function mock(rows: Record<string, any[]>, opts: { memos?: Record<string, string>; bodies?: Record<string, unknown[]>; lines?: any[]; regs?: any[]; classNotes?: { classId: string; name: string; text: string }[] } = {}) {
+function mock(rows: Record<string, any[]>, opts: { memos?: Record<string, string>; bodies?: Record<string, unknown[]>; lines?: any[]; regs?: any[] } = {}) {
 	const filters: any[] = []
 	const eventRegs: string[][] = []
 	Object.assign(reportLetterDeps, {
@@ -26,7 +26,6 @@ function mock(rows: Record<string, any[]>, opts: { memos?: Record<string, string
 		getPage: (id: string) => Promise.resolve({ id, properties: { "가정통신문 안내 메모": { rich_text: opts.memos?.[id] ? [{ plain_text: opts.memos[id] }] : [] } } }),
 		body: (id: string) => Promise.resolve(opts.bodies?.[id] ?? []),
 		regsInMonth: () => Promise.resolve(opts.regs ?? [{ id: "r1" }, { id: "r2" }]),
-		classNotes: () => Promise.resolve(opts.classNotes ?? []),
 	})
 	return { filters, eventRegs }
 }
@@ -65,24 +64,22 @@ Deno.test("v2.8.0 항목 148 가정통신문 본문: 다니는 반 전부의 일
 			{ id: "2", day: "2026-12-19", line: "12/19(토) 특강", sec: "학원" },
 			{ id: "3", day: "2026-12-05", line: "12/5(토) 설명회", sec: "학원" },
 		],
-		// 지금 클래스 칸: 수학반은 보낸 뒤 비었고(박아 둔 것을 씀), 영어반은 보낸 뒤 더해짐
-		classNotes: [{ classId: "cB", name: "영어반", text: "교재 지참" }, { classId: "cA", name: "수학반", text: "다음 달 글" }],
 	})
 	const v = await buildLetterView("r1", "s1", "2026-12")
 	eq(v?.label, "12월")
 	eq(eventRegs, [["r1", "r2"]])
 	eq(v?.schedule, { rest: ["12.24(목)  방학"], academy: ["12.05(토)  설명회", "12.19(토)  특강"], school: [] })
-	eq(v?.notes, [{ name: "수학반", text: "보강을 엽니다." }, { name: "영어반", text: "교재 지참" }])
-	eq(v?.note, "수학반\n보강을 엽니다.\n\n영어반\n교재 지참")
+	// (대표 261125) 반별 전달사항 없음: 장에 옛 `보낸 전달사항`이 있어도 쓰지 않고 발송함 공통 안내만(이 발송함은 메모 없음)
+	eq(v?.note, "")
 	eq(v?.classBody, [{ type: "paragraph", text: "12월 안내" }, { type: "pdf", url: "https://f/a.pdf", name: "a.pdf" }])
 	eq(v?.studentBody, [{ type: "paragraph", text: "서아 안내" }])
 })
 
-Deno.test("v2.8.0 가정통신문 본문: 반별 전달사항이 없으면 발송함 메모, 보낸 장이 없는 달은 null, 발송함이 없어도 열린다", async () => {
+Deno.test("v2.8.0 가정통신문 본문: 전달사항은 발송함 공통 안내 메모, 보낸 장이 없는 달은 null, 발송함이 없어도 열린다", async () => {
 	mock({ r1: [letter("a", ["r1"], "2026-12", "box")] }, { memos: { box: "전 반 공통 안내" } })
 	eq((await buildLetterView("r1", "s1", "2026-12"))?.note, "전 반 공통 안내")
 	mock({ r1: [letter("a", ["r1"], "2026-12")] })
 	eq(await buildLetterView("r1", "s1", "2026-11"), null)
 	const v = await buildLetterView("r1", "s1", "2026-12")
-	eq([v?.note, v?.notes, v?.classBody], ["", [], []])
+	eq([v?.note, v?.classBody], ["", []])
 })

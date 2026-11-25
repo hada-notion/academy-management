@@ -882,13 +882,11 @@ function letterBodyHtml(state) {
   const schedule = [letterLinesHtml("휴원 일정", s.rest), letterLinesHtml("학원 일정", s.academy), letterLinesHtml("학사 일정", s.school)].join("")
   const common = buildFeedBodyHtml(l.classBody)
   const own = buildFeedBodyHtml(l.studentBody)
-  // (v2.8.0 항목 148) 위 학원 일정, 아래 반별 전달사항(반이 둘 이상이면 반 이름 머리글).
-  const notes = Array.isArray(l.notes) && l.notes.length ? l.notes : (l.note ? [{ name: "", text: l.note }] : [])
-  const noteHtml = notes.map((n) => `${notes.length > 1 && n.name ? `<div class="rep-sub">${esc(n.name)}</div>` : ""}<div class="letter-note">${esc(n.text)}</div>`).join("")
+  // (v2.8.0 항목 148) 발송함 공통 안내(메모 + 본문) → 일정 안내 → 학생 안내. 반별 전달사항은 없다(대표 261125).
+  const memo = l.note ? `<div class="letter-note">${esc(l.note)}</div>` : ""
   return `
-    ${common ? `<h3 class="sec-title">안내</h3><div class="card letter-body">${common}</div>` : ""}
+    ${memo || common ? `<h3 class="sec-title">안내</h3><div class="card letter-body">${memo}${common}</div>` : ""}
     ${schedule ? `<h3 class="sec-title">일정 안내</h3><div class="card">${schedule}</div>` : ""}
-    ${noteHtml ? `<h3 class="sec-title">전달 사항</h3><div class="card letter-notes">${noteHtml}</div>` : ""}
     ${own ? `<h3 class="sec-title">${esc(STUDENT.student_name)} 학생 안내</h3><div class="card letter-body">${own}</div>` : ""}`
 }
 function letterPageHtml(current, title, inner) {

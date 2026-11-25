@@ -355,9 +355,6 @@ export async function processMonthlyCreateRegItem(p: CreateRegPayload): Promise<
 // 큐는 한 번에 하나씩이라 두 반을 거의 같이 눌러도 차례로 돌고, 방금 만든 발송함·장은 표 letter_month_pages로 찾는다.
 // 그 반이 이미 든 옛 반별 발송함(반 × 달)이 있으면 그 반은 그대로 옛 발송함을 쓴다(이미 만든 장을 옮기지 않음).
 export const monthMailboxTitle = (month: string) => `${KIND_MONTHLY} ${month.slice(2, 4)}.${month.slice(5, 7)}`
-export const PROP_CLASS_LETTER_NOTE = "가정통신문 전달사항"
-// 가정통신문(학원) DB: 보낼 때 그때 반별 전달사항을 박아 둔다(리포트가 먼저 읽음, 반 칸은 보낸 뒤 비움).
-export const PROP_LETTER_SENT_NOTE = "보낸 전달사항"
 const PROP_MAILBOX_RESULT = "요청 결과"
 const isMonthMailbox = (box: any, month: string) => alive(box) && anyTitleText(box).trim() === monthMailboxTitle(month) &&
 	samePeriod(box, PROP_MAILBOX_PERIOD, monthRange(month))
@@ -602,67 +599,6 @@ export function letterClassText(names: string[]): string {
 	return names.length > LETTER_CLASS_MAX ? `${names[0]} 외 ${names.length - 1}개` : names.join(" · ")
 }
 
-// (v2.8.0 항목 148) 반별 전달사항(새 방식): 그 장 '등록'의 반마다 클래스 '가정통신문 전달사항'(빈 반 빠짐, 반 이름순).
-// regs = 그 학생의 그 달 등록들(있으면 다시 읽지 않음).
-export type ClassNote = { classId: string; name: string; text: string }
-export async function classNotesOf(letter: any, regs: any[] = []): Promise<ClassNote[]> {
-	const deps = monthlyDeps
-	const byId = new Map(regs.map((r: any) => [key(r.id), r]))
-	const ids = relIds(letter?.properties?.[PROP_LETTER_REG]).length >= 25 ? await deps.fullRelationIds(letter, PROP_LETTER_REG) : relIds(letter?.properties?.[PROP_LETTER_REG])
-	const seen = new Set<string>()
-	const out: ClassNote[] = []
-	for (const id of ids) {
-		const reg: any = byId.get(key(id)) ?? await deps.getPage(id).catch(() => null)
-		const classId = relIds(reg?.properties?.["클래스"])[0]
-		if (!classId || seen.has(key(classId))) continue
-		seen.add(key(classId))
-		const cls: any = await deps.getPage(classId).catch(() => null)
-		const text = textOf(cls?.properties?.[PROP_CLASS_LETTER_NOTE]?.rich_text).trim()
-		if (text) out.push({ classId, name: classNameOfReg(reg) || anyTitleText(cls).trim() || "반", text })
-	}
-	return out.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
-}
-// 알림톡 #{전달사항}: 반 하나면 문장만, 둘 이상이면 "🏛 반 이름" 아래 "  • 문구"(옛 letterNote와 같은 꼴).
-export function classNoteText(notes: ClassNote[]): string {
-	if (!notes.length) return noteText("")
-	if (notes.length === 1) return noteText(notes[0].text)
-	return notes.map((n) => `🏛 ${n.name}\n${BULLET}${noteText(n.text)}`).join("\n")
-}
-// '보낸 전달사항'에 박아 두는 꼴(늘 반 이름 머리글) ↔ 읽기. 리포트가 반마다 나눠 보인다.
-export const sentNoteText = (notes: { name: string; text: string }[]) => notes.map((n) => `🏛 ${n.name}\n${n.text}`).join("\n")
-export function parseSentNote(text: string): { name: string; text: string }[] {
-	const out: { name: string; text: string }[] = []
-	for (const line of String(text ?? "").split("\n")) {
-		if (line.startsWith("🏛 ")) out.push({ name: line.slice(2).trim(), text: "" })
-		else if (out.length) out[out.length - 1].text = [out[out.length - 1].text, line].filter(Boolean).join("\n")
-	}
-	return out.filter((n) => n.name && n.text.trim())
-}
-
-// 보낸 뒤: 장에 그때 전달사항을 박아 두고, 이 발송함에서 그 반 학생 장이 모두 보냄(✅)이면 그 반 칸을 비운다
-// (다음 달에 지난 글이 다시 나가지 않게). 실패해도 발송은 이미 끝났으므로 경고만 남긴다.
-export async function afterLetterSent(letter: any, notes: ClassNote[]): Promise<void> {
-	const deps = monthlyDeps
-	const letterId = String(letter.id)
-	await deps.update(letterId, { [PROP_LETTER_SENT_NOTE]: { rich_text: [{ text: { content: sentNoteText(notes).slice(0, 1900) } }] } })
-		.catch((err: unknown) => console.warn("[letter] 보낸 전달사항 쓰기 건너뜀:", (err as Error).message))
-	const mailboxId = mailboxOf(letter)
-	if (!notes.length || !mailboxId) return
-	const letters = (await deps.queryAllPages(await deps.letterDataSourceId(), { property: PROP_LETTER_MAILBOX, relation: { contains: mailboxId } }).catch(() => null))
-	if (!letters) return
-	for (const n of notes) {
-		if (!n.classId) continue
-		try {
-			const regIds = new Set((await deps.queryAllPages(DS_REGISTRATION, { property: "클래스", relation: { contains: n.classId } })).map((r: any) => key(r.id)))
-			const waiting = letters.filter((l: any) => alive(l) && key(l.id) !== key(letterId) && !sentLetter(l) && relIds(l?.properties?.[PROP_LETTER_REG]).some((id) => regIds.has(key(id))))
-			if (waiting.length) continue
-			await deps.update(n.classId, { [PROP_CLASS_LETTER_NOTE]: { rich_text: [] } })
-			console.log(`[letter] ${n.name} 가정통신문 전달사항 비움(이 발송함 장 모두 보냄)`)
-		} catch (err) {
-			console.warn("[letter] 반 전달사항 비우기 건너뜀:", n.classId, (err as Error).message)
-		}
-	}
-}
 
 // (10/29 사용자) 전달사항: 같은 달 반마다 가정통신문 발송함의 '가정통신문 전달사항'(반 이름순). 가정통신문은 반 공지라
 // 학생 개인 메모는 넣지 않는다(개별 전달은 따로 메시지로). 하나뿐이면 문장만, 둘 이상이면 반마다 "🏛 반 이름" 줄 아래 "  • 문구".
@@ -713,13 +649,9 @@ export async function buildLetterNotice(letter: any): Promise<{ registrationId: 
 	// (11/2) 가정통신문 (일정안내) 수식은 (알림톡)으로 이름을 바꿨다. 예전 이름은 읽지 않는다.
 	const f = (name: string, fallback: string) => alimtalkVar(fresh, name, fallback)
 	const studentName = studentNameOf(reg)
-	// (v2.8.0 항목 148) 새 방식: 그 장 반들의 클래스 `가정통신문 전달사항`(수식은 옛 반 발송함 메모를 읽으므로 쓰지 않음). 없으면 옛 길.
-	// 다시 보낼 때(반 칸은 이미 비움): 그 장 `보낸 전달사항`의 글을 그대로 쓴다(빈 글로 덮어쓰지 않게, 반 칸은 건드리지 않음).
-	const liveNotes = await classNotesOf(fresh, regs)
-	const classNotes: ClassNote[] = liveNotes.length ? liveNotes
-		: parseSentNote(textOf(fresh?.properties?.[PROP_LETTER_SENT_NOTE]?.rich_text)).map((n) => ({ classId: "", name: n.name, text: n.text }))
-	const note = classNotes.length ? classNoteText(classNotes) : f("전달사항", await letterNote(fresh, regs))
-	if (!lines.length && (!note.trim() || note.trim() === NO_NOTE)) throw new LetterBlocked(`${monthLabel(month)} 학부모 공개 일정과 전달사항이 없어 보내지 않았습니다. 일정이나 클래스 가정통신문 전달사항을 넣은 뒤 [안내문 전송]을 누르세요.`)
+	// (v2.8.0 항목 148, 대표 261125 "클래스에도 전달사항 넣지마") #{전달사항} = 발송함 공통 안내(`가정통신문 안내 메모`)만.
+	const note = f("전달사항", await letterNote(fresh, regs))
+	if (!lines.length && (!note.trim() || note.trim() === NO_NOTE)) throw new LetterBlocked(`${monthLabel(month)} 학부모 공개 일정과 전달사항이 없어 보내지 않았습니다. 일정이나 발송함 가정통신문 안내 메모를 넣은 뒤 [안내문 전송]을 누르세요.`)
 	return {
 		registrationId,
 		title: studentName || "월간 일정 안내",
@@ -737,6 +669,5 @@ export async function buildLetterNotice(letter: any): Promise<{ registrationId: 
 			"#{전달사항}": note,
 			"#{페이지ID}": `${Deno.env.get("REPORT_PATH") ?? "/academy-management/student_report.html"}?token=${await deps.token(registrationId)}`,
 		},
-		afterSent: () => afterLetterSent(fresh, classNotes),
 	}
 }
