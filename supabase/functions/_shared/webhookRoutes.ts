@@ -56,6 +56,8 @@ export const WEBHOOK_ROUTES: WebhookRoute[] = [
   { id: "assignment-delete", db: "학습활동(학원)", name: "[웹훅] 삭제", kind: "automation", fn: "cascade-delete", path: "" },
   { id: "progress-completion", db: "진도관리(학원)", name: "수료", kind: "button", fn: "create-class-reports", path: "/completion" },
   { id: "report-send", db: "보고서(학원)", name: "[웹훅] 보고서 전송", kind: "automation", fn: "send-report", path: "/queue" },
+  // (261125) 가정통신문 발송함 [일정 다시 가져오기]: 발송함의 가정통신문마다 학원 일정 다시 넣기(보내지 않음).
+  { id: "mailbox-letter-events", db: "알림톡 발송함(학원)", name: "일정 다시 가져오기", kind: "button", fn: "send-monthly-notice", path: "/refetch-events" },
   { id: "letter-notice", db: "가정통신문(학원)", name: "[웹훅] 안내문 전송", kind: "automation", fn: "send-monthly-notice", path: "/queue" },
   { id: "tuition-notice", db: "수강료(학원)", name: "[웹훅] 안내문 전송", kind: "automation", fn: "send-tuition-notice", path: "/queue" },
   { id: "cart-notice", db: "청구서(학원)", name: "[웹훅] 안내문 전송", kind: "automation", fn: "send-textbook-notice", path: "/queue" },

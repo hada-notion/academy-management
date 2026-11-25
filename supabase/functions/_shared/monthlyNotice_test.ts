@@ -237,3 +237,64 @@ Deno.test("v2.8.0 가정통신문 보내기 변수: 학원 일정을 다시 넣�
 	try { await m.buildLetterNotice(letter) } catch (e) { msg = (e as Error).message; eq(e instanceof m.LetterBlocked, true) }
 	eq(msg.includes("일정과 전달사항이 없어 보내지 않았습니다"), true)
 })
+
+Deno.test("261125 발송함 [일정 다시 가져오기]: 발송함 가정통신문마다 학원 일정을 다시 맞추고(다시 눌러도 같음), 세부 구분 빈 일정은 이름으로, 보내지 않음", async () => {
+	const rA = reg("rA", { student: "s1", name: "테스트학생", cls: "cA", clsName: "수학반" })
+	const rC = reg("rC", { student: "s2", name: "예시학생", cls: "cA", clsName: "수학반" })
+	const box = { id: "box", properties: { "구분": { type: "select", select: { name: "가정통신문" } }, "기간": date("2026-12-01", "2026-12-31"), "클래스": rel("cA") } }
+	const lA = { id: "lA", properties: { "이름": title("26.12 테스트학생 가정통신문"), "기간": date("2026-12-01", "2026-12-31"), "등록": rel("rA"), "알림톡 발송함": rel("box"), "학원 일정": rel("e-xmas") } }
+	const lC = { id: "lC", properties: { "이름": title("26.12 예시학생 가정통신문"), "기간": date("2026-12-01", "2026-12-31"), "등록": rel("rC"), "알림톡 발송함": rel("box"), "학원 일정": rel("e-xmas") } }
+	const xmas = ev("e-xmas", { name: "크리스마스 휴원", cat: "💤 휴원", start: "2026-12-25" })
+	const late = ev("e-late", { name: "겨울 특강 설명회", start: "2026-12-12" })
+	const sch1 = ev("e-sch1", { name: "기말고사", cat: "📝 시험", start: "2026-12-08", school: ["sch1"] })
+	const sch2 = ev("e-sch2", { name: "다른 학교 방학식", cat: "🏫 학교 행사", start: "2026-12-20", school: ["sch2"] })
+	// 세부 구분·구분이 비어 종류를 모르는 공개 일정: 학원 전체(이 발송함) · 다른 반(이 발송함 아님)
+	const noKind = { ...ev("e-nokind", { name: "재량휴원일", start: "2026-12-03" }) }
+	noKind.properties["구분"] = { type: "select", select: null } as any
+	const otherCls = { ...ev("e-other", { name: "다른 반 보충", start: "2026-12-04", cls: ["cZ"] }) }
+	otherCls.properties["구분"] = { type: "select", select: null } as any
+	const nov = ev("e-nov", { name: "11월 일정", start: "2026-11-28" })
+	const pages: Record<string, any> = { box, lA, lC, rA, rC, s1: { id: "s1", properties: { "학교": rel("sch1"), "학년": rel() } }, s2: { id: "s2", properties: { "학교": rel(), "학년": rel() } } }
+	const q = (ds: string, filter: any) => {
+		if (ds === "letters") return filter?.relation?.contains === "box" ? [pages.lA, pages.lC] : []
+		if (ds === "events") return relFilter(filter) === "" ? [xmas, late, sch1, sch2, noKind, otherCls, nov] : []
+		return []
+	}
+	const c = mock(pages, q)
+	const r = await m.refetchMailboxEvents("box")
+	const ids = (id: string) => c.updates.filter((u) => u.id === id && u.props["학원 일정"]).map((u) => u.props["학원 일정"].relation.map((x: any) => x.id).sort())
+	eq(ids("lA"), [["e-late", "e-sch1", "e-xmas"]])
+	eq(ids("lC"), [["e-late", "e-xmas"]])
+	eq([r.letters, r.changed, r.events, r.skipped], [2, 2, 3, ["12/3(목) 재량휴원일"]])
+	eq(m.refetchNote(r), "가정통신문 2장 · 넣은 일정 3개 · 고친 장 2 · 세부 구분 비어 빠짐: 12/3(목) 재량휴원일")
+	// 학원 일정 말고는 쓰지 않음(발송 상태·전송 내역·보내기 없음)
+	eq(c.updates.every((u) => Object.keys(u.props).join() === "학원 일정"), true)
+	eq([c.sends.length, c.logs.length, c.enq.length], [0, 0, 0])
+	// 다시 눌러도 같음: 쓰기 없음
+	const c2 = mock(pages, q)
+	const r2 = await m.refetchMailboxEvents("box")
+	eq([c2.updates.length, r2.changed, r2.events], [0, 0, 3])
+	eq(m.refetchNote(r2).startsWith("가정통신문 2장 · 넣은 일정 3개 · 바뀐 것 없음"), true)
+})
+
+Deno.test("261125 발송함 [일정 다시 가져오기]: 가정통신문 발송함 아님 · 가정통신문 없음은 막고, 고르기 규칙은 생성·보내기와 같다", async () => {
+	const box = (kind: string) => ({ id: "b", properties: { "구분": { type: "select", select: { name: kind } }, "기간": date("2026-12-01", "2026-12-31"), "클래스": rel("cA") } })
+	for (const [kind, want] of [["수강료", "구분이 가정통신문인 발송함에서만"], ["가정통신문", "가정통신문이 없어요"]]) {
+		mock({ b: box(kind) }, () => [])
+		let msg = ""
+		try { await m.refetchMailboxEvents("b") } catch (e) { msg = (e as Error).message; eq(e instanceof m.LetterBlocked, true) }
+		eq(msg.includes(want), true)
+	}
+	// pickUnlinked: 학원 전체 + 학교·학년(채운 칸 모두 맞을 때), 다른 학교 · 학교 맞고 학년 다름 · 반 일정은 뺌, 다른 달 · 비공개 뺌
+	const rows = [
+		ev("a", { name: "전체", start: "2026-12-01" }),
+		ev("b", { name: "우리 학교", start: "2026-12-02", school: ["S"] }),
+		ev("c", { name: "우리 학교 다른 학년", start: "2026-12-03", school: ["S"], grade: ["G9"] }),
+		ev("d", { name: "우리 학년", start: "2026-12-04", grade: ["G1"] }),
+		ev("e", { name: "다른 학교", start: "2026-12-05", school: ["T"] }),
+		ev("f", { name: "반", start: "2026-12-06", cls: ["c1"] }),
+		ev("g", { name: "다른 달", start: "2027-01-02" }),
+	]
+	eq(m.pickUnlinked(rows, "S", "G1", "2026-12").map((e: any) => e.id), ["a", "b", "d"])
+	eq(m.pickUnlinked(rows, undefined, undefined, "2026-12").map((e: any) => e.id), ["a"])
+})

@@ -16,6 +16,7 @@ import { DS_REGISTRATION, DS_SCHEDULE_EVENT, DS_TUITION, NOTION_API, PROP_LAST_E
 import { enqueueSync } from "./syncQueue.ts"
 import { markDone, markError, markRunning, type StatusSpec } from "./statusTracking.ts"
 import { isParentPublicEvent } from "./scheduleVisibility.ts"
+import { eventKind } from "./scheduleCategory.ts"
 import { inPeriodRegistration, resolveBatchDataSourceId, seoulDay, studentNameOf } from "./classReportPlan.ts"
 import { eventLine, inMonth, isAcademyWide, monthFilter, monthLabel, nextMonthKey, type Section, sectionListText, sectionOf } from "./scheduleNotice.ts"
 import { noteText } from "./lessonNotice.ts"
@@ -196,19 +197,33 @@ export async function unlinkedMonthEvents(studentId: string, month: string): Pro
 	const gradeId = relIds(st?.properties?.["학년"])[0]
 	const q = eventQuery(month)
 	const [academy, school, grade] = await Promise.all([
-		q(null).then((rows) => rows.filter(isAcademyWide)),
+		q(null),
 		schoolId ? q({ prop: "학교", id: schoolId }) : Promise.resolve([]),
 		gradeId ? q({ prop: "학년", id: gradeId }) : Promise.resolve([]),
 	])
-	const schoolOk = (e: any) => {
-		const sch = relIds(e?.properties?.["학교"]).map(key), grd = relIds(e?.properties?.["학년"]).map(key)
-		if (sch.length && !(schoolId && sch.includes(key(schoolId)))) return false
-		if (grd.length && !(gradeId && grd.includes(key(gradeId)))) return false
-		return true
-	}
+	return pickUnlinked([...academy, ...school, ...grade], schoolId, gradeId, month)
+}
+
+// (261125) 연결 안 된 일정 고르기 한 곳. rows = 그 달 일정 후보(조회 결과를 합친 것 또는 그 달 공개 일정 전부).
+// 학원 전체(클래스·학생·학교·학년 모두 빔) + 학교·학년이 학생 것과 맞는 일정(학교·학년 중 비지 않은 칸은 모두 맞아야 함).
+// 같은 일정은 한 번, rows 순서대로. 가정통신문 생성·보내기·발송함 [일정 다시 가져오기]가 같은 규칙을 쓴다.
+export function pickUnlinked(rows: any[], schoolId: string | undefined, gradeId: string | undefined, month: string): any[] {
+	const sch = schoolId ? key(schoolId) : "", grd = gradeId ? key(gradeId) : ""
 	const byId = new Map<string, any>()
-	for (const e of [...academy, ...[...school, ...grade].filter(schoolOk)]) if (showable(e, month)) byId.set(key(e.id), e)
+	for (const e of rows) {
+		if (!showable(e, month)) continue
+		if (isAcademyWide(e) || schoolGradeFits(e, sch, grd)) byId.set(key(e.id), e)
+	}
 	return Array.from(byId.values())
+}
+// 학교·학년 일정이 그 학생 것인가: 둘 중 하나는 학생 것과 같고, 채워진 칸은 모두 학생 것과 같다.
+function schoolGradeFits(e: any, sch: string, grd: string): boolean {
+	const es = relIds(e?.properties?.["학교"]).map(key), eg = relIds(e?.properties?.["학년"]).map(key)
+	const hit = (!!sch && es.includes(sch)) || (!!grd && eg.includes(grd))
+	if (!hit) return false
+	if (es.length && !(sch && es.includes(sch))) return false
+	if (eg.length && !(grd && eg.includes(grd))) return false
+	return true
 }
 
 // 그 학생의 그 달 학부모 공개 일정(리포트와 같은 규칙): 학생 개인 + 다니는 반 전부 + 연결 안 된 일정(위). 같은 일정은 한 번만,
@@ -407,6 +422,86 @@ export async function processLetterCreateRegItem(p: CreateRegPayload): Promise<v
 		if (p.last) await deps.markError(p.classId, CLASS_LETTER_GEN_STATUS_SPEC, message).catch(() => {})
 		throw err
 	}
+}
+
+// ── 2-1) 발송함 [일정 다시 가져오기] (261125) ──────────────────────────────────────
+// 가정통신문 발송함(반 × 달)에 묶인 가정통신문마다 '학원 일정'을 그 달 연결 안 된 일정으로 다시 맞춘다(만들 때·보낼 때와 같은 규칙,
+// bundleUnlinked). 늦게 넣거나 빠진 학원 전체·학교·학년 일정을 한 번에 넣는 버튼이다. 보내지 않는다(발송 상태·전송 내역 그대로).
+// 학생·반에 연결된 일정은 노션 수식이 모으므로 여기서 하지 않는다.
+// 결과에는 그 달 학부모 공개인데 종류(세부 구분, 옛 구분)를 몰라 빠진 일정 중 이 발송함 학생에게 걸린 것을 이름으로 돌려준다.
+export type RefetchResult = { letters: number; changed: number; events: number; skipped: string[] }
+const REFETCH_PARALLEL = 3
+
+// 그 달 공개·숨김 아님인데 종류가 비어 학부모에게 안 나가는 일정 중 이 학생들·이 반에 걸린 것.
+export function noKindEvents(rows: any[], month: string, who: { classIds: string[]; studentIds: string[]; schools: { sch: string; grd: string }[] }): any[] {
+	const cls = new Set(who.classIds.map(key)), stu = new Set(who.studentIds.map(key))
+	const byId = new Map<string, any>()
+	for (const e of rows) {
+		const p = e?.properties
+		if (!alive(e) || p?.["숨김"]?.checkbox !== false || p?.["학부모 공개"]?.checkbox !== true || eventKind(e) !== "") continue
+		if (!inMonth(eventLine(e)?.day ?? null, month)) continue
+		const mine = isAcademyWide(e) ||
+			relIds(p?.["클래스"]).some((id) => cls.has(key(id))) ||
+			relIds(p?.["학생"]).some((id) => stu.has(key(id))) ||
+			who.schools.some((s) => schoolGradeFits(e, s.sch, s.grd))
+		if (mine) byId.set(key(e.id), e)
+	}
+	return Array.from(byId.values()).sort((a, b) => (eventLine(a)?.day ?? "").localeCompare(eventLine(b)?.day ?? ""))
+}
+
+export async function refetchMailboxEvents(mailboxId: string): Promise<RefetchResult> {
+	const deps = monthlyDeps
+	const box: any = await deps.getPage(mailboxId)
+	if (!alive(box)) throw new LetterBlocked("발송함을 찾지 못했어요(지웠거나 연동에 공유되지 않음).")
+	if (String(box?.properties?.[PROP_MAILBOX_KIND]?.select?.name ?? "") !== KIND_MONTHLY) throw new LetterBlocked("[일정 다시 가져오기]는 구분이 가정통신문인 발송함에서만 눌러요.")
+	const boxMonth = String(seoulDay(box?.properties?.[PROP_MAILBOX_PERIOD]?.date?.start) ?? "").slice(0, 7)
+	if (!boxMonth) throw new LetterBlocked("발송함 '기간'이 비어 있어요.")
+	const letters = (await deps.queryAllPages(await deps.letterDataSourceId(), { property: PROP_LETTER_MAILBOX, relation: { contains: mailboxId } })).filter(alive)
+	if (!letters.length) throw new LetterBlocked("이 발송함에 가정통신문이 없어요. 클래스 [가정통신문 생성]을 먼저 눌러 주세요.")
+	const monthRows = new Map<string, any[]>()
+	const rowsOf = async (month: string) => {
+		if (!monthRows.has(month)) monthRows.set(month, await eventQuery(month)(null))
+		return monthRows.get(month)!
+	}
+	await rowsOf(boxMonth)
+	const put = new Set<string>(), studentIds: string[] = [], schools: { sch: string; grd: string }[] = [], failed: string[] = []
+	let changed = 0
+	const one = async (letter: any) => {
+		try {
+			const month = String(seoulDay(letter?.properties?.[PROP_LETTER_PERIOD]?.date?.start) ?? "").slice(0, 7) || boxMonth
+			const regId = relIds(letter?.properties?.[PROP_LETTER_REG])[0]
+			if (!regId) throw new Error("등록 연결 없음")
+			const reg: any = await deps.getPage(regId)
+			const studentId = relIds(reg?.properties?.["학생정보"])[0]
+			if (!studentId) throw new Error("등록에 학생 연결 없음")
+			const st: any = await deps.getPage(studentId)
+			const schoolId = relIds(st?.properties?.["학교"])[0], gradeId = relIds(st?.properties?.["학년"])[0]
+			studentIds.push(studentId)
+			schools.push({ sch: schoolId ? key(schoolId) : "", grd: gradeId ? key(gradeId) : "" })
+			const events = pickUnlinked(await rowsOf(month), schoolId, gradeId, month)
+			const before = relIds(letter?.properties?.[PROP_LETTER_EVENTS]).map(key).sort().join(",")
+			await bundleUnlinked(letter, studentId, month, events)
+			if (events.map((e: any) => key(e.id)).sort().join(",") !== before) changed++
+			for (const e of events) put.add(key(e.id))
+		} catch (err) {
+			console.warn("[letter-refetch] 가정통신문 건너뜀:", letter?.id, (err as Error).message)
+			failed.push(anyTitleText(letter).trim() || String(letter?.id ?? ""))
+		}
+	}
+	for (let i = 0; i < letters.length; i += REFETCH_PARALLEL) await Promise.all(letters.slice(i, i + REFETCH_PARALLEL).map(one))
+	if (failed.length) throw new Error(`가정통신문 ${letters.length}장 중 ${failed.length}장을 고치지 못했어요(${failed.slice(0, 3).join(", ")}${failed.length > 3 ? " 외" : ""}). 다시 누르면 남은 장만 바뀌어요`)
+	const skipped = noKindEvents(await rowsOf(boxMonth), boxMonth, { classIds: relIds(box?.properties?.[PROP_MAILBOX_CLASS]), studentIds, schools })
+		.map((e) => eventLine(e)?.line ?? (textOf(e?.properties?.["이름"]?.title).trim() || "이름 없음"))
+	return { letters: letters.length, changed, events: put.size, skipped }
+}
+
+// 요청 결과 한 줄(160자 안): "가정통신문 3장 · 넣은 일정 2개 · 고친 장 1 · 세부 구분 비어 빠짐: 12/3(목) 재량휴원일"
+export function refetchNote(r: RefetchResult): string {
+	const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + "…" : s)
+	const head = `가정통신문 ${r.letters}장 · 넣은 일정 ${r.events}개 · ${r.changed ? `고친 장 ${r.changed}` : "바뀐 것 없음"}`
+	if (!r.skipped.length) return head
+	const names = r.skipped.slice(0, 3).map((s) => clip(s, 24)).join(", ") + (r.skipped.length > 3 ? ` 외 ${r.skipped.length - 3}개` : "")
+	return `${head} · 세부 구분 비어 빠짐: ${names}`
 }
 
 // ── 3) 가정통신문 보내기(noticeQueue kind "letter"가 부른다) ──────────────────────────

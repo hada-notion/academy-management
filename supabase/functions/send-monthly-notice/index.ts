@@ -5,6 +5,9 @@
 //                     같은 학생의 그 달 다른 반 수강료와 "같은 달 수강료"로 잇는다. 상태는 클래스 "수강료 생성 상태".
 //   /create-letter  : 클래스 [가정통신문 생성] — 클래스 "안내 기간"의 달. 반 가정통신문 발송함·등록마다 가정통신문을 만들고 "같은 달 가정통신문"
 //                     으로 잇고 연결 안 된 일정을 "학원 일정"에 넣는다. 상태는 클래스 "가정통신문 생성 상태".
+//   /refetch-events : 발송함 [일정 다시 가져오기](261125, 동작 mailbox-letter-events) — 가정통신문 발송함의 가정통신문마다 "학원 일정"을
+//                     그 달 연결 안 된 일정으로 다시 맞춘다(보내지 않음). 바로 처리하고 200 + note(요청 결과에 붙는 한 줄).
+//                     막힌 경우(가정통신문 발송함 아님 · 기간 비어 있음 · 가정통신문 없음) 400, 일부 장 실패 502(다시 누르면 남은 장만).
 //   /queue          : 가정통신문 DB 자동화("안내문 전송 상태"가 ⚪ 대기) → 큐(notice, kind letter). 수강료 /queue와 같다.
 // 이미 대기열·작업 중이면 두 번 넣지 않는다.
 import { authorizeKey, securityEnabled } from "../_shared/adminSecurity.ts"
@@ -20,6 +23,9 @@ import {
 	CLASS_LETTER_GEN_STATUS_SPEC,
 	TARGET_LETTER_CREATE_CLASS,
 	TARGET_MONTHLY_CREATE_CLASS,
+	LetterBlocked,
+	refetchMailboxEvents,
+	refetchNote,
 } from "../_shared/monthlyNotice.ts"
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } })
@@ -49,8 +55,21 @@ Deno.serve(async (req: Request) => {
 		wakeSyncQueueWorker()
 		return respondAccepted({ pageId: queuedId, queued: true })
 	}
+	if (route === "refetch-events") {
+		const boxId = extractPageId(body)
+		if (!boxId) return json({ error: "pageId를 찾을 수 없음" }, 400)
+		try {
+			const r = await refetchMailboxEvents(boxId)
+			console.log(`[send-monthly-notice] refetch-events box=${boxId} letters=${r.letters} changed=${r.changed} events=${r.events} skipped=${r.skipped.length}`)
+			return json({ ok: true, ...r, note: refetchNote(r) })
+		} catch (err) {
+			const blocked = err instanceof LetterBlocked
+			console.error("[send-monthly-notice] refetch-events:", (err as Error).message)
+			return json({ ok: false, error: (err as Error).message }, blocked ? 400 : 502)
+		}
+	}
 	const r = ROUTES[route]
-	if (!r) return json({ error: `주소 끝에 ${Object.keys(ROUTES).map((k) => "/" + k).join(" · ")} 중 하나를 붙여 주세요.` }, 400)
+	if (!r) return json({ error: `주소 끝에 ${[...Object.keys(ROUTES), "refetch-events", "queue"].map((k) => "/" + k).join(" · ")} 중 하나를 붙여 주세요.` }, 400)
 	const pageId = extractPageId(body)
 	if (!pageId) return json({ error: "pageId를 찾을 수 없음" }, 400)
 	try {
