@@ -169,7 +169,7 @@ const relFilter = (filter: any) => {
 	return f ? `${f.property}:${f.relation.contains}` : ""
 }
 
-Deno.test("v2.8.0 항목 148 [가정통신문 생성]: 그 달 발송함 하나에 반이 쌓이고(클래스), 학생은 한 장에 반 등록이 더해짐, 학원 일정은 만들 때 한 번에", async () => {
+Deno.test("v2.8.0 항목 148 [월간 안내 생성]: 그 달 발송함 하나에 반이 쌓이고(클래스), 학생은 한 장에 반 등록이 더해짐, 학원 일정은 만들 때 한 번에", async () => {
 	const rA = reg("rA", { student: "s1", name: "테스트학생", cls: "cA", clsName: "수학반" })
 	const rB = reg("rB", { student: "s1", name: "테스트학생", cls: "cB", clsName: "영어반" })
 	const rC = reg("rC", { student: "s2", name: "예시학생", cls: "cB", clsName: "영어반" })
@@ -351,7 +351,7 @@ Deno.test("261125 발송함 [일정 다시 가져오기]: 가정통신문 발송
 	eq(m.pickUnlinked(rows, undefined, undefined, "2026-12").map((e: any) => e.id), ["a"])
 })
 
-Deno.test("v2.8.0 항목 150 [가정통신문 생성] + 안내 구분 월별 학습계획: 반 × 달 발송함 하나(다시 눌러도 하나), 학생 장·큐 없음", async () => {
+Deno.test("v2.8.0 항목 150 [월간 안내 생성] + 안내 구분 월별 학습계획: 반 × 달 발송함 하나(다시 눌러도 하나), 학생 장·큐 없음", async () => {
 	const sel = (s: string) => ({ type: "select", select: s ? { name: s } : null })
 	const pages: Record<string, any> = { cP: { id: "cP", properties: { "클래스명": title("중1 수학"), "안내 구분": sel("월별 학습계획"), "마지막 오류": rt("") } } }
 	const boxes: any[] = []
