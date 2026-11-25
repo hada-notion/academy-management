@@ -77,6 +77,7 @@ type Prepared = {
 	clearBulkSelect: boolean
 	// 보낸 뒤 ✅ 완료와 함께 쓸 칸(진도 평가: 안내 일시)
 	doneExtra?: Record<string, unknown>
+	afterSent?: () => Promise<void>
 }
 
 const plain = (prop: any): string => {
@@ -254,6 +255,7 @@ async function prepareLetter(page: any): Promise<Prepared> {
 		primaryPhone: "", // 가정통신문에는 연락처 롤업이 없다 → 우선 연락 대상이면 등록을 한 번 읽는다
 		variables: () => built.variables,
 		log: { letterId: page.id, periodStart: built.period.start, periodEnd: built.period.end },
+		afterSent: built.afterSent,
 		clearBulkSelect: false,
 	}
 }
@@ -337,6 +339,7 @@ export async function processNoticeQueueItem(payload: NoticePayload): Promise<vo
 		await finish(kind, String(sib.id), "✅ 완료", null, bulkReset)
 	}
 	// (v2.8.0) 가정통신문: 보낸 달이 리포트 홈 목록에 바로 보이도록 같은 달 장의 등록 리포트를 새로 만든다. 실패해도 발송은 이미 끝났다.
+	if (prep.afterSent) await prep.afterSent().catch((err: unknown) => console.warn("[notice] 보낸 뒤 정리 건너뜀:", pageId, extractErrorMessage(err)))
 	if (kind === "letter") {
 		const regIds = new Set([prep.registrationId, ...siblings.map((sib: any) => getRelationFirstId(sib, "등록") ?? prep.registrationId)])
 		for (const id of regIds) await noticeDeps.refresh(id).catch((err: unknown) => console.warn("[notice] 가정통신문 리포트 최신화 건너뜀:", id, extractErrorMessage(err)))

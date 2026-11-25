@@ -14,6 +14,7 @@ import { getRollupText, syncStudentReport } from "./alimtalkShared.ts"
 import { anyTitleText, createPage, fetchWithRetry, fullRelationIds, getPage, notionHeaders, queryAllPages, relIds, updatePageProperties } from "./notionClient.ts"
 import { DS_REGISTRATION, DS_SCHEDULE_EVENT, DS_TUITION, NOTION_API, PROP_LAST_ERROR } from "./constants.ts"
 import { enqueueSync } from "./syncQueue.ts"
+import { letterMemo } from "./letterMemo.ts"
 import { markDone, markError, markRunning, type StatusSpec } from "./statusTracking.ts"
 import { isParentPublicEvent } from "./scheduleVisibility.ts"
 import { eventKind } from "./scheduleCategory.ts"
@@ -109,6 +110,7 @@ export const monthlyDeps = {
 	markRunning: (id: string, spec: StatusSpec) => markRunning(id, spec),
 	markDone: (id: string, spec: StatusSpec) => markDone(id, spec),
 	markError: (id: string, spec: StatusSpec, message: string) => markError(id, spec, message),
+	memo: letterMemo,
 }
 
 const inMonthReg = (reg: any, month: string) => alive(reg) && inPeriodRegistration(reg, { kind: "", className: "", ...monthRange(month) })
@@ -348,17 +350,70 @@ export async function processMonthlyCreateRegItem(p: CreateRegPayload): Promise<
 }
 
 // ── 2) 클래스 [가정통신문 생성] ─────────────────────────────────────────────────
-// 수강료와 같은 모양: 반 가정통신문 발송함을 찾거나 만들고, 그 달 다니는 등록마다 큐.
+// (v2.8.0 항목 148, 261125 대표) 그 달 발송함 하나 → 학생당 한 장. 반마다 눌러도 같은 달 발송함에 반이 더해지고(`클래스`),
+// 학생은 그 달 한 장에 이 반 등록이 더해진다(`등록`). 클래스 `요청` = class-letter-create를 여러 줄 한꺼번에 바꿔도 같은 길.
+// 큐는 한 번에 하나씩이라 두 반을 거의 같이 눌러도 차례로 돌고, 방금 만든 발송함·장은 표 letter_month_pages로 찾는다.
+// 그 반이 이미 든 옛 반별 발송함(반 × 달)이 있으면 그 반은 그대로 옛 발송함을 쓴다(이미 만든 장을 옮기지 않음).
+export const monthMailboxTitle = (month: string) => `${KIND_MONTHLY} ${month.slice(2, 4)}.${month.slice(5, 7)}`
+export const PROP_CLASS_LETTER_NOTE = "가정통신문 전달사항"
+// 가정통신문(학원) DB: 보낼 때 그때 반별 전달사항을 박아 둔다(리포트가 먼저 읽음, 반 칸은 보낸 뒤 비움).
+export const PROP_LETTER_SENT_NOTE = "보낸 전달사항"
+const PROP_MAILBOX_RESULT = "요청 결과"
+const isMonthMailbox = (box: any, month: string) => alive(box) && anyTitleText(box).trim() === monthMailboxTitle(month) &&
+	samePeriod(box, PROP_MAILBOX_PERIOD, monthRange(month))
+
+// 그 달 가정통신문 발송함: 이 반이 든 것(옛 반별 또는 이미 더한 달 발송함) → 기억 표 → 이름·기간이 맞는 달 발송함 → 새로 만듦.
+export async function findMonthMailbox(classId: string, month: string): Promise<any> {
+	const deps = monthlyDeps
+	const own = await findClassMailbox(classId, month, null, KIND_MONTHLY)
+	if (own) return own
+	const memo = await deps.memo.get(month, "box")
+	if (memo) {
+		const box: any = await deps.getPage(memo).catch(() => null)
+		if (isMonthMailbox(box, month)) return box
+	}
+	const ds = await deps.batchDataSourceId()
+	const found = (await deps.queryAllPages(ds, { property: PROP_MAILBOX_KIND, select: { equals: KIND_MONTHLY } })).find((b: any) => isMonthMailbox(b, month))
+	const box = found ?? await deps.createPage(ds, {
+		[PROP_MAILBOX_TITLE]: { title: [{ text: { content: monthMailboxTitle(month) } }] },
+		[PROP_MAILBOX_KIND]: { select: { name: KIND_MONTHLY } },
+		[PROP_MAILBOX_PERIOD]: { date: { start: monthRange(month).start, end: monthRange(month).end } },
+		[PROP_MAILBOX_CLASS]: { relation: [{ id: classId }] },
+	})
+	await deps.memo.put(month, "box", "", String(box.id), !!memo)
+	return box
+}
+
+// relation 칸에 id를 더한다(이미 있으면 쓰지 않음). 25개 넘는 관계도 빠지지 않게 전부 읽는다.
+async function addRelation(page: any, prop: string, id: string): Promise<boolean> {
+	const deps = monthlyDeps
+	const have = (relIds(page?.properties?.[prop]).length >= 25 || page?.properties?.[prop]?.has_more) ? await deps.fullRelationIds(page, prop) : relIds(page?.properties?.[prop])
+	if (have.map(key).includes(key(id))) return false
+	await deps.update(String(page.id), { [prop]: { relation: [...have, id].map((x) => ({ id: x })) } })
+	return true
+}
+
+// 그 달 일정(학원 전체·학교·학년 후보)을 한 번만 읽는다. 같은 큐 실행 안의 학생들이 같이 쓴다(2분).
+const monthRowsCache = new Map<string, { at: number; rows: Promise<any[]> }>()
+function monthRows(month: string): Promise<any[]> {
+	const hit = monthRowsCache.get(month)
+	if (hit && Date.now() - hit.at < 120_000) return hit.rows
+	const rows = eventQuery(month)(null)
+	rows.catch(() => monthRowsCache.delete(month))
+	monthRowsCache.set(month, { at: Date.now(), rows })
+	return rows
+}
+
 export async function processLetterCreateClassItem(p: CreateClassPayload): Promise<void> {
 	const deps = monthlyDeps
 	const spec = CLASS_LETTER_GEN_STATUS_SPEC
 	try {
 		await deps.markRunning(p.classId, spec)
-		const cls: any = await deps.getPage(p.classId)
 		const regs = (await deps.queryAllPages(DS_REGISTRATION, { property: "클래스", relation: { contains: p.classId } })).filter((r: any) => inMonthReg(r, p.month))
 		console.log(`[letter-create] class=${p.classId} ${p.month} 대상 등록 ${regs.length}`)
 		if (!regs.length) return await deps.markError(p.classId, spec, `${monthLabel(p.month)}에 이 반을 다니는 학생이 없습니다.`)
-		const mailbox = await findClassMailbox(p.classId, p.month, { className: anyTitleText(cls).trim() || "클래스" }, KIND_MONTHLY)
+		const mailbox = await findMonthMailbox(p.classId, p.month)
+		await addRelation(mailbox, PROP_MAILBOX_CLASS, p.classId)
 		const mailboxId = String(mailbox.id)
 		for (let i = 0; i < regs.length; i++) {
 			const item: CreateRegPayload = { classId: p.classId, month: p.month, regId: String(regs[i].id), amount: null, mailboxId, ...(i === regs.length - 1 ? { last: true } : {}) }
@@ -388,8 +443,28 @@ async function bundleUnlinked(letter: any, studentId: string, month: string, giv
 	return events
 }
 
-// 등록 1건: 그 등록의 그 달 가정통신문이 없으면 만들어 반 발송함에 잇고(있으면 빈 발송함만 연결), 같은 학생의 그 달 다른 반
-// 가정통신문과 '같은 달 가정통신문'으로 서로 잇고, '학원 일정'을 넣는다. 다시 해도 같다.
+const mailboxOf = (letter: any) => relIds(letter?.properties?.[PROP_LETTER_MAILBOX])[0] ?? ""
+const sentLetter = (letter: any) => String(letter?.properties?.["안내문 전송 상태"]?.select?.name ?? "") === "✅ 완료"
+
+// 이 발송함에 있는 그 학생의 그 달 장: 기억 표 → 그 학생 그 달 등록들이 든 장 중 이 발송함 것.
+async function findStudentLetter(studentId: string, month: string, mailboxId: string, regId: string): Promise<any | null> {
+	const deps = monthlyDeps
+	const memo = await deps.memo.get(month, "student", key(studentId))
+	if (memo) {
+		const page: any = await deps.getPage(memo).catch(() => null)
+		if (alive(page) && key(mailboxOf(page)) === key(mailboxId)) return page
+	}
+	const regIds = new Set([key(regId), ...(await studentRegsInMonth(studentId, month)).map((r: any) => key(r.id))])
+	for (const id of regIds) {
+		const hit = (await monthLettersOfReg(id, month)).find((l: any) => key(mailboxOf(l)) === key(mailboxId))
+		if (hit) return hit
+	}
+	return null
+}
+
+// 등록 1건: 이 발송함에 그 학생의 그 달 장이 없으면 만들고(등록·발송함·학원 일정을 한 번에), 있으면 '등록'에 이 등록을 더한다.
+// 이미 보낸 장이면 알림톡은 다시 보내지 않는다(웹 리포트 본문에는 더한 반 전달사항이 보임) — 발송함 '요청 결과'에 수를 적는다.
+// 옛 반별 발송함이면 옛 방식(등록 × 달 한 장)처럼 그 등록의 장을 찾는다. 다시 해도 같다.
 export async function processLetterCreateRegItem(p: CreateRegPayload): Promise<void> {
 	const deps = monthlyDeps
 	try {
@@ -397,25 +472,35 @@ export async function processLetterCreateRegItem(p: CreateRegPayload): Promise<v
 		const studentId = relIds(reg?.properties?.["학생정보"])[0]
 		if (!studentId) {
 			await appendError(p.classId, `${studentNameOf(reg) || p.regId}: 등록에 학생이 연결되어 있지 않아 건너뜀`)
-		} else {
-			const range = monthRange(p.month)
-			let mine = await monthLettersOfReg(p.regId, p.month)
-			if (mine.length) {
-				for (const t of mine) {
-					if (p.mailboxId && !relIds(t?.properties?.[PROP_LETTER_MAILBOX]).length) await deps.update(String(t.id), { [PROP_LETTER_MAILBOX]: { relation: [{ id: p.mailboxId }] } })
-				}
-			} else {
-				mine = [await deps.createPage(await deps.letterDataSourceId(), {
-					[PROP_LETTER_TITLE]: { title: [{ text: { content: letterTitle(p.month, regNameOf(reg)) } }] },
+		} else if (p.mailboxId) {
+			const st: any = await deps.getPage(studentId).catch(() => null)
+			const events = pickUnlinked(await monthRows(p.month), relIds(st?.properties?.["학교"])[0], relIds(st?.properties?.["학년"])[0], p.month)
+			const letter = await findStudentLetter(studentId, p.month, p.mailboxId, p.regId)
+			if (!letter) {
+				const range = monthRange(p.month)
+				const created = await deps.createPage(await deps.letterDataSourceId(), {
+					[PROP_LETTER_TITLE]: { title: [{ text: { content: letterTitle(p.month, studentNameOf(reg) || regNameOf(reg)) } }] },
 					[PROP_LETTER_PERIOD]: { date: { start: range.start, end: range.end } },
 					[PROP_LETTER_REG]: { relation: [{ id: p.regId }] },
-					...(p.mailboxId ? { [PROP_LETTER_MAILBOX]: { relation: [{ id: p.mailboxId }] } } : {}),
-				})]
+					[PROP_LETTER_MAILBOX]: { relation: [{ id: p.mailboxId }] },
+					[PROP_LETTER_EVENTS]: { relation: events.slice(0, 100).map((e: any) => ({ id: String(e.id) })) },
+				})
+				await deps.memo.put(p.month, "student", key(studentId), String(created.id), true)
+			} else {
+				await deps.memo.put(p.month, "student", key(studentId), String(letter.id), true)
+				const added = await addRelation(letter, PROP_LETTER_REG, p.regId)
+				await bundleUnlinked(letter, studentId, p.month, events)
+				if (added && sentLetter(letter)) await deps.memo.put(p.month, "late", key(studentId), String(letter.id))
 			}
-			await linkSiblings(PROP_LETTER_SIBLINGS, monthLettersOfReg, studentId, p.month, p.regId, mine)
-			for (const t of mine) await bundleUnlinked(t, studentId, p.month)
 		}
-		if (p.last) await finishParent(p.classId, CLASS_LETTER_GEN_STATUS_SPEC)
+		if (p.last) {
+			const late = p.mailboxId ? await deps.memo.count(p.month, "late") : 0
+			if (late && p.mailboxId) {
+				await deps.update(p.mailboxId, { [PROP_MAILBOX_RESULT]: { rich_text: [{ text: { content: `보낸 뒤 더해진 학생 ${late}명 — 알림톡은 다시 보내지 않았어요(학부모 리포트 가정통신문에는 보여요)` } }] } })
+					.catch((err: unknown) => console.warn("[letter-create] 요청 결과 쓰기 건너뜀:", (err as Error).message))
+			}
+			await finishParent(p.classId, CLASS_LETTER_GEN_STATUS_SPEC)
+		}
 	} catch (err) {
 		const message = `가정통신문 생성 실패(다시 누르면 빠진 학생만 만듭니다): ${(err as Error).message}`
 		await appendError(p.classId, message)
@@ -511,6 +596,67 @@ export class LetterBlocked extends Error {}
 // 같은 학생의 그 달 반 이름(이름순, 같은 이름은 한 번). #{클래스}에 쓴다.
 const classNamesOf = (regs: any[]) => Array.from(new Set(regs.map(classNameOfReg).filter(Boolean))).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
 
+// (v2.8.0 항목 148) 반별 전달사항(새 방식): 그 장 '등록'의 반마다 클래스 '가정통신문 전달사항'(빈 반 빠짐, 반 이름순).
+// regs = 그 학생의 그 달 등록들(있으면 다시 읽지 않음).
+export type ClassNote = { classId: string; name: string; text: string }
+export async function classNotesOf(letter: any, regs: any[] = []): Promise<ClassNote[]> {
+	const deps = monthlyDeps
+	const byId = new Map(regs.map((r: any) => [key(r.id), r]))
+	const ids = relIds(letter?.properties?.[PROP_LETTER_REG]).length >= 25 ? await deps.fullRelationIds(letter, PROP_LETTER_REG) : relIds(letter?.properties?.[PROP_LETTER_REG])
+	const seen = new Set<string>()
+	const out: ClassNote[] = []
+	for (const id of ids) {
+		const reg: any = byId.get(key(id)) ?? await deps.getPage(id).catch(() => null)
+		const classId = relIds(reg?.properties?.["클래스"])[0]
+		if (!classId || seen.has(key(classId))) continue
+		seen.add(key(classId))
+		const cls: any = await deps.getPage(classId).catch(() => null)
+		const text = textOf(cls?.properties?.[PROP_CLASS_LETTER_NOTE]?.rich_text).trim()
+		if (text) out.push({ classId, name: classNameOfReg(reg) || anyTitleText(cls).trim() || "반", text })
+	}
+	return out.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+}
+// 알림톡 #{전달사항}: 반 하나면 문장만, 둘 이상이면 "🏛 반 이름" 아래 "  • 문구"(옛 letterNote와 같은 꼴).
+export function classNoteText(notes: ClassNote[]): string {
+	if (!notes.length) return noteText("")
+	if (notes.length === 1) return noteText(notes[0].text)
+	return notes.map((n) => `🏛 ${n.name}\n${BULLET}${noteText(n.text)}`).join("\n")
+}
+// '보낸 전달사항'에 박아 두는 꼴(늘 반 이름 머리글) ↔ 읽기. 리포트가 반마다 나눠 보인다.
+export const sentNoteText = (notes: { name: string; text: string }[]) => notes.map((n) => `🏛 ${n.name}\n${n.text}`).join("\n")
+export function parseSentNote(text: string): { name: string; text: string }[] {
+	const out: { name: string; text: string }[] = []
+	for (const line of String(text ?? "").split("\n")) {
+		if (line.startsWith("🏛 ")) out.push({ name: line.slice(2).trim(), text: "" })
+		else if (out.length) out[out.length - 1].text = [out[out.length - 1].text, line].filter(Boolean).join("\n")
+	}
+	return out.filter((n) => n.name && n.text.trim())
+}
+
+// 보낸 뒤: 장에 그때 전달사항을 박아 두고, 이 발송함에서 그 반 학생 장이 모두 보냄(✅)이면 그 반 칸을 비운다
+// (다음 달에 지난 글이 다시 나가지 않게). 실패해도 발송은 이미 끝났으므로 경고만 남긴다.
+export async function afterLetterSent(letter: any, notes: ClassNote[]): Promise<void> {
+	const deps = monthlyDeps
+	const letterId = String(letter.id)
+	await deps.update(letterId, { [PROP_LETTER_SENT_NOTE]: { rich_text: [{ text: { content: sentNoteText(notes).slice(0, 1900) } }] } })
+		.catch((err: unknown) => console.warn("[letter] 보낸 전달사항 쓰기 건너뜀:", (err as Error).message))
+	const mailboxId = mailboxOf(letter)
+	if (!notes.length || !mailboxId) return
+	const letters = (await deps.queryAllPages(await deps.letterDataSourceId(), { property: PROP_LETTER_MAILBOX, relation: { contains: mailboxId } }).catch(() => null))
+	if (!letters) return
+	for (const n of notes) {
+		try {
+			const regIds = new Set((await deps.queryAllPages(DS_REGISTRATION, { property: "클래스", relation: { contains: n.classId } })).map((r: any) => key(r.id)))
+			const waiting = letters.filter((l: any) => alive(l) && key(l.id) !== key(letterId) && !sentLetter(l) && relIds(l?.properties?.[PROP_LETTER_REG]).some((id) => regIds.has(key(id))))
+			if (waiting.length) continue
+			await deps.update(n.classId, { [PROP_CLASS_LETTER_NOTE]: { rich_text: [] } })
+			console.log(`[letter] ${n.name} 가정통신문 전달사항 비움(이 발송함 장 모두 보냄)`)
+		} catch (err) {
+			console.warn("[letter] 반 전달사항 비우기 건너뜀:", n.classId, (err as Error).message)
+		}
+	}
+}
+
 // (10/29 사용자) 전달사항: 같은 달 반마다 가정통신문 발송함의 '가정통신문 전달사항'(반 이름순). 가정통신문은 반 공지라
 // 학생 개인 메모는 넣지 않는다(개별 전달은 따로 메시지로). 하나뿐이면 문장만, 둘 이상이면 반마다 "🏛 반 이름" 줄 아래 "  • 문구".
 // (11/2 사용자) 예전 "  • (반 이름) …"은 솔라피가 첫 줄 앞 공백을 지워 들여쓰기가 어긋났다. 반 이름 줄이 이모지로 시작하면 맞는다. 모두 비면 없음. 문구마다 50자까지.
@@ -537,7 +683,7 @@ export async function letterNote(letter: any, regs: any[]): Promise<string> {
 // 월간 일정 안내 한 통의 변수. 보내기 직전에 '학원 일정'을 다시 넣고 페이지를 다시 읽어 (일정안내) 수식 값을 먼저 쓴다.
 // 수식이 없거나 비면 서버가 같은 규칙으로 계산한 값(학생·다니는 반 전부·연결 안 된 일정).
 // (10/29) 그 달 일정이 0건이어도 전달사항(이 장 메모·반 발송함 메모)이 있으면 보낸다(일정 구역 없이 전달사항만). 둘 다 없으면 LetterBlocked.
-export async function buildLetterNotice(letter: any): Promise<{ registrationId: string; title: string; period: { start: string; end: string }; variables: Record<string, string> }> {
+export async function buildLetterNotice(letter: any): Promise<{ registrationId: string; title: string; period: { start: string; end: string }; variables: Record<string, string>; afterSent?: () => Promise<void> }> {
 	const deps = monthlyDeps
 	const registrationId = relIds(letter?.properties?.[PROP_LETTER_REG])[0]
 	if (!registrationId) throw new LetterBlocked("이 가정통신문에 연결된 등록이 없습니다.")
@@ -560,8 +706,10 @@ export async function buildLetterNotice(letter: any): Promise<{ registrationId: 
 	// (11/2) 가정통신문 (일정안내) 수식은 (알림톡)으로 이름을 바꿨다. 예전 이름은 읽지 않는다.
 	const f = (name: string, fallback: string) => alimtalkVar(fresh, name, fallback)
 	const studentName = studentNameOf(reg)
-	const note = f("전달사항", await letterNote(fresh, regs))
-	if (!lines.length && (!note.trim() || note.trim() === NO_NOTE)) throw new LetterBlocked(`${monthLabel(month)} 학부모 공개 일정과 전달사항이 없어 보내지 않았습니다. 일정이나 발송함 가정통신문 전달사항을 넣은 뒤 [안내문 전송]을 누르세요.`)
+	// (v2.8.0 항목 148) 새 방식: 그 장 반들의 클래스 `가정통신문 전달사항`(수식은 옛 반 발송함 메모를 읽으므로 쓰지 않음). 없으면 옛 길.
+	const classNotes = await classNotesOf(fresh, regs)
+	const note = classNotes.length ? classNoteText(classNotes) : f("전달사항", await letterNote(fresh, regs))
+	if (!lines.length && (!note.trim() || note.trim() === NO_NOTE)) throw new LetterBlocked(`${monthLabel(month)} 학부모 공개 일정과 전달사항이 없어 보내지 않았습니다. 일정이나 클래스 가정통신문 전달사항을 넣은 뒤 [안내문 전송]을 누르세요.`)
 	return {
 		registrationId,
 		title: studentName || "월간 일정 안내",
@@ -579,5 +727,6 @@ export async function buildLetterNotice(letter: any): Promise<{ registrationId: 
 			"#{전달사항}": note,
 			"#{페이지ID}": `${Deno.env.get("REPORT_PATH") ?? "/academy-management/student_report.html"}?token=${await deps.token(registrationId)}`,
 		},
+		afterSent: () => afterLetterSent(fresh, classNotes),
 	}
 }

@@ -8,6 +8,7 @@ const rel = (...ids: string[]) => ({ type: "relation", relation: ids.map((id) =>
 const title = (s: string) => ({ type: "title", title: [{ plain_text: s }] })
 const rt = (s: string) => ({ type: "rich_text", rich_text: s ? [{ plain_text: s }] : [] })
 const date = (start: string | null, end: string | null = null) => ({ type: "date", date: start ? { start, end } : null })
+const textOfRt = (p: any) => (p?.rich_text ?? []).map((t: any) => t.plain_text ?? t.text?.content ?? "").join("")
 const fx = (s: string) => ({ type: "formula", formula: { type: "string", string: s } })
 const roll = (s: string) => ({ type: "rollup", rollup: { type: "array", array: [{ type: "rich_text", rich_text: [{ plain_text: s }] }] } })
 const reg = (id: string, o: { student: string; name: string; cls: string; clsName: string; since?: string; until?: string }) => ({ id, properties: {
@@ -18,10 +19,16 @@ const reg = (id: string, o: { student: string; name: string; cls: string; clsNam
 type Calls = { enq: any[]; created: any[]; updates: any[]; sends: any[]; logs: any[]; marks: string[] }
 function mock(pages: Record<string, any>, q: (ds: string, filter: any) => any[] = () => [], o: { sendThrows?: Error } = {}): Calls {
 	const c: Calls = { enq: [], created: [], updates: [], sends: [], logs: [], marks: [] }
+	const memo = new Map<string, string>()
 	let n = 0
 	Object.assign(deps, {
 		getPage: async (id: string) => { if (!(id in pages)) throw new Error(`unexpected page ${id}`); return pages[id] },
-		createPage: async (ds: string, props: any) => { const id = `new${++n}`; c.created.push({ ds, props }); pages[id] = { id, properties: props }; return pages[id] },
+		createPage: async (ds: string, props: any) => {
+			const id = `new${++n}`; c.created.push({ ds, props })
+			// 노션이 돌려주는 모양처럼 글에 plain_text를 붙인다.
+			const read = Object.fromEntries(Object.entries<any>(props).map(([k, v]) => [k, v?.title ? { type: "title", title: v.title.map((t: any) => ({ ...t, plain_text: t.text.content })) } : v]))
+			pages[id] = { id, properties: read }; return pages[id]
+		},
 		queryAllPages: async (ds: string, filter: any) => q(ds, filter),
 		// 쓴 값을 페이지에 반영한다(다른 발송함에서 다시 읽을 때 보낸 일시·체크가 보이게).
 		update: async (id: string, props: any) => {
@@ -43,6 +50,11 @@ function mock(pages: Record<string, any>, q: (ds: string, filter: any) => any[] 
 		markRunning: async (id: string) => { c.marks.push(`running:${id}`) },
 		markDone: async (id: string) => { c.marks.push(`done:${id}`) },
 		markError: async (id: string, _spec: any, msg: string) => { c.marks.push(`error:${id}:${msg}`) },
+		memo: {
+			get: async (mo: string, k: string, key = "") => memo.get(`${mo}/${k}/${key}`) ?? null,
+			put: async (mo: string, k: string, key: string, id: string, replace = false) => { const kk = `${mo}/${k}/${key}`; if (replace || !memo.has(kk)) memo.set(kk, id) },
+			count: async (mo: string, k: string) => [...memo.keys()].filter((x) => x.startsWith(`${mo}/${k}/`)).length,
+		},
 	})
 	return c
 }
@@ -157,43 +169,80 @@ const relFilter = (filter: any) => {
 	return f ? `${f.property}:${f.relation.contains}` : ""
 }
 
-Deno.test("v2.8.0 [가정통신문 생성]: 반 가정통신문 발송함을 찾거나 만들어 클래스에 잇고, 등록마다 가정통신문 한 장·같은 달 잇기·학원 일정(연결 안 된 일정)", async () => {
+Deno.test("v2.8.0 항목 148 [가정통신문 생성]: 그 달 발송함 하나에 반이 쌓이고(클래스), 학생은 한 장에 반 등록이 더해짐, 학원 일정은 만들 때 한 번에", async () => {
 	const rA = reg("rA", { student: "s1", name: "테스트학생", cls: "cA", clsName: "수학반" })
 	const rB = reg("rB", { student: "s1", name: "테스트학생", cls: "cB", clsName: "영어반" })
-	const cls = { id: "cA", properties: { "클래스명": title("수학반"), "마지막 오류": rt("") } }
-	// 1) 클래스: 발송함(구분 가정통신문) 만들고 클래스에 잇고 등록마다 큐(월간 수업 총량은 필요 없음)
-	const c1 = mock({ cA: cls }, (ds) => ds === "registrations" ? [rA] : [])
-	await m.processLetterCreateClassItem({ classId: "cA", month: "2026-11" })
-	eq(c1.created.map((x) => [x.props["이름"].title[0].text.content, x.props["구분"].select.name]), [["수학반 가정통신문 26.11", "가정통신문"]])
-	eq(c1.updates, [])
-	eq(c1.enq.map((e) => [e.target, e.payload.regId, e.payload.mailboxId, e.payload.last]), [["letter-create-reg", "rA", "new1", true]])
-	// 2) 등록: 가정통신문 생성(이름 = 등록 이름 없으면 학생 이름), 영어반 가정통신문과 서로 잇기, 학원 전체·같은 학교 일정만 학원 일정에
+	const rC = reg("rC", { student: "s2", name: "예시학생", cls: "cB", clsName: "영어반" })
 	const academy = ev("e-all", { name: "학원 설명회", start: "2026-11-14" })
 	const mySchool = ev("e-sch", { name: "중간고사", cat: "🏫 학사 일정", start: "2026-11-20", school: ["sch1"] })
 	const otherSchool = ev("e-oth", { name: "다른 학교 시험", cat: "🏫 학사 일정", start: "2026-11-21", school: ["sch9"] })
-	const classEv = ev("e-cls", { name: "보충", start: "2026-11-07", cls: ["cA"] })
-	const pages: Record<string, any> = { rA, rB, cA: cls, s1: { id: "s1", properties: { "학교": rel("sch1"), "학년": rel() } } }
-	const lettersOf: Record<string, any[]> = { rA: [], rB: [{ id: "lB", properties: { "기간": date("2026-11-01", "2026-11-30"), "등록": rel("rB"), "같은 달 가정통신문": rel(), "학원 일정": rel() } }] }
+	const pages: Record<string, any> = { rA, rB, rC, cA: { id: "cA", properties: { "마지막 오류": rt("") } }, cB: { id: "cB", properties: { "마지막 오류": rt("") } },
+		s1: { id: "s1", properties: { "학교": rel("sch1"), "학년": rel() } }, s2: { id: "s2", properties: { "학교": rel(), "학년": rel() } } }
+	// 노션 조회는 방금 만든 페이지를 못 잡는다(늦게 잡힘) — 기억 표로 찾아야 한다.
 	const q = (ds: string, filter: any) => {
-		if (ds === "registrations") return [rA, rB]
-		if (ds === "letters") return lettersOf[filter?.relation?.contains] ?? []
-		if (ds === "events") {
-			const r = relFilter(filter)
-			if (r === "") return [academy, mySchool, otherSchool, classEv]
-			if (r === "학교:sch1") return [mySchool]
-			return []
-		}
+		if (ds === "registrations") { const c = filter?.relation?.contains; return c === "cA" ? [rA] : c === "cB" ? [rB, rC] : c === "s1" ? [rA, rB] : [rC] }
+		if (ds === "events") return relFilter(filter) === "" ? [academy, mySchool, otherSchool] : []
 		return []
 	}
-	const c2 = mock(pages, q)
-	await m.processLetterCreateRegItem({ classId: "cA", month: "2026-11", regId: "rA", amount: null, mailboxId: "box-A", last: true })
-	const made = c2.created[0]
-	eq([made.ds, made.props["이름"].title[0].text.content, made.props["등록"].relation, made.props["알림톡 발송함"].relation, made.props["기간"].date], ["letters", "26.11 테스트학생 가정통신문", [{ id: "rA" }], [{ id: "box-A" }], { start: "2026-11-01", end: "2026-11-30" }])
-	const sib = new Map(c2.updates.filter((u) => u.props["같은 달 가정통신문"]).map((u) => [u.id, u.props["같은 달 가정통신문"].relation.map((r: any) => r.id)]))
-	eq([sib.get("new1"), sib.get("lB")], [["lB"], ["new1"]])
-	const events = c2.updates.find((u) => u.id === "new1" && u.props["학원 일정"])
-	eq(events?.props["학원 일정"].relation.map((r: any) => r.id).sort(), ["e-all", "e-sch"])
-	eq(c2.marks, ["done:cA"])
+	const c = mock(pages, q)
+	const run = async () => { for (let i = 0; i < c.enq.length; i++) if (c.enq[i].target === "letter-create-reg" && !c.enq[i].done) { c.enq[i].done = true; await m.processLetterCreateRegItem(c.enq[i].payload) } }
+	// 1) 수학반: 달 발송함 "가정통신문 26.11"(클래스 = 수학반) + 테스트학생 한 장
+	await m.processLetterCreateClassItem({ classId: "cA", month: "2026-11" })
+	await run()
+	eq(c.created.map((x) => x.ds), ["batches", "letters"])
+	eq([c.created[0].props["이름"].title[0].text.content, c.created[0].props["구분"].select.name, c.created[0].props["클래스"].relation], ["가정통신문 26.11", "가정통신문", [{ id: "cA" }]])
+	const made = c.created[1].props
+	eq([made["이름"].title[0].text.content, made["등록"].relation, made["알림톡 발송함"].relation, made["학원 일정"].relation.map((r: any) => r.id).sort()],
+		["26.11 테스트학생 가정통신문", [{ id: "rA" }], [{ id: "new1" }], ["e-all", "e-sch"]])
+	eq(c.updates.filter((u) => u.id === "new2"), [])
+	// 2) 영어반: 같은 발송함에 영어반이 더해지고, 테스트학생 장에 rB가 더해지고, 예시학생 장만 새로
+	await m.processLetterCreateClassItem({ classId: "cB", month: "2026-11" })
+	await run()
+	eq(c.created.length, 3)
+	eq(c.created[2].props["이름"].title[0].text.content, "26.11 예시학생 가정통신문")
+	eq(pages.new1.properties["클래스"].relation.map((r: any) => r.id), ["cA", "cB"])
+	eq(pages.new2.properties["등록"].relation.map((r: any) => r.id), ["rA", "rB"])
+	// 3) 다시 눌러도 같다(쓰기 없음)
+	const before = c.updates.length
+	await m.processLetterCreateClassItem({ classId: "cB", month: "2026-11" })
+	await run()
+	eq([c.created.length, c.updates.length], [3, before])
+	eq(c.marks.filter((x) => x.startsWith("done")), ["done:cA", "done:cB", "done:cB"])
+	// 4) 이미 보낸 장에 반이 더해지면 다시 보내지 않고 발송함에 한 줄
+	pages.new2.properties["등록"] = rel("rA")
+	pages.new2.properties["안내문 전송 상태"] = { type: "select", select: { name: "✅ 완료" } }
+	await m.processLetterCreateClassItem({ classId: "cB", month: "2026-11" })
+	await run()
+	eq(pages.new1.properties["요청 결과"].rich_text[0].plain_text.startsWith("보낸 뒤 더해진 학생 1명"), true)
+	eq(c.sends, [])
+})
+
+Deno.test("v2.8.0 항목 148 보내기: 반별 전달사항은 클래스 칸에서(반 이름 머리글), 보낸 뒤 장에 박아 두고 그 반 장이 모두 보냄이면 반 칸을 비움", async () => {
+	const rA = reg("rA", { student: "s1", name: "테스트학생", cls: "cA", clsName: "수학반" })
+	const rB = reg("rB", { student: "s1", name: "테스트학생", cls: "cB", clsName: "영어반" })
+	const rC = reg("rC", { student: "s2", name: "예시학생", cls: "cB", clsName: "영어반" })
+	const sel = (s: string) => ({ type: "select", select: s ? { name: s } : null })
+	const letter = { id: "l1", properties: { "기간": date("2026-11-01", "2026-11-30"), "등록": rel("rA", "rB"), "학원 일정": rel(), "알림톡 발송함": rel("box"), "같은 달 가정통신문": rel(), "안내문 전송 상태": sel("⚪ 대기") } }
+	const other = { id: "l2", properties: { "기간": date("2026-11-01", "2026-11-30"), "등록": rel("rC"), "알림톡 발송함": rel("box"), "안내문 전송 상태": sel("") } }
+	const pages: Record<string, any> = { rA, rB, rC, l1: letter, l2: other, s1: { id: "s1", properties: { "학교": rel(), "학년": rel() } },
+		cA: { id: "cA", properties: { "가정통신문 전달사항": rt("단원평가 3단원") } }, cB: { id: "cB", properties: { "가정통신문 전달사항": rt("교재 지참") } }, box: { id: "box", properties: { "가정통신문 안내 메모": rt("") } } }
+	const q = (ds: string, filter: any) => {
+		if (ds === "registrations") { const c = filter?.relation?.contains; return c === "cA" ? [rA] : c === "cB" ? [rB, rC] : [rA, rB] }
+		if (ds === "letters") return [pages.l1, pages.l2]
+		return []
+	}
+	const c = mock(pages, q)
+	const built = await m.buildLetterNotice(letter)
+	eq(built.variables["#{전달사항}"], "🏛 수학반\n  • 단원평가 3단원\n🏛 영어반\n  • 교재 지참")
+	pages.l1.properties["안내문 전송 상태"] = sel("✅ 완료")
+	await built.afterSent!()
+	eq(pages.l1.properties["보낸 전달사항"].rich_text[0].plain_text, "🏛 수학반\n단원평가 3단원\n🏛 영어반\n교재 지참")
+	// 수학반은 장이 모두 보냄 → 비움, 영어반은 예시학생 장이 아직 → 그대로
+	eq([textOfRt(pages.cA.properties["가정통신문 전달사항"]), textOfRt(pages.cB.properties["가정통신문 전달사항"])], ["", "교재 지참"])
+	eq(m.parseSentNote(pages.l1.properties["보낸 전달사항"].rich_text[0].plain_text), [{ name: "수학반", text: "단원평가 3단원" }, { name: "영어반", text: "교재 지참" }])
+	// 반 하나면 머리글 없이 문장만
+	eq(m.classNoteText([{ classId: "cB", name: "영어반", text: "교재 지참" }]), "교재 지참")
+	eq(c.sends, [])
 })
 
 Deno.test("v2.8.0 가정통신문 보내기 변수: 학원 일정을 다시 넣고 (일정안내) 수식 우선, 없으면 서버 계산(학생·두 반·연결 안 된 일정), 일정 0건이면 전달사항만, 둘 다 없으면 막음", async () => {
