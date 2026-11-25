@@ -1,7 +1,7 @@
 // All network calls are mocked. No live Notion/Supabase writes or secret values are used.
 for (const [key, value] of Object.entries({ NOTION_TOKEN: "test-only", ADMIN_SECRET: "test-only", SB_URL: "https://mock.supabase", SB_SERVICE_ROLE_KEY: "test-only", DATA_SOURCE_STUDY_ACTIVITY_ID: "activities", DATA_SOURCE_REPORT_ID: "reports", DATA_SOURCE_ATTENDANCE_ID: "attendance" })) Deno.env.set(key, value)
 const eq = (a: unknown, b: unknown) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`) }
-const { buildRegistrationDetail, reportModeOf, reportHideOf, hideOverview, hideDetail, standaloneEvalIso } = await import("./reportCacheBuilder.ts")
+const { buildRegistrationDetail, reportModeOf, reportHideOf, classAverageHiddenOf, hideOverview, hideDetail, standaloneEvalIso } = await import("./reportCacheBuilder.ts")
 
 Deno.test("v2.8.0 출석 없는 평가 날짜: 평가 기간 끝(하루면 그날), 서울 자정 ISO", () => {
 	eq(standaloneEvalIso("2026-10-12", "2026-10-18"), "2026-10-18T00:00:00+09:00")
@@ -15,6 +15,18 @@ Deno.test("v2.8.0 리포트 구성: 평가만이면 tests_only, 비었거나 칸
 	eq(reportModeOf({ properties: { "리포트 구성": { type: "select", select: { name: "전체" } } } }), "all")
 	eq(reportModeOf({ properties: { "리포트 구성": { type: "select", select: null } } }), "all")
 	eq(reportModeOf({ properties: {} }), "all")
+})
+
+Deno.test("v2.8.0 반 평균 숨김: 체크박스만·선택지만·둘 다·없음(OR), 선택지 반 평균은 숨김 종류·legacy에 영향 없음", () => {
+	const ms = (...names: string[]) => ({ type: "multi_select", multi_select: names.map((name) => ({ name })) })
+	const cb = (checkbox: boolean) => ({ type: "checkbox", checkbox })
+	eq(classAverageHiddenOf({ properties: { "반 평균 숨김": cb(true) } }), true)
+	eq(classAverageHiddenOf({ properties: { "반 평균 숨김": cb(false), "리포트 숨김": ms("시간표", "반 평균") } }), true)
+	eq(classAverageHiddenOf({ properties: { "반 평균 숨김": cb(true), "리포트 숨김": ms("반 평균") } }), true)
+	eq(classAverageHiddenOf({ properties: { "반 평균 숨김": cb(false), "리포트 숨김": ms("출결") } }), false)
+	eq(classAverageHiddenOf({ properties: {} }), false)
+	eq(reportHideOf({ properties: { "리포트 숨김": ms("반 평균") } }), { hide: [], legacy: false })
+	eq(reportHideOf({ properties: { "리포트 숨김": ms("반 평균", "평가") } }), { hide: ["평가"], legacy: false })
 })
 
 Deno.test("v2.8.0 리포트 숨김: 다중선택 그대로(순서 고정·모르는 값 버림), 비었고 옛 평가만이면 출결·학습(legacy)", () => {
