@@ -168,7 +168,7 @@ export async function requireAccess(req: Request, cors: Record<string, string>, 
 // 강사를 받는 다른 경로(class-room · textbook-api · school-api)의 읽기 동작. 그 밖 동작은 쓰기 — 그 경로 메뉴의 편집허용이 있어야 한다.
 export const ROUTE_READ_ACTIONS: Record<string, Set<string>> = {
 	"class-room": new Set(["routines", "teachers", "day", "days", "session", "classes", "class-sessions", "class-records", "range-records", "roster", "class-stats", "books", "activities", "record-body", "student", "makeup-waiting"]),
-	"textbook-api": new Set(["search", "cover-check", "detail", "parse", "kyobo-book", "library", "units", "series"]),
+	"textbook-api": new Set(["search", "cover-check", "units-fetch", "detail", "parse", "kyobo-book", "library", "units", "series"]),
 	"school-api": new Set(["meta", "search"]),
 }
 export const VIEW_ONLY_MESSAGE = "댓글 권한 메뉴라 보기만 할 수 있어요 — 고치려면 원장에게 노션 메뉴관리 편집허용을 요청하세요."

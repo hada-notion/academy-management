@@ -12,7 +12,7 @@
 
 import { NOTION_API, DS_PROGRESS_BOOK } from "./constants.ts"
 import { archivePage, fetchWithRetry, notionHeaders, queryAllPages, sendWithPropAliases, updatePageProperties } from "./notionClient.ts"
-import { cleanUnits, parseToc } from "./textbookToc.ts"
+import { cleanUnits, decodeEntities, parseToc, tocText } from "./textbookToc.ts"
 import { libraryKey, libraryProp } from "./libraryProp.ts"
 import { type Book, BookSourceError, isIsbn13, lookupIsbn, searchTitle } from "./bookSources.ts"
 import { libraryCopyReady, readBooks, readUnits, renameSeriesCopy, syncBookCopy, unitUses } from "./libraryCopy.ts"
@@ -558,9 +558,9 @@ async function realImage(url: string, probeKey: string, probeUrl: string, f: typ
 	return !!probe && !sameBytes(img, probe)
 }
 // 예스24 검색 결과(ISBN) → 상품 번호. 처음 요청은 쿠키를 심으며 메인으로 돌려보내므로 쿠키를 받아 한 번 더 부른다(요청 최대 2건).
-async function yes24Goods(isbn: string, f: typeof fetch): Promise<string | null> {
+// 예스24 HTML 한 장(쿠키를 심으며 돌려보내면 그 쿠키로 한 번 더). 실패면 null.
+async function yes24Html(url: string, f: typeof fetch): Promise<string | null> {
 	try {
-		const url = `https://www.yes24.com/Product/Search?domain=BOOK&query=${isbn}`
 		const headers: Record<string, string> = { "User-Agent": BROWSER_UA, "Accept": "text/html", "Accept-Language": "ko-KR,ko;q=0.9" }
 		let res = await f(url, { headers, redirect: "manual", signal: AbortSignal.timeout(8000) })
 		if (res.status >= 300 && res.status < 400) {
@@ -569,10 +569,15 @@ async function yes24Goods(isbn: string, f: typeof fetch): Promise<string | null>
 			if (!cookie.includes("=")) return null
 			res = await f(url, { headers: { ...headers, Cookie: cookie }, redirect: "manual", signal: AbortSignal.timeout(8000) })
 		}
-		if (!res.ok) return null
-		const ids = [...new Set([...(await res.text()).matchAll(/data-goods-no="(\d{4,12})"/g)].map((m) => m[1]))]
-		return ids.length === 1 ? ids[0] : null // 결과가 정확히 1건일 때만(ISBN 검색이라 같은 책)
+		if (!res.ok) { await res.body?.cancel(); return null }
+		return await res.text()
 	} catch { return null }
+}
+async function yes24Goods(isbn: string, f: typeof fetch): Promise<string | null> {
+	const html = await yes24Html(`https://www.yes24.com/Product/Search?domain=BOOK&query=${isbn}`, f)
+	if (html == null) return null
+	const ids = [...new Set([...html.matchAll(/data-goods-no="(\d{4,12})"/g)].map((m) => m[1]))]
+	return ids.length === 1 ? ids[0] : null // 결과가 정확히 1건일 때만(ISBN 검색이라 같은 책)
 }
 const yes24Image = (goods: string) => `https://image.yes24.com/goods/${goods}/XL`
 export async function coverCheck(isbn13: unknown, f: typeof fetch = fetch): Promise<CoverFound> {
@@ -591,4 +596,51 @@ export async function kyoboCoverOrNone(cover: string, f: typeof fetch = fetch): 
 	const m = KYOBO_PDT.exec(cover ?? "")
 	if (!m) return cover
 	try { const r = await coverCheck(m[1], f); return r.found && r.url ? r.url : "" } catch { return "" }
+}
+// 단원 가져오기(units-fetch, 항목 162): ISBN13 → 온라인 서점 목차 글. 교보문고(검색 목록에서 ISBN이 같은 상품번호 → kyobo-book과 같은 상품 정보 요청의 목차)
+// → 없으면 예스24(검색 결과 1건 → 상품 화면 "목차"의 숨은 글 칸). 글은 줄바꿈 · 줄 앞 들여쓰기 · 쪽 번호를 그대로 둔다(화면이 "큰 단원만" · 기존 나누기로 다룬다). 읽기만.
+export type UnitsFound = { found: boolean; text: string; source: "kyobo" | "yes24" | "" }
+const KYOBO_SEARCH = (isbn: string) => `https://search.kyobobook.co.kr/search?keyword=${isbn}&gbCode=TOT&target=total`
+async function kyoboPid(isbn: string, f: typeof fetch): Promise<string | null> {
+	try {
+		const res = await f(KYOBO_SEARCH(isbn), { headers: { "User-Agent": BROWSER_UA, "Accept": "text/html", "Accept-Language": "ko-KR,ko;q=0.9" }, signal: AbortSignal.timeout(8000) })
+		if (!res.ok) { await res.body?.cancel(); return null }
+		const html = await res.text()
+		// 검색 목록의 상품 태그는 data-pid(상품번호) · data-bid(ISBN13)를 함께 가진다. 없는 ISBN이면 추천 상품만 나오므로 ISBN이 같은 것만.
+		for (const m of html.matchAll(/<[^>]*\bdata-pid="(S\d{9,15})"[^>]*>/g)) {
+			const bid = /\bdata-bid="(\d{13})"/.exec(m[0])
+			if (bid && bid[1] === isbn) return m[1]
+		}
+		return null
+	} catch { return null }
+}
+async function kyoboTocText(pid: string, f: typeof fetch): Promise<string> {
+	try {
+		const res = await f(KYOBO_PRODUCT + pid, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(8000) })
+		if (!res.ok) { await res.body?.cancel(); return "" }
+		const j: any = await res.json()
+		return tocText(String(j?.data?.middle?.contentTableList ?? "")).slice(0, 20000)
+	} catch { return "" }
+}
+// 예스24 상품 화면: <div id="infoset_toc"> 안 <textarea class="txtContentText">(목차 HTML이 그대로, 또는 &lt;br/&gt;처럼 한 번 더 감싸여 들어 있다)
+export function yes24TocText(html: string): string {
+	const at = html.indexOf('id="infoset_toc"')
+	if (at < 0) return ""
+	const m = /<textarea[^>]*class="[^"]*txtContentText[^"]*"[^>]*>([\s\S]*?)<\/textarea>/i.exec(html.slice(at, at + 200_000))
+	if (!m) return ""
+	const raw = /&lt;\s*br/i.test(m[1]) ? decodeEntities(m[1]) : m[1]
+	return tocText(raw).slice(0, 20000)
+}
+export async function unitsFetch(isbn13: unknown, f: typeof fetch = fetch): Promise<UnitsFound> {
+	const isbn = String(isbn13 ?? "")
+	if (!isIsbn13(isbn)) throw new TextbookError(400, "ISBN13(13자리 숫자)이 필요합니다.")
+	const pid = await kyoboPid(isbn, f)
+	if (pid) { const text = await kyoboTocText(pid, f); if (text.trim()) return { found: true, text, source: "kyobo" } }
+	const goods = await yes24Goods(isbn, f)
+	if (goods) {
+		const html = await yes24Html(`https://www.yes24.com/Product/Goods/${goods}`, f)
+		const text = html ? yes24TocText(html) : ""
+		if (text.trim()) return { found: true, text, source: "yes24" }
+	}
+	return { found: false, text: "", source: "" }
 }

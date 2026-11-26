@@ -2,7 +2,7 @@
    - 책 찾기(오른쪽 창): [검색] search(국립중앙도서관, ISBN이면 그 책) → 고르면 detail(목차 → 단원 후보) → register(ISBN · 교보문고 표지)
                          [교보문고] 책 주소의 상품번호 → kyobo-book(교재명 · ISBN · 정가 · 출판사 · 목차) → register-custom. ISBN만 붙이면 search(ISBN)
                          [직접 등록] 지금 등록 창(live.js liveBookRegisterOpen)
-   - 단원(교재 창 [단원] 탭): units로 받아 보이고, [단원 고치기] 창에서 이름 · 시작 고치기 · 삭제 · 추가 · 목차 붙여넣기(parse) → edit-units 한 번에(바로 노션)
+   - 단원(교재 창 [단원] 탭): units로 받아 보이고, [단원 편집] 창 [고치기 | 붙여넣기 | 가져오기] 탭 — 이름 · 시작 고치기 · 삭제 · 추가 · 붙여넣기(parse) · 가져오기(units-fetch, 교보문고 → 예스24) → edit-units 한 번에(바로 노션)
    - 시리즈(라이브러리 [교재] 탭, 줄을 고르지 않았을 때 오른쪽 창 아래 [시리즈 관리]): series · edit-series(추가 · 이름 · 순서 · 삭제 — 교재가 0권인 시리즈만 삭제)
    실제 자료 모드가 아니면 아무것도 바꾸지 않는다(시제품 예시 목록 그대로). */
 const LBK = { units: {}, series: null };
@@ -16,7 +16,7 @@ async function lbKyoboGrab(){
   const items=[...document.querySelectorAll('input.result_checkbox:checked')].map(c=>({pid:String(c.dataset.pid||''),isbn13:(/97[89]\d{10}/.exec(String(c.dataset.bid||''))||[''])[0],title:String(c.dataset.name||'').trim()})).filter(x=>/^S\d+$/.test(x.pid));
   if(!items.length)return fail('검색 결과에서 가져올 책을 체크한 뒤 눌러 주세요(한 번에 20권까지).');
   if(items.length>20)return fail('한 번에 20권까지 가져올 수 있어요. 지금 '+items.length+'권이 체크되어 있어요.');
-  return send(JSON.stringify({hada:'books',v:1,source:'kyobo-list',items}),'체크한 '+items.length+'권을 복사했어요.\n\n하다 앱 라이브러리 [책 찾기] > [교보문고]에서 [가져온 정보 붙여넣기]를 누르세요. 정가·출판사·목차는 앱이 교보문고에서 한 권씩 채워요.');
+  return send(JSON.stringify({hada:'books',v:1,source:'kyobo-list',items}),'체크한 '+items.length+'권을 복사했어요.\n\n하다 앱 라이브러리 [책 찾기] > [교보문고]에서 [가져온 정보 붙여넣기]를 누르세요. 정가·출판사·단원은 앱이 교보문고에서 한 권씩 채워요.');
  }
  const id=(/\/detail\/(S\d+)/.exec(location.pathname)||[])[1];
  if(!/(^|\.)kyobobook\.co\.kr$/.test(location.hostname)||!id)return fail('교보문고 책 상세 페이지나 검색 목록에서 눌러 주세요.');
@@ -34,7 +34,7 @@ async function lbKyoboGrab(){
  const data={hada:'book',v:1,source:'kyobo',url:location.origin+location.pathname,title:String(ld.name||'').trim(),isbn13:(/97[89]\d{10}/.exec(String(ld.isbn||'')+' '+String(ld.image||''))||[''])[0],cover:String(ld.image||'').split('?')[0].replace(/\/fit-in\/\d+x\d+\//,'/fit-in/458x0/'),publisher:String((ld.publisher||{}).name||'').trim(),
   price:list&&(!sale||list>=sale&&list<=sale*3)?list:sale,pages,series:sa?sa.textContent.trim():'',toc};
  const n=toc?toc.split('\n').length:0;
- send(JSON.stringify(data),'교재 정보를 복사했어요.\n'+data.title+'\n목차 '+(n?n+'줄':'없음(교보문고에 목차가 없어요)')+'\n\n하다 앱 라이브러리 [책 찾기] > [교보문고]에서 [가져온 정보 붙여넣기]를 누르세요.');
+ send(JSON.stringify(data),'교재 정보를 복사했어요.\n'+data.title+'\n단원 '+(n?n+'줄':'없음(교보문고에 단원 목록이 없어요)')+'\n\n하다 앱 라이브러리 [책 찾기] > [교보문고]에서 [가져온 정보 붙여넣기]를 누르세요.');
 }
 const lbGrabHref = () => "javascript:" + encodeURIComponent("(" + lbKyoboGrab.toString() + ")()");
 const lbErr = (e) => (e && e.status === 401) || (e && e.status === 403) ? "관리자 로그인이 필요해요 — 새로고침해서 다시 로그인해요" : (e && e.message) || "서버에 연결하지 못했어요";
@@ -54,7 +54,7 @@ async function lbAfterAdd(okMsg) {
 /* ───── 책 찾기 ───── */
 function lbGrabBox(F) {
   return `<div class="bfgrab"><div class="row"><a class="btn pri" id="bfGrab" href="${esc(lbGrabHref())}" draggable="true" title="즐겨찾기 막대로 끌어다 놓아요">${IC("clip", "s")}교재 가져오기</a><button class="btn" id="bfPaste" ${F.busy ? "disabled" : ""}>가져온 정보 붙여넣기</button></div>
-  <details class="bfgd"><summary class="hint">처음 한 번 준비 — 즐겨찾기에 단추 두기</summary><ol class="hint"><li>위 [교재 가져오기]를 브라우저 즐겨찾기 막대로 끌어다 놓아요(막대가 안 보이면 Ctrl+Shift+B).</li><li>교보문고 책 상세 페이지(또는 검색 목록에서 책을 체크한 뒤 최대 20권)에서 그 즐겨찾기를 눌러요.</li><li>여기로 돌아와 [가져온 정보 붙여넣기]를 눌러요. 정가 · 출판사 · 쪽수 · 목차까지 한 번에 들어와요.</li></ol></details>
+  <details class="bfgd"><summary class="hint">처음 한 번 준비 — 즐겨찾기에 단추 두기</summary><ol class="hint"><li>위 [교재 가져오기]를 브라우저 즐겨찾기 막대로 끌어다 놓아요(막대가 안 보이면 Ctrl+Shift+B).</li><li>교보문고 책 상세 페이지(또는 검색 목록에서 책을 체크한 뒤 최대 20권)에서 그 즐겨찾기를 눌러요.</li><li>여기로 돌아와 [가져온 정보 붙여넣기]를 눌러요. 정가 · 출판사 · 쪽수 · 단원까지 한 번에 들어와요.</li></ol></details>
   ${F.grabTa ? '<textarea class="inp bfta" id="bfGrabTa" placeholder="복사한 정보를 여기에 붙여 넣으세요(Ctrl+V)"></textarea>' : ""}</div><div class="hint bfor">단추가 안 되면 아래에 교보문고 주소나 ISBN을 붙여 넣어요.</div>`;
 }
 function lbFindHtml(st) {
@@ -66,7 +66,7 @@ function lbFindHtml(st) {
     ? `<div class="hint">찾아도 없는 책 · 자체 교재는 직접 적어 등록해요(교재명 · 출판사 · 시리즈 · 가격 · 분량 · ISBN · 단원).</div><div class="row"><button class="btn" id="bfM">${IC("plus", "s")}직접 등록</button></div>`
     : `${T === "k" ? lbGrabBox(F) : ""}<div class="bfq">${T === "s" ? `<span class="searchbox">${IC("search")}<input class="inp" id="bfQ" placeholder="책 이름 · 출판사 · ISBN" value="${esc(F.q)}" autocomplete="off"></span>` : `<textarea class="inp bfta" id="bfQ" placeholder="교보문고 책 주소 또는 ISBN을 붙여 넣으세요(Ctrl+V)">${esc(F.q)}</textarea>`}<button class="btn" id="bfGo" ${F.busy ? "disabled" : ""}>${T === "s" ? "검색" : "가져오기"}</button></div>${F.busy ? `<div class="hint">${esc(F.busy)}</div>` : ""}${list}${F.res.length && F.msg ? `<div class="hint warn">${esc(F.msg)}</div>` : ""}`;
   return `${PANEL.head({ icon: IC("search"), name: "책 찾기", belong: "교재 추가" })}${PANEL.tabs([{ id: "s", label: "검색" }, { id: "k", label: "교보문고" }, { id: "m", label: "직접 등록" }], T, "bt")}
-  <div class="box"><h3>${T === "s" ? "검색해서 추가" : T === "k" ? "교보문고에서 가져오기" : "직접 등록"}${HELP("고른 책을 노션 라이브러리에 바로 등록해요 — 교재명 · 출판사 · 시리즈 · 가격 · 분량 · ISBN · 표지(교보문고)와 목차에서 나눈 단원까지. 목차가 없으면 단원 없이 들어가요 — 교재 창 [단원] 탭에서 목차를 붙여 넣어요. 과목은 등록한 뒤 줄을 눌러 넣어요. 이미 라이브러리에 있는 책(같은 ISBN)은 고를 수 없어요.")}</h3>${body}</div>
+  <div class="box"><h3>${T === "s" ? "검색해서 추가" : T === "k" ? "교보문고에서 가져오기" : "직접 등록"}${HELP("고른 책을 노션 라이브러리에 바로 등록해요 — 교재명 · 출판사 · 시리즈 · 가격 · 분량 · ISBN · 표지(교보문고)와 단원 목록에서 나눈 단원까지. 단원 목록이 없으면 단원 없이 들어가요 — 교재 창 [단원] 탭 [단원 편집]에서 넣어요. 과목은 등록한 뒤 줄을 눌러 넣어요. 이미 라이브러리에 있는 책(같은 ISBN)은 고를 수 없어요.")}</h3>${body}</div>
   ${PANEL.foot({ back: { id: "bfX", label: "닫기" }, go: T === "m" ? null : { id: "bfAdd", icon: IC("plus", "s"), label: "라이브러리에 등록", off: !n || !!F.busy, count: n || "", title: "고른 책을 노션 라이브러리에 등록해요" } })}`;
 }
 function lbFindBind(p, st) {
@@ -105,10 +105,10 @@ function lbFindBind(p, st) {
     F.grabTa = false; F.msg = ""; F.q = "";
     if (d.hada === "book") {
       if (!String(d.title || "").trim()) return bad();
-      F.busy = "목차를 나누는 중…"; draw();
+      F.busy = "단원을 나누는 중…"; draw();
       let units = [], note = "";
-      if (d.toc) { try { const r = await liveBookApi({ action: "parse", text: String(d.toc).slice(0, 20000) }); units = ((r.toc && r.toc.units) || []).filter((u) => u.include !== false).map((u) => ({ name: u.name, page: u.page })); } catch (e) { note = "목차를 나누지 못했어요 — 단원 없이 들어가요. " + lbErr(e); } }
-      else note = "교보문고에 목차가 없어서 단원 없이 들어가요 — 교재 창 [단원] 탭에서 붙여 넣어요";
+      if (d.toc) { try { const r = await liveBookApi({ action: "parse", text: String(d.toc).slice(0, 20000) }); units = ((r.toc && r.toc.units) || []).filter((u) => u.include !== false).map((u) => ({ name: u.name, page: u.page })); } catch (e) { note = "단원 목록을 나누지 못했어요 — 단원 없이 들어가요. " + lbErr(e); } }
+      else note = "교보문고에 단원 목록이 없어서 단원 없이 들어가요 — 교재 창 [단원] 탭 [단원 편집]에서 넣어요";
       const isbn = /^97[89]\d{10}$/.test(String(d.isbn13)) ? String(d.isbn13) : "";
       F.res = [{ src: "kyobo", title: String(d.title).trim().slice(0, 200), isbn13: isbn, price: +d.price > 0 ? Math.round(+d.price) : null, publisher: String(d.publisher || ""), cover: isbn ? lbKyoboCover(isbn) : /^https:\/\/contents\.kyobobook\.co\.kr\//.test(String(d.cover || "")) ? String(d.cover) : "", units: units.length, unitList: units }];
       F.msg = note; F.busy = "";
@@ -121,7 +121,7 @@ function lbFindBind(p, st) {
     F.picks = []; let ok = 0;
     for (let k = 0; k < mine.length; k++) {
       if (st.bfind !== F || F.res !== mine) return;
-      F.busy = `${k + 1}/${mine.length}권 정가 · 출판사 · 목차를 교보문고에서 가져오는 중…`; draw();
+      F.busy = `${k + 1}/${mine.length}권 정가 · 출판사 · 단원을 교보문고에서 가져오는 중…`; draw();
       const z = mine[k];
       try {
         const r = await liveBookApi({ action: "kyobo-book", pid: z.pid });
@@ -196,24 +196,55 @@ function lbUnitBox(b) {
   const c = LBK.units[b.id];
   if (!c) setTimeout(() => lbUnitsLoad(b.id), 0);
   const us = (c && c.list) || [];
-  const rows = c && c.list ? (us.length ? `<div class="unrows">${us.map((u) => `<div class="unrow"><span class="unt">${esc(u.name || "이름 없음")}</span><span class="unv">${u.page != null ? esc(unitFmt(b, u.page)) : ""}${u.uses ? ` <span class="hint" title="시험 범위 등 다른 곳에 연결돼 지울 수 없어요">연결 ${u.uses}</span>` : ""}</span></div>`).join("")}</div>` : '<div class="hint">아직 단원이 없어요 — [단원 고치기]로 한 줄씩 넣거나 [목차 붙여넣기]로 한 번에 넣어요</div>') : `<div class="hint">${c && c.err ? esc(c.err) : "단원을 불러오는 중…"}</div>`;
-  return `<div class="box"><h3>단원 <span class="hint">${c && c.list ? us.length + "개" : ""}</span>${HELP("노션 단원목록이에요. 학습기록의 범위에 걸친 단원을 채울 때 써요. [단원 고치기]에서 이름 · 시작을 고치고, 줄을 지우거나 더해요 — [저장]을 누르면 바로 노션에 들어가요. 다른 곳(시험 범위 등)에 연결된 단원은 지우지 않아요. 지운 단원은 노션 휴지통에서 30일 안에 되살릴 수 있어요. 온라인 서점의 목차는 [목차 붙여넣기]로 한 번에 넣어요. 예: 1. 소인수분해 8")}<span class="sp"></span><button class="lnk" data-lbu="paste" data-bk="${esc(b.id)}">${IC("clip", "s")}목차 붙여넣기</button><button class="lnk" data-lbu="edit" data-bk="${esc(b.id)}">${IC("pen", "s")}단원 고치기</button></h3>${rows}${c && c.err && c.list ? `<div class="hint warn">${esc(c.err)}</div>` : ""}</div>`;
+  const rows = c && c.list ? (us.length ? `<div class="unrows">${us.map((u) => `<div class="unrow"><span class="unt">${esc(u.name || "이름 없음")}</span><span class="unv">${u.page != null ? esc(unitFmt(b, u.page)) : ""}${u.uses ? ` <span class="hint" title="시험 범위 등 다른 곳에 연결돼 삭제할 수 없어요">연결 ${u.uses}</span>` : ""}</span></div>`).join("")}</div>` : '<div class="hint">아직 단원이 없어요 — [단원 편집]에서 붙여 넣거나 가져와요</div>') : `<div class="hint">${c && c.err ? esc(c.err) : "단원을 불러오는 중…"}</div>`;
+  /* 261126 대표(B안): 머리 단추는 [단원 편집] 하나 — 창 안 [고치기 | 붙여넣기 | 가져오기] 탭 */
+  return `<div class="box"><h3>단원 <span class="hint">${c && c.list ? us.length + "개" : ""}</span>${HELP(HELPTX.unitBox)}<span class="sp"></span><button class="lnk" data-lbu="edit" data-bk="${esc(b.id)}">${IC("pen", "s")}단원 편집</button></h3>${rows}${c && c.err && c.list ? `<div class="hint warn">${esc(c.err)}</div>` : ""}</div>`;
 }
-function lbUnitDialog(b, pasteFirst) {
+/* "큰 단원만"(단원 편집 > 가져오기): 앞에 - · • 같은 표가 붙은 줄과, 들여 쓰지 않은 줄이 있을 때 들여 쓴 줄을 뺀다. 빈 줄도 뺀다 */
+function lbUnitBigOnly(text) {
+  const ls = String(text || "").split(/\r?\n/).filter((l) => l.trim());
+  const sub = (l) => /^[\s 　]*[-–—•·∙◦▪▫‣*ㆍ・○●□■▶▷>]/.test(l);
+  const flat = ls.some((l) => !sub(l) && !/^[\s 　]/.test(l));
+  return ls.filter((l) => !sub(l) && !(flat && /^[\s 　]/.test(l))).join("\n");
+}
+const lbIsbn = (b) => { const s = String((b && b.isbn) || "").replace(/[-\s]/g, ""); return /^97[89]\d{10}$/.test(s) ? s : ""; };
+/* 단원 편집 창(261126 대표 B안): [고치기 | 붙여넣기 | 가져오기] 탭 하나 창. 고친 줄(rows)은 탭을 옮겨도 그대로, [저장]은 창 아래 하나(edit-units 한 번).
+   처음 탭: 단원 있으면 고치기 · 없고 ISBN13 있으면 가져오기 · 둘 다 없으면 붙여넣기. 붙여넣기 · 가져오기의 [나누기]는 parse 그대로 → 고치기 탭 아래에 붙는다(같은 이름 건너뜀) */
+function lbUnitDialog(b, tab0) {
   const c = LBK.units[b.id];
-  if (!c || !c.list) { toast("단원을 불러온 뒤에 고쳐요"); lbUnitsLoad(b.id); return; }
+  if (!c || !c.list) { toast("단원을 불러온 뒤에 편집해요"); lbUnitsLoad(b.id); return; }
   const rows = c.list.map((u) => ({ id: u.id, name: u.name || "", page: u.page == null ? "" : String(u.page), name0: u.name || "", page0: u.page == null ? "" : String(u.page), uses: u.uses || 0, del: false }));
-  const UU = unitParts(b);
-  modal(`<h2>단원 고치기${HELP("이름 · 시작을 고치고, 줄 끝 [+]로 그 아래에 더하거나 [x]로 지워요. [단원 추가]는 맨 아래에 더해요. 순서가 쪽 순서와 다르면 [쪽 순서로 정렬]이 나와요. 목차를 붙여 넣고 [나누기]를 누르면 아래에 새 단원으로 붙어요. [저장]을 누르면 한 번에 노션에 들어가요. 같은 이름의 단원은 새로 만들지 않아요.")}</h2><div class="hint">${esc(b.name)}</div>
-    <div class="unrows" id="lbuR" style="max-height:46vh;overflow:auto"></div>
-    <button type="button" class="pgaddc ln" id="lbuAdd">${IC("plus", "s")}단원 추가</button>
-    <details id="lbuP" ${pasteFirst ? "open" : ""}><summary class="hint">목차 붙여넣기</summary><textarea class="inp bfta tall" id="lbuT" placeholder="1. 소인수분해 8&#10;2. 정수와 유리수 28&#10;3. 문자와 식 56"></textarea><div class="row"><span class="sp"></span><button class="btn" id="lbuSplit">나누기</button></div></details>
-    <div class="row" id="lbuO" style="display:none"><button type="button" class="btn sm" id="lbuSort" title="시작 쪽이 작은 단원부터 위로 — 쪽을 안 적은 줄은 맨 아래">${IC("aup", "s")}쪽 순서로 정렬</button></div>
+  const UU = unitParts(b), isbn = lbIsbn(b);
+  const T = { tab: tab0 || (rows.length ? "edit" : isbn ? "fetch" : "paste"), raw: "", src: "" };
+  const TABS = [["edit", "고치기"], ["paste", "붙여넣기"], ["fetch", "가져오기"]];
+  modal(`<h2>단원 편집${HELP(HELPTX.unitEdit)}</h2><div class="hint">${esc(b.name)}</div>
+    <div class="row"><span class="vseg subseg" id="lbuTabs" role="tablist" aria-label="단원 편집 방법">${TABS.map(([k, t]) => `<button type="button" role="tab" data-ut="${k}">${t}</button>`).join("")}</span></div>
+    <div data-up="edit">
+      <div class="unrows" id="lbuR" style="max-height:46vh;overflow:auto"></div>
+      <button type="button" class="pgaddc ln" id="lbuAdd">${IC("plus", "s")}단원 추가</button>
+      <div class="row" id="lbuO" style="display:none"><button type="button" class="btn sm" id="lbuSort" title="시작 쪽이 작은 단원부터 위로 — 쪽을 안 적은 줄은 맨 아래">${IC("aup", "s")}쪽 순서로 정렬</button></div>
+    </div>
+    <div data-up="paste" hidden>
+      <textarea class="inp bfta tall" id="lbuT" aria-label="단원 목록" placeholder="단원 목록을 붙여 넣어 주세요 — 한 줄에 하나, 끝 숫자는 시작 쪽&#10;1. 소인수분해 8&#10;2. 정수와 유리수 28&#10;3. 문자와 식 56"></textarea>
+      <div class="row"><span class="sp"></span><button type="button" class="btn" id="lbuSplit">나누기</button></div>
+    </div>
+    <div data-up="fetch" hidden>
+      <div class="row"><span class="hint">ISBN13 ${isbn ? esc(isbn) : "없음"}</span><label class="hint"><input type="checkbox" id="lbuBig" checked ${isbn ? "" : "disabled"}> 큰 단원만</label><span class="sp"></span><button type="button" class="btn" id="lbuGet" ${isbn ? "" : 'disabled title="ISBN13을 먼저 넣어 주세요"'}>${IC("dl", "s")}가져오기</button></div>
+      ${isbn ? "" : '<div class="hint warn" id="lbuNoIsbn">ISBN13을 먼저 넣어 주세요 — 교재 창 [정보] 탭의 ISBN13 칸</div>'}
+      <textarea class="inp bfta tall" id="lbuF" aria-label="가져온 단원 목록" placeholder="${isbn ? "[가져오기]를 누르면 온라인 서점의 단원 목록이 여기에 들어와요 — 고친 뒤 [나누기]" : ""}" ${isbn ? "" : "disabled"}></textarea>
+      <div class="row"><span class="sp"></span><button type="button" class="btn" id="lbuSplitF" ${isbn ? "" : "disabled"}>나누기</button></div>
+    </div>
     <p class="hint" id="lbuM"></p>
     <div class="actions"><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">저장</button></div>`, (m, close) => {
     const box = m.querySelector("#lbuR"), msg = m.querySelector("#lbuM");
+    const show = (k) => {
+      T.tab = k;
+      m.querySelectorAll("[data-ut]").forEach((x) => { const on = x.dataset.ut === k; x.classList.toggle("on", on); x.setAttribute("aria-selected", on ? "true" : "false"); });
+      m.querySelectorAll("[data-up]").forEach((x) => { x.hidden = x.dataset.up !== k; });
+    };
+    m.querySelectorAll("[data-ut]").forEach((x) => (x.onclick = () => { msg.textContent = ""; show(x.dataset.ut); }));
     const draw = () => {
-      box.innerHTML = rows.map((r, i) => `<div class="unrow ed${r.del ? " sdel" : ""}" data-i="${i}"><input class="inp unn" data-f="name" value="${esc(r.name)}" placeholder="단원 이름 (예: 1. 소인수분해)" autocomplete="off" aria-label="단원 이름" ${r.del ? "disabled" : ""}>${UU[0] ? `<span class="unu">${esc(UU[0])}</span>` : ""}<input class="inp unp" data-f="page" value="${esc(r.page)}" placeholder="시작" inputmode="numeric" autocomplete="off" aria-label="시작" ${r.del ? "disabled" : ""}>${UU[1] ? `<span class="unu">${esc(UU[1])}</span>` : ""}<button type="button" class="anb" data-addb="${i}" title="아래에 추가" aria-label="이 단원 아래에 추가">${IC("plus", "s")}</button>${r.uses ? `<span class="hint" title="다른 곳에 연결돼 지울 수 없어요">연결 ${r.uses}</span>` : `<button type="button" class="anb" data-del="${i}" title="${r.del ? "지우지 않기" : "이 단원 삭제"}">${IC(r.del ? "rotc" : "x", "s")}</button>`}</div>`).join("") || '<div class="hint">단원이 없어요</div>';
+      box.innerHTML = rows.map((r, i) => `<div class="unrow ed${r.del ? " sdel" : ""}" data-i="${i}"><input class="inp unn" data-f="name" value="${esc(r.name)}" placeholder="단원 이름 (예: 1. 소인수분해)" autocomplete="off" aria-label="단원 이름" ${r.del ? "disabled" : ""}>${UU[0] ? `<span class="unu">${esc(UU[0])}</span>` : ""}<input class="inp unp" data-f="page" value="${esc(r.page)}" placeholder="시작" inputmode="numeric" autocomplete="off" aria-label="시작" ${r.del ? "disabled" : ""}>${UU[1] ? `<span class="unu">${esc(UU[1])}</span>` : ""}<button type="button" class="anb" data-addb="${i}" title="아래에 추가" aria-label="이 단원 아래에 추가">${IC("plus", "s")}</button>${r.uses ? `<span class="hint" title="다른 곳에 연결돼 삭제할 수 없어요">연결 ${r.uses}</span>` : `<button type="button" class="anb" data-del="${i}" title="${r.del ? "삭제 취소" : "이 단원 삭제"}">${IC(r.del ? "rotc" : "x", "s")}</button>`}</div>`).join("") || '<div class="hint">단원이 없어요</div>';
       box.querySelectorAll("input").forEach((inp) => { inp.oninput = () => { const r = rows[+inp.closest("[data-i]").dataset.i]; r[inp.dataset.f] = inp.value; }; });
       box.querySelectorAll("[data-del]").forEach((x) => (x.onclick = () => { const i = +x.dataset.del, r = rows[i]; if (!r.id) rows.splice(i, 1); else r.del = !r.del; draw(); }));
       box.querySelectorAll("[data-addb]").forEach((x) => (x.onclick = () => { const i = +x.dataset.addb; rows.splice(i + 1, 0, { name: "", page: "", del: false }); draw(); const l = box.querySelectorAll(".unn")[i + 1]; if (l) { l.focus(); l.scrollIntoView({ block: "nearest" }); } }));
@@ -231,19 +262,37 @@ function lbUnitDialog(b, pasteFirst) {
       keyed.sort((a, b) => (a.p === b.p ? a.i - b.i : a.p < b.p ? -1 : 1));
       rows.splice(0, rows.length, ...keyed.map((k) => k.r)); draw();
     };
-    draw();
+    draw(); show(T.tab);
     m.querySelector("#lbuAdd").onclick = () => { rows.push({ name: "", page: "", del: false }); draw(); const l = box.querySelectorAll(".unn"); if (l.length) l[l.length - 1].focus(); box.scrollTop = box.scrollHeight; };
-    m.querySelector("#lbuSplit").onclick = async (ev) => {
-      const t = m.querySelector("#lbuT").value; if (!t.trim()) { msg.textContent = "붙여 넣은 목차가 없어요"; return; }
-      ev.target.disabled = true; msg.textContent = "";
+    /* 나누기(붙여넣기 · 가져오기 공용): parse 그대로 → 지금 줄 뒤에 붙이고(같은 이름 건너뜀) [고치기] 탭으로 */
+    const split = async (ta, btn) => {
+      const t = ta.value; if (!t.trim()) { msg.textContent = "나눌 단원 목록이 없어요"; return; }
+      btn.disabled = true; msg.textContent = "";
       try {
         const r = await liveBookApi({ action: "parse", text: t.slice(0, 20000) });
         const have = new Set(rows.filter((z) => !z.del).flatMap((z) => [z.name.trim(), z.name0 || ""])); /* 서버와 같이: 지금 이름 + 노션에 있는 원래 이름은 새로 만들지 않음 */
         const add = ((r.toc && r.toc.units) || []).filter((u) => u.include !== false && !have.has(u.name));
         add.forEach((u) => rows.push({ name: u.name, page: u.page == null ? "" : String(u.page), del: false }));
-        m.querySelector("#lbuT").value = ""; draw(); box.scrollTop = box.scrollHeight;
-        msg.textContent = add.length ? `${add.length}개 단원으로 나눴어요 — 확인하고 [저장]을 눌러요` : "새로 더할 단원이 없어요(같은 이름은 건너뜀)";
-      } catch (e) { msg.textContent = lbErr(e); } finally { ev.target.disabled = false; }
+        if (add.length) { ta.value = ""; if (ta.id === "lbuF") T.raw = ""; }
+        draw(); show("edit"); box.scrollTop = box.scrollHeight;
+        msg.textContent = add.length ? `${add.length}개 단원으로 나눴어요 — 확인하고 [저장]을 눌러요` : "새로 추가할 단원이 없어요(같은 이름은 건너뜀)";
+      } catch (e) { msg.textContent = lbErr(e); } finally { btn.disabled = false; }
+    };
+    m.querySelector("#lbuSplit").onclick = (ev) => split(m.querySelector("#lbuT"), ev.currentTarget);
+    m.querySelector("#lbuSplitF").onclick = (ev) => split(m.querySelector("#lbuF"), ev.currentTarget);
+    /* 가져오기: units-fetch(교보문고 → 예스24) 글을 칸에 채움. [큰 단원만]을 바꾸면 받은 글에서 다시 채운다 */
+    const fill = () => { const f = m.querySelector("#lbuF"); if (T.raw) f.value = m.querySelector("#lbuBig").checked ? lbUnitBigOnly(T.raw) : T.raw; };
+    m.querySelector("#lbuBig").onchange = fill;
+    m.querySelector("#lbuGet").onclick = async (ev) => {
+      if (!isbn) return;
+      const btn = ev.currentTarget; btn.disabled = true; msg.textContent = "온라인 서점에서 단원 목록을 받는 중…";
+      try {
+        const r = await liveBookApi({ action: "units-fetch", isbn13: isbn });
+        if (r && r.found && String(r.text || "").trim()) {
+          T.raw = String(r.text); T.src = r.source === "yes24" ? "예스24" : "교보문고"; fill();
+          msg.textContent = `${T.src}에서 단원 목록을 가져왔어요 — 고친 뒤 [나누기]를 눌러요`;
+        } else msg.textContent = "이 ISBN으로 단원을 찾지 못했어요";
+      } catch (e) { msg.textContent = lbErr(e); } finally { btn.disabled = false; }
     };
     m.querySelector("#cc").onclick = close;
     const ok = m.querySelector("#co");
@@ -252,7 +301,7 @@ function lbUnitDialog(b, pasteFirst) {
       const update = rows.filter((r) => r.id && !r.del && (r.name.trim() !== r.name0 || String(num(r.page) ?? "") !== r.page0)).map((r) => ({ id: r.id, name: r.name.trim(), page: num(r.page) }));
       const remove = rows.filter((r) => r.id && r.del).map((r) => r.id);
       const add = rows.filter((r) => !r.id && r.name.trim()).map((r) => ({ name: r.name.trim(), page: num(r.page) }));
-      if (update.some((u) => !u.name)) { msg.textContent = "이름이 빈 단원이 있어요 — 이름을 넣거나 [x]로 지워요"; return; }
+      if (update.some((u) => !u.name)) { show("edit"); msg.textContent = "이름이 빈 단원이 있어요 — 이름을 넣거나 [x]로 삭제해요"; return; }
       if (!update.length && !remove.length && !add.length) { close(); return; }
       ok.disabled = true; ok.textContent = "저장 중…"; msg.textContent = "";
       try {
@@ -260,17 +309,17 @@ function lbUnitDialog(b, pasteFirst) {
         close();
         lbUnitsLoad(b.id, true);
         const parts = [r.updated ? `고침 ${r.updated}` : "", r.removed ? `삭제 ${r.removed}` : "", r.added ? `추가 ${r.added}` : ""].filter(Boolean).join(" · ");
-        toast(r.ok === false ? r.error : `단원을 저장했어요${parts ? " — " + parts : ""}${r.blocked && r.blocked.length ? ` · 연결돼 지우지 않은 단원 ${r.blocked.length}개` : ""}`);
+        toast(r.ok === false ? r.error : `단원을 저장했어요${parts ? " — " + parts : ""}${r.blocked && r.blocked.length ? ` · 연결돼 삭제하지 않은 단원 ${r.blocked.length}개` : ""}`);
       } catch (e) { ok.disabled = false; ok.textContent = "저장"; msg.textContent = lbErr(e); }
     };
-    setTimeout(() => { const t = pasteFirst ? m.querySelector("#lbuT") : m.querySelector(".unn"); if (t) t.focus(); }, 0);
+    setTimeout(() => { const t = T.tab === "paste" ? m.querySelector("#lbuT") : T.tab === "fetch" ? m.querySelector(isbn ? "#lbuGet" : "[data-ut='paste']") : m.querySelector(".unn"); if (t) t.focus(); }, 0);
   });
 }
 document.addEventListener("click", (e) => {
   const x = e.target.closest && e.target.closest("[data-lbu]");
   if (!x || !window.LIVE) return;
   const b = DB.books.find((z) => z.id === x.dataset.bk);
-  if (b) lbUnitDialog(b, x.dataset.lbu === "paste");
+  if (b) lbUnitDialog(b);
 });
 
 /* ───── 시리즈 관리 ───── */
