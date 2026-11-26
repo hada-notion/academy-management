@@ -16,7 +16,7 @@ const LIB = [
 	{ id: "11111111-1111-4111-8111-111111111111", properties: { "교재명": { title: tt("개념원리 수학 1-1") }, "시리즈": { select: null }, "북커버": { files: [] }, "사용중": { checkbox: false }, "단원목록": { relation: [], has_more: false } } },
 ]
 const UNITS = [{ id: "u2", book: "22222222-2222-4222-8222-222222222222", name: "1-2. 일차부등식", page: 30 }, { id: "u1", book: "22222222-2222-4222-8222-222222222222", name: "1-1. 다항식", page: 8 }, { id: "u3", book: "22222222-2222-4222-8222-222222222222", name: "부록", page: null, exams: 1 }]
-function mock(opts: { existing?: string[]; failUnitAt?: number; nlFail?: boolean; schemaFail?: boolean; seriesOpts?: any[]; kyoboFail?: boolean; failPagePatchAt?: number } = {}) {
+function mock(opts: { existing?: string[]; failUnitAt?: number; nlFail?: boolean; schemaFail?: boolean; seriesOpts?: any[]; kyoboFail?: boolean; kyoboCover?: "real" | "none" | "down"; failPagePatchAt?: number } = {}) {
 	const created: any[] = [], calls: string[] = [], headers: Record<string, string>[] = [], patched: any[] = [], schema: any[] = []
 	const seriesOf: Record<string, string | null> = {}
 	let seriesOpts: any[] = opts.seriesOpts ?? [{ id: "s1", name: "쎈", color: "red" }, { id: "s2", name: "라이트쎈", color: "blue" }]
@@ -70,6 +70,8 @@ function mock(opts: { existing?: string[]; failUnitAt?: number; nlFail?: boolean
 			if (body.parent.data_source_id === "units" && created.filter((c) => c.parent.data_source_id === "units").length === opts.failUnitAt) return reply({ message: "fail" }, 500)
 			created.push(body); return reply({ id: "new" + created.length })
 		}
+		// 교보문고 표지 그림(cover-check): real = 책마다 다른 그림, none = 없는 책의 같은 대체 그림, down = 응답 실패
+		if (/contents\.kyobobook\.co\.kr\/.*\/pdt\//.test(url)) { const k = opts.kyoboCover ?? "real"; if (k === "down") return new Response("", { status: 503 }); const b = k === "none" ? [7, 7, 7] : [Number(url.match(/pdt\/(\d+)/)![1].slice(-3)), 1, 2]; return new Response(new Uint8Array(b), { status: 200, headers: { "content-type": "image/jpeg" } }) }
 		throw new Error("unmocked " + url)
 	}
 	return { fetch, created, calls, headers, patched, schema }
@@ -432,22 +434,71 @@ Deno.test("kyobo-book: product number only, fixed Kyobo address, title/ISBN/list
 	})
 })
 
-Deno.test("cover-check: 대체 그림과 같으면 없음 · 다르면 있음 · 응답 실패면 없음 · 형식 오류는 400", async () => {
+// 표지 확인(항목 160 · 161): 교보 → 예스24. HTML · 그림은 모두 가짜 조각.
+function coverFetch(o: { kyobo?: "real" | "none" | "down"; yes24?: "one" | "none" | "many" | "down" | "nocookie" | "noimg" | "badimg" } = {}) {
+  const log: string[] = []
   const img = (bytes: number[], type = "image/jpeg", status = 200) => new Response(new Uint8Array(bytes), { status, headers: { "content-type": type } })
-  const NOPIC = [1, 2, 3, 4], REAL = [9, 8, 7]
-  const mk = (map: Record<string, () => Response>) => ((url: string) => Promise.resolve((map[url.match(/pdt\/(\d+)/)![1]] ?? (() => img(NOPIC)))())) as unknown as typeof fetch
+  const f = ((input: unknown, init: { headers?: Record<string, string> } = {}) => {
+    const url = String(input); log.push(url)
+    let m = url.match(/contents\.kyobobook\.co\.kr\/.*\/pdt\/(\d+)\.jpg/)
+    if (m) { const k = o.kyobo ?? "real"; return Promise.resolve(k === "down" ? img([], "text/html", 503) : img(k === "none" ? [7, 7, 7] : [Number(m[1].slice(-3)), 1, 2])) }
+    if (/yes24\.com\/Product\/Search/.test(url)) {
+      const k = o.yes24 ?? "one"
+      if (k === "down") return Promise.reject(new Error("net"))
+      if (!init.headers?.Cookie) return Promise.resolve(k === "nocookie" ? new Response("", { status: 302 }) : new Response("", { status: 302, headers: { "set-cookie": "WMONID=abc; path=/" } }))
+      const goods = k === "none" ? "" : k === "many" ? '<li data-goods-no="148337303"></li><li data-goods-no="148337304"></li>' : '<li data-goods-no="148337303"></li><a href="/product/goods/148337303">x</a><a href="/product/goods/148337303">y</a>'
+      return Promise.resolve(new Response(`<div id="yesSchList">${goods}</div>`, { status: 200, headers: { "content-type": "text/html" } }))
+    }
+    m = url.match(/image\.yes24\.com\/goods\/(\d+)\/XL/)
+    if (m) return Promise.resolve(m[1] === tb.YES24_PROBE_GOODS || o.yes24 === "noimg" ? img([5, 5]) : o.yes24 === "badimg" ? img([], "text/html", 404) : img([9, 9, 9, 9]))
+    return Promise.reject(new Error("unmocked " + url))
+  }) as unknown as typeof fetch
+  return { f, log }
+}
+const ISB = "9790000000011"
+Deno.test("cover-check: 교보 있음 → 교보 · 교보 없음 → 예스24 · 둘 다 없음 · 예스24 검색 실패 · 형식 오류", async () => {
   tb._resetCoverProbe()
-  const probe = tb.NO_COVER_PROBE_ISBN
-  assert(JSON.stringify(await tb.coverCheck("9790000000011", mk({ "9790000000011": () => img(REAL) }))) === JSON.stringify({ found: true, url: tb.coverUrl("9790000000011") }), "다르면 있음")
+  let c = coverFetch({ kyobo: "real" })
+  assert(JSON.stringify(await tb.coverCheck(ISB, c.f)) === JSON.stringify({ found: true, url: tb.coverUrl(ISB), source: "kyobo" }), "교보 있음")
+  assert(!c.log.some((u) => /yes24/.test(u)), "교보에 있으면 예스24를 부르지 않음")
   tb._resetCoverProbe()
-  assert((await tb.coverCheck("9790000000028", mk({ "9790000000028": () => img(NOPIC), [probe]: () => img(NOPIC) }))).found === false, "같으면 없음")
+  c = coverFetch({ kyobo: "none", yes24: "one" })
+  assert(JSON.stringify(await tb.coverCheck(ISB, c.f)) === JSON.stringify({ found: true, url: "https://image.yes24.com/goods/148337303/XL", source: "yes24" }), "교보 없음 → 예스24")
+  assert(c.log.filter((u) => /Product\/Search/.test(u)).length === 2, "검색은 쿠키 받고 한 번 더(최대 2건)")
+  for (const y of ["none", "many", "down", "nocookie", "noimg", "badimg"] as const) {
+    tb._resetCoverProbe()
+    assert((await tb.coverCheck(ISB, coverFetch({ kyobo: "none", yes24: y }).f)).found === false, "교보 없음 + 예스24 " + y + " → 없음")
+  }
   tb._resetCoverProbe()
-  assert((await tb.coverCheck("9790000000028", mk({ "9790000000028": () => img(REAL, "image/jpeg", 404) }))).found === false, "응답 실패")
-  assert((await tb.coverCheck("9790000000028", mk({ "9790000000028": () => img(REAL, "text/html") }))).found === false, "그림이 아님")
-  assert((await tb.coverCheck("9790000000028", (() => Promise.reject(new Error("x"))) as unknown as typeof fetch)).found === false, "연결 오류")
+  assert((await tb.coverCheck(ISB, coverFetch({ kyobo: "down", yes24: "one" }).f)).source === "yes24", "교보 응답 실패여도 예스24는 시도")
   tb._resetCoverProbe()
-  assert((await tb.coverCheck("9790000000028", mk({ "9790000000028": () => img(REAL), [probe]: () => img(REAL, "image/jpeg", 500) }))).found === false, "비교 그림을 못 받으면 찾았다고 하지 않음")
-  tb._resetCoverProbe()
-  let threw = 0; try { await tb.coverCheck("123", mk({})) } catch (e) { threw = (e as { status?: number }).status ?? 0 }
+  assert((await tb.coverCheck(ISB, (() => Promise.reject(new Error("x"))) as unknown as typeof fetch)).found === false, "연결 오류")
+  let threw = 0; try { await tb.coverCheck("123", coverFetch().f) } catch (e) { threw = (e as { status?: number }).status ?? 0 }
   assert(threw === 400, "형식 오류")
+})
+
+Deno.test("register: 표지를 못 찾으면 표지 없이 등록(등록은 계속) · 교보 있음 그대로 · 예스24 표지 · 다른 출처 표지는 확인하지 않음", async () => {
+  const covers = async (o: Parameters<typeof coverFetch>[0], run: () => Promise<unknown[]>) => {
+    tb._resetCoverProbe()
+    const m = mock(), cf = coverFetch(o); let res: unknown[] = []
+    const inner = m.fetch
+    const mixed = ((u: unknown, i: unknown) => /kyobobook|yes24/.test(String(u)) ? (cf.f as (a: unknown, b: unknown) => Promise<Response>)(u, i) : inner(u, i)) as unknown as typeof fetch
+    const original = globalThis.fetch; globalThis.fetch = mixed
+    try { res = await run() } finally { globalThis.fetch = original }
+    return { res, books: m.created.filter((c) => c.parent.data_source_id === "books").map((c) => c.properties["북커버"]?.files[0].external.url ?? "") }
+  }
+  const K = "https://contents.kyobobook.co.kr/sih/fit-in/458x0/pdt/9788928334858.jpg"
+  const one = (p: Record<string, unknown>) => () => Promise.all([tb.registerBook({ isbn13: "9788928334858", units: [], ...p })])
+  let r = await covers({ kyobo: "real" }, one({}))
+  assert(r.books.join("|") === K && (r.res[0] as { cover: boolean }).cover === true, "교보 있음: " + r.books)
+  r = await covers({ kyobo: "none", yes24: "one" }, one({}))
+  assert(r.books.join("|") === "https://image.yes24.com/goods/148337303/XL", "예스24 표지: " + r.books)
+  r = await covers({ kyobo: "none", yes24: "none" }, one({}))
+  assert(r.books.join("|") === "" && (r.res[0] as { ok: boolean; cover: boolean }).ok && (r.res[0] as { cover: boolean }).cover === false, "둘 다 없음 → 표지 없이 등록")
+  r = await covers({ kyobo: "down", yes24: "down" }, one({}))
+  assert(r.books.join("|") === "" && (r.res[0] as { ok: boolean }).ok, "응답 실패 → 표지 없이 등록은 계속")
+  r = await covers({ kyobo: "none", yes24: "none" }, () => Promise.all([tb.registerCustom({ title: "예시 교보 영어", isbn13: "9791100000024", cover: "https://contents.kyobobook.co.kr/sih/fit-in/458x0/pdt/9791100000024.jpg", units: [] })]))
+  assert(r.books.join("|") === "", "직접 등록 교보 주소도 같은 확인")
+  r = await covers({ kyobo: "none", yes24: "none" }, () => Promise.all([tb.registerCustom({ title: "예시 직접", isbn13: "9791100000031", cover: "https://example.com/my-cover.png", units: [] })]))
+  assert(r.books.join("|") === "https://example.com/my-cover.png", "다른 주소는 그대로")
 })
