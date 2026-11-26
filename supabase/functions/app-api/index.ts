@@ -21,6 +21,7 @@ import { APP_DBS, isAppDb, listApp, statusApp, warmSources, syncCopy, lastSynced
 import { checkChanges, saveChanges, runGenerateClasses, writeOptions, SaveError } from "../_shared/appSave.ts"
 import { checkPaymentInput, recordPayment } from "../_shared/appPayment.ts"
 import { appChanges, checkChangesInput, ChangesInputError } from "../_shared/appChanges.ts"
+import { freshBookCovers } from "../_shared/appCovers.ts"
 import { subscriptionStatus, healthOf } from "../_shared/notionSubscriptionStatus.ts"
 import { getPage } from "../_shared/notionClient.ts"
 import { previewEnd } from "../_shared/registrationEnd.ts"
@@ -63,7 +64,7 @@ export async function handleAppApi(req: Request, deps: Partial<AppApiDeps> = {})
       if (!isAppDb(body.db)) return json({ error: `db는 ${APP_DBS.join(", ")} 중 하나여야 합니다.` }, 400)
       if (body.since !== undefined && body.since !== null && !isIso(body.since)) return json({ error: "since 형식이 올바르지 않습니다." }, 400)
       const at = new Date().toISOString()
-      const rows0 = await D.listApp(body.db, body.since ?? null)
+      const rows0 = await freshBookCovers(await D.listApp(body.db, body.since ?? null), body.db)
       const rows = teacher && body.db === TEACHER_DB ? maskTeacherRows(rows0 as any[], teacher.teacherId) : rows0
       D.warmSources() // (항목 99) 앱 첫 로드가 데우기 — 응답은 안 기다림
       return json({ ok: true, db: body.db, at, rows })
@@ -75,6 +76,7 @@ export async function handleAppApi(req: Request, deps: Partial<AppApiDeps> = {})
       if (!dbs.length) return json({ ok: true, now: new Date().toISOString(), rows: [], gone: [], crAt: null, subscription: null })
       // (261123) 구독 끊김도 함께 — 홈 입력 점검이 경고를 띄운다(표 한 줄 읽기, 실패해도 바뀐 줄은 그대로 돌려줌).
       const [changes, health] = await Promise.all([D.appChanges(since, dbs), D.healthOf().catch(() => null)])
+      ;(changes as any).rows = await freshBookCovers((changes as any).rows ?? [])
       if (teacher) (changes as any).rows = (changes as any).rows.map((r: any) => r?.db === TEACHER_DB ? maskTeacherRows([r], teacher.teacherId)[0] : r)
       return json({ ...changes, subscription: teacher ? null : health })
     }

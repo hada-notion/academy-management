@@ -67,7 +67,7 @@ function flatValue(p: any): unknown {
 		case "email": return p.email ?? ""
 		case "phone_number": return p.phone_number ?? ""
 		case "people": return (p.people ?? []).map((u: any) => u?.id).filter(Boolean)
-		case "files": return (p.files ?? []).map((f: any) => ({ name: f?.name ?? "", url: f?.external?.url ?? f?.file?.url ?? "" }))
+		case "files": return (p.files ?? []).map((f: any) => f?.file && !f?.external ? { name: f?.name ?? "", url: "", file: true } : { name: f?.name ?? "", url: f?.external?.url ?? "" }) // 올린 파일 주소는 약 1시간 뒤 만료 — 저장하지 않고 읽을 때 받는다(appCovers.ts)
 		case "created_time": return p.created_time ?? null
 		case "last_edited_time": return p.last_edited_time ?? null
 		case "created_by": case "last_edited_by": return p[p.type]?.id ?? null
