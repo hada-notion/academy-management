@@ -308,7 +308,7 @@ function liveFirstPassword(cfg, first, done, back, setup) {
     const wipe = () => { a.value = ""; b.value = ""; };
     const cancel = () => { wipe(); const s = setup; first = ""; setup = ""; close(); if (s) call({ action: "logout" }, s).catch(() => {}); back(); };
     m.querySelector("#cc").onclick = cancel;
-    m.onclick = (e) => { if (e.target === m) cancel(); }; /* 바깥을 눌러도 [취소]와 같이 — 0000 상태로 앱 화면에 남지 않고 로그인 창으로 */
+    /* 바깥을 눌러도 닫히지 않음(창은 [취소]로만) — [취소]는 0000 상태로 앱 화면에 남지 않고 로그인 창으로 */
     /* 예시 데이터 비우기 상태(설치 길). liveadmin.js가 없거나 실패하면 그대로 숨김 */
     (async () => {
       if (!window.liveInitialClear) return;

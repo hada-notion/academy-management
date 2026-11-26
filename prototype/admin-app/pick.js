@@ -65,7 +65,7 @@ const cardHtml=(x,f,cls,tail,attr)=>`<div class="hp-card ${cls}" data-cid="${x.i
 const live=(host,msg)=>{let L=host.querySelector(".hp-live");if(!L){L=document.createElement("div");L.className="hp-live";L.setAttribute("aria-live","polite");host.appendChild(L)}L.textContent="";setTimeout(()=>L.textContent=msg,30)};
 // 따로 뜨는 찾기 창
 function dialog(html,bind){shut();const d=document.createElement("div");d.className="hp hp-dim";d.innerHTML=`<div class="hp-dlg" role="dialog" aria-modal="true">${html}</div>`;document.body.appendChild(d);
-  const close=()=>d.remove();d.addEventListener("pointerdown",e=>{if(e.target===d)close()});d.addEventListener("keydown",e=>{if(e.key==="Escape"){e.stopPropagation();close()}});bind(d,close);const i=d.querySelector("input");if(i)i.focus()}
+  const close=()=>d.remove();d.addEventListener("pointerdown",e=>{if(e.target===d)window.modalNudge&&window.modalNudge(d)});d.addEventListener("keydown",e=>{if(e.key==="Escape"){e.stopPropagation();e.preventDefault()}})/* 바깥 · Esc로는 닫히지 않음 — 단추로만 */;bind(d,close);const i=d.querySelector("input");if(i)i.focus()}
 
 /* ───── 클래스 칸 ─────
    classes: [{id,name,color,teacher,count,open?,close?}]  none: 맨 위 "클래스 없음"(보강, 값 HP.NONE — 클래스처럼 칸에 들어가고 x로 비움)  warn(id)→노란 글씨(예: "목 13:00 시간표 있음" — 막지 않고 알림)

@@ -6,7 +6,7 @@
 <title>관리 앱 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3C%2Fsvg%3E">
 <link rel="stylesheet" href="hada-tokens.css?v=803">
-<link rel="stylesheet" href="app.css?v=808">
+<link rel="stylesheet" href="app.css?v=811">
 <link rel="stylesheet" href="pick.css?v=742">
 <link rel="stylesheet" href="field.css?v=755">
 </head>
@@ -20,7 +20,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=742"><script src="hada-rules.js?v=742"></script><script src="help.js?v=810"></script><script src="alim-preview.js?v=742"></script><script src="pick.js?v=770"></script><script src="field.js?v=742"></script><script src="panel.js?v=806"></script>
+<link rel="stylesheet" href="alim.css?v=742"><script src="hada-rules.js?v=742"></script><script src="help.js?v=810"></script><script src="alim-preview.js?v=742"></script><script src="pick.js?v=811"></script><script src="field.js?v=742"></script><script src="panel.js?v=806"></script>
 <script>
 "use strict";
 
@@ -1534,7 +1534,8 @@ function hfUpgrade(root){if(!window.HF||!root)return;root.querySelectorAll(".fie
       else HF.dateRange(host,{label,tipHtml:tip,value:[nats[0].value,nats[1].value],disabled:dis,onChange:([a,b])=>{fire(nats[0],a);fire(nats[1],b)}});
       f.replaceWith(host);host.appendChild(keep);return}
     const inp=f.querySelector(":scope>input.inp:not([type=password]):not([type=hidden])");if(inp&&f.children.length===2){const r=HF.text(host,{label,tipHtml:tip,value:inp.value,max:+inp.getAttribute("maxlength")||100,placeholder:inp.placeholder||""});if(r&&r.el){r.el.id=inp.id;if(inp.name)r.el.name=inp.name}f.replaceWith(host)}})}
-function modal(html,bind){const r=document.getElementById("modalRoot");r.innerHTML=`<div class="modal"><div class="dlg">${html}</div></div>`;const m=r.firstChild;m.onclick=e=>{if(e.target===m)close()};const close=()=>r.innerHTML="";hfUpgrade(m);bind(m,close);return close}
+function modalNudge(m){const d=m&&m.querySelector(".dlg,.hp-dlg");if(!d)return;d.classList.remove("nudge");void d.offsetWidth;d.classList.add("nudge")}
+function modal(html,bind){const r=document.getElementById("modalRoot");r.innerHTML=`<div class="modal"><div class="dlg">${html}</div></div>`;const m=r.firstChild;m.onclick=e=>{if(e.target===m)modalNudge(m)}/* 바깥을 눌러도 닫히지 않음 — 입력하던 것이 날아가지 않게. 창은 단추로만 닫힘 */;const close=()=>r.innerHTML="";hfUpgrade(m);bind(m,close);return close}
 /* 고르기 목록(261112 대표 — 시간표·수업 같은 부품): 검색 칸 → 테두리 목록(묶음 머리 위에 붙음) → 줄(체크·이름·학교·학년, 아래 작은 글씨) → 목록 아래 [다른 학생 검색] */
 // 다니는 클래스(회색) — 겹침 글이 그중 한 반이면 그 클래스만 노랑 "반 16:00 겹침"으로 바꿔 한 번만(261112 대표)
 const stuClsBz=(id,bz)=>{const ns=DB.enrolls.filter(e=>e.studentId===id&&!e.ended).map(e=>cls(e.classId)).filter(Boolean).map(c=>c.name);const b=String(bz||"").replace(/ 수업$/,"");const hit=bz?ns.find(n=>b.startsWith(n+" ")):null;
@@ -4724,7 +4725,7 @@ document.addEventListener("keydown",e=>{const tag=(e.target.tagName||"").toLower
   if((e.key==="Escape"||delCancel)&&activeTab.screen==="timetable"&&!e.defaultPrevented){if(delCancel)e.preventDefault();
     // 165판: 떠 있는 목록·색판·달력·휠이 열려 있으면 Esc는 그것만 닫음(사용성 시험: 색판이 열린 채 Esc → 창 전체가 닫혔음)
     if(e.key==="Escape"){const hfp=document.querySelector(".hf-pop");if(hfp&&window.HF){HF.close();return}if(document.querySelector(".hp-pop")&&window.HP){HP.shut();return}if(document.querySelector("#twheel")){closeTimeWheel();return}if(typeof dPop!=="undefined"&&dPop){dClose();return}}
-    const mr=document.getElementById("modalRoot");if(mr.innerHTML.trim()){mr.innerHTML="";return}
+    const mr=document.getElementById("modalRoot");if(mr.innerHTML.trim()){e.preventDefault();return}/* 창이 떠 있으면 Esc로 닫히지 않음 — 단추로만 */
     const st0=activeTab.state;if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
     if(st0.mkEd){st0.mkEd=null;render();return}if(st0.mkNew&&st0.mkPick){st0.mkNew.sids=st0.mkPickBefore||st0.mkNew.sids;st0.mkPick=false;render();return}if(st0.mkNew){st0.mkNew=null;toast("보강 생성을 취소했어요");render();return}
     if(st0.pending){st0.pending=null;st0.panel=null;st0.nqFocused=false;toast("새 시간표를 취소했어요");render();return}
@@ -5112,6 +5113,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del&&!z._virtual).
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="finance.js?v=802"></script><script src="finlive.js?v=802"></script><script src="exams.js?v=764"></script><script src="appdata.js?v=805"></script><script src="appsave.js?v=808"></script><script src="appview.js?v=773"></script><script src="livelesson.js?v=744"></script><script src="liveadmin.js?v=742"></script><script src="livebook.js?v=810"></script><script src="liveschool.js?v=795"></script><script src="liveteacher.js?v=801"></script><script src="live.js?v=806"></script><script src="liverefresh.js?v=767"></script><script src="livereq.js?v=742"></script>
+<script src="finance.js?v=802"></script><script src="finlive.js?v=802"></script><script src="exams.js?v=764"></script><script src="appdata.js?v=805"></script><script src="appsave.js?v=808"></script><script src="appview.js?v=773"></script><script src="livelesson.js?v=744"></script><script src="liveadmin.js?v=742"></script><script src="livebook.js?v=810"></script><script src="liveschool.js?v=795"></script><script src="liveteacher.js?v=801"></script><script src="live.js?v=811"></script><script src="liverefresh.js?v=767"></script><script src="livereq.js?v=742"></script>
 </body>
 </html>
