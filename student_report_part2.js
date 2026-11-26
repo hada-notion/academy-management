@@ -20,21 +20,17 @@ const DAYS = ["월", "화", "수", "목", "금", "토", "일"]
 // - 모든 요일이 2시간 넘게 비는 구간(오전·오후 분리)은 빗금 한 줄로 접는다
 // - 보이는 시간이 8시간을 넘으면(방학) 1시간 높이를 줄인다(최소 20px)
 // - 토·일은 수업이 있을 때만, 같은 요일에 겹치는 수업은 칸을 나눠 나란히
-// - 블록을 누르면 색을 고를 수 있고, 고른 색은 이 기기에만 저장한다(학원 데이터는 안 바꿈)
+// - 블록 색은 관리 앱에서 정한 클래스 색(class_color)으로 고정(색이 없으면 반 이름으로 정하는 기본 색)
 const TT_DEFAULT_MIN = 90
 const TT_FOLD_MIN = 120
 const TT_MIN_VISIBLE = 180
 const TT_BREAK_PX = 16
-const TT_COLOR_KEY = "hada-report-class-colors"
 function ttMin(t) {
   const m = /^(\d{1,2}):(\d{2})/.exec(String(t || "").trim())
   return m ? Number(m[1]) * 60 + Number(m[2]) : null
 }
 function ttHHMM(min) { return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}` }
-function ttSavedColors() {
-  try { return JSON.parse(localStorage.getItem(TT_COLOR_KEY) || "{}") || {} } catch (e) { return {} }
-}
-// 저장값: 기본색 번호(0~7) 또는 직접 고른 색 코드("#rrggbb"). 직접 고른 색은 그 색을 배경으로, 글자는 같은 색을 어둡게 해서 쓴다.
+// 관리 앱 클래스 색("#rrggbb")은 그 색을 배경으로, 글자는 같은 색을 어둡게 해서 쓴다.
 function ttDarken(hex, k) {
   const n = parseInt(hex.slice(1), 16)
   const ch = (v) => Math.round(v * (1 - k)).toString(16).padStart(2, "0")
@@ -44,10 +40,9 @@ function ttLuma(hex) {
   const n = parseInt(hex.slice(1), 16)
   return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255
 }
-function ttClassColor(name) {
-  const v = ttSavedColors()[name]
-  if (typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v)) return { bg: v, fg: ttLuma(v) < 0.55 ? "#ffffff" : ttDarken(v, 0.62) }
-  return CLASS_COLOR_PALETTE[v] || pickClassColorPalette(name)
+function ttClassColor(name, hex) {
+  if (typeof hex === "string" && /^#[0-9a-f]{6}$/i.test(hex)) return { bg: hex, fg: ttLuma(hex) < 0.55 ? "#ffffff" : ttDarken(hex, 0.62) }
+  return pickClassColorPalette(name)
 }
 function buildWeekGridHtml(regs) {
   // (v2.8.0) '리포트 숨김' 시간표인 반은 통합 시간표에 넣지 않는다.
@@ -61,7 +56,7 @@ function buildWeekGridHtml(regs) {
       let en = ttMin(s.end)
       const guessed = en == null || en <= st
       if (guessed) en = st + TT_DEFAULT_MIN
-      byDay[s.day].push({ st, en, guessed, class_name: r.class_name })
+      byDay[s.day].push({ st, en, guessed, class_name: r.class_name, color: classHex(r) })
     })
   })
   const all = DAYS.flatMap((d) => byDay[d])
@@ -140,14 +135,14 @@ function buildWeekGridHtml(regs) {
     })
     if (group.length) flush()
     return blocks.map((s) => {
-      const p = ttClassColor(s.class_name)
+      const p = ttClassColor(s.class_name, s.color)
       const top = y(s.st)
       const h = Math.max(20, y(s.en) - top - 2)
       const w = 100 / s.lanes
       // 박스에는 반 이름만. 시작이 정시가 아니면(17:40 등) 눈금으로 읽기 어려워 시간을 작게 함께 쓴다. 정확한 시간은 눌러서 본다
       const time = s.st % 60 ? `<span class="tt-start">${ttHHMM(s.st)}</span>` : ""
       const label = time && h >= 32 ? `${time}<br>${esc(s.class_name)}` : `${time}${time ? " " : ""}${esc(s.class_name)}`
-      return `<button type="button" class="tt-block${s.guessed ? " guessed" : ""}" data-cls="${esc(s.class_name)}" data-time="${ttHHMM(s.st)}~${ttHHMM(s.en)}" onclick="openTtColorPicker(this)" style="top:${top}px;height:${h}px;left:${s.lane * w}%;width:calc(${w}% - 2px);background:${p.bg};color:${p.fg}" aria-label="${esc(s.class_name)} ${ttHHMM(s.st)}~${ttHHMM(s.en)} 색 바꾸기">${label}</button>`
+      return `<div class="tt-block${s.guessed ? " guessed" : ""}" data-cls="${esc(s.class_name)}" data-time="${ttHHMM(s.st)}~${ttHHMM(s.en)}" style="top:${top}px;height:${h}px;left:${s.lane * w}%;width:calc(${w}% - 2px);background:${p.bg};color:${p.fg}" aria-label="${esc(s.class_name)} ${ttHHMM(s.st)}~${ttHHMM(s.en)}">${label}</div>`
     }).join("")
   }
 
@@ -159,65 +154,6 @@ function buildWeekGridHtml(regs) {
     </div>
   `
 }
-function closeTtColorPicker() {
-  const old = document.getElementById("tt-picker")
-  if (old) old.remove()
-  document.removeEventListener("click", ttPickerOutside, true)
-}
-function ttPickerOutside(e) {
-  const pk = document.getElementById("tt-picker")
-  if (pk && !pk.contains(e.target) && !e.target.closest(".tt-block")) closeTtColorPicker()
-}
-function openTtColorPicker(btn) {
-  closeTtColorPicker()
-  const name = btn.dataset.cls
-  const r = btn.getBoundingClientRect()
-  const pk = document.createElement("div")
-  pk.id = "tt-picker"
-  pk.className = "tt-picker"
-  pk.innerHTML = `<div class="tt-picker-title">${esc(name)} · ${esc(btn.dataset.time || "")}</div><div class="tt-picker-sub">색 바꾸기</div>
-    <div class="tt-swatches">${CLASS_COLOR_PALETTE.map((p, i) => `<button type="button" class="tt-swatch" style="background:${p.bg};border-color:${p.fg}" aria-label="색 ${i + 1}" onclick="setTtClassColor(${i})"></button>`).join("")}</div>
-    <div class="tt-custom-label">색 코드로 고르기</div>
-    <div class="tt-custom">
-      <input type="color" id="tt-color-input" value="${ttClassColor(name).bg}" aria-label="색 직접 고르기" oninput="document.getElementById('tt-hex-input').value=this.value" onchange="setTtClassColor(this.value)">
-      <input type="text" id="tt-hex-input" value="${ttClassColor(name).bg}" maxlength="7" placeholder="#a8c5e0" aria-label="색 코드" oninput="document.getElementById('tt-hex-error').textContent=''" onkeydown="if(event.key==='Enter')applyTtHex()">
-      <button type="button" class="tt-apply" onclick="applyTtHex()">적용</button>
-    </div>
-    <div class="tt-hex-error" id="tt-hex-error" role="alert"></div>
-    <button type="button" class="tt-reset" onclick="setTtClassColor(null)">기본색으로</button>`
-  pk.dataset.cls = name
-  document.body.appendChild(pk)
-  const left = Math.min(Math.max(8, r.left + window.scrollX), window.scrollX + document.documentElement.clientWidth - pk.offsetWidth - 8)
-  pk.style.left = `${left}px`
-  pk.style.top = `${r.bottom + window.scrollY + 6}px`
-  setTimeout(() => document.addEventListener("click", ttPickerOutside, true), 0)
-}
-function applyTtHex() {
-  const el = document.getElementById("tt-hex-input")
-  let v = String(el.value || "").trim()
-  if (/^[0-9a-f]{6}$/i.test(v)) v = `#${v}`
-  if (/^#[0-9a-f]{3}$/i.test(v)) v = `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}`
-  if (!/^#[0-9a-f]{6}$/i.test(v)) {
-    document.getElementById("tt-hex-error").textContent = "#a8c5e0처럼 6자리 색 코드를 넣어 주세요"
-    return
-  }
-  setTtClassColor(v.toLowerCase())
-}
-function setTtClassColor(i) {
-  const pk = document.getElementById("tt-picker")
-  if (!pk) return
-  const name = pk.dataset.cls
-  const saved = ttSavedColors()
-  if (i == null) delete saved[name]
-  else saved[name] = i
-  try { localStorage.setItem(TT_COLOR_KEY, JSON.stringify(saved)) } catch (e) {}
-  const p = ttClassColor(name)
-  document.querySelectorAll(".tt-block").forEach((b) => {
-    if (b.dataset.cls === name) { b.style.background = p.bg; b.style.color = p.fg }
-  })
-  closeTtColorPicker()
-}
-
 function renderIntro() {
   const s = STUDENT
   const letterHtml = buildIntroLetterHtml()
@@ -234,7 +170,7 @@ function renderIntro() {
           ${active.map((r) => `
             <div class="class-btn primary" onclick="openRegistration('${r.token}')">
               <span class="cb-left">
-                <span class="cb-emoji">${r.emoji}</span>
+                <span class="cb-emoji">${classIconHtml(r, 18)}</span>
                 <span class="cb-name-wrap">
                   <span class="cb-class-name">${esc(r.class_name)}</span>
                 </span>
@@ -665,7 +601,7 @@ function buildHomeHeroHtml(r) {
   return `
     <div class="home-hero">
       <div class="home-hero-row">
-        <div class="home-hero-title">${r.emoji ? `<span class="home-hero-emoji">${esc(r.emoji)}</span>` : ""}${esc(r.class_name)}</div>
+        <div class="home-hero-title">${classHex(r) ? `<span class="home-hero-emoji">${classIconHtml(r, 20)}</span>` : r.emoji ? `<span class="home-hero-emoji">${esc(r.emoji)}</span>` : ""}${esc(r.class_name)}</div>
         ${sub ? `<div class="home-hero-sub">${esc(sub)}</div>` : ""}
       </div>
     </div>
@@ -1850,7 +1786,7 @@ function renderDetail() {
           </div>
         </div>
         <div class="reg-head-row stacked">
-          <div class="reg-emoji">${r.emoji}</div>
+          <div class="reg-emoji">${classIconHtml(r, 34)}</div>
           <div class="reg-title">${esc(r.class_name)}</div>
         </div>
         <div class="reg-sub-badges">

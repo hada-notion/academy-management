@@ -1,7 +1,7 @@
 // All network calls are mocked. No live Notion/Supabase writes or secret values are used.
 for (const [key, value] of Object.entries({ NOTION_TOKEN: "test-only", ADMIN_SECRET: "test-only", SB_URL: "https://mock.supabase", SB_SERVICE_ROLE_KEY: "test-only", DATA_SOURCE_STUDY_ACTIVITY_ID: "activities", DATA_SOURCE_REPORT_ID: "reports", DATA_SOURCE_ATTENDANCE_ID: "attendance" })) Deno.env.set(key, value)
 const eq = (a: unknown, b: unknown) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`) }
-const { buildRegistrationDetail, reportModeOf, reportHideOf, classAverageHiddenOf, hideOverview, hideDetail, standaloneEvalIso } = await import("./reportCacheBuilder.ts")
+const { buildRegistrationDetail, classColorOf, reportModeOf, reportHideOf, classAverageHiddenOf, hideOverview, hideDetail, standaloneEvalIso } = await import("./reportCacheBuilder.ts")
 
 Deno.test("v2.8.0 출석 없는 평가 날짜: 평가 기간 끝(하루면 그날), 서울 자정 ISO", () => {
 	eq(standaloneEvalIso("2026-10-12", "2026-10-18"), "2026-10-18T00:00:00+09:00")
@@ -297,4 +297,13 @@ Deno.test("v2.8.0 리포트 캐시: 학습·과제 목록은 6개월치를 모�
 	} finally {
 		globalThis.fetch = realFetch
 	}
+})
+
+Deno.test("v2.8.0 클래스 색: 색 코드 우선, 선택지 이름은 관리 앱 hex, 없으면 빈 값", () => {
+	const sel = (name: string) => ({ type: "select", select: { name } })
+	const rt = (t: string) => ({ type: "rich_text", rich_text: [{ plain_text: t }] })
+	eq(classColorOf({ "색": sel("파랑") }), "#7FA6D9")
+	eq(classColorOf({ "색": sel("파랑"), "색 코드": rt("#a8c5e0") }), "#A8C5E0")
+	eq(classColorOf({ "색": sel("🔴 빨강"), "색 코드": rt("abc") }), "#E5484D")
+	eq(classColorOf({}), "")
 })

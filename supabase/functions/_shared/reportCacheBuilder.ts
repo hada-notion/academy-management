@@ -51,6 +51,14 @@ export function inSeoulMonth(iso: string | null | undefined, todayIso: string): 
 
 // 학습기록 페이지 본문(블록) → 리포트 피드 부록 변환은 feedBody.ts로 옮겼다(v2.5.95, 수업 관리 기록 카드와 함께 쓴다).
 
+// (v2.8.0) 클래스 색: `색 코드`(hex)가 있으면 그것, 없으면 `색` 선택지(관리 앱 appdata.js APP_CLS_HEX와 같은 값). 없으면 "".
+const CLASS_COLOR_HEX: Record<string, string> = { 빨강: "#E5484D", 주황: "#F0A35E", 노랑: "#E8C547", 초록: "#5BBF8A", 파랑: "#7FA6D9", 보라: "#B794F6", 분홍: "#E88FB5", 갈색: "#B08D6E", 회색: "#A3A3A3", 기본: "#CFC8BE" }
+export function classColorOf(cp: any): string {
+  const code = text(cp?.["색 코드"]).trim()
+  if (/^#[0-9a-f]{6}$/i.test(code)) return code.toUpperCase()
+  const name = text(cp?.["색"]).replace(/^[^\p{L}]+/u, "").trim()
+  return CLASS_COLOR_HEX[name] || ""
+}
 function stripLeadingEmoji(s: string): string {
   return s.replace(/^[^\w가-힣]+/u, "").trim()
 }
@@ -245,11 +253,13 @@ async function buildRegistrationOverview(reg: any, accessToken: string, cachedGe
   let className = "",
     teacherName = ""
   let reportHide: { hide: ReportHideKind[]; legacy: boolean } = { hide: [], legacy: false }
+  let classColor = ""
   if (classId) {
     const cls = await cachedGetPage(classId)
     const cp = cls.properties
     className = [text(cp["이모지"]), text(cp["클래스명"])].filter(Boolean).join(" ")
     reportHide = reportHideOf(cls)
+    classColor = classColorOf(cp)
     const teacherId = firstRelationId(cp["담당강사"])
     if (teacherId) {
       const teacher = await cachedGetPage(teacherId)
@@ -319,6 +329,8 @@ async function buildRegistrationOverview(reg: any, accessToken: string, cachedGe
   return hideOverview({
     access_token: accessToken,
     class_name: className,
+    // (v2.8.0) 클래스 색(관리 앱과 같은 hex, 없으면 ""). 리포트가 이모지 대신 이 색 동그라미를 보이고 시간표 블록 색으로 쓴다.
+    class_color: classColor,
     class_mode: classMode,
     teacher_name: teacherName,
     status,
