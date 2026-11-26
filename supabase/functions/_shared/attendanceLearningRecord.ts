@@ -17,6 +17,7 @@ type Page = Record<string, any>
 export const NO_INDIVIDUAL_BOOKS = "이 학생 등록에 진행 중인 개별 진도 교재가 없어요"
 export const ATTENDANCE_NO_REGISTRATION = "이 출석에 등록이 연결되어 있지 않아요"
 export const ALL_RECORDS_EXIST = "이 출석의 학습기록이 이미 모두 있어요"
+export const NO_BOOKS_MARKED_TODAY_ATT = "오늘 학습을 체크한 진도교재가 없어요. 진도교재 탭에서 오늘 학습을 체크하고 다시 누르세요"
 const INDIVIDUAL = "개별 진도"
 const IN_PROGRESS = "진행 중"
 
@@ -49,9 +50,12 @@ export async function createLearningRecordForAttendance(attendanceId: string): P
 	const books = await Promise.all(uniq(rel(reg, "진도교재")).map((id) => d.getPage(id)))
 	const candidates = books.filter((b) => selectName(b, "진도방식") === INDIVIDUAL && (statusName(b, "진행상태") ?? selectName(b, "진행상태")) === IN_PROGRESS)
 	const today = (b: Page) => b?.properties?.["오늘 학습"]?.checkbox === true
-	const marked = candidates.filter(today)
-	const targets = marked.length ? marked : candidates
-	if (!targets.length) return { ok: false, created: [], skipped: [], message: NO_INDIVIDUAL_BOOKS }
+	if (!candidates.length) return { ok: false, created: [], skipped: [], message: NO_INDIVIDUAL_BOOKS }
+	// (261126 대표 "수업에서의 학습기록은 학습 중복과 상관없이 작동 … 같은 로직으로") 수업 버튼과 같다:
+	// 오늘 학습이 체크된 교재만, 먼저 체크를 끄고(두 번 클릭 막기) 교재마다 1개. 이미 있는 기록은 세지 않는다.
+	const targets = candidates.filter(today)
+	if (!targets.length) return { ok: false, created: [], skipped: [], message: NO_BOOKS_MARKED_TODAY_ATT }
+	for (const book of targets) await d.update(book.id as string, { "오늘 학습": { checkbox: false } }).catch(() => {})
 
 	const sessionId = uniq(rel(att, "수업"))[0]
 	const classId = uniq(rel(att, "클래스"))[0]
@@ -62,7 +66,6 @@ export async function createLearningRecordForAttendance(attendanceId: string): P
 	const created: string[] = [], skipped: string[] = []
 	for (const book of targets) {
 		const bookId = book.id as string
-		if ((await d.countRecords(attendanceId, bookId)) > 0) { skipped.push(bookId); continue }
 		const libId = libraryIds(book)[0]
 		const lib = libId ? await d.getPage(libId) : null
 		const subjects = lib ? rel(lib, "과목") : []
@@ -81,7 +84,5 @@ export async function createLearningRecordForAttendance(attendanceId: string): P
 		const page = await d.createPage(DS_LEARNING_RECORD, props)
 		created.push(page.id as string)
 	}
-	// 오늘 학습 끄기(만들었거나 이미 있던 교재 모두). 실패해도 기록은 이미 생겼으므로 결과는 그대로.
-	for (const book of targets) if (today(book)) await d.update(book.id as string, { "오늘 학습": { checkbox: false } }).catch(() => {})
-	return { ok: true, created, skipped, ...(created.length ? {} : { message: ALL_RECORDS_EXIST }) }
+	return { ok: true, created, skipped }
 }
