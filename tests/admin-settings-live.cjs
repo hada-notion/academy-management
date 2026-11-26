@@ -193,8 +193,8 @@ const CLEAR_STATUS = { workspace: '하다 예시 학원', canStart: true, flag: 
     if (mode !== 'open') {
       assert.equal(await page.isVisible('#lvclr'), false, mode + ': 설치 상자 안 보임');
       await page.screenshot({ path: shots + `admin-live-0000-${mode}.png` });
-      await page.mouse.click(8, 8); await page.waitForSelector("#lvpw", { timeout: 10000 }); /* 바깥 누름 = 취소: 로그인 창으로, 앱 화면에 남지 않음 */
-      if (mode === "locked") { await page.waitForTimeout(300); assert.ok(calls.some((c) => c.action === "logout" && c.key === "sess-0"), "바깥 누름도 0000 세션 로그아웃"); }
+      await page.mouse.click(8, 8); await page.keyboard.press('Escape'); await page.waitForTimeout(200); assert.equal(await page.isVisible('#lvnp1'), true, mode + ': 바깥 · Esc로는 안 닫힘'); await page.click('.dlg #cc'); await page.waitForSelector("#lvpw", { timeout: 10000 }); /* [취소] = 로그인 창으로, 앱 화면에 남지 않음 */
+      if (mode === "locked") { await page.waitForTimeout(300); assert.ok(calls.some((c) => c.action === "logout" && c.key === "sess-0"), "[취소]도 0000 세션 로그아웃"); }
     } else {
       assert.equal(await page.isVisible('#lvclrgo'), true); assert.match(await page.textContent('#lvclr'), /아직 비우지 않았어요[\s\S]*한 번 끝나면 잠겨/);
       await page.screenshot({ path: shots + 'admin-live-0000-open.png' });

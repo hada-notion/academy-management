@@ -160,6 +160,10 @@ const FOUND = [
     assert.equal(await tabOn(page), 'edit', '단원이 있으면 처음 탭 = 고치기');
     assert.equal(await page.locator('.dlg #lbuR [data-i="1"] [data-del]').count(), 0, '연결된 단원은 삭제 단추 없음');
     await page.fill('.dlg #lbuR [data-i="0"] .unn', '1. 수와 연산(개정)');
+    /* 항목 163: 바깥(어두운 배경)을 누르거나 Esc를 눌러도 안 닫힘 — 고친 값 유지, [취소]로만 닫힘 */
+    await page.mouse.click(8, 8); await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+    assert.equal(await page.inputValue('.dlg #lbuR [data-i="0"] .unn'), '1. 수와 연산(개정)', '배경 클릭 · Esc 뒤에도 창과 고친 값이 그대로');
+    assert.equal(await page.locator('.dlg.nudge').count(), 1, '배경을 누르면 창이 살짝 눌렸다 돌아옴');
     await page.click('.dlg [data-ut="paste"]'); assert.equal(await page.isVisible('.dlg #lbuR'), false, '탭을 옮기면 고치기 줄은 숨김');
     await page.fill('.dlg #lbuT', '3. 도형 70\n1. 수와 연산 8'); await page.click('.dlg #lbuSplit');
     await page.waitForSelector('.dlg #lbuR [data-i="2"]');
