@@ -20,7 +20,7 @@
   </div>
 </div>
 <div id="modalRoot"></div>
-<link rel="stylesheet" href="alim.css?v=742"><script src="hada-rules.js?v=742"></script><script src="help.js?v=810"></script><script src="alim-preview.js?v=742"></script><script src="pick.js?v=811"></script><script src="field.js?v=742"></script><script src="panel.js?v=806"></script>
+<link rel="stylesheet" href="alim.css?v=742"><script src="hada-rules.js?v=742"></script><script src="help.js?v=812"></script><script src="alim-preview.js?v=742"></script><script src="pick.js?v=811"></script><script src="field.js?v=742"></script><script src="panel.js?v=806"></script>
 <script>
 "use strict";
 
@@ -2900,7 +2900,13 @@ const unitFmt=(b,n)=>{if(n==null||n==="")return "";const [a,z]=unitParts(b);retu
 function unitFix(b){const us=(b.units||[]).slice().sort((x,y)=>(x.from==null)-(y.from==null)||x.from-y.from);us.forEach((u,i)=>{if(u.from==null){u.to=null;return}const nx=us.slice(i+1).find(z=>z.from!=null);u.to=nx?Math.max(u.from,nx.from-1):(+b.total||u.from)});return us}
 /* 단원 줄 편집 마치기: 이름·시작이 모두 빈 줄은 없애고, 편집 표시를 지운다 */
 function unitDone(b){const st=activeTab.state,ed=st.unEd;st.unEd=null;if(!ed||ed.id!==b.id)return;const u=(b.units||[])[ed.i];if(u&&!String(u.name||"").trim()&&u.from==null)b.units=b.units.filter(z=>z!==u);b.units=unitFix(b)}
-/* 412판(대표): 표지는 [정보] 탭([기본] 아래 상자, 교재만) · 탭 = 정보 · 쓰는 곳 · 단원 */LISTS.books.infoX=b=>b.kind==="프로그램"?"":bookCoverBox(b);
+/* 412판(대표): 표지는 [정보] 탭([기본] 아래 상자, 교재만) · 탭 = 정보 · 쓰는 곳 · 단원 */LISTS.books.infoX=b=>(b.kind==="프로그램"?"":bookCoverBox(b))+bookLinkBox(b);
+/* 항목 164(대표 261127): [정보] 탭 맨 아래 "관련 링크" — ISBN13이 있을 때만(교재 · 프로그램), 앱이 ISBN으로 바로 만든 주소 3개를 새 탭으로(노션 '관련 링크' 수식 칸은 읽지 않음). 모양 = 카드 안 이동 링크 .link-chip ↗. ISBN을 고치면 입력 중에도 바로 바뀜(아래 input 듣기) */
+const BOOK_LINKS=[["교보문고",i=>"https://search.kyobobook.co.kr/search?keyword="+i],["예스24",i=>"https://www.yes24.com/Product/Search?domain=BOOK&query="+i],["국립중앙도서관",i=>"https://www.nl.go.kr/NL/contents/search.do?srchTarget=total&kwd="+i]];
+const bookLinkIsbn=v=>{const s=String(v||"").replace(/\D/g,"");return /^\d{13}$/.test(s)?s:""};
+const bookLinkInner=i=>BOOK_LINKS.map(([t,u])=>`<a class="link-chip" href="${esc(u(i))}" target="_blank" rel="noopener" data-bkl="${esc(t)}">${esc(t)} ↗</a>`).join("");
+function bookLinkBox(b){const i=bookLinkIsbn(b.isbn);return `<div class="box" id="bkLinks" ${i?"":'style="display:none"'}><h3>관련 링크${HELP(HELPTX.bookLinks)}</h3><div id="bkLinksR" style="display:flex;flex-wrap:wrap;gap:var(--space-2)">${i?bookLinkInner(i):""}</div></div>`}
+document.addEventListener("input",e=>{const inp=e.target;if(!inp.closest||!inp.closest('#lp [data-hf="isbn"]'))return;const box=document.getElementById("bkLinks");if(!box)return;const i=bookLinkIsbn(inp.value);box.style.display=i?"":"none";const r=box.querySelector("#bkLinksR");if(r&&r.dataset.i!==i){r.dataset.i=i;r.innerHTML=i?bookLinkInner(i):""}});
 /* 창 머리 정의(그리는 것은 창 모듈): 이름 … 사용 중|미사용 / 과목 · 분량 */LISTS.books.headDef=b=>({name:b.name||"",belong:subj(b.subjectId).name||"",info:[b.pub,bookUnit(b)==="—"?"":bookUnit(b),b.price?WON(b.price):""],state:{t:b.using===false?"미사용":"사용 중",tone:b.using===false?"gray":"green"}});
 function bookCoverBox(b){return `<div class="box"><h3>표지${HELP("카드 보기와 학부모 리포트에 보이는 북커버예요. 책 검색로 넣은 책은 표지가 함께 들어와요(원본). 시제품은 그림 파일을 올려요.")}<span class="sp"></span>${b.kind!=="프로그램"?(()=>{const ok=/^\d{13}$/.test(b.isbn||"");return `<button class="lnk ${ok?"":"dim"}" data-act="covGet" ${ok?"":'aria-disabled="true"'} title="${ok?"ISBN13으로 교보문고 표지를 가져와요":"ISBN13을 먼저 넣어 주세요"}">${IC("dl","s")}가져오기</button>`})():""}<button class="lnk" data-act="covUp">${IC("ul","s")}${b.cover?"바꾸기":"올리기"}</button>${b.cover?`<button class="lnk" data-act="covRm">${IC("trash","s")}삭제</button>`:""}</h3><div class="bkcov one">${bkCover(b)}</div><div class="hfgrid"><div class="hfh" data-hf="isbn"></div></div></div>`}
 function bookUnitBox(b){const us=b.units||[],UU=unitParts(b),ED=activeTab&&activeTab.state.unEd;return `<div class="box"><h3>단원 <span class="hint">${us.length}개</span>${HELP("학습기록의 범위에 걸친 단원을 채울 때 써요. [단원 추가]로 한 줄씩 넣어요. 다 적으면 글로 보이고, 줄에 마우스를 올리면 뒤에 [편집]·[x]가 나와요. 끝은 다음 단원 바로 앞까지로 알아서 잡아요. 시작 위치는 겹칠 수 없고, 늘 시작 위치 순으로 정렬돼요. 온라인 서점의 단원 목록은 [단원 붙여넣기]로 한 번에 넣어요. 예: 1. 소인수분해 8-27")}<span class="sp"></span><button class="lnk" data-act="unitPaste">${IC("clip","s")}단원 붙여넣기</button></h3>
@@ -5113,6 +5119,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del&&!z._virtual).
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="finance.js?v=802"></script><script src="finlive.js?v=802"></script><script src="exams.js?v=764"></script><script src="appdata.js?v=805"></script><script src="appsave.js?v=808"></script><script src="appview.js?v=773"></script><script src="livelesson.js?v=744"></script><script src="liveadmin.js?v=742"></script><script src="livebook.js?v=810"></script><script src="liveschool.js?v=795"></script><script src="liveteacher.js?v=801"></script><script src="live.js?v=811"></script><script src="liverefresh.js?v=767"></script><script src="livereq.js?v=742"></script>
+<script src="finance.js?v=802"></script><script src="finlive.js?v=802"></script><script src="exams.js?v=764"></script><script src="appdata.js?v=805"></script><script src="appsave.js?v=808"></script><script src="appview.js?v=773"></script><script src="livelesson.js?v=744"></script><script src="liveadmin.js?v=742"></script><script src="livebook.js?v=812"></script><script src="liveschool.js?v=795"></script><script src="liveteacher.js?v=801"></script><script src="live.js?v=811"></script><script src="liverefresh.js?v=767"></script><script src="livereq.js?v=742"></script>
 </body>
 </html>
