@@ -157,7 +157,7 @@ function lbFindBind(p, st) {
     const items = F.picks.map((i) => F.res[i]).filter(Boolean);
     if (!items.length || F.busy) return;
     const fail = [];
-    let ok = 0;
+    let ok = 0, noCover = 0;
     for (let k = 0; k < items.length; k++) {
       const z = items[k];
       F.busy = `${k + 1}/${items.length}권 등록 중… ${z.title}`; draw();
@@ -167,11 +167,11 @@ function lbFindBind(p, st) {
           if (z.isbn13) { body.isbn13 = z.isbn13; body.cover = lbKyoboCover(z.isbn13); }
           if (z.price) body.price = z.price;
           if (z.publisher && lbOpts("pub").includes(z.publisher)) body.publisher = z.publisher; /* 노션 출판사 선택지에 있을 때만(없으면 비워 둠) */
-          await liveBookApi(body);
+          const o = await liveBookApi(body); if (o && o.cover === false) noCover++;
         } else {
           let units = [];
           try { const d = await liveBookApi({ action: "detail", isbn13: z.isbn13 }); units = ((d.toc && d.toc.units) || []).filter((u) => u.include !== false).map((u) => ({ name: u.name, page: u.page })); } catch (_) { /* 목차를 못 받으면 단원 없이 */ }
-          await liveBookApi({ action: "register", isbn13: z.isbn13, title: z.title, cover: "kyobo", units });
+          const o = await liveBookApi({ action: "register", isbn13: z.isbn13, title: z.title, cover: "kyobo", units }); if (o && o.cover === false) noCover++;
         }
         z.registered = true; ok++;
       } catch (e) { fail.push(`${z.title}: ${e.status === 409 ? "이미 라이브러리에 있어요" : lbErr(e)}`); }
@@ -179,7 +179,7 @@ function lbFindBind(p, st) {
     F.busy = ""; F.picks = [];
     if (fail.length) { F.msg = `${ok}권 등록 · ${fail.length}권 못 함 — ${fail.join(" / ")}`; draw(); }
     else { st.bfind = null; panelOpen = false; render(); }
-    if (ok) await lbAfterAdd(`${ok}권을 라이브러리에 등록했어요 — 과목은 줄을 눌러 넣어요`);
+    if (ok) await lbAfterAdd(`${ok}권을 라이브러리에 등록했어요 — 과목은 줄을 눌러 넣어요${noCover ? ` · 표지를 못 찾은 ${noCover}권은 표지 없이 넣었어요(교재 창 [표지]에서 올려요)` : ""}`);
   };
 }
 

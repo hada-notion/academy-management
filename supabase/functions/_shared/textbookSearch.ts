@@ -159,7 +159,7 @@ export async function registerBook(body: any) {
 	const name = String(body?.title ?? "").replace(/\s+/g, " ").trim().slice(0, 200) || book.title
 	// cover: "kyobo"(기본) | "alt"(국립중앙도서관 표지) | "none". 옛 화면의 noCover도 받는다.
 	const choice = body?.noCover ? "none" : String(body?.cover ?? "kyobo")
-	const cover = choice === "none" ? "" : choice === "alt" ? book.altCover : coverUrl(isbn13)
+	const cover = choice === "none" ? "" : choice === "alt" ? book.altCover : await kyoboCoverOrNone(coverUrl(isbn13))
 	return await createLibraryBook({ name, isbn13, price: book.price, pages: book.pages, cover, publisher: book.publisher, seriesHint: book.series, units: body?.units, seriesPick: await pickOption(body?.series, "series"), publisherPick: await pickOption(body?.publisher, "publishers") })
 }
 
@@ -213,7 +213,7 @@ export async function registerCustom(body: any) {
 	if (cover && (!/^https:\/\/[^\s]+$/i.test(cover) || cover.length > 1000)) throw new TextbookError(400, "표지 주소는 https로 시작하는 이미지 주소여야 합니다.")
 	const price = Number(body?.price)
 	const pages = Number(body?.pages)
-	return await createLibraryBook({ kind, name, isbn13: isbn13 || undefined, price: price > 0 && price < 10_000_000 ? Math.round(price) : null, pages: pages > 0 && pages < 10_000 ? Math.round(pages) : null, cover, units: body?.units, seriesPick: await pickOption(body?.series, "series"), publisherPick: await pickOption(body?.publisher, "publishers") })
+	return await createLibraryBook({ kind, name, isbn13: isbn13 || undefined, price: price > 0 && price < 10_000_000 ? Math.round(price) : null, pages: pages > 0 && pages < 10_000 ? Math.round(pages) : null, cover: await kyoboCoverOrNone(cover), units: body?.units, seriesPick: await pickOption(body?.series, "series"), publisherPick: await pickOption(body?.publisher, "publishers") })
 }
 
 // ---------- 라이브러리 열기(v2.5.118) ----------
@@ -526,30 +526,69 @@ export async function editSeries(body: any) {
 	return { ok: true, cleaned: duplicates.map((o) => o.name), series: series.map((o) => ({ id: o.id, name: o.name })), duplicates: [] as string[] }
 }
 
-// 표지 확인(cover-check, 항목 160): 교보문고는 없는 ISBN에도 200 + 큰 "제공된 상품이미지가 없습니다" 대체 그림을 준다.
+// 표지 확인(cover-check, 항목 160 · 161): 교보문고는 없는 ISBN에도 200 + 큰 "제공된 상품이미지가 없습니다" 대체 그림을 준다.
 // 브라우저는 CORS 때문에 바이트를 못 비교하므로 서버가 그 ISBN의 그림과 일부러 없는 ISBN의 그림을 받아 바이트가 같으면 없는 것으로 본다(고정 해시 없음 → 대체 그림이 바뀌어도 맞음).
+// 교보문고에 없으면 예스24로 한 번 더: 검색(ISBN) 결과가 정확히 1건일 때만 그 상품을 받아들이고, 그림은 없는 상품 번호의 대체 그림과 바이트로 비교한다.
 export const NO_COVER_PROBE_ISBN = "9781111111111"
-let probeCache: { at: number; bytes: Uint8Array } | null = null
+export const YES24_PROBE_GOODS = "999999999"
+export type CoverFound = { found: boolean; url?: string; source?: "kyobo" | "yes24" }
+const BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+const probeCache: Record<string, { at: number; bytes: Uint8Array } | null> = {}
 const sameBytes = (a: Uint8Array, b: Uint8Array) => a.length === b.length && a.every((v, i) => v === b[i])
-async function grabImage(isbn: string, f: typeof fetch): Promise<Uint8Array | null> {
+async function grabImageUrl(url: string, f: typeof fetch): Promise<Uint8Array | null> {
 	try {
-		const res = await f(coverUrl(isbn), { signal: AbortSignal.timeout(6000) })
+		const res = await f(url, { headers: { "User-Agent": BROWSER_UA }, signal: AbortSignal.timeout(8000) })
 		if (!res.ok || !/^image\//i.test(res.headers.get("content-type") ?? "")) return null
 		const bytes = new Uint8Array(await res.arrayBuffer())
 		return bytes.length ? bytes : null
 	} catch { return null }
 }
-export async function coverCheck(isbn13: unknown, f: typeof fetch = fetch): Promise<{ found: boolean; url?: string }> {
+// 비교용 "없음" 그림을 10분 캐시. 못 받으면 null(비교할 수 없으면 찾았다고 하지 않는다).
+async function probeBytes(key: string, url: string, f: typeof fetch): Promise<Uint8Array | null> {
+	const hit = probeCache[key]
+	if (hit && Date.now() - hit.at < 10 * 60 * 1000) return hit.bytes
+	const bytes = await grabImageUrl(url, f)
+	probeCache[key] = bytes ? { at: Date.now(), bytes } : null
+	return bytes
+}
+async function realImage(url: string, probeKey: string, probeUrl: string, f: typeof fetch): Promise<boolean> {
+	const img = await grabImageUrl(url, f)
+	if (!img) return false
+	const probe = await probeBytes(probeKey, probeUrl, f)
+	return !!probe && !sameBytes(img, probe)
+}
+// 예스24 검색 결과(ISBN) → 상품 번호. 처음 요청은 쿠키를 심으며 메인으로 돌려보내므로 쿠키를 받아 한 번 더 부른다(요청 최대 2건).
+async function yes24Goods(isbn: string, f: typeof fetch): Promise<string | null> {
+	try {
+		const url = `https://www.yes24.com/Product/Search?domain=BOOK&query=${isbn}`
+		const headers: Record<string, string> = { "User-Agent": BROWSER_UA, "Accept": "text/html", "Accept-Language": "ko-KR,ko;q=0.9" }
+		let res = await f(url, { headers, redirect: "manual", signal: AbortSignal.timeout(8000) })
+		if (res.status >= 300 && res.status < 400) {
+			const cookie = (res.headers.get("set-cookie") ?? "").split(";")[0].trim()
+			await res.body?.cancel()
+			if (!cookie.includes("=")) return null
+			res = await f(url, { headers: { ...headers, Cookie: cookie }, redirect: "manual", signal: AbortSignal.timeout(8000) })
+		}
+		if (!res.ok) return null
+		const ids = [...new Set([...(await res.text()).matchAll(/data-goods-no="(\d{4,12})"/g)].map((m) => m[1]))]
+		return ids.length === 1 ? ids[0] : null // 결과가 정확히 1건일 때만(ISBN 검색이라 같은 책)
+	} catch { return null }
+}
+const yes24Image = (goods: string) => `https://image.yes24.com/goods/${goods}/XL`
+export async function coverCheck(isbn13: unknown, f: typeof fetch = fetch): Promise<CoverFound> {
 	const isbn = String(isbn13 ?? "")
 	if (!isIsbn13(isbn)) throw new TextbookError(400, "ISBN13(13자리 숫자)이 필요합니다.")
-	const img = await grabImage(isbn, f)
-	if (!img) return { found: false }
-	if (!probeCache || Date.now() - probeCache.at > 10 * 60 * 1000) {
-		const probe = await grabImage(NO_COVER_PROBE_ISBN, f)
-		probeCache = probe ? { at: Date.now(), bytes: probe } : null
-	}
-	// 없는 ISBN의 그림을 못 받으면 비교할 수 없으므로 찾았다고 하지 않는다
-	if (!probeCache || sameBytes(img, probeCache.bytes)) return { found: false }
-	return { found: true, url: coverUrl(isbn) }
+	if (await realImage(coverUrl(isbn), "kyobo", coverUrl(NO_COVER_PROBE_ISBN), f)) return { found: true, url: coverUrl(isbn), source: "kyobo" }
+	const goods = await yes24Goods(isbn, f)
+	if (goods && await realImage(yes24Image(goods), "yes24", yes24Image(YES24_PROBE_GOODS), f)) return { found: true, url: yes24Image(goods), source: "yes24" }
+	return { found: false }
 }
-export const _resetCoverProbe = () => { probeCache = null }
+export const _resetCoverProbe = () => { for (const k of Object.keys(probeCache)) delete probeCache[k] }
+
+// 등록 때 교보문고 표지 주소(.../pdt/<ISBN13>.jpg)는 coverCheck(교보 → 예스24)로 실제 표지를 찾고, 없거나 확인이 실패하면 표지 없이 등록한다(등록은 계속, 항목 161). 다른 주소(직접 올린 표지 · 국립중앙도서관)는 그대로.
+const KYOBO_PDT = /^https:\/\/contents\.kyobobook\.co\.kr\/.*\/pdt\/(97[89]\d{10})\.jpg/i
+export async function kyoboCoverOrNone(cover: string, f: typeof fetch = fetch): Promise<string> {
+	const m = KYOBO_PDT.exec(cover ?? "")
+	if (!m) return cover
+	try { const r = await coverCheck(m[1], f); return r.found && r.url ? r.url : "" } catch { return "" }
+}
