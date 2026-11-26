@@ -26,6 +26,7 @@ import { isRunning, markError, markQueued } from "../_shared/statusTracking.ts"
 import { CLASS_REPORT_GEN_STATUS_SPEC, TARGET_CLASS_REPORTS, reportRequestFromProps, type ClassReportsPayload } from "../_shared/classReportPlan.ts"
 import { ROUTINE_STATUS_SPEC, TARGET_ROUTINE_CHECKS } from "../_shared/routineCheck.ts"
 import { createRoutineChecksForAttendance } from "../_shared/attendanceRoutine.ts"
+import { setRegistrationIconsForClass } from "../_shared/registrationIcons.ts"
 import { COMPLETION_STATUS_SPEC, TARGET_COMPLETION } from "../_shared/completionReport.ts"
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } })
@@ -55,6 +56,20 @@ Deno.serve(async (req: Request) => {
 			return json({ ok: true, created: r.created.length, skipped: r.skipped.length, note: r.created.length ? `루틴 체크 ${r.created.length}개 만듦` : r.message })
 		} catch (err) {
 			console.error("[create-class-reports/attendance-routine] ERROR:", (err as Error).message)
+			return json({ ok: false, error: (err as Error).message }, 500)
+		}
+	}
+
+	// (v2.8.0 항목 155, 261126) 클래스 [등록 아이콘 맞추기]: 그 반 색의 사람 모양 아이콘을 그 반 등록 전부에. 큐 없이 바로 처리해 결과를 돌려준다.
+	if (route === "reg-icons") {
+		const cid = extractPageId(body)
+		if (!cid) return json({ error: "pageId를 찾을 수 없음" }, 400)
+		try {
+			const r = await setRegistrationIconsForClass(cid)
+			if (!r.ok) return json({ ok: false, error: r.message, count: r.count }, 400)
+			return json({ ok: true, count: r.count, note: r.message })
+		} catch (err) {
+			console.error("[create-class-reports/reg-icons] ERROR:", (err as Error).message)
 			return json({ ok: false, error: (err as Error).message }, 500)
 		}
 	}

@@ -34,16 +34,10 @@ function chunk(type: string, data: Uint8Array): Uint8Array {
 	return out
 }
 
-export async function colorCirclePng(hex: string): Promise<Uint8Array> {
-	const [r, g, b] = parseHex(hex), S = CIRCLE_SIZE, c = (S - 1) / 2
+// RGBA 픽셀(S*S*4바이트)을 8비트 RGBA PNG로 인코딩한다. 색 동그라미·사람 모양 아이콘이 함께 쓴다.
+export async function encodePng(S: number, rgba: Uint8Array): Promise<Uint8Array> {
 	const raw = new Uint8Array((S * 4 + 1) * S) // 줄마다 필터 바이트 0 + RGBA
-	for (let y = 0; y < S; y++) {
-		const o = y * (S * 4 + 1) + 1
-		for (let x = 0; x < S; x++) {
-			const a = Math.max(0, Math.min(1, CIRCLE_RADIUS + 0.5 - Math.hypot(x - c, y - c))) // 가장자리 1픽셀 부드럽게
-			raw.set([r, g, b, Math.round(a * 255)], o + x * 4)
-		}
-	}
+	for (let y = 0; y < S; y++) raw.set(rgba.subarray(y * S * 4, (y + 1) * S * 4), y * (S * 4 + 1) + 1)
 	const ihdr = new Uint8Array(13), v = new DataView(ihdr.buffer)
 	v.setUint32(0, S); v.setUint32(4, S); ihdr[8] = 8; ihdr[9] = 6 // 8비트 RGBA
 	const parts = [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", ihdr), chunk("IDAT", await zlib(raw)), chunk("IEND", new Uint8Array())]
@@ -51,4 +45,16 @@ export async function colorCirclePng(hex: string): Promise<Uint8Array> {
 	let at = 0
 	for (const p of parts) { png.set(p, at); at += p.length }
 	return png
+}
+
+export async function colorCirclePng(hex: string): Promise<Uint8Array> {
+	const [r, g, b] = parseHex(hex), S = CIRCLE_SIZE, c = (S - 1) / 2
+	const rgba = new Uint8Array(S * S * 4)
+	for (let y = 0; y < S; y++) {
+		for (let x = 0; x < S; x++) {
+			const a = Math.max(0, Math.min(1, CIRCLE_RADIUS + 0.5 - Math.hypot(x - c, y - c))) // 가장자리 1픽셀 부드럽게
+			rgba.set([r, g, b, Math.round(a * 255)], (y * S + x) * 4)
+		}
+	}
+	return await encodePng(S, rgba)
 }

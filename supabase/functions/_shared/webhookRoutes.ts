@@ -41,6 +41,8 @@ export const WEBHOOK_ROUTES: WebhookRoute[] = [
   { id: "class-tuition-create", db: "클래스(학원)", name: "월 수강료 생성", kind: "button", fn: "send-monthly-notice", path: "/create" },
   { id: "class-letter-create", db: "클래스(학원)", name: "월간 안내 생성", kind: "button", fn: "send-monthly-notice", path: "/create-letter" },
   { id: "class-etc-charge", db: "클래스(학원)", name: "기타경비 청구", kind: "button", fn: "sync-textbook-distribution", path: "/class-etc/queue" },
+  // (261126) 클래스 색의 사람 모양 아이콘을 그 반 등록 전부에(항목 155).
+  { id: "class-reg-icons", db: "클래스(학원)", name: "등록 아이콘 맞추기", kind: "button", fn: "create-class-reports", path: "/reg-icons" },
   { id: "menu-bulk-classes", db: "메뉴(학원)", name: "다음주 수업 일괄 생성", kind: "button", fn: "generate-classes", path: "?mode=bulk" },
   { id: "session-record", db: "수업(학원)", name: "학습기록 생성", kind: "button", fn: "create-learning-record", path: "" },
   { id: "session-routine-checks", db: "수업(학원)", name: "루틴 체크 생성", kind: "button", fn: "create-class-reports", path: "/routine-checks" },

@@ -21,6 +21,7 @@ import { textbookSources } from "./textbookSearch.ts"
 import { syncBookCopy } from "./libraryCopy.ts"
 import { runInBackground } from "./backgroundTask.ts"
 import { classIconHex, setClassColorIcon } from "./classIcon.ts"
+import { setRegistrationIconsForClass } from "./registrationIcons.ts"
 import { getCurrentAdminKey } from "./adminShared.ts"
 import { routeById } from "./webhookRoutes.ts"
 import { REQUEST_PROP } from "./notionRequests.ts"
@@ -138,6 +139,12 @@ export const saveDeps = {
 	updateClassIcon: (pageId: string, hex: string): void => {
 		runInBackground(async () => {
 			try { await setClassColorIcon(pageId, hex) } catch (err) { console.warn("[appSave] 클래스 색 아이콘 실패:", pageId, (err as Error).message) }
+		})
+	},
+	// 같은 색의 사람 모양 아이콘을 그 반 등록 전부에(항목 155). 응답은 기다리지 않고, 실패는 로그만.
+	updateRegistrationIcons: (classId: string, hex: string): void => {
+		runInBackground(async () => {
+			try { await setRegistrationIconsForClass(classId, hex) } catch (err) { console.warn("[appSave] 등록 아이콘 실패:", classId, (err as Error).message) }
 		})
 	},
 	// 라이브러리 교재를 고쳤으면 라이브러리 복사본(lib_books)도 바로 맞춘다(library.html과 같은 복사본). 응답은 기다리지 않음.
@@ -407,7 +414,7 @@ export async function saveChanges(changes: Change[]): Promise<ChangeResult[]> {
 			if (eventAffectsReport(c.db as WriteDb, cprops)) saveDeps.refreshReport(page.id)
 			if (c.db === LIBRARY_DB) saveDeps.syncLibraryBook(page.id)
 			// 클래스 색을 저장했으면 그 색 동그라미를 페이지 아이콘으로(실패해도 저장 결과는 그대로, 로그만).
-			if (c.db === CLASS_DB) { const hex = classIconHex(cprops); if (hex) saveDeps.updateClassIcon(page.id, hex) }
+			if (c.db === CLASS_DB) { const hex = classIconHex(cprops); if (hex) { saveDeps.updateClassIcon(page.id, hex); saveDeps.updateRegistrationIcons(page.id, hex) } }
 			// (261123 출시 전 5번) 노션에는 이미 썼다. 사본 쓰기만 실패하면 실패로 답하지 않는다 — 실패로 답하면 앱이 새 줄을
 			// 작성 중으로 남기고, 다시 [저장]하면 노션에 같은 줄이 하나 더 생긴다. 새 id와 함께 성공 + 안내(warn)로 답한다.
 			// 사본은 웹훅 · 폴링(5분)이 저절로 맞춘다.
