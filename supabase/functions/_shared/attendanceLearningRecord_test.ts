@@ -11,15 +11,28 @@ const stat = (name: string) => ({ type: "status", status: { name } })
 const book = (id: string, mode: string, status: string, lib?: string) => ({ id, properties: { 진도교재: title(id), 진도방식: sel(mode), 진행상태: stat(status), ...(lib ? { 라이브러리: rel(lib) } : {}) } })
 
 function fake(pages: Record<string, any>, existing: Set<string> = new Set()) {
-	const created: any[] = []
+	const created: any[] = [], updates: any[] = []
 	const saved = { ...attendanceRecordDeps }
 	Object.assign(attendanceRecordDeps, {
 		getPage: async (id: string) => pages[id] ?? { id, properties: {} },
+		update: async (id: string, props: any) => { updates.push({ id, props }) },
 		createPage: async (_ds: string, props: any) => { created.push(props); existing.add(`${props["출석"].relation[0].id}|${props["진도교재"].relation[0].id}`); return { id: `rec${created.length}` } },
 		countRecords: async (a: string, b: string) => (existing.has(`${a}|${b}`) ? 1 : 0),
 	})
-	return { created, restore: () => Object.assign(attendanceRecordDeps, saved) }
+	return { created, updates, restore: () => Object.assign(attendanceRecordDeps, saved) }
 }
+
+Deno.test("출석 학습기록(261126): 오늘 학습 체크된 교재가 있으면 그것만 만들고 체크를 끈다", async () => {
+	const w: any = world()
+	w.B2 = { ...w.B2, properties: { ...w.B2.properties, "오늘 학습": { type: "checkbox", checkbox: true } } }
+	const f = fake(w)
+	try {
+		const r = await createLearningRecordForAttendance("A1")
+		eq(r.created.length, 1)
+		eq(f.created[0]["진도교재"].relation[0].id, "B2")
+		eq(f.updates, [{ id: "B2", props: { "오늘 학습": { checkbox: false } } }])
+	} finally { f.restore() }
+})
 
 const att = (id: string, reg: string) => ({ id, properties: { 등록: rel(reg), 수업: rel("S1"), 수업일시: { type: "date", date: { start: "2026-11-26" } } } })
 const world = () => ({
