@@ -1,4 +1,4 @@
-// 관리 앱 단원 편집 [나누기]의 단원 단계(항목 164) — livebook.js 순수 함수(lbUnitLevels · lbUnitPick)를 노드에서 바로 시험. 브라우저 없음.
+// 관리 앱 단원 편집 [단원 목록 입력]의 단원 단계(항목 164) — livebook.js 순수 함수(lbUnitLevels · lbUnitPick)를 노드에서 바로 시험. 브라우저 없음.
 // 사용: node tests/admin-unit-levels.cjs
 const fs = require('fs'), path = require('path'), vm = require('vm'), assert = require('node:assert/strict');
 const src = fs.readFileSync(path.join(__dirname, '../prototype/admin-app/livebook.js'), 'utf8');

@@ -2,7 +2,7 @@
    - 책 찾기(오른쪽 창): [검색] search(국립중앙도서관, ISBN이면 그 책) → 고르면 detail(목차 → 단원 후보) → register(ISBN · 교보문고 표지)
                          [교보문고] 책 주소의 상품번호 → kyobo-book(교재명 · ISBN · 정가 · 출판사 · 목차) → register-custom. ISBN만 붙이면 search(ISBN)
                          [직접 등록] 지금 등록 창(live.js liveBookRegisterOpen)
-   - 단원(교재 창 [단원] 탭): units로 받아 보이고, [단원 편집] 창 [고치기 | 붙여넣기 | 가져오기] 탭 — 이름 · 시작 고치기 · 삭제 · 추가 · 붙여넣기 · 가져오기(units-fetch, 교보문고 → 예스24) — [나누기]는 화면에서(단원 단계 lbUnitPick, 항목 164) → edit-units 한 번에(바로 노션)
+   - 단원(교재 창 [단원] 탭): units로 받아 보이고, [단원 편집] 창 [고치기 | 단원 목록] 탭 — 이름 · 시작 고치기 · 삭제 · 추가 · 단원 목록(붙여 넣기 · 가져오기 units-fetch, 교보문고 → 예스24) — [단원 목록 입력]은 화면에서(단원 단계 lbUnitPick, 항목 164) → edit-units 10개씩 묶어 여러 번(바로 노션, 진행 n/전체 · 중간 실패면 남은 것만 [다시 저장], 항목 165)
    - 시리즈(라이브러리 [교재] 탭, 줄을 고르지 않았을 때 오른쪽 창 아래 [시리즈 관리]): series · edit-series(추가 · 이름 · 순서 · 삭제 — 교재가 0권인 시리즈만 삭제)
    실제 자료 모드가 아니면 아무것도 바꾸지 않는다(시제품 예시 목록 그대로). */
 const LBK = { units: {}, series: null };
@@ -200,7 +200,7 @@ function lbUnitBox(b) {
   /* 261126 대표(B안): 머리 단추는 [단원 편집] 하나 — 창 안 [고치기 | 붙여넣기 | 가져오기] 탭 */
   return `<div class="box"><h3>단원 <span class="hint">${c && c.list ? us.length + "개" : ""}</span>${HELP(HELPTX.unitBox)}<span class="sp"></span><button class="lnk" data-lbu="edit" data-bk="${esc(b.id)}">${IC("pen", "s")}단원 편집</button></h3>${rows}${c && c.err && c.list ? `<div class="hint warn">${esc(c.err)}</div>` : ""}</div>`;
 }
-/* 단원 단계(261127 대표, 항목 164 — 단원 편집 > 붙여넣기 · 가져오기 [나누기]): 글의 줄을 꼴로 단계에 묶고, 고른 단계 줄만 단원으로 넣는다.
+/* 단원 단계(261127 대표, 항목 164 — 단원 편집 > [단원 목록] 탭 [단원 목록 입력]): 글의 줄을 꼴로 단계에 묶고, 고른 단계 줄만 단원으로 넣는다.
    꼴 = 들여쓰기 · 앞 기호(- • ·) · [..] · 머리말 낱말(Stage · Part · Chapter · Lesson · Unit · Day · 단원 · 장 · 편 · 차시 …) · 번호 꼴(Ⅰ / 1. / 01 / 1-1 / 1.1 / ① / (1) / 가.).
    줄 이름은 적힌 그대로(앞에 없는 번호를 지어 붙이지 않음, 앞 기호만 뗌). 쪽 = 줄 끝 숫자 중 앞에 공백 2칸 이상 · 점선 · 탭 · / · "p." · 뒤 "쪽"이 있는 것,
    또는 그 단계 거의 모든 줄(80%) 끝에 커지는 숫자가 있을 때만 — "구동사 2" · "가정표현 4" 같은 이름 끝 숫자는 쪽이 아니다. 고른 줄에 쪽이 없으면 그 아래 줄의 첫 쪽.
@@ -283,16 +283,17 @@ function lbUnitPick(text, key, up) {
   });
   return out;
 }
+const LBU_CHUNK = 10; /* 단원 저장 한 번(edit-units)에 보내는 줄 수 — 항목 165 */
 const lbIsbn = (b) => { const s = String((b && b.isbn) || "").replace(/[-\s]/g, ""); return /^97[89]\d{10}$/.test(s) ? s : ""; };
-/* 단원 편집 창(261126 대표 B안): [고치기 | 붙여넣기 | 가져오기] 탭 하나 창. 고친 줄(rows)은 탭을 옮겨도 그대로, [저장]은 창 아래 하나(edit-units 한 번).
-   처음 탭: 단원 있으면 고치기 · 없고 ISBN13 있으면 가져오기 · 둘 다 없으면 붙여넣기. 붙여넣기 · 가져오기의 [나누기]는 parse 그대로 → 고치기 탭 아래에 붙는다(같은 이름 건너뜀) */
+/* 단원 편집 창(261126 대표 B안 → 261127 대표 탭 둘): [고치기 | 단원 목록] 탭 하나 창. 고친 줄(rows)은 탭을 옮겨도 그대로, [저장]은 창 아래 하나(edit-units 10개씩 묶음, 항목 165).
+   처음 탭: 단원 있으면 고치기 · 없으면 단원 목록. [단원 목록] = 위 ISBN13 [가져오기](글 칸에 채움) + 글 칸(붙여 넣기) + 단원 단계 + [단원 목록 입력] → 고치기 탭 아래에 붙는다(같은 이름 건너뜀) */
 function lbUnitDialog(b, tab0) {
   const c = LBK.units[b.id];
   if (!c || !c.list) { toast("단원을 불러온 뒤에 편집해요"); lbUnitsLoad(b.id); return; }
   const rows = c.list.map((u) => ({ id: u.id, name: u.name || "", page: u.page == null ? "" : String(u.page), name0: u.name || "", page0: u.page == null ? "" : String(u.page), uses: u.uses || 0, del: false }));
   const UU = unitParts(b), isbn = lbIsbn(b);
-  const T = { tab: tab0 || (rows.length ? "edit" : isbn ? "fetch" : "paste"), raw: "", src: "" };
-  const TABS = [["edit", "고치기"], ["paste", "붙여넣기"], ["fetch", "가져오기"]];
+  const T = { tab: tab0 || (rows.length ? "edit" : "list"), src: "" };
+  const TABS = [["edit", "고치기"], ["list", "단원 목록"]];
   modal(`<h2>단원 편집${HELP(HELPTX.unitEdit)}</h2><div class="hint">${esc(b.name)}</div>
     <div class="row"><span class="vseg subseg" id="lbuTabs" role="tablist" aria-label="단원 편집 방법">${TABS.map(([k, t]) => `<button type="button" role="tab" data-ut="${k}">${t}</button>`).join("")}</span></div>
     <div data-up="edit">
@@ -300,18 +301,14 @@ function lbUnitDialog(b, tab0) {
       <button type="button" class="pgaddc ln" id="lbuAdd">${IC("plus", "s")}단원 추가</button>
       <div class="row" id="lbuO" style="display:none"><button type="button" class="btn sm" id="lbuSort" title="시작 쪽이 작은 단원부터 위로 — 쪽을 안 적은 줄은 맨 아래">${IC("aup", "s")}쪽 순서로 정렬</button></div>
     </div>
-    <div data-up="paste" hidden>
-      <textarea class="inp bfta tall" id="lbuT" aria-label="단원 목록" placeholder="단원 목록을 붙여 넣어 주세요 — 한 줄에 하나, 끝 숫자는 시작 쪽&#10;1. 소인수분해 8&#10;2. 정수와 유리수 28&#10;3. 문자와 식 56"></textarea>
-      <div class="row lburow"><span class="hint" data-lvh="T">단원 단계</span><span class="vseg subseg" data-lv="T" role="radiogroup" aria-label="단원으로 쓸 단계"></span><label class="hint" style="white-space:nowrap" data-lvh="T"><input type="checkbox" data-lvup="T"> 윗 단계 이름 붙이기</label><span class="sp"></span><button type="button" class="btn" id="lbuSplit">나누기</button></div>
-    </div>
-    <div data-up="fetch" hidden>
-      <div class="row"><span class="hint">ISBN13 ${isbn ? esc(isbn) : "없음"}</span><span class="sp"></span><button type="button" class="btn" id="lbuGet" ${isbn ? "" : 'disabled title="ISBN13을 먼저 넣어 주세요"'}>${IC("dl", "s")}가져오기</button></div>
-      ${isbn ? "" : '<div class="hint warn" id="lbuNoIsbn">ISBN13을 먼저 넣어 주세요 — 교재 창 [정보] 탭의 ISBN13 칸</div>'}
-      <textarea class="inp bfta tall" id="lbuF" aria-label="가져온 단원 목록" placeholder="${isbn ? "[가져오기]를 누르면 온라인 서점의 단원 목록이 여기에 들어와요 — 고친 뒤 [나누기]" : ""}" ${isbn ? "" : "disabled"}></textarea>
-      <div class="row lburow"><span class="hint" data-lvh="F">단원 단계</span><span class="vseg subseg" data-lv="F" role="radiogroup" aria-label="단원으로 쓸 단계"></span><label class="hint" style="white-space:nowrap" data-lvh="F"><input type="checkbox" data-lvup="F" ${isbn ? "" : "disabled"}> 윗 단계 이름 붙이기</label><span class="sp"></span><button type="button" class="btn" id="lbuSplitF" ${isbn ? "" : "disabled"}>나누기</button></div>
+    <div data-up="list" hidden>
+      <div class="row"><span class="hint">ISBN13 ${isbn ? esc(isbn) : "없음"}</span><span class="sp"></span><button type="button" class="btn" id="lbuGet" ${isbn ? 'title="온라인 서점(교보문고, 없으면 예스24)의 단원 목록을 아래 글 칸에 채워요"' : 'disabled title="ISBN13을 먼저 넣어 주세요"'}>${IC("dl", "s")}가져오기</button></div>
+      ${isbn ? "" : '<div class="hint warn" id="lbuNoIsbn">[가져오기]는 ISBN13이 있어야 해요 — 교재 창 [정보] 탭의 ISBN13 칸</div>'}
+      <textarea class="inp bfta tall" id="lbuT" aria-label="단원 목록" placeholder="단원 목록을 붙여 넣거나 [가져오기]를 눌러요 — 한 줄에 하나, 끝 숫자는 시작 쪽&#10;1. 소인수분해 8&#10;2. 정수와 유리수 28&#10;3. 문자와 식 56"></textarea>
+      <div class="row lburow"><span class="hint" data-lvh="T">단원 단계</span><span class="vseg subseg" data-lv="T" role="radiogroup" aria-label="단원으로 쓸 단계"></span><label class="hint" style="white-space:nowrap" data-lvh="T"><input type="checkbox" data-lvup="T"> 윗 단계 이름 붙이기</label><span class="sp"></span><button type="button" class="btn" id="lbuSplit">단원 목록 입력</button></div>
     </div>
     <p class="hint" id="lbuM"></p>
-    <div class="actions"><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">저장</button></div>`, (m, close) => {
+    <div class="actions"><span class="lbuprog" id="lbuP" role="progressbar" aria-label="단원 저장" aria-valuemin="0" hidden><span class="spinner" aria-hidden="true"></span><span class="t" aria-live="polite"></span><span class="bar"><i></i></span></span><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">저장</button></div>`, (m, close) => {
     const box = m.querySelector("#lbuR"), msg = m.querySelector("#lbuM");
     const show = (k) => {
       T.tab = k;
@@ -341,46 +338,46 @@ function lbUnitDialog(b, tab0) {
     draw(); show(T.tab);
     m.querySelector("#lbuAdd").onclick = () => { rows.push({ name: "", page: "", del: false }); draw(); const l = box.querySelectorAll(".unn"); if (l.length) l[l.length - 1].focus(); box.scrollTop = box.scrollHeight; };
     /* 단원 단계(항목 164): 글 칸마다 단계 나눔 단추(이름 + 줄 수) — 단계가 둘 이상일 때만. 고른 단계는 글을 고쳐도 그 꼴이 남아 있으면 그대로 */
-    const LV = { T: { key: "", up: false }, F: { key: "", up: false } };
+    const LV = { T: { key: "", up: false } };
     const lvDraw = (w) => {
-      const ta = m.querySelector(w === "F" ? "#lbuF" : "#lbuT"), L = lbUnitLevels(ta.value), seg = m.querySelector(`[data-lv="${w}"]`);
+      const ta = m.querySelector("#lbuT"), L = lbUnitLevels(ta.value), seg = m.querySelector(`[data-lv="${w}"]`);
       if (!L.levels.some((g) => g.key === LV[w].key)) LV[w].key = L.def;
       const many = L.levels.length > 1;
       seg.style.display = many ? "" : "none"; m.querySelectorAll(`[data-lvh="${w}"]`).forEach((x) => (x.style.display = many ? "" : "none"));
       seg.innerHTML = many ? L.levels.map((g) => `<button type="button" role="radio" data-lvk="${esc(g.key)}" class="${g.key === LV[w].key ? "on" : ""}" aria-checked="${g.key === LV[w].key}">${esc(g.label)} <span class="n">${g.count}</span></button>`).join("") : "";
       seg.querySelectorAll("[data-lvk]").forEach((x) => (x.onclick = () => { LV[w].key = x.dataset.lvk; lvDraw(w); }));
     };
-    ["T", "F"].forEach((w) => {
-      m.querySelector(w === "F" ? "#lbuF" : "#lbuT").addEventListener("input", () => lvDraw(w));
+    ["T"].forEach((w) => {
+      m.querySelector("#lbuT").addEventListener("input", () => lvDraw(w));
       m.querySelector(`[data-lvup="${w}"]`).onchange = (ev) => { LV[w].up = ev.currentTarget.checked; };
       lvDraw(w);
     });
-    /* 나누기(붙여넣기 · 가져오기 공용): 고른 단계 줄만 이름 그대로(lbUnitPick, 서버 parse 안 부름) → 지금 줄 뒤에 붙이고(같은 이름 건너뜀) [고치기] 탭으로 */
+    /* 단원 목록 입력: 고른 단계 줄만 이름 그대로(lbUnitPick, 서버 parse 안 부름) → 지금 줄 뒤에 붙이고(같은 이름 건너뜀) [고치기] 탭으로 */
     const split = async (ta, btn) => {
-      const t = ta.value; if (!t.trim()) { msg.textContent = "나눌 단원 목록이 없어요"; return; }
+      const t = ta.value; if (!t.trim()) { msg.textContent = "단원 목록이 없어요 — 붙여 넣거나 [가져오기]를 눌러요"; return; }
       btn.disabled = true; msg.textContent = "";
       try {
-        const w = ta.id === "lbuF" ? "F" : "T", got = lbUnitPick(t.slice(0, 20000), LV[w].key, LV[w].up);
+        const w = "T", got = lbUnitPick(t.slice(0, 20000), LV[w].key, LV[w].up);
         const have = new Set(rows.filter((z) => !z.del).flatMap((z) => [z.name.trim(), z.name0 || ""])); /* 서버와 같이: 지금 이름 + 노션에 있는 원래 이름은 새로 만들지 않음 */
         const add = got.filter((u) => !have.has(u.name));
         add.forEach((u) => rows.push({ name: u.name, page: u.page == null ? "" : String(u.page), del: false }));
-        if (add.length) { ta.value = ""; if (ta.id === "lbuF") T.raw = ""; lvDraw(w); }
+        if (add.length) { ta.value = ""; lvDraw(w); }
         draw(); show("edit"); box.scrollTop = box.scrollHeight;
-        msg.textContent = add.length ? `${add.length}개 단원으로 나눴어요 — 확인하고 [저장]을 눌러요` : "새로 추가할 단원이 없어요(같은 이름은 건너뜀)";
+        msg.textContent = add.length ? `단원 ${add.length}개를 입력했어요 — 확인하고 [저장]을 눌러요` : "새로 추가할 단원이 없어요(같은 이름은 건너뜀)";
       } catch (e) { msg.textContent = lbErr(e); } finally { btn.disabled = false; }
     };
     m.querySelector("#lbuSplit").onclick = (ev) => split(m.querySelector("#lbuT"), ev.currentTarget);
-    m.querySelector("#lbuSplitF").onclick = (ev) => split(m.querySelector("#lbuF"), ev.currentTarget);
-    /* 가져오기: units-fetch(교보문고 → 예스24) 글을 칸에 그대로 채움 — 단원으로 쓸 단계는 아래 단계 나눔 단추로 */
-    const fill = () => { const f = m.querySelector("#lbuF"); if (T.raw) { f.value = T.raw; LV.F.key = ""; lvDraw("F"); } };
+    /* 가져오기: units-fetch(교보문고 → 예스24) 글을 같은 글 칸에 그대로 채움 — 칸에 글이 있으면 바꾸기 전에 물음. 단원으로 쓸 단계는 아래 단계 나눔 단추로 */
     m.querySelector("#lbuGet").onclick = async (ev) => {
       if (!isbn) return;
+      const ta = m.querySelector("#lbuT");
+      if (ta.value.trim() && !confirm("글 칸의 단원 목록을 가져온 목록으로 바꿀까요?")) return;
       const btn = ev.currentTarget; btn.disabled = true; msg.textContent = "온라인 서점에서 단원 목록을 받는 중…";
       try {
         const r = await liveBookApi({ action: "units-fetch", isbn13: isbn });
         if (r && r.found && String(r.text || "").trim()) {
-          T.raw = String(r.text); T.src = r.source === "yes24" ? "예스24" : "교보문고"; fill();
-          msg.textContent = `${T.src}에서 단원 목록을 가져왔어요 — 고친 뒤 [나누기]를 눌러요`;
+          T.src = r.source === "yes24" ? "예스24" : "교보문고"; ta.value = String(r.text); LV.T.key = ""; lvDraw("T");
+          msg.textContent = `${T.src}에서 단원 목록을 가져왔어요 — 고친 뒤 [단원 목록 입력]을 눌러요`;
         } else msg.textContent = "이 ISBN으로 단원을 찾지 못했어요";
       } catch (e) { msg.textContent = lbErr(e); } finally { btn.disabled = false; }
     };
@@ -390,19 +387,62 @@ function lbUnitDialog(b, tab0) {
       const num = (v) => { const s = String(v || "").replace(/[^\d]/g, ""); return s ? +s : null; };
       const update = rows.filter((r) => r.id && !r.del && (r.name.trim() !== r.name0 || String(num(r.page) ?? "") !== r.page0)).map((r) => ({ id: r.id, name: r.name.trim(), page: num(r.page) }));
       const remove = rows.filter((r) => r.id && r.del).map((r) => r.id);
-      const add = rows.filter((r) => !r.id && r.name.trim()).map((r) => ({ name: r.name.trim(), page: num(r.page) }));
+      const add = rows.filter((r) => !r.id && r.name.trim() && r.sent !== r.name.trim()).map((r) => ({ name: r.name.trim(), page: num(r.page) }));
       if (update.some((u) => !u.name)) { show("edit"); msg.textContent = "이름이 빈 단원이 있어요 — 이름을 넣거나 [x]로 삭제해요"; return; }
       if (!update.length && !remove.length && !add.length) { close(); return; }
-      ok.disabled = true; ok.textContent = "저장 중…"; msg.textContent = "";
+      /* 묶음 저장(항목 165): update → remove → add 순서 그대로 LBU_CHUNK개씩 edit-units 여러 번 — 묶음마다 "단원 저장 중 n/전체" + 막대.
+         저장 중에는 창 안 단추 · 칸을 막음(취소 포함 — 창은 단추로만 닫히니 닫히지 않음). 성공한 묶음은 바로 rows에 반영(고침 = 원래 값 갱신 · 삭제 = 줄 뺌 · 추가 = 보낸 이름 기록).
+         중간 실패 = 멈추고 노션 단원을 다시 읽어 맞춤(추가된 줄은 받은 id로 → 다음 저장 땐 고치기 목록) → "n/전체까지 저장했어요" + [다시 저장] = 남은 것만 */
+      const ops = [...update.map((u) => ["u", u]), ...remove.map((id) => ["r", id]), ...add.map((a) => ["a", a])];
+      const total = ops.length, sum = { updated: 0, removed: 0, added: 0, blocked: 0 };
+      const prog = m.querySelector("#lbuP"), ptx = prog.querySelector(".t"), pbar = prog.querySelector(".bar>i");
+      const step = (n) => { ptx.textContent = `단원 저장 중 ${n}/${total}`; pbar.style.width = Math.round((n / total) * 100) + "%"; prog.setAttribute("aria-valuenow", String(n)); };
+      const locked = [...m.querySelectorAll("button, input, textarea")].filter((x) => !x.disabled);
+      locked.forEach((x) => (x.disabled = true));
+      ok.setAttribute("aria-busy", "true"); msg.textContent = ""; prog.setAttribute("aria-valuemax", String(total)); prog.hidden = false; step(0);
+      const rowOf = (id) => rows.find((r) => r.id === id);
+      let done = 0;
       try {
-        const r = await liveBookApi({ action: "edit-units", bookId: b.id, update, remove, add });
+        for (let i = 0; i < total; i += LBU_CHUNK) {
+          const part = ops.slice(i, i + LBU_CHUNK);
+          const body = { action: "edit-units", bookId: b.id, update: part.filter((o) => o[0] === "u").map((o) => o[1]), remove: part.filter((o) => o[0] === "r").map((o) => o[1]), add: part.filter((o) => o[0] === "a").map((o) => o[1]) };
+          const r = await liveBookApi(body);
+          sum.updated += r.updated || 0; sum.removed += r.removed || 0; sum.added += r.added || 0; sum.blocked += (r.blocked || []).length;
+          body.update.forEach((u) => { const x = rowOf(u.id); if (x) { x.name0 = u.name; x.page0 = u.page == null ? "" : String(u.page); } });
+          body.remove.forEach((id) => { const k = rows.findIndex((x) => x.id === id && x.del); if (k >= 0 && !(r.blocked || []).length) rows.splice(k, 1); });
+          body.add.forEach((a) => { const x = rows.find((z) => !z.id && z.sent !== a.name && z.name.trim() === a.name); if (x) x.sent = a.name; });
+          done += part.length; step(done);
+        }
         close();
         lbUnitsLoad(b.id, true);
-        const parts = [r.updated ? `고침 ${r.updated}` : "", r.removed ? `삭제 ${r.removed}` : "", r.added ? `추가 ${r.added}` : ""].filter(Boolean).join(" · ");
-        toast(r.ok === false ? r.error : `단원을 저장했어요${parts ? " — " + parts : ""}${r.blocked && r.blocked.length ? ` · 연결돼 삭제하지 않은 단원 ${r.blocked.length}개` : ""}`);
-      } catch (e) { ok.disabled = false; ok.textContent = "저장"; msg.textContent = lbErr(e); }
+        const parts = [sum.updated ? `고침 ${sum.updated}` : "", sum.removed ? `삭제 ${sum.removed}` : "", sum.added ? `추가 ${sum.added}` : ""].filter(Boolean).join(" · ");
+        toast(`단원을 저장했어요${parts ? " — " + parts : ""}${sum.blocked ? ` · 연결돼 삭제하지 않은 단원 ${sum.blocked}개` : ""}`);
+      } catch (e) {
+        let fresh = false;
+        /* 멈춘 묶음은 일부만 들어갔을 수 있어 노션 단원을 다시 읽어 rows를 맞춘다 — 못 읽으면 성공한 묶음까지만 반영한 그대로 */
+        try {
+          const list = (await liveBookApi({ action: "units", bookId: b.id })).units || [];
+          LBK.units[b.id] = { list };
+          const byId = new Map(list.map((u) => [u.id, u]));
+          for (let k = rows.length - 1; k >= 0; k--) { const x = rows[k]; if (x.id && !byId.has(x.id)) rows.splice(k, 1); }
+          const taken = new Set(rows.filter((x) => x.id).map((x) => x.id));
+          rows.forEach((x) => {
+            if (!x.id) { const u = list.find((z) => !taken.has(z.id) && (z.name || "") === x.name.trim()); if (!u) return; x.id = u.id; x.uses = u.uses || 0; taken.add(u.id); delete x.sent; }
+            const u = byId.get(x.id); if (!u) return;
+            x.name0 = u.name || ""; x.page0 = u.page == null ? "" : String(u.page); x.uses = u.uses || 0;
+          });
+          fresh = true;
+        } catch (_) { /* 다시 읽기 실패 — 성공한 묶음만 반영 */ }
+        locked.forEach((x) => (x.disabled = false));
+        ok.removeAttribute("aria-busy"); ok.textContent = "다시 저장"; prog.hidden = true;
+        draw();
+        const left = rows.filter((x) => (x.id && x.del) || (x.id && !x.del && (x.name.trim() !== x.name0 || String(num(x.page) ?? "") !== x.page0)) || (!x.id && x.name.trim() && x.sent !== x.name.trim())).length;
+        const saved = Math.max(0, total - left);
+        msg.textContent = `${saved}/${total}까지 저장했어요 — 나머지 ${left}개는 [다시 저장]을 눌러요 · ${lbErr(e)}`;
+        if (fresh) { try { render(); } catch (_) {} } else lbUnitsLoad(b.id, true);
+      }
     };
-    setTimeout(() => { const t = T.tab === "paste" ? m.querySelector("#lbuT") : T.tab === "fetch" ? m.querySelector(isbn ? "#lbuGet" : "[data-ut='paste']") : m.querySelector(".unn"); if (t) t.focus(); }, 0);
+    setTimeout(() => { const t = T.tab === "list" ? m.querySelector(isbn ? "#lbuGet" : "#lbuT") : m.querySelector(".unn"); if (t) t.focus(); }, 0);
   });
 }
 document.addEventListener("click", (e) => {

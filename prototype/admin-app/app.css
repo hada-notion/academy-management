@@ -3636,3 +3636,8 @@ html:root .lj .ljh,html:root .lj dl{font-size:12px}
 .panel .box:not(:has(~ .box)){border-bottom:0}
 .tdsubs>.qhelp{margin-left:auto}
 .hp-todo .sp{flex:1}
+/* 스피너(DESIGN 부품 기준표 .spinner와 같은 값) · 단원 묶음 저장 진행 줄(항목 165) — 움직임 줄이기면 스피너 숨기고 숫자 · 막대만 */
+.spinner{display:inline-block;flex:none;width:14px;height:14px;border:2px solid var(--brand-border);border-top-color:var(--brand-deep);border-radius:50%;animation:hadaspin .8s linear infinite}
+.lbuprog{display:inline-flex;align-items:center;gap:var(--space-2);font-size:var(--text-small);font-weight:600;color:var(--text-ink);font-variant-numeric:tabular-nums}.lbuprog[hidden]{display:none}
+.lbuprog .bar{display:block;width:120px;height:4px;border-radius:var(--radius-pill);background:var(--brand-soft);overflow:hidden}.lbuprog .bar>i{display:block;width:0;height:100%;background:var(--brand-deep);transition:width .2s ease}
+@media (prefers-reduced-motion:reduce){.spinner{display:none}.lbuprog .bar>i{transition:none}}
