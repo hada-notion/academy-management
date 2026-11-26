@@ -3641,3 +3641,12 @@ html:root .lj .ljh,html:root .lj dl{font-size:12px}
 .lbuprog{display:inline-flex;align-items:center;gap:var(--space-2);font-size:var(--text-small);font-weight:600;color:var(--text-ink);font-variant-numeric:tabular-nums}.lbuprog[hidden]{display:none}
 .lbuprog .bar{display:block;width:120px;height:4px;border-radius:var(--radius-pill);background:var(--brand-soft);overflow:hidden}.lbuprog .bar>i{display:block;width:0;height:100%;background:var(--brand-deep);transition:width .2s ease}
 @media (prefers-reduced-motion:reduce){.spinner{display:none}.lbuprog .bar>i{transition:none}}
+/* 단원 편집 [단원 목록] 탭(항목 165): 넓은 창(--dialog-lg) · 왼쪽 글 칸 | 오른쪽 미리보기 같은 높이, 각자 스크롤 */
+.dlg.lbuwide{width:min(var(--dialog-lg),94vw)}
+.lbugrid{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);height:44vh;min-height:240px;margin:0 0 var(--space-3)}
+.lbugrid .bfta{height:100%;min-height:0;resize:none}
+.lbupv{border:1px solid var(--line);border-radius:var(--radius-md);background:var(--brand-tint);overflow:auto;padding:0 var(--space-3) var(--space-2)}
+.lbupvh{position:sticky;top:0;background:var(--brand-tint);padding:var(--space-2) 0;font-size:var(--text-small);font-weight:700;color:var(--text-ink);border-bottom:1px solid var(--line2)}
+.lbupvr{display:flex;align-items:baseline;gap:var(--space-2);padding:var(--space-1) 0;border-bottom:1px solid var(--line2);font-size:var(--text-small);color:var(--text-ink)}
+.lbupvr .nm{flex:1;min-width:0;overflow-wrap:anywhere}.lbupvr .pg{flex:none;color:var(--text-muted);font-variant-numeric:tabular-nums}.lbupvr .pg.none,.lbupvr.dup{color:var(--text-subtle)}
+.lbulm{margin:0 0 var(--space-2)}.lbulm:empty{display:none}

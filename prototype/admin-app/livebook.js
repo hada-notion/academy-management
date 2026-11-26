@@ -205,11 +205,14 @@ function lbUnitBox(b) {
    줄 이름은 적힌 그대로(앞에 없는 번호를 지어 붙이지 않음, 앞 기호만 뗌). 쪽 = 줄 끝 숫자 중 앞에 공백 2칸 이상 · 점선 · 탭 · / · "p." · 뒤 "쪽"이 있는 것,
    또는 그 단계 거의 모든 줄(80%) 끝에 커지는 숫자가 있을 때만 — "구동사 2" · "가정표현 4" 같은 이름 끝 숫자는 쪽이 아니다. 고른 줄에 쪽이 없으면 그 아래 줄의 첫 쪽.
    단계 순서 = 들여쓰기 → 꼴 깊이(Stage · Part · [..] < Chapter · Ⅰ · 단원 < Lesson · Unit · 1. < 1-1 < ① < 앞 기호) → 줄 수 적은 쪽 → 먼저 나온 쪽.
-   기본 단계 = 이름이 겹치지 않는 단계 중 가장 깊은 것("Vocabulary 어휘"처럼 되풀이되는 하위 줄 단계는 빼고). 머리말 · 정답 · 차례 같은 번호 없는 줄은 뺀다 */
+   기본 단계 = 이름이 겹치지 않는 단계 중 가장 깊은 것("Vocabulary 어휘"처럼 되풀이되는 하위 줄 단계는 빼고). 머리말 · 정답 · 차례 같은 번호 없는 줄은 뺀다.
+   (항목 165) 번호 꼴 01 · 1 · 1. 은 한 단계(앞자리 0 · 뒤 마침표로 나누지 않음 — 같은 자리면 들여쓰기로만 나뉨). 번호 단계가 있으면 번호 없는 맨 앞 줄("서술형 Practice")은 "그 밖"으로 맨 뒤 · 기본에서 뺌.
+   맨 앞 [부록 · 정답 · 해설 · 찾아보기] 줄 아래(다음 Chapter · Ⅰ · Part 같은 큰 머리 전까지)는 부록 — 기본은 빼고 [부록 줄도 넣기]로 넣음 */
 const LBU_ROMAN = "ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ";
 const LBU_WORD = new RegExp(`^(stage|part|chapter|lesson|unit|section|day|step|week|theme|module|round|session)\\s*(\\d{1,3}|[IVX]{1,5}|[${LBU_ROMAN}]+)(?=[\\s.:)\\]-]|$)`, "i");
 const LBU_KO = /^(?:제\s*)?(\d{1,3})\s*(단원|장|편|부|강|차시|과|일차|회)(?=[\s.:)\]]|$)|^(단원|차시)\s*(\d{1,3})(?=[\s.:)\]]|$)/;
 const LBU_SKIP = /(정답|해설|머리말|차례|목차|부록|이\s*책의|구성과\s*특징|찾아보기|학습\s*계획|index)/i;
+const LBU_BACK = /^(부록|appendix|정답|해설|찾아보기|index)/i;
 const LBU_OPEN = /^[[【〔〈《<]\s*/, LBU_CLOSE = /\s*[\]】〕〉》>]\s*$/;
 function lbUnitShape(s) {
   let m;
@@ -219,8 +222,7 @@ function lbUnitShape(s) {
   if ((m = s.match(new RegExp(`^[${LBU_ROMAN}]+(?=[\\s.)]|$)|^[IVX]{1,5}[.)](?=\\s)`)))) return { key: "roman", rank: 1, label: "Ⅰ", mark: m[0] };
   if ((m = s.match(/^\d{1,3}((?:\s*-\s*\d{1,3})+)(?=[\s.)]|$)/))) { const d = (m[1].match(/-/g) || []).length; return { key: "n-n" + d, rank: 2 + d, label: "1" + "-1".repeat(d), mark: m[0] }; }
   if ((m = s.match(/^\d{1,3}((?:\.\d{1,3})+)(?=[\s)]|\.\s|$)/))) { const d = (m[1].match(/\./g) || []).length; return { key: "n.n" + d, rank: 2 + d, label: "1" + ".1".repeat(d), mark: m[0] }; }
-  if ((m = s.match(/^0\d{1,2}(?=[\s.)]|$)/))) return { key: "0n", rank: 2, label: "01", mark: m[0] };
-  if ((m = s.match(/^\d{1,3}(?:\s*[.)]|(?=\s))/))) return { key: "n", rank: 2, label: "1.", mark: m[0] };
+  if ((m = s.match(/^\d{1,3}(?:\s*[.)]|(?=\s)|$)/))) return { key: "n", rank: 2, label: /^0\d/.test(m[0]) ? "01" : /[.)]/.test(m[0]) ? "1." : "1", mark: m[0] };
   if ((m = s.match(/^[A-Z][.)](?=\s)/))) return { key: "A", rank: 2, label: "A.", mark: m[0] };
   if ((m = s.match(/^[①-⑳]/))) return { key: "circ", rank: 4, label: "①", mark: m[0] };
   if ((m = s.match(/^\(\d{1,3}\)/))) return { key: "paren", rank: 4, label: "(1)", mark: m[0] };
@@ -236,15 +238,17 @@ function lbUnitPage(s) {
   if (m && ok(m[1], +m[2])) return { name: s, hard: null, soft: +m[2], softName: m[1] };
   return { name: s, hard: null, soft: null };
 }
-function lbUnitLevels(text) {
-  const lines = [];
+function lbUnitLevels(text, ap) {
+  const lines = []; let inAp = false, apN = 0;
   String(text || "").split(/\r?\n/).forEach((raw) => {
     if (!raw.trim()) return;
     const lead = raw.match(/^[\s　]*/)[0], ind = lead.replace(/\t/g, "    ").replace(/　/g, "  ").length;
     let s = raw.slice(lead.length).trim(), bul = false;
     const bm = s.match(/^[-–—•·∙◦▪▫‣*ㆍ・○●□■▶▷>]+\s*/); if (bm && s.length > bm[0].length) { bul = true; s = s.slice(bm[0].length).trim(); }
     const sh = lbUnitShape(s);
-    if (sh.key === "plain" && LBU_SKIP.test(s)) return;
+    if (sh.key === "plain" && LBU_SKIP.test(s)) { if (!ind && !bul && LBU_BACK.test(s)) inAp = true; return; }
+    if (inAp && !ind && !bul && sh.rank <= 1 && sh.key !== "plain") inAp = false;
+    if (inAp) { apN++; if (!ap) return; }
     lines.push({ ind, bul, sh, pg: lbUnitPage(s), key: `${ind > 0 ? 1 : 0}|${bul ? 1 : 0}|${sh.key}` });
   });
   /* 번호 없는 줄이 같은 자리의 번호 줄(1. · Lesson 1 …) 단계 하나와 섞여 있고 더 큰 단계가 없으면 그 번호 줄 단계로 */
@@ -253,11 +257,12 @@ function lbUnitLevels(text) {
   if (top.includes(P0) && peers.length === 1 && lines.find((l) => l.key === peers[0]).sh.rank === 2) lines.forEach((l) => { if (l.key === P0) l.key = peers[0]; });
   const by = new Map();
   lines.forEach((l, i) => { if (!by.has(l.key)) by.set(l.key, { key: l.key, first: i, lines: [], ind: l.ind, rank: l.bul ? 5 : l.sh.rank, sh: l.sh, bul: l.bul }); by.get(l.key).lines.push(l); });
-  const levels = [...by.values()].sort((a, b) => (a.ind > 0) - (b.ind > 0) || a.rank - b.rank || a.lines.length - b.lines.length || a.first - b.first);
+  const other = by.has(P0) && [...by.values()].some((g) => g.key !== P0 && !g.bul && g.rank >= 2 && g.sh.key !== "plain");
+  const levels = [...by.values()].sort((a, b) => (other && ((a.key === P0) - (b.key === P0))) || (a.ind > 0) - (b.ind > 0) || a.rank - b.rank || a.lines.length - b.lines.length || a.first - b.first);
   const seen = {};
   levels.forEach((g, d) => {
     g.depth = d;
-    let lb = g.sh.label || (g.bul || g.ind > 0 ? "하위" : "이름만");
+    let lb = g.sh.label || (g.bul || g.ind > 0 ? "하위" : other ? "그 밖" : "이름만");
     if (seen[lb]) lb += " " + (d + 1);
     seen[lb] = 1; g.label = lb; g.count = g.lines.length;
     /* soft 쪽: 그 단계 줄의 80% 이상(2줄 이상)이 끝 숫자를 갖고, 숫자가 커지기만 하고, 1씩 느는 번호(1 · 2 · 3)가 아닐 때만 */
@@ -266,13 +271,13 @@ function lbUnitLevels(text) {
     const soft = ps.length >= 2 && ps.length >= Math.ceil(g.lines.length * 0.8) && inc && !step1;
     g.lines.forEach((l) => { l.depth = d; const sp = soft && l.pg.soft != null; l.name = sp ? l.pg.softName : l.pg.name; l.page = l.pg.hard != null ? l.pg.hard : sp ? l.pg.soft : null; });
   });
-  const uniq = levels.filter((g) => new Set(g.lines.map((l) => l.name.toLowerCase())).size === g.lines.length);
+  const uniq = levels.filter((g) => !(other && g.key === P0) && new Set(g.lines.map((l) => l.name.toLowerCase())).size === g.lines.length);
   const def = uniq.length ? uniq[uniq.length - 1] : levels[0];
-  return { lines, levels: levels.map((g) => ({ key: g.key, label: g.label, count: g.count, depth: g.depth })), def: def ? def.key : "" };
+  return { lines, levels: levels.map((g) => ({ key: g.key, label: g.label, count: g.count, depth: g.depth })), def: def ? def.key : "", ap: apN };
 }
-/* 고른 단계 줄 → [{name, page}]. up = 윗 단계 이름 붙이기("Chapter 01 · Unit 01 영어문장 1형") */
-function lbUnitPick(text, key, up) {
-  const L = lbUnitLevels(text), ls = L.lines, k = L.levels.some((g) => g.key === key) ? key : L.def;
+/* 고른 단계 줄 → [{name, page}]. up = 윗 단계 이름 붙이기("Chapter 01 · Unit 01 영어문장 1형"), ap = 부록 줄도 넣기 */
+function lbUnitPick(text, key, up, ap) {
+  const L = lbUnitLevels(text, ap), ls = L.lines, k = L.levels.some((g) => g.key === key) ? key : L.def;
   const out = [];
   ls.forEach((l, i) => {
     if (l.key !== k) return;
@@ -304,8 +309,13 @@ function lbUnitDialog(b, tab0) {
     <div data-up="list" hidden>
       <div class="row"><span class="hint">ISBN13 ${isbn ? esc(isbn) : "없음"}</span><span class="sp"></span><button type="button" class="btn" id="lbuGet" ${isbn ? 'title="온라인 서점(교보문고, 없으면 예스24)의 단원 목록을 아래 글 칸에 채워요"' : 'disabled title="ISBN13을 먼저 넣어 주세요"'}>${IC("dl", "s")}가져오기</button></div>
       ${isbn ? "" : '<div class="hint warn" id="lbuNoIsbn">[가져오기]는 ISBN13이 있어야 해요 — 교재 창 [정보] 탭의 ISBN13 칸</div>'}
-      <textarea class="inp bfta tall" id="lbuT" aria-label="단원 목록" placeholder="단원 목록을 붙여 넣거나 [가져오기]를 눌러요 — 한 줄에 하나, 끝 숫자는 시작 쪽&#10;1. 소인수분해 8&#10;2. 정수와 유리수 28&#10;3. 문자와 식 56"></textarea>
-      <div class="row lburow"><span class="hint" data-lvh="T">단원 단계</span><span class="vseg subseg" data-lv="T" role="radiogroup" aria-label="단원으로 쓸 단계"></span><label class="hint" style="white-space:nowrap" data-lvh="T"><input type="checkbox" data-lvup="T"> 윗 단계 이름 붙이기</label><span class="sp"></span><button type="button" class="btn" id="lbuSplit">단원 목록 입력</button></div>
+      <div class="lbugrid">
+        <textarea class="inp bfta" id="lbuT" aria-label="단원 목록" placeholder="단원 목록을 붙여 넣거나 [가져오기]를 눌러요 — 한 줄에 하나, 끝 숫자는 시작 쪽&#10;1. 소인수분해 8&#10;2. 정수와 유리수 28&#10;3. 문자와 식 56"></textarea>
+        <div class="lbupv" id="lbuV" role="region" aria-label="단원 미리보기"><div class="lbupvh" id="lbuVh">미리보기</div><div id="lbuVl"></div></div>
+      </div>
+      <div class="row lburow" data-lvh="T"><span class="hint">단원 단계</span><span class="vseg subseg" data-lv="T" role="radiogroup" aria-label="단원으로 쓸 단계"></span></div>
+      <p class="hint lbulm" id="lbuLM" aria-live="polite"></p>
+      <div class="row lburow"><label class="hint" style="white-space:nowrap" data-lvh="T"><input type="checkbox" data-lvup="T"> 윗 단계 이름 붙이기</label><label class="hint" style="white-space:nowrap" data-lvaph="T"><input type="checkbox" data-lvap="T"> 부록 줄도 넣기</label><span class="sp"></span><button type="button" class="btn" id="lbuSplit">단원 목록 입력</button></div>
     </div>
     <p class="hint" id="lbuM"></p>
     <div class="actions"><span class="lbuprog" id="lbuP" role="progressbar" aria-label="단원 저장" aria-valuemin="0" hidden><span class="spinner" aria-hidden="true"></span><span class="t" aria-live="polite"></span><span class="bar"><i></i></span></span><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">저장</button></div>`, (m, close) => {
@@ -314,6 +324,7 @@ function lbUnitDialog(b, tab0) {
       T.tab = k;
       m.querySelectorAll("[data-ut]").forEach((x) => { const on = x.dataset.ut === k; x.classList.toggle("on", on); x.setAttribute("aria-selected", on ? "true" : "false"); });
       m.querySelectorAll("[data-up]").forEach((x) => { x.hidden = x.dataset.up !== k; });
+      const d = m.querySelector(".dlg"); if (d) d.classList.toggle("lbuwide", k === "list"); /* 단원 목록 탭 = 글 칸 | 미리보기 둘이라 넓게(--dialog-lg) */
     };
     m.querySelectorAll("[data-ut]").forEach((x) => (x.onclick = () => { msg.textContent = ""; show(x.dataset.ut); }));
     const draw = () => {
@@ -337,49 +348,60 @@ function lbUnitDialog(b, tab0) {
     };
     draw(); show(T.tab);
     m.querySelector("#lbuAdd").onclick = () => { rows.push({ name: "", page: "", del: false }); draw(); const l = box.querySelectorAll(".unn"); if (l.length) l[l.length - 1].focus(); box.scrollTop = box.scrollHeight; };
-    /* 단원 단계(항목 164): 글 칸마다 단계 나눔 단추(이름 + 줄 수) — 단계가 둘 이상일 때만. 고른 단계는 글을 고쳐도 그 꼴이 남아 있으면 그대로 */
-    const LV = { T: { key: "", up: false } };
+    /* 단원 단계(항목 164): 단계 나눔 단추(이름 + 줄 수) — 단계가 둘 이상일 때만. 고른 단계는 글을 고쳐도 그 꼴이 남아 있으면 그대로.
+       미리보기(항목 165): 지금 단계 · 윗 단계 이름 · 부록 줄로 [단원 목록 입력]을 누르면 들어갈 줄(이름 + 시작, 이미 있는 이름은 "있음"으로 흐리게) — 글 입력은 짧게 기다렸다 다시 그림 */
+    const LV = { T: { key: "", up: false, ap: false } };
+    const lm = m.querySelector("#lbuLM"), ta = m.querySelector("#lbuT");
+    const haveNames = () => new Set(rows.filter((z) => !z.del).flatMap((z) => [z.name.trim(), z.name0 || ""])); /* 서버와 같이: 지금 이름 + 노션에 있는 원래 이름은 새로 만들지 않음 */
+    const preview = () => {
+      const t = ta.value, head = m.querySelector("#lbuVh"), list = m.querySelector("#lbuVl");
+      if (!t.trim()) { head.textContent = "미리보기"; list.innerHTML = '<div class="hint">단원 목록을 붙여 넣거나 [가져오기]를 누르면 들어갈 단원이 여기에 보여요</div>'; return; }
+      const got = lbUnitPick(t.slice(0, 20000), LV.T.key, LV.T.up, LV.T.ap), have = haveNames();
+      const dup = got.filter((u) => have.has(u.name)).length;
+      head.textContent = `단원 ${got.length - dup}개${dup ? ` · 같은 이름 ${dup}개 건너뜀` : ""}`;
+      list.innerHTML = got.map((u) => `<div class="lbupvr${have.has(u.name) ? " dup" : ""}"><span class="nm">${esc(u.name)}</span><span class="pg${u.page == null ? " none" : ""}">${have.has(u.name) ? "있음" : u.page == null ? "—" : esc(unitFmt(b, u.page))}</span></div>`).join("") || '<div class="hint">이 단계에 들어갈 단원이 없어요</div>';
+    };
     const lvDraw = (w) => {
-      const ta = m.querySelector("#lbuT"), L = lbUnitLevels(ta.value), seg = m.querySelector(`[data-lv="${w}"]`);
+      const L = lbUnitLevels(ta.value, LV[w].ap), seg = m.querySelector(`[data-lv="${w}"]`);
       if (!L.levels.some((g) => g.key === LV[w].key)) LV[w].key = L.def;
       const many = L.levels.length > 1;
-      seg.style.display = many ? "" : "none"; m.querySelectorAll(`[data-lvh="${w}"]`).forEach((x) => (x.style.display = many ? "" : "none"));
+      m.querySelectorAll(`[data-lvh="${w}"]`).forEach((x) => (x.style.display = many ? "" : "none"));
+      m.querySelectorAll(`[data-lvaph="${w}"]`).forEach((x) => (x.style.display = L.ap ? "" : "none"));
       seg.innerHTML = many ? L.levels.map((g) => `<button type="button" role="radio" data-lvk="${esc(g.key)}" class="${g.key === LV[w].key ? "on" : ""}" aria-checked="${g.key === LV[w].key}">${esc(g.label)} <span class="n">${g.count}</span></button>`).join("") : "";
       seg.querySelectorAll("[data-lvk]").forEach((x) => (x.onclick = () => { LV[w].key = x.dataset.lvk; lvDraw(w); }));
+      preview();
     };
-    ["T"].forEach((w) => {
-      m.querySelector("#lbuT").addEventListener("input", () => lvDraw(w));
-      m.querySelector(`[data-lvup="${w}"]`).onchange = (ev) => { LV[w].up = ev.currentTarget.checked; };
-      lvDraw(w);
-    });
-    /* 단원 목록 입력: 고른 단계 줄만 이름 그대로(lbUnitPick, 서버 parse 안 부름) → 지금 줄 뒤에 붙이고(같은 이름 건너뜀) [고치기] 탭으로 */
-    const split = async (ta, btn) => {
-      const t = ta.value; if (!t.trim()) { msg.textContent = "단원 목록이 없어요 — 붙여 넣거나 [가져오기]를 눌러요"; return; }
-      btn.disabled = true; msg.textContent = "";
+    let lvT = 0;
+    ta.addEventListener("input", () => { clearTimeout(lvT); lvT = setTimeout(() => lvDraw("T"), 150); });
+    m.querySelector('[data-lvup="T"]').onchange = (ev) => { LV.T.up = ev.currentTarget.checked; preview(); };
+    m.querySelector('[data-lvap="T"]').onchange = (ev) => { LV.T.ap = ev.currentTarget.checked; lvDraw("T"); };
+    lvDraw("T");
+    /* 단원 목록 입력: 미리보기 그대로(lbUnitPick, 서버 parse 안 부름) → 지금 줄 뒤에 붙이고(같은 이름 건너뜀) [고치기] 탭으로 */
+    m.querySelector("#lbuSplit").onclick = (ev) => {
+      clearTimeout(lvT); lvDraw("T");
+      const t = ta.value; if (!t.trim()) { lm.textContent = "단원 목록이 없어요 — 붙여 넣거나 [가져오기]를 눌러요"; return; }
+      const btn = ev.currentTarget; btn.disabled = true; lm.textContent = ""; msg.textContent = "";
       try {
-        const w = "T", got = lbUnitPick(t.slice(0, 20000), LV[w].key, LV[w].up);
-        const have = new Set(rows.filter((z) => !z.del).flatMap((z) => [z.name.trim(), z.name0 || ""])); /* 서버와 같이: 지금 이름 + 노션에 있는 원래 이름은 새로 만들지 않음 */
+        const got = lbUnitPick(t.slice(0, 20000), LV.T.key, LV.T.up, LV.T.ap), have = haveNames();
         const add = got.filter((u) => !have.has(u.name));
         add.forEach((u) => rows.push({ name: u.name, page: u.page == null ? "" : String(u.page), del: false }));
-        if (add.length) { ta.value = ""; lvDraw(w); }
+        if (add.length) { ta.value = ""; lvDraw("T"); }
         draw(); show("edit"); box.scrollTop = box.scrollHeight;
         msg.textContent = add.length ? `단원 ${add.length}개를 입력했어요 — 확인하고 [저장]을 눌러요` : "새로 추가할 단원이 없어요(같은 이름은 건너뜀)";
-      } catch (e) { msg.textContent = lbErr(e); } finally { btn.disabled = false; }
+      } catch (e) { lm.textContent = lbErr(e); } finally { btn.disabled = false; }
     };
-    m.querySelector("#lbuSplit").onclick = (ev) => split(m.querySelector("#lbuT"), ev.currentTarget);
     /* 가져오기: units-fetch(교보문고 → 예스24) 글을 같은 글 칸에 그대로 채움 — 칸에 글이 있으면 바꾸기 전에 물음. 단원으로 쓸 단계는 아래 단계 나눔 단추로 */
     m.querySelector("#lbuGet").onclick = async (ev) => {
       if (!isbn) return;
-      const ta = m.querySelector("#lbuT");
       if (ta.value.trim() && !confirm("글 칸의 단원 목록을 가져온 목록으로 바꿀까요?")) return;
-      const btn = ev.currentTarget; btn.disabled = true; msg.textContent = "온라인 서점에서 단원 목록을 받는 중…";
+      const btn = ev.currentTarget; btn.disabled = true; lm.textContent = "온라인 서점에서 단원 목록을 받는 중…";
       try {
         const r = await liveBookApi({ action: "units-fetch", isbn13: isbn });
         if (r && r.found && String(r.text || "").trim()) {
           T.src = r.source === "yes24" ? "예스24" : "교보문고"; ta.value = String(r.text); LV.T.key = ""; lvDraw("T");
-          msg.textContent = `${T.src}에서 단원 목록을 가져왔어요 — 고친 뒤 [단원 목록 입력]을 눌러요`;
-        } else msg.textContent = "이 ISBN으로 단원을 찾지 못했어요";
-      } catch (e) { msg.textContent = lbErr(e); } finally { btn.disabled = false; }
+          lm.textContent = `${T.src}에서 단원 목록을 가져왔어요 — 고친 뒤 [단원 목록 입력]을 눌러요`;
+        } else lm.textContent = "이 ISBN으로 단원을 찾지 못했어요";
+      } catch (e) { lm.textContent = lbErr(e); } finally { btn.disabled = false; }
     };
     m.querySelector("#cc").onclick = close;
     const ok = m.querySelector("#co");

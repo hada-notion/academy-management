@@ -77,4 +77,28 @@ assert.equal(u, 60);
   assert.equal(lbUnitLevels(T).levels.length, 1);
   assert.deepEqual(pick(T).map((x) => x.name), ['1. 소인수분해', '2. 정수와 유리수', '문자와 식']);
 }
+// 6) 실제 서점 글(항목 165, 교보문고 units-fetch 그대로): CHAPTER 6 아래 "01 …" ~ "18 …"(0 채움 · 안 채움 섞임) + "서술형 Practice" 번호 없는 줄 + 부록 아래 "01 수행평가"
+{
+  const { OLYMPOS: T } = require('./unit-toc-samples.cjs');
+  assert.equal(lv(T), 'CHAPTER 6 · 01 18 · 그 밖 12', '01 · 10 · 9 = 한 단계, 번호 없는 줄은 그 밖(맨 뒤), 부록 줄은 뺌');
+  const L = lbUnitLevels(T);
+  assert.equal(L.def, keyOf(T, '01'), '기본 = 번호 단원 18');
+  assert.equal(L.ap, 3, '부록 줄 3개 있음');
+  const us = pick(T, L.def);
+  assert.equal(us.length, 18);
+  assert.deepEqual([us[0].name, us[8].name, us[9].name, us[17].name], ['01 글의 목적', '09 어휘 적절성', '10 단어 빈칸 추론', '18 장문2 (1지문 3문항)']);
+  assert.ok(us.every((x) => x.page === null), '쪽 없음(번호를 쪽으로 보지 않음)');
+  assert.equal(pick(T, keyOf(T, 'CHAPTER')).length, 6);
+  assert.equal(pick(T, L.def, true)[0].name, 'CHAPTER 01 · 01 글의 목적');
+  const wa = JSON.parse(JSON.stringify(lbUnitPick(T, L.def, false, true)));
+  assert.equal(wa.length, 20, '부록 줄도 넣기 = 18 + 부록 번호 2');
+  assert.deepEqual(wa.slice(-2).map((x) => x.name), ['01 수행평가', '02 VOCA PLUS']);
+  assert.equal(lbUnitLevels(T, true).levels.find((g) => g.label === '그 밖').count, 13);
+}
+// 7) 번호 꼴이 같은 자리에 섞여도 한 단계: "1 …" · "02. …" · "3. …"
+{
+  const T = '1 예시 하나\n02. 예시 둘\n3. 예시 셋';
+  assert.equal(lbUnitLevels(T).levels.length, 1);
+  assert.deepEqual(pick(T).map((x) => x.name), ['1 예시 하나', '02. 예시 둘', '3. 예시 셋']);
+}
 console.log('단원 단계 시험 통과');
