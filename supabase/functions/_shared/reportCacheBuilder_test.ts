@@ -246,6 +246,8 @@ Deno.test("v2.8.0 작품 모아보기: 프로그램 학습기록의 사진만 �
 			[PB, "1", "https://img.test/i-act-1.png", "i-act-1", true],
 			[PB, "1", "https://img.test/i-rec-1.png", "i-rec-1", false],
 			[PB, "2", "https://img.test/i-rec-2.png", "i-rec-2", false],
+			// (261126) 교재(교과) 학습기록 사진도 모은다 — 프로그램만이 아님
+			[TB, "", "https://img.test/i-math.png", "i-math", false],
 		])
 	} finally {
 		globalThis.fetch = realFetch

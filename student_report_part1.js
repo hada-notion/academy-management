@@ -1069,7 +1069,7 @@ function renderBookDetail() {
           </div>` : ""}
         </div>
         ${completionHtml}
-        ${isProgram(book) ? buildGalleryHtml(r, book) : ""}
+        ${buildGalleryHtml(r, book)}
         ${trendHtml}
         <h3 class="sec-title"><span class="sec-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg></span>학습기록</h3>
         <div class="section-hint">이 ${bookNoun(book)}의 학습 · 과제 · 평가 기록을 최근 순서로 보여줘요</div>
