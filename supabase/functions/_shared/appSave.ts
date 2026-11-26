@@ -20,6 +20,7 @@ import { enqueueSync, wakeSyncQueueWorker } from "./syncQueue.ts"
 import { textbookSources } from "./textbookSearch.ts"
 import { syncBookCopy } from "./libraryCopy.ts"
 import { runInBackground } from "./backgroundTask.ts"
+import { classIconHex, setClassColorIcon } from "./classIcon.ts"
 import { getCurrentAdminKey } from "./adminShared.ts"
 import { routeById } from "./webhookRoutes.ts"
 import { REQUEST_PROP } from "./notionRequests.ts"
@@ -131,7 +132,14 @@ export function checkRequestProp(db: string, props: Record<string, unknown>, op:
 }
 // 앱이 고친 일정의 학부모 리포트 맞추기: sync-report-cache를 force로 부른다(건너뛰기 없이, 응답을 기다리지 않음).
 export const LIBRARY_DB = "라이브러리(학원) DB"
+export const CLASS_DB = "클래스(학원) DB"
 export const saveDeps = {
+	// 클래스 색 동그라미 PNG를 노션 파일 업로드로 올려 클래스 페이지 아이콘으로 지정. 응답은 기다리지 않고, 실패는 로그만.
+	updateClassIcon: (pageId: string, hex: string): void => {
+		runInBackground(async () => {
+			try { await setClassColorIcon(pageId, hex) } catch (err) { console.warn("[appSave] 클래스 색 아이콘 실패:", pageId, (err as Error).message) }
+		})
+	},
 	// 라이브러리 교재를 고쳤으면 라이브러리 복사본(lib_books)도 바로 맞춘다(library.html과 같은 복사본). 응답은 기다리지 않음.
 	syncLibraryBook: (bookId: string): void => {
 		runInBackground(async () => { await syncBookCopy(await textbookSources(), bookId) })
@@ -398,6 +406,8 @@ export async function saveChanges(changes: Change[]): Promise<ChangeResult[]> {
 			// (scheduleVisibility.noticeReportSyncNotNeeded) 여기서 직접 리포트를 맞춘다(학부모 공개를 끈 것도 빠지게).
 			if (eventAffectsReport(c.db as WriteDb, cprops)) saveDeps.refreshReport(page.id)
 			if (c.db === LIBRARY_DB) saveDeps.syncLibraryBook(page.id)
+			// 클래스 색을 저장했으면 그 색 동그라미를 페이지 아이콘으로(실패해도 저장 결과는 그대로, 로그만).
+			if (c.db === CLASS_DB) { const hex = classIconHex(cprops); if (hex) saveDeps.updateClassIcon(page.id, hex) }
 			// (261123 출시 전 5번) 노션에는 이미 썼다. 사본 쓰기만 실패하면 실패로 답하지 않는다 — 실패로 답하면 앱이 새 줄을
 			// 작성 중으로 남기고, 다시 [저장]하면 노션에 같은 줄이 하나 더 생긴다. 새 id와 함께 성공 + 안내(warn)로 답한다.
 			// 사본은 웹훅 · 폴링(5분)이 저절로 맞춘다.

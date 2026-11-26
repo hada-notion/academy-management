@@ -25,7 +25,7 @@ Deno.test("선택지 목록: 쓸 수 있는 DB의 고르기 칸만, 웹훅 칸 �
       { id: "ds-lib", title: [{ plain_text: "라이브러리(학원) DB" }] }, { id: "ds-tu", title: [{ plain_text: "수강료(학원) DB" }] },
       { id: "ds-ev", title: [{ plain_text: "일정(학원) DB" }] }, { id: "ds-tt", title: [{ plain_text: "시간표(학원) DB" }] },
       { id: "ds-pay", title: [{ plain_text: "결제(학원) DB" }] }, { id: "ds-item", title: [{ plain_text: "청구 항목(학원) DB" }] },
-      { id: "ds-ipay", title: [{ plain_text: "청구 결제(학원) DB" }] }], has_more: false }) // 결제 · 청구 결제 · 청구 항목: 아래 record-payment 시험(DB 찾기는 10분 기억)
+      { id: "ds-ipay", title: [{ plain_text: "청구 결제(학원) DB" }] }, { id: "ds-cls", title: [{ plain_text: "클래스(학원) DB" }] }], has_more: false }) // 결제 · 청구 결제 · 청구 항목: 아래 record-payment 시험(DB 찾기는 10분 기억)
     if (url.includes("/v1/data_sources/ds-pay")) return ok({ properties: PAY_SCHEMA })
     if (url.includes("/v1/data_sources/ds-ipay")) return ok({ properties: IPAY_SCHEMA })
     if (url.includes("/v1/data_sources/ds-lib")) return ok({ properties: {
@@ -33,6 +33,7 @@ Deno.test("선택지 목록: 쓸 수 있는 DB의 고르기 칸만, 웹훅 칸 �
       "교재 유형": { type: "multi_select", multi_select: { options: [{ name: "개념" }] } }, "웹훅 버튼": { type: "select", select: { options: [{ name: "x" }] } } } })
     // 칸 형식은 10분 기억되므로 일정 DB 형식도 여기서 아래 시험과 같게 준다.
     if (url.includes("/v1/data_sources/ds-ev")) return ok({ properties: { 이름: { type: "title" }, 날짜: { type: "date" }, 잠금: { type: "checkbox" }, 숨김: { type: "checkbox" }, "학부모 공개": { type: "checkbox" }, 메모: { type: "rich_text" } } })
+    if (url.includes("/v1/data_sources/ds-cls")) return ok({ properties: { 클래스명: { type: "title" }, 약칭: { type: "rich_text" }, 색: { type: "rich_text" }, "색 코드": { type: "rich_text" } } })
     if (url.includes("/v1/data_sources/ds-")) return ok({ properties: { 이름: { type: "title" }, 학생: { type: "relation" } } })
     return new Response("unexpected " + url, { status: 500 })
   }) as typeof fetch
@@ -107,8 +108,9 @@ function mockFetch(opts: { copyDb?: string; edited?: string; locked?: boolean; c
     const url = String(input), method = init?.method ?? "GET", body = init?.body ? JSON.parse(String(init.body)) : undefined
     calls.push({ url, method, body })
     const ok = (data: unknown) => new Response(JSON.stringify(data), { status: 200, headers: { "Content-Type": "application/json" } })
-    if (url.includes("/v1/search")) return ok({ results: [{ id: "ds-stu", title: [{ plain_text: "학생(학원) DB" }] }, { id: "ds-en", title: [{ plain_text: "등록(학원) DB" }] }, { id: "ds-ev", title: [{ plain_text: "일정(학원) DB" }] }, { id: "ds-tt", title: [{ plain_text: "시간표(학원) DB" }] }], has_more: false })
+    if (url.includes("/v1/search")) return ok({ results: [{ id: "ds-stu", title: [{ plain_text: "학생(학원) DB" }] }, { id: "ds-en", title: [{ plain_text: "등록(학원) DB" }] }, { id: "ds-ev", title: [{ plain_text: "일정(학원) DB" }] }, { id: "ds-tt", title: [{ plain_text: "시간표(학원) DB" }] }, { id: "ds-cls", title: [{ plain_text: "클래스(학원) DB" }] }], has_more: false })
     if (url.includes("/v1/data_sources/ds-ev")) return ok({ properties: { 이름: { type: "title" }, 날짜: { type: "date" }, 잠금: { type: "checkbox" }, 숨김: { type: "checkbox" }, "학부모 공개": { type: "checkbox" }, 메모: { type: "rich_text" } } })
+    if (url.includes("/v1/data_sources/ds-cls")) return ok({ properties: { 클래스명: { type: "title" }, 약칭: { type: "rich_text" }, 색: { type: "rich_text" }, "색 코드": { type: "rich_text" } } })
     if (url.includes("/v1/data_sources/ds-")) return ok({ properties: { 이름: { type: "title" }, 학생: { type: "relation" } } })
     if (url.endsWith("/v1/pages") && method === "POST") { n++; return ok({ id: `${"0".repeat(31)}${n}`, url: "u", properties: body.properties, last_edited_time: "2026-11-17T00:00:00.000Z" }) }
     if (url.includes("/v1/pages/") && method === "GET") return ok({ id: ID, properties: opts.locked ? { 잠금: { type: "checkbox", checkbox: true } } : {}, last_edited_time: opts.edited ?? "2026-11-17T00:00:00.000Z" })
@@ -245,6 +247,22 @@ Deno.test("라이브러리: 새 교재는 save로 만들지 않고, 고치면 �
     r = await saveChanges(checkChanges([{ op: "update", db: LIB, id: ID, props: { 교재명: "예시 교재 2" } }]))
     assertEquals([r[0].ok, synced], [true, [ID]])
   } finally { saveDeps.syncLibraryBook = orig }
+})
+
+Deno.test("클래스 색 저장: 색을 보낸 클래스만 아이콘 갱신을 부른다(10색 이름 · 기타 색 코드)", async () => {
+  const CLS = "클래스(학원) DB"
+  const icons: string[][] = []
+  const orig = saveDeps.updateClassIcon
+  saveDeps.updateClassIcon = (id: string, hex: string) => { icons.push([id, hex]) }
+  try {
+    mockFetch({ copyDb: CLS })
+    let r = await saveChanges(checkChanges([{ op: "update", db: CLS, id: ID, props: { 색: "빨강", "색 코드": "" } }]))
+    assertEquals([r[0].ok, icons], [true, [[ID, "E5484D"]]])
+    r = await saveChanges(checkChanges([{ op: "update", db: CLS, id: ID, props: { 색: "파랑", "색 코드": "#12ab34" } }]))
+    assertEquals(icons[1], [ID, "12AB34"])
+    r = await saveChanges(checkChanges([{ op: "update", db: CLS, id: ID, props: { 약칭: "예시" } }]))
+    assertEquals([r[0].ok, icons.length], [true, 2])
+  } finally { saveDeps.updateClassIcon = orig }
 })
 
 const TT = "시간표(학원) DB"
