@@ -222,3 +222,10 @@ Deno.test("출시 전 3번: 자동 재시도 성공 → 요청 칸 ✅ 완료(�
 Deno.test("GET은 405", async () => {
   eq((await handleRouter(new Request("https://x/functions/v1/notion-router"), deps())).status, 405)
 })
+
+Deno.test("reg-icon: 등록(학원) 자동화 동작 -> create-class-reports/reg-icon", () => {
+  const r = routeById("reg-icon")!
+  eq([r.db, r.kind, r.fn, r.path], ["등록(학원)", "automation", "create-class-reports", "/reg-icon"])
+  eq(targetUrl("https://x.supabase.co", r), "https://x.supabase.co/functions/v1/create-class-reports/reg-icon")
+  eq(resolveActions(new Headers({ "x-hada-action": "reg-icon" }), {}).ids, ["reg-icon"])
+})

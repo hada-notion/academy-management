@@ -26,7 +26,7 @@ import { isRunning, markError, markQueued } from "../_shared/statusTracking.ts"
 import { CLASS_REPORT_GEN_STATUS_SPEC, TARGET_CLASS_REPORTS, reportRequestFromProps, type ClassReportsPayload } from "../_shared/classReportPlan.ts"
 import { ROUTINE_STATUS_SPEC, TARGET_ROUTINE_CHECKS } from "../_shared/routineCheck.ts"
 import { createRoutineChecksForAttendance } from "../_shared/attendanceRoutine.ts"
-import { setRegistrationIconsForClass } from "../_shared/registrationIcons.ts"
+import { setRegistrationIconForRegistration, setRegistrationIconsForClass } from "../_shared/registrationIcons.ts"
 import { COMPLETION_STATUS_SPEC, TARGET_COMPLETION } from "../_shared/completionReport.ts"
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } })
@@ -70,6 +70,20 @@ Deno.serve(async (req: Request) => {
 			return json({ ok: true, count: r.count, note: r.message })
 		} catch (err) {
 			console.error("[create-class-reports/reg-icons] ERROR:", (err as Error).message)
+			return json({ ok: false, error: (err as Error).message }, 500)
+		}
+	}
+
+	// (v2.8.0 항목 156, 261126) 등록 한 줄의 아이콘: 그 클래스 색 사람 모양. 클래스·색이 없으면 실패가 아닌 안내(200).
+	if (route === "reg-icon") {
+		const rid = extractPageId(body)
+		if (!rid) return json({ error: "pageId를 찾을 수 없음" }, 400)
+		try {
+			const r = await setRegistrationIconForRegistration(rid)
+			if (!r.ok) return json({ ok: false, error: r.message }, 500)
+			return json({ ok: true, count: r.count, note: r.message })
+		} catch (err) {
+			console.error("[create-class-reports/reg-icon] ERROR:", (err as Error).message)
 			return json({ ok: false, error: (err as Error).message }, 500)
 		}
 	}

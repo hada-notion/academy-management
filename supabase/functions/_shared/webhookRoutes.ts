@@ -42,6 +42,8 @@ export const WEBHOOK_ROUTES: WebhookRoute[] = [
   { id: "class-letter-create", db: "클래스(학원)", name: "월간 안내 생성", kind: "button", fn: "send-monthly-notice", path: "/create-letter" },
   { id: "class-etc-charge", db: "클래스(학원)", name: "기타경비 청구", kind: "button", fn: "sync-textbook-distribution", path: "/class-etc/queue" },
   // (261126) 클래스 색의 사람 모양 아이콘을 그 반 등록 전부에(항목 155).
+  // (261126) 등록 한 줄의 아이콘을 그 클래스 색 사람 모양으로(항목 156). 등록 자동화(페이지 추가 · 클래스 변경)가 부른다.
+  { id: "reg-icon", db: "등록(학원)", name: "[웹훅] 등록 아이콘", kind: "automation", fn: "create-class-reports", path: "/reg-icon" },
   { id: "class-reg-icons", db: "클래스(학원)", name: "등록 아이콘 맞추기", kind: "button", fn: "create-class-reports", path: "/reg-icons" },
   { id: "menu-bulk-classes", db: "메뉴(학원)", name: "다음주 수업 일괄 생성", kind: "button", fn: "generate-classes", path: "?mode=bulk" },
   { id: "session-record", db: "수업(학원)", name: "학습기록 생성", kind: "button", fn: "create-learning-record", path: "" },
