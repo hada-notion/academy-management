@@ -101,6 +101,7 @@ const APPMAP = {
 				series: X.str(p["시리즈"]), types: X.arr(p["교재 유형"]), curr: X.str(p["교육과정"]), pub: X.str(p["출판사"]),
 				total: X.num(p["전체 분량"]), unit: X.str(p["진도 단위"]) || (kind === "프로그램" ? "-차시" : "P.-"),
 				price: X.num(p["가격"]), using: !!p["사용중"], isbn: X.str(p["ISBN13"]), etcItem: X.str(p["기타경비 항목"]),
+				cover: ((p["북커버"] || [])[0] || {}).url || "", // 북커버: 올린 파일도 서버가 읽을 때 지금 주소로 채워 준다(항목 157)
 				state: "saved", // units(단원)는 lib_* 복사본(다음 단계) — 여기선 비움
 			}
 		},
