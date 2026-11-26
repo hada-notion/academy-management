@@ -12,16 +12,20 @@ export type TocUnit = { name: string; page: number | null; include: boolean; big
 export type TocResult = { units: TocUnit[]; hasBig: boolean }
 
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", middot: "·", hellip: "…" }
-export function tocLines(raw: string): string[] {
-	const text = String(raw ?? "")
+export const decodeEntities = (s: string) => String(s ?? "").replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (m, e: string) => {
+	if (e[0] === "#") { const n = e[1].toLowerCase() === "x" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10); return Number.isFinite(n) && n > 0 && n < 0x110000 ? String.fromCodePoint(n) : "" }
+	return ENTITIES[e.toLowerCase()] ?? m
+})
+// 목차 HTML 조각 → 글(줄바꿈 · 줄 앞 들여쓰기는 그대로 — 화면 "큰 단원만"이 하위 줄을 알아보게, units-fetch). 빈 줄은 한 줄까지만.
+export function tocText(raw: string): string {
+	const text = decodeEntities(String(raw ?? "")
 		.replace(/<\s*br\s*\/?>/gi, "\n")
 		.replace(/<\/(p|li|div|tr|h\d)>/gi, "\n")
-		.replace(/<[^>]*>/g, "")
-		.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (m, e: string) => {
-			if (e[0] === "#") { const n = e[1].toLowerCase() === "x" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10); return Number.isFinite(n) && n > 0 && n < 0x110000 ? String.fromCodePoint(n) : "" }
-			return ENTITIES[e.toLowerCase()] ?? m
-		})
-	return text.split(/\r?\n/).map((l) => l.replace(/[\s 　]+/g, " ").trim()).filter(Boolean)
+		.replace(/<[^>]*>/g, ""))
+	return text.split(/\r?\n/).map((l) => l.replace(/\t/g, "  ").replace(/[\s 　]+$/, "")).join("\n").replace(/\n{3,}/g, "\n\n").replace(/^\s*\n|\s+$/g, "")
+}
+export function tocLines(raw: string): string[] {
+	return tocText(raw).split(/\r?\n/).map((l) => l.replace(/[\s 　]+/g, " ").trim()).filter(Boolean)
 }
 
 const ROMAN = "ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ"

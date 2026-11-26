@@ -502,3 +502,56 @@ Deno.test("register: 표지를 못 찾으면 표지 없이 등록(등록은 계�
   r = await covers({ kyobo: "none", yes24: "none" }, () => Promise.all([tb.registerCustom({ title: "예시 직접", isbn13: "9791100000031", cover: "https://example.com/my-cover.png", units: [] })]))
   assert(r.books.join("|") === "https://example.com/my-cover.png", "다른 주소는 그대로")
 })
+// 단원 가져오기(units-fetch, 항목 162): 교보 목차 → 없으면 예스24 목차 → 둘 다 없음. HTML · JSON은 모두 가짜 조각(예시 글).
+function unitsFetchMock(o: { kyobo?: "toc" | "empty" | "nomatch" | "down"; yes24?: "toc" | "escaped" | "notoc" | "none" | "down" } = {}) {
+  const log: string[] = []
+  const html = (s: string, status = 200) => Promise.resolve(new Response(s, { status, headers: { "content-type": "text/html" } }))
+  const f = ((input: unknown, init: { headers?: Record<string, string> } = {}) => {
+    const url = String(input); log.push(url)
+    const k = o.kyobo ?? "toc", y = o.yes24 ?? "toc"
+    if (url.startsWith("https://search.kyobobook.co.kr/search?keyword=")) {
+      if (k === "down") return Promise.reject(new Error("net"))
+      const isbn = new URL(url).searchParams.get("keyword")
+      const mine = k === "nomatch" ? "" : `<input type="hidden" data-pid="S000000000123" data-bid="${isbn}" />`
+      return html(`<ul>${mine}<input data-pid="S000000000999" data-bid="9790000000999" /></ul>`)
+    }
+    if (url.startsWith("https://product.kyobobook.co.kr/api/gw/pdt/v2/product/")) {
+      assert(url.endsWith("/S000000000123"), "ISBN이 같은 상품번호만: " + url)
+      const toc = k === "empty" ? "" : "Lesson 01 Hello 8<br>   - Vocabulary 어휘<br>   - Reading 독해<br><br>Lesson 02 World 20<br>   - Vocabulary 어휘"
+      return Promise.resolve(new Response(JSON.stringify({ data: { middle: { contentTableList: toc } } }), { status: 200 }))
+    }
+    if (/yes24\.com\/Product\/Search/.test(url)) {
+      if (y === "down") return Promise.reject(new Error("net"))
+      if (!init.headers?.Cookie) return Promise.resolve(new Response("", { status: 302, headers: { "set-cookie": "WMONID=abc; path=/" } }))
+      return html(y === "none" ? "<div></div>" : '<li data-goods-no="148337303"></li>')
+    }
+    if (url === "https://www.yes24.com/Product/Goods/148337303") {
+      const inner = y === "escaped" ? "1. 소인수분해 ··· 8&lt;br/&gt;  • 소수와 합성수 10&lt;br/&gt;2. 정수와 유리수 ··· 28" : "1. 소인수분해 ··· 8<br/>  • 소수와 합성수 10<br/>2. 정수와 유리수 ··· 28"
+      return html(y === "notoc" ? '<div id="infoset_intro"></div>' : `<div id="infoset_intro"><textarea class="txtContentText">소개 글</textarea></div><div id="infoset_toc" class="gd_infoSet"><textarea style="display:none;" class="txtContentText">\n${inner}</textarea></div>`)
+    }
+    return Promise.reject(new Error("unmocked " + url))
+  }) as unknown as typeof fetch
+  return { f, log }
+}
+Deno.test("units-fetch: 교보 목차(들여쓰기 · 쪽 그대로) · 교보 없음 → 예스24 목차 · 둘 다 없음 · 형식 오류", async () => {
+  const I = "9790000000011"
+  let c = unitsFetchMock({ kyobo: "toc" })
+  let r = await tb.unitsFetch(I, c.f)
+  assert(r.found && r.source === "kyobo" && r.text === "Lesson 01 Hello 8\n   - Vocabulary 어휘\n   - Reading 독해\n\nLesson 02 World 20\n   - Vocabulary 어휘", JSON.stringify(r))
+  assert(!c.log.some((u) => /yes24/.test(u)), "교보에 있으면 예스24를 부르지 않음")
+  for (const k of ["empty", "nomatch", "down"] as const) {
+    for (const y of ["toc", "escaped"] as const) {
+      c = unitsFetchMock({ kyobo: k, yes24: y })
+      r = await tb.unitsFetch(I, c.f)
+      assert(r.found && r.source === "yes24" && r.text === "1. 소인수분해 ··· 8\n  • 소수와 합성수 10\n2. 정수와 유리수 ··· 28", k + "/" + y + " " + JSON.stringify(r))
+    }
+  }
+  c = unitsFetchMock({ kyobo: "nomatch" }); await tb.unitsFetch(I, c.f)
+  assert(!c.log.some((u) => /product\.kyobobook/.test(u)), "ISBN이 같은 상품이 없으면 상품 정보를 부르지 않음")
+  for (const y of ["notoc", "none", "down"] as const) {
+    r = await tb.unitsFetch(I, unitsFetchMock({ kyobo: "empty", yes24: y }).f)
+    assert(JSON.stringify(r) === JSON.stringify({ found: false, text: "", source: "" }), "둘 다 없음 " + y + " " + JSON.stringify(r))
+  }
+  let threw = 0; try { await tb.unitsFetch("97912345", unitsFetchMock().f) } catch (e) { threw = (e as { status?: number }).status ?? 0 }
+  assert(threw === 400, "형식 오류")
+})

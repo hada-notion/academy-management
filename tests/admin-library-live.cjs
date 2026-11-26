@@ -1,5 +1,5 @@
 // 관리 앱 라이브러리 실제 연결(261123, 옛 라이브러리 웹 화면에서 옮김) — 가짜 서버로만. 실제 자료 모드(?live=1)에서
-// 책 찾기(search → detail → register, 교보문고 주소 → kyobo-book → register-custom), 단원 고치기(units · parse · edit-units),
+// 책 찾기(search → detail → register, 교보문고 주소 → kyobo-book → register-custom), 단원 편집 [고치기 | 붙여넣기 | 가져오기](units · parse · units-fetch · edit-units),
 // 시리즈 관리(series · edit-series)가 서버 textbook-api를 같은 값 이름으로 부르는지. PC 1280만.
 // 사용: NODE_PATH=<hada-ui-tests>/node_modules ROOT=<저장소 폴더> node tests/admin-library-live.cjs   (캡처는 SHOTS 폴더)
 const { chromium } = require('playwright'), http = require('http'), fs = require('fs'), path = require('path'), assert = require('node:assert/strict');
@@ -8,6 +8,8 @@ const types = { '.js': 'application/javascript', '.css': 'text/css', '.png': 'im
 const H = 'https://twczhsxybkcvjkdfdxvs.supabase.co/functions/v1/';
 const BK = '11111111-1111-4111-8111-111111111111';
 const BOOK_ROW = { id: BK, props: { '교재명': '예시 수학 1', '구분': '교재', '시리즈': '예시 시리즈', '출판사': '예시 출판', '전체 분량': 200, '진도 단위': 'P.-', '가격': 15000, '사용중': true, 'ISBN13': '9790000000011' } };
+// 단원 가져오기(units-fetch) 가짜 응답 — 교보문고 목차 꼴(하위 줄 "   - …")
+const FETCHED = 'Lesson 01 Hello 8\n   - Vocabulary 어휘\n   - Reading 독해\n\nLesson 02 World 20\n   - Vocabulary 어휘';
 const FOUND = [
   { isbn13: '9791100000017', title: '예시 개념 수학 1', author: '김하다', publisher: '예시 출판', pubDate: '2026-01-01', price: 18000, series: '', pages: 300, altCover: '', sources: ['nl'], cover: '', registered: false },
   { isbn13: '9790000000011', title: '예시 수학 1', author: '', publisher: '예시 출판', pubDate: '', price: 15000, series: '', pages: 200, altCover: '', sources: ['nl'], cover: '', registered: true },
@@ -38,6 +40,7 @@ const FOUND = [
           case 'kyobo-book': return reply(route, 200, { pid: q.pid, title: '예시 교보 영어', isbn13: '9791100000024', price: 16000, publisher: '예시 출판', toc: { units: [{ name: 'Unit 1', page: 6, include: true, big: '' }] } });
           case 'register-custom': return reply(route, 200, { ok: true, bookId: 'new-2' });
           case 'units': return reply(route, 200, { bookId: q.bookId, units });
+          case 'units-fetch': return reply(route, 200, opts.fetch === 'none' ? { found: false, text: '', source: '' } : { found: true, source: 'kyobo', text: FETCHED });
           case 'parse': return reply(route, 200, { toc: { units: [{ name: '3. 도형', page: 70, include: true, big: '' }, { name: '1. 수와 연산', page: 8, include: true, big: '' }] } });
           case 'edit-units': { units = units.filter((u) => !(q.remove || []).includes(u.id)).map((u) => { const f = (q.update || []).find((x) => x.id === u.id); return f ? { ...u, name: f.name, page: f.page } : u; }).concat((q.add || []).map((a, i) => ({ id: 'n' + i, name: a.name, page: a.page, uses: 0 }))); return reply(route, 200, { ok: true, updated: (q.update || []).length, removed: (q.remove || []).length, added: (q.add || []).length, blocked: [], skipped: 0 }); }
           case 'series': return reply(route, 200, { series, duplicates: [] });
@@ -54,7 +57,7 @@ const FOUND = [
         return reply(route, 400, { error: '지원하지 않는 작업입니다.' });
       }
       if (fn === 'app-api') {
-        if (q.action === 'list') return reply(route, 200, { ok: true, db: q.db, at: new Date().toISOString(), rows: q.db === '라이브러리(학원) DB' ? [BOOK_ROW] : [] });
+        if (q.action === 'list') return reply(route, 200, { ok: true, db: q.db, at: new Date().toISOString(), rows: q.db === '라이브러리(학원) DB' ? [opts.book || BOOK_ROW] : [] });
         if (q.action === 'options') return reply(route, 200, { ok: true, dbs: { '라이브러리(학원) DB': { '시리즈': ['예시 시리즈', '빈 시리즈'], '출판사': ['예시 출판'] } } });
         if (q.action === 'status') return reply(route, 200, { ok: true, dbs: [], syncedAt: null, rootTitle: '하다 학원관리 v2.0' });
         if (q.action === 'run') return reply(route, 200, { ok: true, changed: 1, syncedAt: new Date().toISOString() });
@@ -68,7 +71,8 @@ const FOUND = [
     return { page, calls, errors };
   }
   const tb = (calls, a) => calls.filter((c) => c.fn === 'textbook-api' && c.action === a);
-  const noOverflow = async (page, name) => assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), name + ': 가로 넘침');
+  const tabOn = (page) => page.$$eval('.dlg #lbuTabs [data-ut]', (l) => l.filter((x) => x.classList.contains('on')).map((x) => x.dataset.ut).join(','));
+  const noOverflow = async (page, name) =>assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), name + ': 가로 넘침');
   // 1) 책 찾기 — 검색: 이미 있는 책은 못 고름, 고른 책 → detail(목차 include만) → register(ISBN · 교보 표지)
   {
     const { page, calls, errors } = await open();
@@ -150,11 +154,17 @@ const FOUND = [
     await page.click('#lp [data-tab="unit"], #lp button:has-text("단원")');
     await page.waitForFunction(() => /수와 연산/.test(document.querySelector('#lp').textContent), null, { timeout: 10000 });
     await noOverflow(page, '단원'); await page.screenshot({ path: shots + 'lib-live-units.png' });
+    assert.equal(await page.locator('#lp [data-lbu]').count(), 1, '머리 단추는 [단원 편집] 하나');
+    assert.match(await page.textContent('#lp [data-lbu="edit"]'), /단원 편집/);
     await page.click('#lp [data-lbu="edit"]'); await page.waitForSelector('.dlg #lbuR .unn');
+    assert.equal(await tabOn(page), 'edit', '단원이 있으면 처음 탭 = 고치기');
     assert.equal(await page.locator('.dlg #lbuR [data-i="1"] [data-del]').count(), 0, '연결된 단원은 삭제 단추 없음');
     await page.fill('.dlg #lbuR [data-i="0"] .unn', '1. 수와 연산(개정)');
-    await page.click('.dlg #lbuP summary'); await page.fill('.dlg #lbuT', '3. 도형 70\n1. 수와 연산 8'); await page.click('.dlg #lbuSplit');
+    await page.click('.dlg [data-ut="paste"]'); assert.equal(await page.isVisible('.dlg #lbuR'), false, '탭을 옮기면 고치기 줄은 숨김');
+    await page.fill('.dlg #lbuT', '3. 도형 70\n1. 수와 연산 8'); await page.click('.dlg #lbuSplit');
     await page.waitForSelector('.dlg #lbuR [data-i="2"]');
+    assert.equal(await tabOn(page), 'edit', '나누면 고치기 탭으로');
+    assert.equal(await page.inputValue('.dlg #lbuR [data-i="0"] .unn'), '1. 수와 연산(개정)', '탭을 옮겨도 고친 줄 유지');
     assert.equal(await page.locator('.dlg #lbuR [data-i]').count(), 3, '같은 이름은 건너뜀(노션에 있는 원래 이름 포함 — 서버와 같은 규칙)');
     await page.screenshot({ path: shots + 'lib-live-units-edit.png' });
     await page.click('.dlg #co'); await page.waitForFunction(() => !document.querySelector('.dlg #lbuR'), null, { timeout: 10000 });
@@ -201,7 +211,70 @@ const FOUND = [
     assert.deepEqual(ed[0].body, { action: 'edit-units', bookId: BK, update: [{ id: 'w3', name: '3. 단원 3', page: 5 }, { id: 'w1', name: '1. 단원 1', page: 300 }, { id: 'w2', name: '2. 단원 2', page: null }], remove: [], add: [{ name: '끼운 단원', page: 75 }] });
     assert.deepEqual(errors, []); done.push('단원 정렬'); await page.close();
   }
-  // 4) 시리즈 관리: 도구줄 단추 → series, 추가 · 이름 바꾸기(그 시리즈 교재 화면 값도) · 순서 · 교재 있는 시리즈는 삭제 못 함 · 빈 시리즈는 두 번 눌러 삭제
+  // 3c) 단원 편집 [가져오기](항목 162): 단원 없고 ISBN13 있으면 처음 탭 = 가져오기 → units-fetch → 큰 단원만 켬/끔 → 고친 뒤 [나누기] → 고치기 탭 · 탭 옮겨도 값 유지 · 저장 꼴 같음
+  {
+    const { page, calls, errors } = await open({ units: [] });
+    await page.evaluate((id) => { activeTab.state.sel = id; panelOpen = true; render(); }, BK);
+    await page.click('#lp [data-tab="unit"], #lp button:has-text("단원")');
+    await page.waitForFunction(() => /단원 0개/.test(document.querySelector("#lp").textContent), null, { timeout: 10000 });
+    await page.click('#lp [data-lbu="edit"]'); await page.waitForSelector('.dlg #lbuTabs');
+    assert.equal(await tabOn(page), 'fetch', '단원 없고 ISBN13 있으면 처음 탭 = 가져오기');
+    assert.equal(await page.isDisabled('.dlg #lbuGet'), false);
+    await page.screenshot({ path: shots + 'lib-units-tab-fetch-empty.png' });
+    await page.click('.dlg #lbuGet');
+    await page.waitForFunction(() => document.querySelector('.dlg #lbuF').value.length > 0, null, { timeout: 10000 });
+    assert.deepEqual(tb(calls, 'units-fetch').map((c) => c.body), [{ action: 'units-fetch', isbn13: '9790000000011' }]);
+    assert.equal(await page.inputValue('.dlg #lbuF'), 'Lesson 01 Hello 8\nLesson 02 World 20', '큰 단원만(기본 켬): - 하위 줄 뺌');
+    assert.match(await page.textContent('.dlg #lbuM'), /교보문고에서 단원 목록을 가져왔어요/);
+    await page.screenshot({ path: shots + 'lib-units-tab-fetch.png' });
+    await page.uncheck('.dlg #lbuBig'); assert.equal(await page.inputValue('.dlg #lbuF'), FETCHED, '큰 단원만 끔 = 받은 글 그대로');
+    await page.check('.dlg #lbuBig'); assert.equal(await page.inputValue('.dlg #lbuF'), 'Lesson 01 Hello 8\nLesson 02 World 20');
+    // 붙여넣기 탭에 적어 둔 글 · 가져오기 글은 탭을 옮겨도 그대로
+    await page.click('.dlg [data-ut="paste"]'); await page.fill('.dlg #lbuT', '메모 줄');
+    await page.click('.dlg [data-ut="fetch"]'); assert.equal(await page.inputValue('.dlg #lbuF'), 'Lesson 01 Hello 8\nLesson 02 World 20');
+    await page.fill('.dlg #lbuF', 'Lesson 01 Hello 8\nLesson 02 World 20\nLesson 03 Again 30'); await page.click('.dlg #lbuSplitF');
+    await page.waitForSelector('.dlg #lbuR [data-i="1"]');
+    assert.equal(await tabOn(page), 'edit', '나누면 고치기 탭으로');
+    assert.equal(tb(calls, 'parse').at(-1).body.text, 'Lesson 01 Hello 8\nLesson 02 World 20\nLesson 03 Again 30', '고친 글을 그대로 parse');
+    await page.fill('.dlg #lbuR [data-i="0"] .unn', '3. 도형(고침)');
+    await page.click('.dlg [data-ut="paste"]'); assert.equal(await page.inputValue('.dlg #lbuT'), '메모 줄', '붙여넣기 글 유지');
+    await page.click('.dlg [data-ut="edit"]'); assert.equal(await page.inputValue('.dlg #lbuR [data-i="0"] .unn'), '3. 도형(고침)', '고친 줄 유지');
+    await page.click('.dlg #co'); await page.waitForFunction(() => !document.querySelector('.dlg #lbuR'), null, { timeout: 10000 });
+    const ed = tb(calls, 'edit-units'); assert.equal(ed.length, 1);
+    assert.deepEqual(ed[0].body, { action: 'edit-units', bookId: BK, update: [], remove: [], add: [{ name: '3. 도형(고침)', page: 70 }, { name: '1. 수와 연산', page: 8 }] });
+    assert.deepEqual(errors, []); done.push('단원 가져오기'); await page.close();
+  }
+  // 3d) 가져오기 못 찾음 · ISBN 없음(처음 탭 = 붙여넣기, 가져오기 탭은 안내 + 흐린 단추)
+  {
+    const { page, calls, errors } = await open({ units: [], fetch: 'none' });
+    await page.evaluate((id) => { activeTab.state.sel = id; panelOpen = true; render(); }, BK);
+    await page.click('#lp [data-tab="unit"], #lp button:has-text("단원")');
+    await page.waitForFunction(() => /단원 0개/.test(document.querySelector("#lp").textContent), null, { timeout: 10000 });
+    await page.click('#lp [data-lbu="edit"]'); await page.waitForSelector('.dlg #lbuTabs');
+    await page.click('.dlg #lbuGet');
+    await page.waitForFunction(() => /이 ISBN으로 단원을 찾지 못했어요/.test(document.querySelector('.dlg #lbuM').textContent), null, { timeout: 10000 });
+    assert.equal(await page.inputValue('.dlg #lbuF'), '');
+    assert.equal(tb(calls, 'units-fetch').length, 1);
+    assert.deepEqual(errors, []); await page.close();
+  }
+  {
+    const book = { id: BK, props: { ...BOOK_ROW.props, 'ISBN13': '' } };
+    const { page, calls, errors } = await open({ units: [], book });
+    await page.evaluate((id) => { activeTab.state.sel = id; panelOpen = true; render(); }, BK);
+    await page.click('#lp [data-tab="unit"], #lp button:has-text("단원")');
+    await page.waitForFunction(() => /단원 0개/.test(document.querySelector("#lp").textContent), null, { timeout: 10000 });
+    await page.click('#lp [data-lbu="edit"]'); await page.waitForSelector('.dlg #lbuTabs');
+    assert.equal(await tabOn(page), 'paste', '단원 · ISBN13 둘 다 없으면 처음 탭 = 붙여넣기');
+    assert.match(await page.getAttribute('.dlg #lbuT', 'placeholder'), /단원 목록을 붙여 넣어 주세요/);
+    await page.screenshot({ path: shots + 'lib-units-tab-paste.png' });
+    await page.click('.dlg [data-ut="fetch"]');
+    assert.equal(await page.isDisabled('.dlg #lbuGet'), true, 'ISBN13 없으면 흐린 단추');
+    assert.match(await page.textContent('.dlg [data-up="fetch"]'), /ISBN13을 먼저 넣어 주세요/);
+    await page.screenshot({ path: shots + 'lib-units-tab-fetch-noisbn.png' });
+    assert.equal(tb(calls, 'units-fetch').length, 0);
+    assert.deepEqual(errors, []); done.push('단원 가져오기 못 찾음 · ISBN 없음'); await page.close();
+  }
+  // 4) 시리즈 관리:도구줄 단추 → series, 추가 · 이름 바꾸기(그 시리즈 교재 화면 값도) · 순서 · 교재 있는 시리즈는 삭제 못 함 · 빈 시리즈는 두 번 눌러 삭제
   {
     const { page, calls, errors } = await open();
     await page.click('#view [data-act2="lbSeries"]'); await page.waitForSelector('.dlg #lbsR [data-i="1"]');
