@@ -1,6 +1,7 @@
 // POST /functions/v1/textbook-api
 // 라이브러리(library.html, v2.5.118, Notion 라이브러리 DB). 관리자 로그인 세션만 통과한다(adminSecurity.ts의 브라우저 경로).
 //   search   { query }                       국립중앙도서관 검색(ISBN13이면 그 책) + 라이브러리에 이미 있는지(ISBN13)
+//   cover-check { isbn13 }                   교보문고 표지가 실제로 있는지(없는 책의 대체 그림은 바이트 비교로 걸러냄) → { found, url? } (항목 160)
 //   register-custom { title, isbn13?, cover?, price?, pages?, series?, publisher?, units }  직접 추가 등록(v2.5.119, 교보문고에서 가져오기 v2.6.6)
 //   kyobo-book { pid }                       교보문고 상품번호 → 교재명·ISBN13·정가·출판사·목차 단원 후보(검색 목록에서 가져오기, v2.6.8)
 //   detail   { isbn13 }                      한 권의 정보·목차(국립중앙도서관에 있을 때) → 단원 후보
@@ -18,7 +19,7 @@
 import { CORS_HEADERS, getCurrentAdminKey } from "../_shared/adminShared.ts"
 import { securityEnabled } from "../_shared/adminSecurity.ts"
 import { requireAccess, teacherRouteDeny } from "../_shared/teacherAccess.ts"
-import { TextbookError, addUnits, bookDetail, bookUnits, editUnits, kyoboBook, libraryBooks, parsePasted, registerBook, registerCustom, searchBooks, seriesList, editSeries, setCover, updateBook } from "../_shared/textbookSearch.ts"
+import { TextbookError, addUnits, bookDetail, coverCheck, bookUnits, editUnits, kyoboBook, libraryBooks, parsePasted, registerBook, registerCustom, searchBooks, seriesList, editSeries, setCover, updateBook } from "../_shared/textbookSearch.ts"
 
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store" } })
 
@@ -38,6 +39,7 @@ Deno.serve(async (req: Request) => {
     { const no = teacherRouteDeny(denied0 as any, "textbook-api", body); if (no) return json({ error: no[1] }, no[0]) }
     switch (body?.action) {
       case "search": return json(await searchBooks(body.query))
+      case "cover-check": return json(await coverCheck(body.isbn13))
       case "register-custom": return json(await registerCustom(body))
       case "detail": return json(await bookDetail(body.isbn13))
       case "parse": return json(parsePasted(body.text))

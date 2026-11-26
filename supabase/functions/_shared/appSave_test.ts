@@ -77,6 +77,14 @@ Deno.test("평평한 값 → Notion 속성(형식마다)", () => {
   assertEquals(toNotionProps({ 등록일: { start: "2026-11-01", end: "2026-12-19" } }, schema), { 등록일: { date: { start: "2026-11-01", end: "2026-12-19" } } })
 })
 
+Deno.test("파일 칸(북커버): 외부 https 주소만 · 빈 목록은 비움 · 그 밖은 거절", () => {
+  const sc = { ...schema, 북커버: { type: "files" } }
+  assertEquals(toNotionProps({ 북커버: [{ name: "북커버", url: "https://contents.kyobobook.co.kr/sih/fit-in/458x0/pdt/9791100000017.jpg" }] }, sc),
+    { 북커버: { files: [{ name: "북커버", type: "external", external: { url: "https://contents.kyobobook.co.kr/sih/fit-in/458x0/pdt/9791100000017.jpg" } }] } })
+  assertEquals(toNotionProps({ 북커버: [] }, sc), { 북커버: { files: [] } })
+  for (const bad of ["http://x.co/a.jpg", "data:image/png;base64,AAAA", "javascript:alert(1)"]) assertThrows(() => toNotionProps({ 북커버: [{ url: bad }] } as never, sc), SaveError)
+})
+
 Deno.test("쓰지 않는 값: 없는 칸 · 수식 · 버튼 · 선택지에 없는 값 · 숫자 아님 · 날짜 형식 · id 아닌 관계", () => {
   for (const p of [{ 없는칸: 1 }, { 학생수: 3 }, { 생성: 1 }, { 상태: "휴원" }, { 요일: ["화"] }, { 수강료: "abc" }, { 등록일: "11/1" }, { 클래스: ["abc"] }])
     assertThrows(() => toNotionProps(p as never, schema), SaveError)

@@ -431,3 +431,23 @@ Deno.test("kyobo-book: product number only, fixed Kyobo address, title/ISBN/list
 		await rejects(() => tb.kyoboBook({ pid: "S000003945991" }), 502, /교재 가져오기/)
 	})
 })
+
+Deno.test("cover-check: 대체 그림과 같으면 없음 · 다르면 있음 · 응답 실패면 없음 · 형식 오류는 400", async () => {
+  const img = (bytes: number[], type = "image/jpeg", status = 200) => new Response(new Uint8Array(bytes), { status, headers: { "content-type": type } })
+  const NOPIC = [1, 2, 3, 4], REAL = [9, 8, 7]
+  const mk = (map: Record<string, () => Response>) => ((url: string) => Promise.resolve((map[url.match(/pdt\/(\d+)/)![1]] ?? (() => img(NOPIC)))())) as unknown as typeof fetch
+  tb._resetCoverProbe()
+  const probe = tb.NO_COVER_PROBE_ISBN
+  assert(JSON.stringify(await tb.coverCheck("9790000000011", mk({ "9790000000011": () => img(REAL) }))) === JSON.stringify({ found: true, url: tb.coverUrl("9790000000011") }), "다르면 있음")
+  tb._resetCoverProbe()
+  assert((await tb.coverCheck("9790000000028", mk({ "9790000000028": () => img(NOPIC), [probe]: () => img(NOPIC) }))).found === false, "같으면 없음")
+  tb._resetCoverProbe()
+  assert((await tb.coverCheck("9790000000028", mk({ "9790000000028": () => img(REAL, "image/jpeg", 404) }))).found === false, "응답 실패")
+  assert((await tb.coverCheck("9790000000028", mk({ "9790000000028": () => img(REAL, "text/html") }))).found === false, "그림이 아님")
+  assert((await tb.coverCheck("9790000000028", (() => Promise.reject(new Error("x"))) as unknown as typeof fetch)).found === false, "연결 오류")
+  tb._resetCoverProbe()
+  assert((await tb.coverCheck("9790000000028", mk({ "9790000000028": () => img(REAL), [probe]: () => img(REAL, "image/jpeg", 500) }))).found === false, "비교 그림을 못 받으면 찾았다고 하지 않음")
+  tb._resetCoverProbe()
+  let threw = 0; try { await tb.coverCheck("123", mk({})) } catch (e) { threw = (e as { status?: number }).status ?? 0 }
+  assert(threw === 400, "형식 오류")
+})

@@ -525,3 +525,31 @@ export async function editSeries(body: any) {
 	if (sourcesCache) sourcesCache = { ...sourcesCache, series: series.map((o) => o.name) }
 	return { ok: true, cleaned: duplicates.map((o) => o.name), series: series.map((o) => ({ id: o.id, name: o.name })), duplicates: [] as string[] }
 }
+
+// 표지 확인(cover-check, 항목 160): 교보문고는 없는 ISBN에도 200 + 큰 "제공된 상품이미지가 없습니다" 대체 그림을 준다.
+// 브라우저는 CORS 때문에 바이트를 못 비교하므로 서버가 그 ISBN의 그림과 일부러 없는 ISBN의 그림을 받아 바이트가 같으면 없는 것으로 본다(고정 해시 없음 → 대체 그림이 바뀌어도 맞음).
+export const NO_COVER_PROBE_ISBN = "9781111111111"
+let probeCache: { at: number; bytes: Uint8Array } | null = null
+const sameBytes = (a: Uint8Array, b: Uint8Array) => a.length === b.length && a.every((v, i) => v === b[i])
+async function grabImage(isbn: string, f: typeof fetch): Promise<Uint8Array | null> {
+	try {
+		const res = await f(coverUrl(isbn), { signal: AbortSignal.timeout(6000) })
+		if (!res.ok || !/^image\//i.test(res.headers.get("content-type") ?? "")) return null
+		const bytes = new Uint8Array(await res.arrayBuffer())
+		return bytes.length ? bytes : null
+	} catch { return null }
+}
+export async function coverCheck(isbn13: unknown, f: typeof fetch = fetch): Promise<{ found: boolean; url?: string }> {
+	const isbn = String(isbn13 ?? "")
+	if (!isIsbn13(isbn)) throw new TextbookError(400, "ISBN13(13자리 숫자)이 필요합니다.")
+	const img = await grabImage(isbn, f)
+	if (!img) return { found: false }
+	if (!probeCache || Date.now() - probeCache.at > 10 * 60 * 1000) {
+		const probe = await grabImage(NO_COVER_PROBE_ISBN, f)
+		probeCache = probe ? { at: Date.now(), bytes: probe } : null
+	}
+	// 없는 ISBN의 그림을 못 받으면 비교할 수 없으므로 찾았다고 하지 않는다
+	if (!probeCache || sameBytes(img, probeCache.bytes)) return { found: false }
+	return { found: true, url: coverUrl(isbn) }
+}
+export const _resetCoverProbe = () => { probeCache = null }
