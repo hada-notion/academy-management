@@ -39,6 +39,10 @@ jobs:
       - name: Design rules and shared-file versions
         run: node tests/design-lint.cjs
 
+      # (v2.8.0 항목 164) 단원 편집 [나누기]의 단원 단계 — livebook.js 순수 함수, 브라우저 없이
+      - name: Admin app unit levels (paste and fetch split)
+        run: node tests/admin-unit-levels.cjs
+
       - name: Set up Deno
         uses: denoland/setup-deno@v2
         with:

@@ -2,7 +2,7 @@
    - 책 찾기(오른쪽 창): [검색] search(국립중앙도서관, ISBN이면 그 책) → 고르면 detail(목차 → 단원 후보) → register(ISBN · 교보문고 표지)
                          [교보문고] 책 주소의 상품번호 → kyobo-book(교재명 · ISBN · 정가 · 출판사 · 목차) → register-custom. ISBN만 붙이면 search(ISBN)
                          [직접 등록] 지금 등록 창(live.js liveBookRegisterOpen)
-   - 단원(교재 창 [단원] 탭): units로 받아 보이고, [단원 편집] 창 [고치기 | 붙여넣기 | 가져오기] 탭 — 이름 · 시작 고치기 · 삭제 · 추가 · 붙여넣기(parse) · 가져오기(units-fetch, 교보문고 → 예스24) → edit-units 한 번에(바로 노션)
+   - 단원(교재 창 [단원] 탭): units로 받아 보이고, [단원 편집] 창 [고치기 | 붙여넣기 | 가져오기] 탭 — 이름 · 시작 고치기 · 삭제 · 추가 · 붙여넣기 · 가져오기(units-fetch, 교보문고 → 예스24) — [나누기]는 화면에서(단원 단계 lbUnitPick, 항목 164) → edit-units 한 번에(바로 노션)
    - 시리즈(라이브러리 [교재] 탭, 줄을 고르지 않았을 때 오른쪽 창 아래 [시리즈 관리]): series · edit-series(추가 · 이름 · 순서 · 삭제 — 교재가 0권인 시리즈만 삭제)
    실제 자료 모드가 아니면 아무것도 바꾸지 않는다(시제품 예시 목록 그대로). */
 const LBK = { units: {}, series: null };
@@ -200,12 +200,88 @@ function lbUnitBox(b) {
   /* 261126 대표(B안): 머리 단추는 [단원 편집] 하나 — 창 안 [고치기 | 붙여넣기 | 가져오기] 탭 */
   return `<div class="box"><h3>단원 <span class="hint">${c && c.list ? us.length + "개" : ""}</span>${HELP(HELPTX.unitBox)}<span class="sp"></span><button class="lnk" data-lbu="edit" data-bk="${esc(b.id)}">${IC("pen", "s")}단원 편집</button></h3>${rows}${c && c.err && c.list ? `<div class="hint warn">${esc(c.err)}</div>` : ""}</div>`;
 }
-/* "큰 단원만"(단원 편집 > 가져오기): 앞에 - · • 같은 표가 붙은 줄과, 들여 쓰지 않은 줄이 있을 때 들여 쓴 줄을 뺀다. 빈 줄도 뺀다 */
-function lbUnitBigOnly(text) {
-  const ls = String(text || "").split(/\r?\n/).filter((l) => l.trim());
-  const sub = (l) => /^[\s 　]*[-–—•·∙◦▪▫‣*ㆍ・○●□■▶▷>]/.test(l);
-  const flat = ls.some((l) => !sub(l) && !/^[\s 　]/.test(l));
-  return ls.filter((l) => !sub(l) && !(flat && /^[\s 　]/.test(l))).join("\n");
+/* 단원 단계(261127 대표, 항목 164 — 단원 편집 > 붙여넣기 · 가져오기 [나누기]): 글의 줄을 꼴로 단계에 묶고, 고른 단계 줄만 단원으로 넣는다.
+   꼴 = 들여쓰기 · 앞 기호(- • ·) · [..] · 머리말 낱말(Stage · Part · Chapter · Lesson · Unit · Day · 단원 · 장 · 편 · 차시 …) · 번호 꼴(Ⅰ / 1. / 01 / 1-1 / 1.1 / ① / (1) / 가.).
+   줄 이름은 적힌 그대로(앞에 없는 번호를 지어 붙이지 않음, 앞 기호만 뗌). 쪽 = 줄 끝 숫자 중 앞에 공백 2칸 이상 · 점선 · 탭 · / · "p." · 뒤 "쪽"이 있는 것,
+   또는 그 단계 거의 모든 줄(80%) 끝에 커지는 숫자가 있을 때만 — "구동사 2" · "가정표현 4" 같은 이름 끝 숫자는 쪽이 아니다. 고른 줄에 쪽이 없으면 그 아래 줄의 첫 쪽.
+   단계 순서 = 들여쓰기 → 꼴 깊이(Stage · Part · [..] < Chapter · Ⅰ · 단원 < Lesson · Unit · 1. < 1-1 < ① < 앞 기호) → 줄 수 적은 쪽 → 먼저 나온 쪽.
+   기본 단계 = 이름이 겹치지 않는 단계 중 가장 깊은 것("Vocabulary 어휘"처럼 되풀이되는 하위 줄 단계는 빼고). 머리말 · 정답 · 차례 같은 번호 없는 줄은 뺀다 */
+const LBU_ROMAN = "ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ";
+const LBU_WORD = new RegExp(`^(stage|part|chapter|lesson|unit|section|day|step|week|theme|module|round|session)\\s*(\\d{1,3}|[IVX]{1,5}|[${LBU_ROMAN}]+)(?=[\\s.:)\\]-]|$)`, "i");
+const LBU_KO = /^(?:제\s*)?(\d{1,3})\s*(단원|장|편|부|강|차시|과|일차|회)(?=[\s.:)\]]|$)|^(단원|차시)\s*(\d{1,3})(?=[\s.:)\]]|$)/;
+const LBU_SKIP = /(정답|해설|머리말|차례|목차|부록|이\s*책의|구성과\s*특징|찾아보기|학습\s*계획|index)/i;
+const LBU_OPEN = /^[[【〔〈《<]\s*/, LBU_CLOSE = /\s*[\]】〕〉》>]\s*$/;
+function lbUnitShape(s) {
+  let m;
+  if ((m = s.match(LBU_OPEN))) { const inner = s.slice(m[0].length).replace(LBU_CLOSE, ""), sh = lbUnitShape(inner); return { key: "[" + sh.key, rank: Math.min(sh.rank, 0), label: sh.label || "[ ]", mark: sh.word ? sh.mark : inner, word: true }; }
+  if ((m = s.match(LBU_WORD))) { const w = m[1].toLowerCase(); return { key: "w:" + w, rank: /^(stage|part|theme)$/.test(w) ? 0 : w === "chapter" ? 1 : 2, label: m[1], mark: m[0], word: true }; }
+  if ((m = s.match(LBU_KO))) { const w = m[2] || m[3]; return { key: "k:" + w, rank: /^(편|부)$/.test(w) ? 0 : /^(장|단원)$/.test(w) ? 1 : 2, label: w, mark: m[0], word: true }; }
+  if ((m = s.match(new RegExp(`^[${LBU_ROMAN}]+(?=[\\s.)]|$)|^[IVX]{1,5}[.)](?=\\s)`)))) return { key: "roman", rank: 1, label: "Ⅰ", mark: m[0] };
+  if ((m = s.match(/^\d{1,3}((?:\s*-\s*\d{1,3})+)(?=[\s.)]|$)/))) { const d = (m[1].match(/-/g) || []).length; return { key: "n-n" + d, rank: 2 + d, label: "1" + "-1".repeat(d), mark: m[0] }; }
+  if ((m = s.match(/^\d{1,3}((?:\.\d{1,3})+)(?=[\s)]|\.\s|$)/))) { const d = (m[1].match(/\./g) || []).length; return { key: "n.n" + d, rank: 2 + d, label: "1" + ".1".repeat(d), mark: m[0] }; }
+  if ((m = s.match(/^0\d{1,2}(?=[\s.)]|$)/))) return { key: "0n", rank: 2, label: "01", mark: m[0] };
+  if ((m = s.match(/^\d{1,3}(?:\s*[.)]|(?=\s))/))) return { key: "n", rank: 2, label: "1.", mark: m[0] };
+  if ((m = s.match(/^[A-Z][.)](?=\s)/))) return { key: "A", rank: 2, label: "A.", mark: m[0] };
+  if ((m = s.match(/^[①-⑳]/))) return { key: "circ", rank: 4, label: "①", mark: m[0] };
+  if ((m = s.match(/^\(\d{1,3}\)/))) return { key: "paren", rank: 4, label: "(1)", mark: m[0] };
+  if ((m = s.match(/^[가-하]\s*[.)](?=\s)/))) return { key: "ga", rank: 4, label: "가.", mark: m[0] };
+  return { key: "plain", rank: 2, label: "", mark: "" };
+}
+/* 줄 끝 쪽: 확실한 꼴(공백 2칸 이상 · 점선 · / · | · p. · 쪽)은 hard, 한 칸 띄운 숫자는 soft(그 단계 거의 모든 줄일 때만 쪽) */
+function lbUnitPage(s) {
+  const ok = (t, p) => /[가-힣a-z]/i.test(t) && p >= 1 && p <= 2000;
+  let m = s.match(/^(.*?\S)(?:\s*[.·…‥_]{2,}\s*|\s*[/|]\s*|\s{2,}|\s*(?=[pP]\.?\s*\d))(?:[pP]\.?\s*)?(\d{1,4})\s*(?:쪽|p)?$/) || s.match(/^(.*?\S)\s*(\d{1,4})\s*쪽$/);
+  if (m && ok(m[1], +m[2])) return { name: m[1].replace(/[\s.·…‥_/|-]+$/, ""), hard: +m[2], soft: null };
+  m = s.match(/^(.*?\S)\s(\d{1,4})$/);
+  if (m && ok(m[1], +m[2])) return { name: s, hard: null, soft: +m[2], softName: m[1] };
+  return { name: s, hard: null, soft: null };
+}
+function lbUnitLevels(text) {
+  const lines = [];
+  String(text || "").split(/\r?\n/).forEach((raw) => {
+    if (!raw.trim()) return;
+    const lead = raw.match(/^[\s　]*/)[0], ind = lead.replace(/\t/g, "    ").replace(/　/g, "  ").length;
+    let s = raw.slice(lead.length).trim(), bul = false;
+    const bm = s.match(/^[-–—•·∙◦▪▫‣*ㆍ・○●□■▶▷>]+\s*/); if (bm && s.length > bm[0].length) { bul = true; s = s.slice(bm[0].length).trim(); }
+    const sh = lbUnitShape(s);
+    if (sh.key === "plain" && LBU_SKIP.test(s)) return;
+    lines.push({ ind, bul, sh, pg: lbUnitPage(s), key: `${ind > 0 ? 1 : 0}|${bul ? 1 : 0}|${sh.key}` });
+  });
+  /* 번호 없는 줄이 같은 자리의 번호 줄(1. · Lesson 1 …) 단계 하나와 섞여 있고 더 큰 단계가 없으면 그 번호 줄 단계로 */
+  const top = [...new Set(lines.filter((l) => l.key.startsWith("0|0|")).map((l) => l.key))], P0 = "0|0|plain";
+  const peers = top.filter((k) => k !== P0);
+  if (top.includes(P0) && peers.length === 1 && lines.find((l) => l.key === peers[0]).sh.rank === 2) lines.forEach((l) => { if (l.key === P0) l.key = peers[0]; });
+  const by = new Map();
+  lines.forEach((l, i) => { if (!by.has(l.key)) by.set(l.key, { key: l.key, first: i, lines: [], ind: l.ind, rank: l.bul ? 5 : l.sh.rank, sh: l.sh, bul: l.bul }); by.get(l.key).lines.push(l); });
+  const levels = [...by.values()].sort((a, b) => (a.ind > 0) - (b.ind > 0) || a.rank - b.rank || a.lines.length - b.lines.length || a.first - b.first);
+  const seen = {};
+  levels.forEach((g, d) => {
+    g.depth = d;
+    let lb = g.sh.label || (g.bul || g.ind > 0 ? "하위" : "이름만");
+    if (seen[lb]) lb += " " + (d + 1);
+    seen[lb] = 1; g.label = lb; g.count = g.lines.length;
+    /* soft 쪽: 그 단계 줄의 80% 이상(2줄 이상)이 끝 숫자를 갖고, 숫자가 커지기만 하고, 1씩 느는 번호(1 · 2 · 3)가 아닐 때만 */
+    const ps = g.lines.map((l) => (l.pg.hard != null ? l.pg.hard : l.pg.soft)).filter((v) => v != null);
+    const inc = ps.every((v, k) => !k || v > ps[k - 1]), step1 = ps.length >= 3 && ps.every((v, k) => !k || v - ps[k - 1] === 1);
+    const soft = ps.length >= 2 && ps.length >= Math.ceil(g.lines.length * 0.8) && inc && !step1;
+    g.lines.forEach((l) => { l.depth = d; const sp = soft && l.pg.soft != null; l.name = sp ? l.pg.softName : l.pg.name; l.page = l.pg.hard != null ? l.pg.hard : sp ? l.pg.soft : null; });
+  });
+  const uniq = levels.filter((g) => new Set(g.lines.map((l) => l.name.toLowerCase())).size === g.lines.length);
+  const def = uniq.length ? uniq[uniq.length - 1] : levels[0];
+  return { lines, levels: levels.map((g) => ({ key: g.key, label: g.label, count: g.count, depth: g.depth })), def: def ? def.key : "" };
+}
+/* 고른 단계 줄 → [{name, page}]. up = 윗 단계 이름 붙이기("Chapter 01 · Unit 01 영어문장 1형") */
+function lbUnitPick(text, key, up) {
+  const L = lbUnitLevels(text), ls = L.lines, k = L.levels.some((g) => g.key === key) ? key : L.def;
+  const out = [];
+  ls.forEach((l, i) => {
+    if (l.key !== k) return;
+    let page = l.page, name = l.name;
+    for (let j = i + 1; page == null && j < ls.length && ls[j].depth > l.depth; j++) page = ls[j].page;
+    if (up) for (let j = i - 1; j >= 0; j--) if (ls[j].depth < l.depth) { const p = ls[j]; name = (p.sh.word && p.sh.mark ? p.sh.mark : p.name).replace(/[\s.:]+$/, "") + " · " + name; break; }
+    out.push({ name: name.slice(0, 100), page });
+  });
+  return out;
 }
 const lbIsbn = (b) => { const s = String((b && b.isbn) || "").replace(/[-\s]/g, ""); return /^97[89]\d{10}$/.test(s) ? s : ""; };
 /* 단원 편집 창(261126 대표 B안): [고치기 | 붙여넣기 | 가져오기] 탭 하나 창. 고친 줄(rows)은 탭을 옮겨도 그대로, [저장]은 창 아래 하나(edit-units 한 번).
@@ -226,13 +302,13 @@ function lbUnitDialog(b, tab0) {
     </div>
     <div data-up="paste" hidden>
       <textarea class="inp bfta tall" id="lbuT" aria-label="단원 목록" placeholder="단원 목록을 붙여 넣어 주세요 — 한 줄에 하나, 끝 숫자는 시작 쪽&#10;1. 소인수분해 8&#10;2. 정수와 유리수 28&#10;3. 문자와 식 56"></textarea>
-      <div class="row"><span class="sp"></span><button type="button" class="btn" id="lbuSplit">나누기</button></div>
+      <div class="row lburow"><span class="hint" data-lvh="T">단원 단계</span><span class="vseg subseg" data-lv="T" role="radiogroup" aria-label="단원으로 쓸 단계"></span><label class="hint" style="white-space:nowrap" data-lvh="T"><input type="checkbox" data-lvup="T"> 윗 단계 이름 붙이기</label><span class="sp"></span><button type="button" class="btn" id="lbuSplit">나누기</button></div>
     </div>
     <div data-up="fetch" hidden>
-      <div class="row"><span class="hint">ISBN13 ${isbn ? esc(isbn) : "없음"}</span><label class="hint"><input type="checkbox" id="lbuBig" checked ${isbn ? "" : "disabled"}> 큰 단원만</label><span class="sp"></span><button type="button" class="btn" id="lbuGet" ${isbn ? "" : 'disabled title="ISBN13을 먼저 넣어 주세요"'}>${IC("dl", "s")}가져오기</button></div>
+      <div class="row"><span class="hint">ISBN13 ${isbn ? esc(isbn) : "없음"}</span><span class="sp"></span><button type="button" class="btn" id="lbuGet" ${isbn ? "" : 'disabled title="ISBN13을 먼저 넣어 주세요"'}>${IC("dl", "s")}가져오기</button></div>
       ${isbn ? "" : '<div class="hint warn" id="lbuNoIsbn">ISBN13을 먼저 넣어 주세요 — 교재 창 [정보] 탭의 ISBN13 칸</div>'}
       <textarea class="inp bfta tall" id="lbuF" aria-label="가져온 단원 목록" placeholder="${isbn ? "[가져오기]를 누르면 온라인 서점의 단원 목록이 여기에 들어와요 — 고친 뒤 [나누기]" : ""}" ${isbn ? "" : "disabled"}></textarea>
-      <div class="row"><span class="sp"></span><button type="button" class="btn" id="lbuSplitF" ${isbn ? "" : "disabled"}>나누기</button></div>
+      <div class="row lburow"><span class="hint" data-lvh="F">단원 단계</span><span class="vseg subseg" data-lv="F" role="radiogroup" aria-label="단원으로 쓸 단계"></span><label class="hint" style="white-space:nowrap" data-lvh="F"><input type="checkbox" data-lvup="F" ${isbn ? "" : "disabled"}> 윗 단계 이름 붙이기</label><span class="sp"></span><button type="button" class="btn" id="lbuSplitF" ${isbn ? "" : "disabled"}>나누기</button></div>
     </div>
     <p class="hint" id="lbuM"></p>
     <div class="actions"><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">저장</button></div>`, (m, close) => {
@@ -264,25 +340,39 @@ function lbUnitDialog(b, tab0) {
     };
     draw(); show(T.tab);
     m.querySelector("#lbuAdd").onclick = () => { rows.push({ name: "", page: "", del: false }); draw(); const l = box.querySelectorAll(".unn"); if (l.length) l[l.length - 1].focus(); box.scrollTop = box.scrollHeight; };
-    /* 나누기(붙여넣기 · 가져오기 공용): parse 그대로 → 지금 줄 뒤에 붙이고(같은 이름 건너뜀) [고치기] 탭으로 */
+    /* 단원 단계(항목 164): 글 칸마다 단계 나눔 단추(이름 + 줄 수) — 단계가 둘 이상일 때만. 고른 단계는 글을 고쳐도 그 꼴이 남아 있으면 그대로 */
+    const LV = { T: { key: "", up: false }, F: { key: "", up: false } };
+    const lvDraw = (w) => {
+      const ta = m.querySelector(w === "F" ? "#lbuF" : "#lbuT"), L = lbUnitLevels(ta.value), seg = m.querySelector(`[data-lv="${w}"]`);
+      if (!L.levels.some((g) => g.key === LV[w].key)) LV[w].key = L.def;
+      const many = L.levels.length > 1;
+      seg.style.display = many ? "" : "none"; m.querySelectorAll(`[data-lvh="${w}"]`).forEach((x) => (x.style.display = many ? "" : "none"));
+      seg.innerHTML = many ? L.levels.map((g) => `<button type="button" role="radio" data-lvk="${esc(g.key)}" class="${g.key === LV[w].key ? "on" : ""}" aria-checked="${g.key === LV[w].key}">${esc(g.label)} <span class="n">${g.count}</span></button>`).join("") : "";
+      seg.querySelectorAll("[data-lvk]").forEach((x) => (x.onclick = () => { LV[w].key = x.dataset.lvk; lvDraw(w); }));
+    };
+    ["T", "F"].forEach((w) => {
+      m.querySelector(w === "F" ? "#lbuF" : "#lbuT").addEventListener("input", () => lvDraw(w));
+      m.querySelector(`[data-lvup="${w}"]`).onchange = (ev) => { LV[w].up = ev.currentTarget.checked; };
+      lvDraw(w);
+    });
+    /* 나누기(붙여넣기 · 가져오기 공용): 고른 단계 줄만 이름 그대로(lbUnitPick, 서버 parse 안 부름) → 지금 줄 뒤에 붙이고(같은 이름 건너뜀) [고치기] 탭으로 */
     const split = async (ta, btn) => {
       const t = ta.value; if (!t.trim()) { msg.textContent = "나눌 단원 목록이 없어요"; return; }
       btn.disabled = true; msg.textContent = "";
       try {
-        const r = await liveBookApi({ action: "parse", text: t.slice(0, 20000) });
+        const w = ta.id === "lbuF" ? "F" : "T", got = lbUnitPick(t.slice(0, 20000), LV[w].key, LV[w].up);
         const have = new Set(rows.filter((z) => !z.del).flatMap((z) => [z.name.trim(), z.name0 || ""])); /* 서버와 같이: 지금 이름 + 노션에 있는 원래 이름은 새로 만들지 않음 */
-        const add = ((r.toc && r.toc.units) || []).filter((u) => u.include !== false && !have.has(u.name));
+        const add = got.filter((u) => !have.has(u.name));
         add.forEach((u) => rows.push({ name: u.name, page: u.page == null ? "" : String(u.page), del: false }));
-        if (add.length) { ta.value = ""; if (ta.id === "lbuF") T.raw = ""; }
+        if (add.length) { ta.value = ""; if (ta.id === "lbuF") T.raw = ""; lvDraw(w); }
         draw(); show("edit"); box.scrollTop = box.scrollHeight;
         msg.textContent = add.length ? `${add.length}개 단원으로 나눴어요 — 확인하고 [저장]을 눌러요` : "새로 추가할 단원이 없어요(같은 이름은 건너뜀)";
       } catch (e) { msg.textContent = lbErr(e); } finally { btn.disabled = false; }
     };
     m.querySelector("#lbuSplit").onclick = (ev) => split(m.querySelector("#lbuT"), ev.currentTarget);
     m.querySelector("#lbuSplitF").onclick = (ev) => split(m.querySelector("#lbuF"), ev.currentTarget);
-    /* 가져오기: units-fetch(교보문고 → 예스24) 글을 칸에 채움. [큰 단원만]을 바꾸면 받은 글에서 다시 채운다 */
-    const fill = () => { const f = m.querySelector("#lbuF"); if (T.raw) f.value = m.querySelector("#lbuBig").checked ? lbUnitBigOnly(T.raw) : T.raw; };
-    m.querySelector("#lbuBig").onchange = fill;
+    /* 가져오기: units-fetch(교보문고 → 예스24) 글을 칸에 그대로 채움 — 단원으로 쓸 단계는 아래 단계 나눔 단추로 */
+    const fill = () => { const f = m.querySelector("#lbuF"); if (T.raw) { f.value = T.raw; LV.F.key = ""; lvDraw("F"); } };
     m.querySelector("#lbuGet").onclick = async (ev) => {
       if (!isbn) return;
       const btn = ev.currentTarget; btn.disabled = true; msg.textContent = "온라인 서점에서 단원 목록을 받는 중…";
