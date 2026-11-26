@@ -33,7 +33,7 @@ const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="170"><r
           if (q.action === 'save') return reply(route, 200, { ok: true, results: q.changes.map((c, i) => ({ i, ok: true, id: c.id, row: { id: c.id, props: { ...BOOK_ROW(opts.isbn ?? ISBN).props, '북커버': (c.props['북커버'] || []) } } })) });
           return reply(route, 200, { ok: true, syncedAt: new Date().toISOString() });
         }
-        if (fn === 'textbook-api') return reply(route, 200, { units: [], series: [], duplicates: [] });
+        if (fn === 'textbook-api') { if (q.action === 'cover-check') return reply(route, 200, opts.noCover ? { found: false } : { found: true, url: `https://contents.kyobobook.co.kr/sih/fit-in/458x0/pdt/${q.isbn13}.jpg` }); return reply(route, 200, { units: [], series: [], duplicates: [] }); }
         return reply(route, 200, { ok: true, rows: [], items: [] });
       });
       await page.goto(`${origin}/prototype/admin-app/hada-admin.html?live=1`);
@@ -107,6 +107,7 @@ const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="170"><r
     // ⑥ 가져오기 → 위 [저장] → 확인 창 → 저장 본문
     await page.evaluate((id) => { activeTab.state.sel = id; panelOpen = true; render(); }, BK);
     await page.click('#lp [data-act="covGet"]'); await waitToast(page, /표지를 가져왔어요/);
+    assert.equal(calls.filter((c) => c.action === 'cover-check').length, 1, '서버에 표지 확인');
     await page.click('#lp #rowSave'); await page.waitForSelector('.dlg, .modal, [role="dialog"]');
     await page.screenshot({ path: shots + 'book-cover-save-dialog.png' });
     const ok = page.locator('.dlg button.pri, .modal button.pri, [role="dialog"] button.pri').last(); await ok.click();
@@ -122,6 +123,17 @@ const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="170"><r
     await page.locator('.dlg button.pri, .modal button.pri, [role="dialog"] button.pri').last().click(); await page.waitForTimeout(600);
     const body2 = saves().map((c) => c.body.changes.find((x) => x.db === '라이브러리(학원) DB')).filter(Boolean).pop();
     assert.deepEqual(body2.props['북커버'], []);
+    assert.deepEqual(errors, []);
+    await page.close();
+  }
+  // 실제 자료 모드: 서버가 "대체 그림"이라고 하면(found:false) 바꾸지 않고, 그림을 직접 불러 보지도 않는다
+  {
+    const { page, calls, errors, img } = await open({ live: true, noCover: true });
+    await page.evaluate((id) => { activeTab.state.sel = id; panelOpen = true; render(); }, BK);
+    await page.click('#lp [data-act="covGet"]'); await waitToast(page, /이 ISBN으로 표지를 찾지 못했어요/);
+    assert.equal(await page.evaluate((i) => DB.books.find((x) => x.id === i).cover || '', BK), '');
+    assert.deepEqual(calls.filter((c) => c.action === 'cover-check').map((c) => c.body), [{ action: 'cover-check', isbn13: ISBN }]);
+    assert.equal(img.length, 0, '실제 자료 모드는 브라우저가 교보 그림을 부르지 않음');
     assert.deepEqual(errors, []);
     await page.close();
   }
