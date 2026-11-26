@@ -476,6 +476,17 @@ function liveBookRegisterOpen(kind0, keep) {
 }
 /* 창 [저장](대표 261119): 그 창의 줄만 서버에 저장한다(학생 창은 그 학생의 작성 중 등록까지). 삭제 예정 줄은 save op:"delete"로 — 성공한 줄만 화면에서 빠진다.
    저장 전 새 줄을 삭제한 경우는 노션에 없으므로 화면에서만 지운다. 서버 반영이 끝난 뒤 위 숫자와 창이 함께 맞춰진다(liveSaveRun) */
+/* 창 [저장]이 보내는 줄(그 줄 + 학생 창은 그 학생 등록, 시험정보 창은 새로 고른 시험 줄 · 성적 줄) — liveSaveRow와 liveRowPending이 함께 쓴다 */
+function liveRowOnly(L, r) {
+  return (coll, row) => row === r || (L.coll === "students" && coll === "enrolls" && row.studentId === r.id)
+    || (L.coll === "exams" && ((coll === "tests" && row.id === r.testId) || (coll === "grades" && row.examId === r.id))); /* 시험정보 창 [시험 저장] = 새로 고른 시험(학원) 줄 + 이 시험의 성적 줄까지(261123 원본 대조 — 새 시험 줄이 빠져 연결이 다음 저장으로 밀렸음) */
+}
+/* (261126 대표 "저장은 위에만 활성되고 창에서는 저장 버튼이 제대로 작동 안해") 위 [저장] 숫자는 노션 기준 값(APPS_BASE)과 다른 줄을 세는데(liveHooks dirtyCount),
+   창 [저장]은 작성 중 표시(state)만 봤다 — 작성 중 표시가 풀렸어도 노션 값과 다른 줄이면 창 [저장]도 켠다(누르면 liveSaveRow가 그 줄을 보냄). 판정은 저장 층 한 곳(appSaveCollect) */
+window.liveRowPending = function (L, r) {
+  if (!(window.LIVE && window.LIVE.loaded) || !L || !r || typeof appSaveCollect !== "function" || !(L.coll in DB)) return false;
+  try { return appSaveCollect(DB, liveRowOnly(L, r)).changes.length > 0; } catch (_) { return false; }
+};
 function liveSaveRow(L, r) {
   if (!r) return null;
   if (L.coll === "enrolls" && !r.del && (!r.studentId || !r.classId)) { toast("학생과 클래스를 골라야 등록을 저장할 수 있어요"); return null; }
@@ -486,8 +497,7 @@ function liveSaveRow(L, r) {
     toast("삭제했어요 — 저장 전에 만든 줄이라 노션에는 없었어요");
     return null;
   }
-  const only = (coll, row) => row === r || (L.coll === "students" && coll === "enrolls" && row.studentId === r.id)
-    || (L.coll === "exams" && ((coll === "tests" && row.id === r.testId) || (coll === "grades" && row.examId === r.id))); /* 시험정보 창 [시험 저장] = 새로 고른 시험(학원) 줄 + 이 시험의 성적 줄까지(261123 원본 대조 — 새 시험 줄이 빠져 연결이 다음 저장으로 밀렸음) */
+  const only = liveRowOnly(L, r);
   return liveSave({ only }).then((res) => { try { if (res && res.deleted && activeTab.state.sel === r.id && !(DB[L.coll] || []).includes(r)) { activeTab.state.sel = null; render(); } } catch (_) {} return res; });
 }
 /* ═════ [동기화](노션 → 서버 사본, 261119) — 서버 app-api { action:"run", name:"sync-copy", dbs, full:true }(노션에서 지운 줄까지 통째로 대조, 느려도 됨).
