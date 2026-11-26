@@ -204,17 +204,32 @@ function lbUnitDialog(b, pasteFirst) {
   if (!c || !c.list) { toast("단원을 불러온 뒤에 고쳐요"); lbUnitsLoad(b.id); return; }
   const rows = c.list.map((u) => ({ id: u.id, name: u.name || "", page: u.page == null ? "" : String(u.page), name0: u.name || "", page0: u.page == null ? "" : String(u.page), uses: u.uses || 0, del: false }));
   const UU = unitParts(b);
-  modal(`<h2>단원 고치기${HELP("이름 · 시작을 고치고, 줄 끝 [x]로 지우거나 [단원 추가]로 더해요. 목차를 붙여 넣고 [나누기]를 누르면 아래에 새 단원으로 붙어요. [저장]을 누르면 한 번에 노션에 들어가요. 같은 이름의 단원은 새로 만들지 않아요.")}</h2><div class="hint">${esc(b.name)}</div>
+  modal(`<h2>단원 고치기${HELP("이름 · 시작을 고치고, 줄 끝 [+]로 그 아래에 더하거나 [x]로 지워요. [단원 추가]는 맨 아래에 더해요. 순서가 쪽 순서와 다르면 [쪽 순서로 정렬]이 나와요. 목차를 붙여 넣고 [나누기]를 누르면 아래에 새 단원으로 붙어요. [저장]을 누르면 한 번에 노션에 들어가요. 같은 이름의 단원은 새로 만들지 않아요.")}</h2><div class="hint">${esc(b.name)}</div>
     <div class="unrows" id="lbuR" style="max-height:46vh;overflow:auto"></div>
     <button type="button" class="pgaddc ln" id="lbuAdd">${IC("plus", "s")}단원 추가</button>
     <details id="lbuP" ${pasteFirst ? "open" : ""}><summary class="hint">목차 붙여넣기</summary><textarea class="inp bfta tall" id="lbuT" placeholder="1. 소인수분해 8&#10;2. 정수와 유리수 28&#10;3. 문자와 식 56"></textarea><div class="row"><span class="sp"></span><button class="btn" id="lbuSplit">나누기</button></div></details>
+    <div class="row" id="lbuO" style="display:none"><button type="button" class="btn sm" id="lbuSort" title="시작 쪽이 작은 단원부터 위로 — 쪽을 안 적은 줄은 맨 아래">${IC("aup", "s")}쪽 순서로 정렬</button></div>
     <p class="hint" id="lbuM"></p>
     <div class="actions"><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">저장</button></div>`, (m, close) => {
     const box = m.querySelector("#lbuR"), msg = m.querySelector("#lbuM");
     const draw = () => {
-      box.innerHTML = rows.map((r, i) => `<div class="unrow ed${r.del ? " sdel" : ""}" data-i="${i}"><input class="inp unn" data-f="name" value="${esc(r.name)}" placeholder="단원 이름 (예: 1. 소인수분해)" autocomplete="off" aria-label="단원 이름" ${r.del ? "disabled" : ""}>${UU[0] ? `<span class="unu">${esc(UU[0])}</span>` : ""}<input class="inp unp" data-f="page" value="${esc(r.page)}" placeholder="시작" inputmode="numeric" autocomplete="off" aria-label="시작" ${r.del ? "disabled" : ""}>${UU[1] ? `<span class="unu">${esc(UU[1])}</span>` : ""}${r.uses ? `<span class="hint" title="다른 곳에 연결돼 지울 수 없어요">연결 ${r.uses}</span>` : `<button type="button" class="anb" data-del="${i}" title="${r.del ? "지우지 않기" : "이 단원 삭제"}">${IC(r.del ? "rotc" : "x", "s")}</button>`}</div>`).join("") || '<div class="hint">단원이 없어요</div>';
+      box.innerHTML = rows.map((r, i) => `<div class="unrow ed${r.del ? " sdel" : ""}" data-i="${i}"><input class="inp unn" data-f="name" value="${esc(r.name)}" placeholder="단원 이름 (예: 1. 소인수분해)" autocomplete="off" aria-label="단원 이름" ${r.del ? "disabled" : ""}>${UU[0] ? `<span class="unu">${esc(UU[0])}</span>` : ""}<input class="inp unp" data-f="page" value="${esc(r.page)}" placeholder="시작" inputmode="numeric" autocomplete="off" aria-label="시작" ${r.del ? "disabled" : ""}>${UU[1] ? `<span class="unu">${esc(UU[1])}</span>` : ""}<button type="button" class="anb" data-addb="${i}" title="아래에 추가" aria-label="이 단원 아래에 추가">${IC("plus", "s")}</button>${r.uses ? `<span class="hint" title="다른 곳에 연결돼 지울 수 없어요">연결 ${r.uses}</span>` : `<button type="button" class="anb" data-del="${i}" title="${r.del ? "지우지 않기" : "이 단원 삭제"}">${IC(r.del ? "rotc" : "x", "s")}</button>`}</div>`).join("") || '<div class="hint">단원이 없어요</div>';
       box.querySelectorAll("input").forEach((inp) => { inp.oninput = () => { const r = rows[+inp.closest("[data-i]").dataset.i]; r[inp.dataset.f] = inp.value; }; });
       box.querySelectorAll("[data-del]").forEach((x) => (x.onclick = () => { const i = +x.dataset.del, r = rows[i]; if (!r.id) rows.splice(i, 1); else r.del = !r.del; draw(); }));
+      box.querySelectorAll("[data-addb]").forEach((x) => (x.onclick = () => { const i = +x.dataset.addb; rows.splice(i + 1, 0, { name: "", page: "", del: false }); draw(); const l = box.querySelectorAll(".unn")[i + 1]; if (l) { l.focus(); l.scrollIntoView({ block: "nearest" }); } }));
+      box.querySelectorAll('input[data-f="page"]').forEach((inp) => inp.addEventListener("input", orderNote));
+      orderNote();
+    };
+    /* 261126 대표: 줄 순서가 시작 쪽 순과 어긋날 때만 [쪽 순서로 정렬] 단추 — 누르면 시작 쪽 오름차순(쪽 빈 줄은 맨 아래, 같은 쪽은 원래 순서). 저장 값 · 서버 호출은 그대로 */
+    const orderNote = () => {
+      const ps = rows.filter((r) => !r.del).map((r) => { const s = String(r.page || "").replace(/[^\d]/g, ""); return s ? +s : null; }).filter((v) => v != null);
+      const o = m.querySelector("#lbuO"); if (o) o.style.display = ps.some((v, k) => k && v < ps[k - 1]) ? "" : "none";
+    };
+    m.querySelector("#lbuSort").onclick = () => {
+      const pn = (r) => { const s = String(r.page || "").replace(/[^\d]/g, ""); return s ? +s : Infinity; };
+      const keyed = rows.map((r, i) => ({ r, i, p: pn(r) }));
+      keyed.sort((a, b) => (a.p === b.p ? a.i - b.i : a.p < b.p ? -1 : 1));
+      rows.splice(0, rows.length, ...keyed.map((k) => k.r)); draw();
     };
     draw();
     m.querySelector("#lbuAdd").onclick = () => { rows.push({ name: "", page: "", del: false }); draw(); const l = box.querySelectorAll(".unn"); if (l.length) l[l.length - 1].focus(); box.scrollTop = box.scrollHeight; };

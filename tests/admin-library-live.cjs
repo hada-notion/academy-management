@@ -16,11 +16,11 @@ const FOUND = [
   const server = http.createServer((req, res) => { const f = path.join(root, decodeURIComponent(req.url.split('?')[0])); if (!fs.existsSync(f) || !fs.statSync(f).isFile()) { res.writeHead(404); res.end(); return; } res.setHeader('Content-Type', (types[path.extname(f)] || 'application/octet-stream') + '; charset=utf-8'); fs.createReadStream(f).pipe(res); });
   await new Promise((r) => server.listen(0, '127.0.0.1', r)); const origin = `http://127.0.0.1:${server.address().port}`;
   const b = await chromium.launch(); const done = [];
-  async function open() {
+  async function open(opts = {}) {
     const page = await b.newPage({ viewport: { width: 1280, height: 900 } });
     const calls = [], errors = [];
     let series = [{ id: 's1', name: '예시 시리즈' }, { id: 's2', name: '빈 시리즈' }];
-    let units = [{ id: 'u1', name: '1. 수와 연산', page: 8, uses: 0 }, { id: 'u2', name: '2. 문자와 식', page: 40, uses: 2 }];
+    let units = opts.units || [{ id: 'u1', name: '1. 수와 연산', page: 8, uses: 0 }, { id: 'u2', name: '2. 문자와 식', page: 40, uses: 2 }];
     page.on('pageerror', (e) => errors.push(e.message));
     await page.addInitScript(() => { try { sessionStorage.setItem('hada_admin_browser_session_v1', 'sess-1'); } catch (_) {} });
     await page.route(/contents\.kyobobook|kakao|nl\.go\.kr/, (route) => route.fulfill({ status: 404, body: '' }));
@@ -162,6 +162,44 @@ const FOUND = [
     assert.deepEqual(ed[0].body, { action: 'edit-units', bookId: BK, update: [{ id: 'u1', name: '1. 수와 연산(개정)', page: 8 }], remove: [], add: [{ name: '3. 도형', page: 70 }] });
     await page.waitForFunction(() => /도형/.test(document.querySelector('#lp').textContent), null, { timeout: 10000 });
     assert.deepEqual(errors, []); done.push('단원'); await page.close();
+  }
+  // 3b) 단원 고치기: [쪽 순서로 정렬] · 아래에 추가
+  {
+    const units20 = Array.from({ length: 20 }, (_, i) => ({ id: 'w' + (i + 1), name: (i + 1) + '. 단원 ' + (i + 1), page: 10 * (i + 1), uses: 0 }));
+    const { page, calls, errors } = await open({ units: units20 });
+    await page.evaluate((id) => { activeTab.state.sel = id; panelOpen = true; render(); }, BK);
+    await page.click('#lp [data-tab="unit"], #lp button:has-text("단원")');
+    await page.waitForFunction(() => /단원 1(?!\d)/.test(document.querySelector('#lp').textContent), null, { timeout: 10000 });
+    await page.click('#lp [data-lbu="edit"]'); await page.waitForSelector('.dlg #lbuR .unn');
+    const names = () => page.$$eval('.dlg #lbuR .unn', (l) => l.map((i) => i.value));
+    const sortShown = () => page.$eval('.dlg #lbuO', (e) => getComputedStyle(e).display !== 'none');
+    assert.equal(await page.locator('.dlg #lbuR [data-addb]').count(), 20);
+    assert.equal(await sortShown(), false, '쪽 순서가 맞으면 정렬 단추 안 보임');
+    await page.screenshot({ path: shots + 'lib-units-sort-before.png' });
+    // 줄 순서 섞기: 1번째 쪽 300, 2번째 쪽 비움, 3번째 쪽 5
+    await page.fill('.dlg #lbuR [data-i="0"] .unp', '300'); await page.fill('.dlg #lbuR [data-i="1"] .unp', ''); await page.fill('.dlg #lbuR [data-i="2"] .unp', '5');
+    assert.equal(await sortShown(), true, '순서가 어긋나면 정렬 단추');
+    await page.screenshot({ path: shots + 'lib-units-sort-mixed.png' });
+    await page.click('.dlg #lbuSort');
+    const n1 = await names();
+    assert.deepEqual(n1.slice(0, 3), ['3. 단원 3', '4. 단원 4', '5. 단원 5'], '쪽 오름차순');
+    assert.deepEqual(n1.slice(-2), ['1. 단원 1', '2. 단원 2'], '쪽 300 다음, 쪽 빈 줄은 맨 아래');
+    assert.equal(await page.inputValue('.dlg #lbuR [data-i="0"] .unp'), '5', '입력한 값 유지');
+    assert.equal(await sortShown(), false, '정렬하면 단추 사라짐');
+    await page.screenshot({ path: shots + 'lib-units-sort-after.png' });
+    // 아래에 추가: 5번째 줄 아래에 빈 줄
+    await page.click('.dlg #lbuR [data-i="4"] [data-addb]');
+    const nm = await names(); assert.equal(nm.length, 21); assert.equal(nm[5], '', '그 줄 바로 아래 빈 줄'); assert.equal(nm[4], '7. 단원 7');
+    assert.equal(await page.evaluate(() => document.activeElement === document.querySelectorAll('.dlg #lbuR .unn')[5]), true, '새 줄에 커서');
+    await page.fill('.dlg #lbuR [data-i="5"] .unn', '끼운 단원'); await page.fill('.dlg #lbuR [data-i="5"] .unp', '75');
+    assert.equal(await sortShown(), false, '75는 70과 80 사이 — 순서 맞음');
+    // 단원 20개: 줄 높이 48 · 간격 8 유지
+    const hs = await page.$$eval('.dlg #lbuR .unrow', (l) => l.slice(0, 3).map((r) => Math.round(r.getBoundingClientRect().height)));
+    assert.deepEqual(hs, [48, 48, 48]);
+    await page.click('.dlg #co'); await page.waitForFunction(() => !document.querySelector('.dlg #lbuR'), null, { timeout: 10000 });
+    const ed = tb(calls, 'edit-units'); assert.equal(ed.length, 1);
+    assert.deepEqual(ed[0].body, { action: 'edit-units', bookId: BK, update: [{ id: 'w3', name: '3. 단원 3', page: 5 }, { id: 'w1', name: '1. 단원 1', page: 300 }, { id: 'w2', name: '2. 단원 2', page: null }], remove: [], add: [{ name: '끼운 단원', page: 75 }] });
+    assert.deepEqual(errors, []); done.push('단원 정렬'); await page.close();
   }
   // 4) 시리즈 관리: 도구줄 단추 → series, 추가 · 이름 바꾸기(그 시리즈 교재 화면 값도) · 순서 · 교재 있는 시리즈는 삭제 못 함 · 빈 시리즈는 두 번 눌러 삭제
   {
