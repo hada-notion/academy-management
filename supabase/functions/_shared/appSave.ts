@@ -173,7 +173,7 @@ export class SaveError extends Error { constructor(public status: number, messag
 
 type PropDef = { type: string; options?: string[] }
 export type Schema = Record<string, PropDef>
-const WRITABLE = new Set(["title", "rich_text", "number", "select", "status", "multi_select", "date", "checkbox", "relation", "url", "email", "phone_number"])
+const WRITABLE = new Set(["title", "rich_text", "number", "select", "status", "multi_select", "date", "checkbox", "relation", "url", "files", "email", "phone_number"])
 
 // ---------- 칸 형식 ----------
 const schemaCache = new Map<string, { at: number; schema: Schema }>()
@@ -262,6 +262,16 @@ export function toNotionProps(props: Record<string, unknown>, schema: Schema, re
 				const ids = (Array.isArray(value) ? value : value ? [value] : []).map((v) => resolve(String(v)))
 				if (ids.some((v) => !isId(v))) throw new SaveError(400, `관계 값이 페이지 id가 아님: ${name}`)
 				out[name] = { relation: [...new Set(ids)].map((id) => ({ id })) }; break
+			}
+			// 파일 칸(북커버): 앱은 외부 https 주소만 보낸다. 빈 목록이면 비움. 올린 파일(Notion 호스팅)은 앱이 보내지 않으므로 건드리지 않음.
+			case "files": {
+				const arr = Array.isArray(value) ? value : value ? [value] : []
+				out[name] = { files: arr.slice(0, 5).map((f) => {
+					const url = String(typeof f === "string" ? f : (f as { url?: unknown })?.url ?? "")
+					if (!/^https:\/\/\S{4,1900}$/.test(url)) throw new SaveError(400, `파일 주소는 https여야 해요: ${name}`)
+					const nm = String((typeof f === "object" && (f as { name?: unknown })?.name) || name).slice(0, 100)
+					return { name: nm, type: "external", external: { url } }
+				}) }; break
 			}
 			case "url": out[name] = { url: value ? String(value) : null }; break
 			case "email": out[name] = { email: value ? String(value) : null }; break

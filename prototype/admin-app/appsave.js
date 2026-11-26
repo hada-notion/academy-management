@@ -191,11 +191,13 @@ const APPSAVE = {
 	},
 	books: {
 		db: "라이브러리(학원) DB",
-		props: (r, X) => ({
+		props: (r, X) => appsPut({
 			"교재명": X.str(r.name), "과목": X.rel(r.subjectId), "구분": X.str(r.kind),
 			"시리즈": X.str(r.series), "교재 유형": Array.isArray(r.types) ? r.types.map(String).filter(Boolean) : [], "교육과정": X.str(r.curr), "출판사": X.str(r.pub),
 			"전체 분량": X.num(r.total), "진도 단위": X.str(r.unit), "가격": X.num(r.price), "사용중": !!r.using,
 			"ISBN13": X.str(r.isbn), "기타경비 항목": X.str(r.etcItem),
+			// 북커버: 앱에서 가져오기·삭제한 때만 보낸다(r._cov). 올린 파일의 임시 주소를 되돌려 쓰면 외부 주소로 바뀌어 만료되므로 안 건드릴 땐 칸을 빼 둔다(항목 160)
+			"북커버": r._cov === undefined ? undefined : (/^https:\/\//.test(String(r.cover || "")) ? [{ name: "북커버", url: String(r.cover) }] : []),
 		}),
 	},
 	classes: {
