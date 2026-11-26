@@ -25,6 +25,7 @@ import { enqueueSync, wakeSyncQueueWorker } from "../_shared/syncQueue.ts"
 import { isRunning, markError, markQueued } from "../_shared/statusTracking.ts"
 import { CLASS_REPORT_GEN_STATUS_SPEC, TARGET_CLASS_REPORTS, reportRequestFromProps, type ClassReportsPayload } from "../_shared/classReportPlan.ts"
 import { ROUTINE_STATUS_SPEC, TARGET_ROUTINE_CHECKS } from "../_shared/routineCheck.ts"
+import { createRoutineChecksForAttendance } from "../_shared/attendanceRoutine.ts"
 import { COMPLETION_STATUS_SPEC, TARGET_COMPLETION } from "../_shared/completionReport.ts"
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } })
@@ -44,6 +45,19 @@ Deno.serve(async (req: Request) => {
 	if (route === "final-evaluation" || route === "unit-evaluation" || route === "progress-evaluation") return json({ ok: false, error: "진도 평가 생성은 없어진 기능입니다. 교재를 마치면 [수료]를 눌러 주세요." }, 410)
 	if (route === "routine-checks") return await queueRoutineChecks(body)
 	if (route === "completion") return await queueCompletion(body)
+	// (v2.8.0 항목 152, 261126) 출석 한 장의 루틴 체크: 큐 없이 바로 처리해 결과(만든 수·안내)를 돌려준다. 못 만들면 400.
+	if (route === "attendance-routine") {
+		const attId = extractPageId(body)
+		if (!attId) return json({ error: "pageId를 찾을 수 없음" }, 400)
+		try {
+			const r = await createRoutineChecksForAttendance(attId)
+			if (!r.ok) return json({ ok: false, error: r.message }, 400)
+			return json({ ok: true, created: r.created.length, skipped: r.skipped.length, note: r.created.length ? `루틴 체크 ${r.created.length}개 만듦` : r.message })
+		} catch (err) {
+			console.error("[create-class-reports/attendance-routine] ERROR:", (err as Error).message)
+			return json({ ok: false, error: (err as Error).message }, 500)
+		}
+	}
 
 	const classId = extractPageId(body)
 	if (!classId) return json({ error: "pageId를 찾을 수 없음" }, 400)
