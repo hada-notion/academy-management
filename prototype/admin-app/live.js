@@ -387,7 +387,10 @@ function liveHooks() {
     return optAdd0(k, t);
   };
   const pending = () => { try { return appSaveCollect(DB).changes.length; } catch (_) { return 0; } };
-  dirtyCount = () => Math.max(dc0(), window.LIVE ? pending() : 0);
+  /* 261126: 위 [저장] 숫자를 셀 때마다(= 숫자를 다시 그릴 때마다) 창 [저장](#rowSave)도 같은 판정으로 맞춘다 — 그린 뒤 한 번(microtask), 여러 번 불려도 한 번 */
+  let rsq = false;
+  const rsSync = () => { if (rsq) return; rsq = true; Promise.resolve().then(() => { rsq = false; try { if (typeof rowSaveSync === "function") rowSaveSync(); } catch (_) {} }); };
+  dirtyCount = () => { const n = Math.max(dc0(), window.LIVE ? pending() : 0); rsSync(); return n; };
   toast = (msg) => {
     const m = String(msg), tag = /\s*\(시제품: 노션에 쓰지 않음\)/;
     if (window.LIVE && tag.test(m)) {
@@ -478,7 +481,8 @@ function liveBookRegisterOpen(kind0, keep) {
    저장 전 새 줄을 삭제한 경우는 노션에 없으므로 화면에서만 지운다. 서버 반영이 끝난 뒤 위 숫자와 창이 함께 맞춰진다(liveSaveRun) */
 /* 창 [저장]이 보내는 줄(그 줄 + 학생 창은 그 학생 등록, 시험정보 창은 새로 고른 시험 줄 · 성적 줄) — liveSaveRow와 liveRowPending이 함께 쓴다 */
 function liveRowOnly(L, r) {
-  return (coll, row) => row === r || (L.coll === "students" && coll === "enrolls" && row.studentId === r.id)
+  /* 같은 줄 = 같은 객체 또는 같은 화면 · 같은 id(자동 갱신 · 다시 받기가 줄 객체를 새 것으로 바꿔도 창 [저장]이 그 줄을 찾게, 261126) */
+  return (coll, row) => row === r || (!!row && !!r && coll === L.coll && row.id != null && row.id === r.id) || (L.coll === "students" && coll === "enrolls" && row.studentId === r.id)
     || (L.coll === "exams" && ((coll === "tests" && row.id === r.testId) || (coll === "grades" && row.examId === r.id))); /* 시험정보 창 [시험 저장] = 새로 고른 시험(학원) 줄 + 이 시험의 성적 줄까지(261123 원본 대조 — 새 시험 줄이 빠져 연결이 다음 저장으로 밀렸음) */
 }
 /* (261126 대표 "저장은 위에만 활성되고 창에서는 저장 버튼이 제대로 작동 안해") 위 [저장] 숫자는 노션 기준 값(APPS_BASE)과 다른 줄을 세는데(liveHooks dirtyCount),
@@ -487,6 +491,26 @@ window.liveRowPending = function (L, r) {
   if (!(window.LIVE && window.LIVE.loaded) || !L || !r || typeof appSaveCollect !== "function" || !(L.coll in DB)) return false;
   try { return appSaveCollect(DB, liveRowOnly(L, r)).changes.length > 0; } catch (_) { return false; }
 };
+/* 창 [저장] 확인 창(대표 261126 "위 [저장]처럼 이렇게 저장됩니다가 떠야"): 위 [저장](saveDialog)과 같은 틀(제목 · 상자 · 줄 목록 · [취소] [노션에 저장]) —
+   그 창이 보낼 줄(liveRowOnly)만, 줄마다 노션에 보낼 칸 이름을 보여 주고 [노션에 저장]을 누르면 liveSaveRow. 저장 전에 만든 줄을 지운 것은 노션에 안 가므로 바로 */
+function liveRowConfirm(L, r) {
+  if (!r) return null;
+  if (L.coll === "enrolls" && !r.del && (!r.studentId || !r.classId)) { toast("학생과 클래스를 골라야 등록을 저장할 수 있어요"); return null; }
+  if (r.del && typeof appsIsId === "function" && !appsIsId(r.id)) return liveSaveRow(L, r);
+  if (window._liveSaving) { toast("노션에 저장하는 중이에요 — 끝난 뒤 다시 눌러요"); return null; }
+  const only = liveRowOnly(L, r), items = [];
+  for (const coll of APPS_ORDER) for (const x of DB[coll] || []) {
+    if (!x || x._virtual || !only(coll, x)) continue;
+    if (x.del) { if (typeof appsIsId !== "function" || appsIsId(x.id)) items.push({ coll, x, keys: [] }); continue; }
+    let ch = []; try { ch = appSaveCollect(DB, (c, y) => c === coll && y === x).changes; } catch (_) {}
+    if (ch.length) items.push({ coll, x, keys: [...new Set(ch.flatMap((c) => Object.keys(c.props || {})))] });
+  }
+  const nm = (k) => (typeof COLLNAME !== "undefined" && COLLNAME[k]) || k;
+  modal(`<h2>${esc(nm(L.coll))} 저장${HELP("이 창에서 고친 것만 노션에 보내요. 다른 줄까지 모두 보내려면 위 [저장]을 눌러요. 그사이 노션에서 같은 줄이 바뀌었으면 저장 전에 알려 드려요.")}</h2>
+  <div class="box"><div>${items.length ? `${items.length}줄` : "저장할 것이 없어요"}</div>${items.length ? `<div class="svl">${items.map(({ coll, x, keys }) => `<div><b>${esc(nm(coll))}</b> ${rowName(coll, x)}${x.del ? ' <span class="bad">삭제</span>' : keys.length ? ` <span class="sl-t">${keys.map(esc).join(" · ")}</span>` : ""}</div>`).join("")}</div>` : ""}</div>
+  <div class="actions"><span class="sp"></span><button class="btn" id="sc">취소</button><button class="btn pri" id="so">${IC("save", "s")}노션에 저장</button></div>`, (m, close) => { m.querySelector("#sc").onclick = close; m.querySelector("#so").onclick = () => { close(); liveSaveRow(L, r); }; });
+  return null;
+}
 function liveSaveRow(L, r) {
   if (!r) return null;
   if (L.coll === "enrolls" && !r.del && (!r.studentId || !r.classId)) { toast("학생과 클래스를 골라야 등록을 저장할 수 있어요"); return null; }

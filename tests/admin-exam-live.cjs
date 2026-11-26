@@ -144,7 +144,7 @@ const DBS = () => ({
 
   // 7) 창 [시험 저장] = 그 시험정보 + 새로 고른 시험(학원) 줄까지(원본 대조 261123: 새 시험 줄이 빠졌음) · 성적만 고쳐도 창 [저장]이 켜지고 그 성적을 보냄
   const nx = await page.evaluate(() => { const L = LISTS.exams_m, x = L.blank(); DB.exams.unshift(x); x.state = 'draft'; x.testId = REL_NEW.exams.testId('2026 6월 모의고사'); L.onSet(x, 'testId'); x.school = '예시중'; x.grade = '중2'; x.date = '2026-06-04'; commit(); openScreen('exams'); activeTab.state.sub = 'm'; activeTab.state.sel = x.id; activeTab.state.ltab = 'info'; panelOpen = true; render(); return x.id; });
-  await page.waitForTimeout(150); await press('#view .panel #rowSave');
+  await page.waitForTimeout(150); await press('#view .panel #rowSave'); await page.waitForTimeout(100); await press('#modalRoot #so'); /* 창 [저장]도 확인 창을 거침(261126) */
   const c6 = await last(6);
   assert.deepEqual(c6.map((c) => [c.op, c.db]), [['create', '시험(학원) DB'], ['create', '시험정보(학원) DB']], '창 저장에 새 시험 줄');
   assert.equal(c6[0].props['모의고사(수능)'], '6월 모의고사'); assert.equal(c6[0].props['시험 구분'], '모의고사');
@@ -153,7 +153,7 @@ const DBS = () => ({
   await page.evaluate(() => { const i = document.querySelector('#view .panel [data-gf=score]'); i.value = '95'; i.dispatchEvent(new Event('change', { bubbles: true })); });
   await page.waitForTimeout(200);
   assert.equal(await page.evaluate(() => document.querySelector('#view .panel #rowSave').disabled), false, '성적만 고쳐도 창 [저장] 켜짐');
-  await press('#view .panel #rowSave');
+  await press('#view .panel #rowSave'); await page.waitForTimeout(100); await press('#modalRoot #so'); /* 창 [저장]도 확인 창을 거침(261126) */
   assert.deepEqual(await last(7), [{ op: 'update', db: '성적(학원) DB', id: G1, props: { '점수': 95 } }]);
   done.push('창 저장');
 
