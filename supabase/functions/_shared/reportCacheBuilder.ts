@@ -695,10 +695,11 @@ export async function buildRegistrationDetail(reg: any, cachedGetPage: (id: stri
   const sourcePageBodies = new Map(
     await mapWithConcurrency(displayedSourceIds, 6, async (id) => [id, await readPageBodyBlocks(id)] as const),
   )
-  // (v2.8.0 작품 모아보기) 프로그램(예체능) 학습기록의 사진을 모두 모은다: 학생 학습활동 본문(이 학생 작품)과
+  // (v2.8.0 작품 모아보기) 학습기록의 사진을 모두 모은다: 학생 학습활동 본문(이 학생 작품)과
   // 학습기록 본문(반 공유 자료). 위에서 이미 읽은 본문은 다시 읽지 않고, 최근 GALLERY_MAX_LOGS 수업까지만 읽는다.
+  // (261126 대표 "다 동일하게 사진이 나타나면 좋겠어") 프로그램만이 아니라 모든 교재 — 사진이 있으면 보인다.
   const galleryLogs = pastLogDetails
-    .filter((l) => l.category === "학습" && l.isProgram && l.bookKey)
+    .filter((l) => l.category === "학습" && l.bookKey)
     .sort((a, b) => ((a.iso ?? "") < (b.iso ?? "") ? 1 : -1))
     .slice(0, GALLERY_MAX_LOGS)
   const knownBodies = new Map<string, unknown[]>([...studyLogBodies, ...activityPageBodies, ...sourcePageBodies])
