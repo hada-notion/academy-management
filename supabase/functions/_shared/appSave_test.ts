@@ -252,8 +252,10 @@ Deno.test("라이브러리: 새 교재는 save로 만들지 않고, 고치면 �
 Deno.test("클래스 색 저장: 색을 보낸 클래스만 아이콘 갱신을 부른다(10색 이름 · 기타 색 코드)", async () => {
   const CLS = "클래스(학원) DB"
   const icons: string[][] = []
-  const orig = saveDeps.updateClassIcon
+  const orig = saveDeps.updateClassIcon, origReg = saveDeps.updateRegistrationIcons
+  const regIcons: string[][] = []
   saveDeps.updateClassIcon = (id: string, hex: string) => { icons.push([id, hex]) }
+  saveDeps.updateRegistrationIcons = (id: string, hex: string) => { regIcons.push([id, hex]) }
   try {
     mockFetch({ copyDb: CLS })
     let r = await saveChanges(checkChanges([{ op: "update", db: CLS, id: ID, props: { 색: "빨강", "색 코드": "" } }]))
@@ -262,7 +264,8 @@ Deno.test("클래스 색 저장: 색을 보낸 클래스만 아이콘 갱신을 
     assertEquals(icons[1], [ID, "12AB34"])
     r = await saveChanges(checkChanges([{ op: "update", db: CLS, id: ID, props: { 약칭: "예시" } }]))
     assertEquals([r[0].ok, icons.length], [true, 2])
-  } finally { saveDeps.updateClassIcon = orig }
+    assertEquals(regIcons, icons) // 그 반 등록 아이콘도 같은 색으로 함께 부른다
+  } finally { saveDeps.updateClassIcon = orig; saveDeps.updateRegistrationIcons = origReg }
 })
 
 const TT = "시간표(학원) DB"
