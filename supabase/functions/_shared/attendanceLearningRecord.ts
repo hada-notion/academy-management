@@ -6,7 +6,7 @@
 // 중복 막기: 이 출석 · 이 교재로 이미 학습기록이 있으면 만들지 않는다(다시 눌러도 늘지 않음).
 // "오늘 학습" 체크는 보지도 바꾸지도 않는다(출석 한 장 길은 교재를 고르는 체크가 필요 없음).
 
-import { getPage, createPage, queryAllPages, relIds as relIdsFromProp, selectName, dateStart as dateStartFromProp, anyTitleText } from "./notionClient.ts"
+import { getPage, createPage, queryAllPages, relIds as relIdsFromProp, selectName, statusName, dateStart as dateStartFromProp, anyTitleText } from "./notionClient.ts"
 import { DS_LEARNING_RECORD } from "./constants.ts"
 import { libraryIds } from "./libraryProp.ts"
 import { seoulLabel } from "./seoulLabel.ts"
@@ -42,7 +42,7 @@ export async function createLearningRecordForAttendance(attendanceId: string): P
 	if (!regId) return { ok: false, created: [], skipped: [], message: ATTENDANCE_NO_REGISTRATION }
 	const reg = await d.getPage(regId)
 	const books = await Promise.all(uniq(rel(reg, "진도교재")).map((id) => d.getPage(id)))
-	const targets = books.filter((b) => selectName(b, "진도방식") === INDIVIDUAL && selectName(b, "진행상태") === IN_PROGRESS)
+	const targets = books.filter((b) => selectName(b, "진도방식") === INDIVIDUAL && (statusName(b, "진행상태") ?? selectName(b, "진행상태")) === IN_PROGRESS)
 	if (!targets.length) return { ok: false, created: [], skipped: [], message: NO_INDIVIDUAL_BOOKS }
 
 	const sessionId = uniq(rel(att, "수업"))[0]

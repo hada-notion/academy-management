@@ -6,7 +6,9 @@ const { attendanceRecordDeps, createLearningRecordForAttendance, NO_INDIVIDUAL_B
 const rel = (...ids: string[]) => ({ type: "relation", relation: ids.map((id) => ({ id })) })
 const sel = (name: string) => ({ type: "select", select: { name } })
 const title = (t: string) => ({ type: "title", title: [{ plain_text: t }] })
-const book = (id: string, mode: string, status: string, lib?: string) => ({ id, properties: { 진도교재: title(id), 진도방식: sel(mode), 진행상태: sel(status), ...(lib ? { 라이브러리: rel(lib) } : {}) } })
+// (261126) 원본 노션의 진행상태는 "상태(status)" 형식 — 실제 꼴로 시험한다.
+const stat = (name: string) => ({ type: "status", status: { name } })
+const book = (id: string, mode: string, status: string, lib?: string) => ({ id, properties: { 진도교재: title(id), 진도방식: sel(mode), 진행상태: stat(status), ...(lib ? { 라이브러리: rel(lib) } : {}) } })
 
 function fake(pages: Record<string, any>, existing: Set<string> = new Set()) {
 	const created: any[] = []
