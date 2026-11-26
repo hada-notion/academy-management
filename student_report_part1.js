@@ -43,6 +43,15 @@ const CLASS_COLOR_PALETTE = [
 function pickClassColorPalette(seed) {
   return CLASS_COLOR_PALETTE[seedHash(seed) % CLASS_COLOR_PALETTE.length]
 }
+// (v2.8.0) 클래스 색: 관리 앱에서 정한 색(서버 class_color, #rrggbb)이 있으면 이모지 대신 그 색 동그라미, 없으면 이모지.
+function classHex(r) {
+  const v = r && r.class_color
+  return typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v) ? v : ""
+}
+function classIconHtml(r, px) {
+  const hex = classHex(r)
+  return hex ? `<span class="class-dot" style="background:${hex};width:${px}px;height:${px}px" aria-hidden="true"></span>` : (r.emoji || "")
+}
 // 노션 "진행상태" 원본값은 "진행 중" / "완료" / "다음 교재"처럼 공백·이모지가 들어갈 수 있어서,
 // 공백과 이모지를 지우고 UI 필터 값(진행중 / 완료 / 예정)으로 매핑한다.
 function normalizeBookStatus(rawStatus) {
@@ -678,6 +687,7 @@ function mapRegistration(reg) {
     registration_id: reg.registration_id || null,
     emoji: splitClassNameEmoji(reg.class_name).emoji || pickClassColorEmoji(splitClassNameEmoji(reg.class_name).name),
     class_name: splitClassNameEmoji(reg.class_name).name || reg.class_name || "",
+    class_color: typeof reg.class_color === "string" ? reg.class_color : "",
     // 변경 후 (실제 값 반영)
     status: reg.status === "수강 종료" ? "수강종료"
       : reg.status === "수강 대기" ? "수강대기"
@@ -1203,7 +1213,7 @@ function registrationsBodyHtml() {
   return regs.map((r) => `
     <div class="reg-item" onclick="closeMenu(); openRegistration('${r.token}')">
       <div class="left">
-        <span>${r.emoji}</span>
+        <span>${classIconHtml(r, 16)}</span>
         <div class="name-wrap">
           <span class="class-name">${esc(r.class_name)}</span>
           <span class="period">${esc(toShortDate(r.start))} ~ ${r.end ? esc(toShortDate(r.end)) : "현재"}</span>
