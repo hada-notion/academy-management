@@ -102,7 +102,9 @@ const APPMAP = {
 				total: X.num(p["전체 분량"]), unit: X.str(p["진도 단위"]) || (kind === "프로그램" ? "-차시" : "P.-"),
 				price: X.num(p["가격"]), using: !!p["사용중"], isbn: X.str(p["ISBN13"]), etcItem: X.str(p["기타경비 항목"]),
 				cover: ((p["북커버"] || [])[0] || {}).url || "", // 북커버: 올린 파일도 서버가 읽을 때 지금 주소로 채워 준다(항목 157)
-				state: "saved", // units(단원)는 lib_* 복사본(다음 단계) — 여기선 비움
+				// 단원: 목록(units)은 교재 창 [단원] 탭이 textbook-api units로 받는다(livebook.js). 여기선 노션 단원목록 관계의 수만 — 할 일 "단원 없음" · 표 [단원] 칸(261126 대표: 실제 교재에 단원이 있는데 "단원 없음"으로 셌음)
+				_unitN: X.ids(p["단원목록"]).length, _unitMore: !!p["단원목록#more"],
+				state: "saved",
 			}
 		},
 	},

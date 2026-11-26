@@ -2087,6 +2087,8 @@ table.stt.gt.grid{width:auto}
 .unrow .unx{display:inline-flex;flex:none;opacity:0}
 .unrow:hover .unx,.unrow:focus-within .unx{opacity:1}
 .unrow.ed{padding:var(--space-1) 0;min-height:40px}
+/* 261126 대표: 줄이 많아져도(단원 고치기 11개 이상) 줄 높이 · 간격은 그대로, 넘치면 목록 안에서 스크롤 — 세로 목록의 줄은 눌리지 않는다 */
+.unrows>.unrow{flex-shrink:0}
 /* 반복 줄 칸(PANEL.rgrid, 기준 5장 "반복 줄 칸"): 보기·편집이 같은 열 틀 — 이름 1fr + 칸마다 고정 폭, 줄 40, 머리줄 28, 숫자 오른쪽 정렬 */
 .rgrid{margin-bottom:var(--space-3)}
 .rgrow{display:grid;grid-template-columns:var(--rgcols);column-gap:var(--space-2);align-items:center;min-height:40px;padding:0 var(--space-2);border-bottom:1px solid var(--line2);font-size:var(--text-small)}

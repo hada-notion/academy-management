@@ -6,7 +6,7 @@
 <title>관리 앱 | 하다 학원관리</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B5D4D%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cstyle%3E%40media(prefers-color-scheme%3Adark)%7Bsvg%7Bstroke%3A%23E6D7C4%7D%7D%3C%2Fstyle%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%223%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3Crect%20x%3D%2213.5%22%20y%3D%2213.5%22%20width%3D%227.5%22%20height%3D%227.5%22%20rx%3D%222.5%22%2F%3E%3C%2Fsvg%3E">
 <link rel="stylesheet" href="hada-tokens.css?v=803">
-<link rel="stylesheet" href="app.css?v=803">
+<link rel="stylesheet" href="app.css?v=805">
 <link rel="stylesheet" href="pick.css?v=742">
 <link rel="stylesheet" href="field.css?v=755">
 </head>
@@ -1653,7 +1653,7 @@ function pickStudents(title,classId,block,done){
     m.querySelector("#pkC").onclick=close;m.querySelector("#pkOk").onclick=()=>{close();done([...st.picked])}});
 }
 /* 270판(대표 261115 D안 — Make 모듈 [OK]·시나리오 저장처럼 두 단계): 창 아래 = 이 줄만 바로 저장(목록 창 없음), 위 [저장 n] = 작성 중 모두 */
-const rowDirty=(L,r)=>!!r&&(L.dirtyFn?L.dirtyFn(r):L.coll==="seasons"?!!r.dirty:r.state==="draft");/* dirtyFn = 화면이 정하는 "고친 것 있음"(학생1 = 학생 + 그 학생 작성 중 등록) */
+const rowDirty=(L,r)=>!!r&&((L.dirtyFn?L.dirtyFn(r):L.coll==="seasons"?!!r.dirty:r.state==="draft")||!!(window.liveRowPending&&window.liveRowPending(L,r)));/* 261126: 실제 자료 모드는 노션 값과 다른 줄도(위 [저장] 숫자와 같은 판정, live.js) *//* dirtyFn = 화면이 정하는 "고친 것 있음"(학생1 = 학생 + 그 학생 작성 중 등록) */
 function rowSaveOne(L,r){if(window.LIVE&&window.LIVE.loaded&&typeof liveSaveRow==="function")return liveSaveRow(L,r);/* 261119 대표: 실제 자료 모드 창 [저장] = 그 줄만 서버에 저장(삭제 포함), 끝난 뒤에 숫자·창을 맞춤 — 예시 모드는 아래 그대로 */if(!rowDirty(L,r))return;if(L.saveFn)return L.saveFn(r);/* 한 줄 저장 규칙을 따로 정한 화면(학생1 = 학생 + 그 학생 작성 중 등록) */if(L.coll==="enrolls"&&!r.del&&(!r.studentId||!r.classId)){toast("학생과 클래스를 골라야 등록을 저장할 수 있어요");return}if(L.coll==="enrolls"){const s0=stu(r.studentId);if(s0&&s0._newHere&&s0.state==="draft"){s0.state="saved";delete s0._newHere}delete r._pickStu}if(L.coll==="seasons"){delete r.dirty;const left0=dirtyCount();commit();toast(`저장했어요${left0?` · 작성 중 ${left0}개 남음(위 [저장])`:""} (시제품: 노션에 쓰지 않음)`);return}if(r.del){const a=DB[L.coll],i=a.indexOf(r);if(i>-1)a.splice(i,1)}else r.state="saved";const left=dirtyCount();commit();toast(`저장했어요${left?` · 작성 중 ${left}개 남음(위 [저장])`:""} (시제품: 노션에 쓰지 않음)`)}
 function saveDialog(only){if(DB.enrolls.some(e=>e.state==="draft"&&!e.del&&(!e.studentId||!e.classId))){toast("새 등록에 학생과 클래스를 골라야 저장돼요");return}
   const blocks=(only||DB.blocks.filter(b=>b.state==="draft"));const deps=new Set();
@@ -1744,7 +1744,7 @@ function seedLib(){const S=[["sb1","중등수학 1-1","1️⃣","수학",["중1"
   // 등록 예시: 수학·영어 클래스 수강에 교재 한두 권(교재 화면 "쓰는 곳"과 등록 카드 [교재] 칸이 같은 목록)
   const pick={수학:["쎈 중등 수학 2-2"],영어:["Grammar Inside 3"],국어:["국어 비문학 독해 기본"]};DB.enrolls.forEach((e,i)=>{const c=cls(e.classId);if(!e.books&&c&&pick[c.subject]&&i%2===0)e.books=pick[c.subject].slice()})}
 const subj=id=>DB.subjects.find(x=>x.id===id)||{name:"—",emoji:"",area:"",grades:[]};
-/* 414판(대표): 전체 분량 칸 뒤 글자 = 진도 단위(쪽·차시·UNIT …) */const bookSuf=b=>{const u=b.unit||(b.kind==="프로그램"?"-차시":"P.-");return u==="P.-"||u==="-쪽"?"쪽":u.startsWith("-")?u.slice(1):""};/* 415판: 앞에 붙는 단위(UNIT · DAY · Lesson)는 숫자 앞, 아이콘 자리에 */const bookPre=b=>{const u=b.unit||(b.kind==="프로그램"?"-차시":"P.-");return u==="P.-"||u.startsWith("-")?"":u.replace(/\s*-\s*$/,"")};const bookUnit=b=>{if(!b.total)return "—";const u=b.unit||(b.kind==="프로그램"?"-차시":"P.-");return u==="P.-"||u==="-쪽"?`${b.total}쪽`:u.startsWith("-")?`${b.total}${u.slice(1)}`:`${b.total} ${u.replace(" -","")}`};
+/* 261126: 단원 수 — 예시 자료는 units, 실제 자료는 노션 단원목록 관계 수(appdata.js _unitN, 25개 넘으면 _unitMore) */const bkUnitN=b=>(b.units||[]).length||+b._unitN||0;/* 414판(대표): 전체 분량 칸 뒤 글자 = 진도 단위(쪽·차시·UNIT …) */const bookSuf=b=>{const u=b.unit||(b.kind==="프로그램"?"-차시":"P.-");return u==="P.-"||u==="-쪽"?"쪽":u.startsWith("-")?u.slice(1):""};/* 415판: 앞에 붙는 단위(UNIT · DAY · Lesson)는 숫자 앞, 아이콘 자리에 */const bookPre=b=>{const u=b.unit||(b.kind==="프로그램"?"-차시":"P.-");return u==="P.-"||u.startsWith("-")?"":u.replace(/\s*-\s*$/,"")};const bookUnit=b=>{if(!b.total)return "—";const u=b.unit||(b.kind==="프로그램"?"-차시":"P.-");return u==="P.-"||u==="-쪽"?`${b.total}쪽`:u.startsWith("-")?`${b.total}${u.slice(1)}`:`${b.total} ${u.replace(" -","")}`};
 const bookPg=b=>(DB.progress||[]).filter(x=>!x.del&&x.bookId===b.id);const bookUsers=b=>{const s=new Set(DB.enrolls.filter(e=>!e.ended&&(e.books||[]).includes(b.name)));(DB.progress||[]).filter(x=>!x.del&&x.bookId===b.id&&x.stat==="진행 중").forEach(x=>DB.enrolls.filter(e=>!e.ended&&e.classId===x.classId&&(x.mode!=="개별"||e.studentId===x.studentId)).forEach(e=>s.add(e)));return [...s]};
 const schoolKind=gs=>[...new Set((gs||[]).map(g=>/세$/.test(g)?"미취학":g[0]==="초"?"초등":g[0]==="중"?"중등":"고등"))].join("·");
 const gradeShort=gs=>{gs=(gs||[]).slice().sort((a,b)=>LIB_GRADES.indexOf(a)-LIB_GRADES.indexOf(b));return gs.length>3?`${gs[0]}-${gs[gs.length-1]}`:gs.join("·")};
@@ -2903,8 +2903,8 @@ function unitPasteDialog(b){let txt="";const have=(b.units||[]).length;const pre
     const put=app=>{const u=unitParse(txt,b.total);close();const have2=new Set((b.units||[]).map(z=>z.from).filter(z=>z!=null));const add=app?u.filter(z=>z.from==null||!have2.has(z.from)):u;const skip=u.length-add.length;b.units=app?[...(b.units||[]),...add]:add;b.units=unitFix(b);if(skip)setTimeout(()=>toast(`시작 위치가 겹치는 ${skip}개는 넣지 않았어요`),50);b.state="draft";commit();toast(`단원 ${u.length}개를 ${app?"추가했어요":"넣었어요"} — Ctrl+Z로 되돌려요`)};co.onclick=()=>put(false);if(coA)coA.onclick=()=>put(true);ta.focus()})}
 LISTS.books_b=Object.assign({},LISTS.books,{subs:null,card:true,rows:()=>DB.books.filter(b=>b.kind!=="프로그램"),ph:"교재·출판사 검색",addLabel:"책 검색",add:()=>bookFindOpen(),
   help:"교재(책)예요. [추가]나 카드 끝의 [+]를 누르면 오른쪽 창에 책 검색가 열려요 — 검색하거나 교보문고 주소로 가져오거나 직접 생성해요. [카드]로 보면 표지가 보여요. 여기 교재가 진도교재의 목록이 돼요.",
-  cols:[["교재명",b=>b.name,"name"],["과목",b=>subj(b.subjectId).name,"subjectId"],["출판사",b=>b.pub||"—","pub"],["시리즈",b=>b.series||"—","series"],["분량",b=>bookUnit(b),"total"],["가격",b=>b.price?b.price.toLocaleString():"—","price"],["단원",b=>(b.units||[]).length?b.units.length+"개":"—"],["쓰는 학생",b=>bookUsers(b).length+"명"],["사용",b=>b.using?"사용 중":"미사용","using"]],
-  filters:[["사용 중",b=>b.using,true],["가격 없음",b=>!b.price],["단원 없음",b=>!(b.units||[]).length]]});
+  cols:[["교재명",b=>b.name,"name"],["과목",b=>subj(b.subjectId).name,"subjectId"],["출판사",b=>b.pub||"—","pub"],["시리즈",b=>b.series||"—","series"],["분량",b=>bookUnit(b),"total"],["가격",b=>b.price?b.price.toLocaleString():"—","price"],["단원",b=>bkUnitN(b)?bkUnitN(b)+(b._unitMore?"개 넘음":"개"):"—"],["쓰는 학생",b=>bookUsers(b).length+"명"],["사용",b=>b.using?"사용 중":"미사용","using"]],
+  filters:[["사용 중",b=>b.using,true],["가격 없음",b=>!b.price],["단원 없음",b=>!bkUnitN(b)]]});
 LISTS.books_p=Object.assign({},LISTS.books,{subs:null,card:true,unit:"개",rows:()=>DB.books.filter(b=>b.kind==="프로그램"),ph:"프로그램 검색",addLabel:"프로그램 추가",
   help:"프로그램(예체능·특강처럼 책이 아닌 과정)이에요. 차시로 진도를 세고, 재료비가 있을 때만 가격을 넣어요. 수료하면 프로그램 수료 보고서가 나가요.",
   cols:[["프로그램",b=>b.name,"name"],["과목",b=>subj(b.subjectId).name,"subjectId"],["차시",b=>bookUnit(b),"total"],["재료비",b=>b.price?b.price.toLocaleString():"—","price"],["쓰는 학생",b=>bookUsers(b).length+"명"],["사용",b=>b.using?"사용 중":"미사용","using"]],
@@ -5044,7 +5044,7 @@ LISTS.subjects_a.todo=()=>{const L=DB.areas.filter(x=>!x.del);return [
 LISTS.subjects.todoSum=()=>DB.areas.filter(a=>!a.del).map(a=>[a.name,DB.subjects.filter(z=>!z.del&&z.area===a.name).length+"개"]);
 LISTS.books.todo=()=>{const L=DB.books.filter(x=>!x.del&&x.using!==false);return [
   {k:"price",name:"가격 없음",why:"가격이 없으면 교재비·재료비를 담을 수 없어요.",rows:L.filter(x=>!+x.price),lab:nm1},
-  {k:"unit",name:"단원 없음",why:"단원이 있어야 학습기록에서 범위를 고를 수 있어요.",rows:L.filter(x=>x.kind!=="프로그램"&&!(x.units||[]).length),lab:nm1},
+  {k:"unit",name:"단원 없음",why:"단원이 있어야 학습기록에서 범위를 고를 수 있어요.",rows:L.filter(x=>x.kind!=="프로그램"&&!bkUnitN(x)),lab:nm1},
   {k:"total",name:"전체 분량 빈칸",why:"진행도는 범위 끝 ÷ 전체 분량으로 계산해요. 비어 있으면 진행도·수료할 교재가 안 나와요.",rows:L.filter(x=>!+x.total),lab:nm1},
   {k:"subj",name:"과목 없음",rows:L.filter(x=>!x.subjectId),lab:nm1}]};
 LISTS.books.todoSum=()=>[["쓰는 교재",DB.books.filter(x=>!x.del&&x.using!==false).length+"권"],["학생이 쓰는 교재",DB.books.filter(x=>!x.del&&bookUsers(x).length).length+"권"]];
@@ -5104,6 +5104,6 @@ LISTS.seasons.todoList=st=>{const all=DB.seasons.filter(z=>!z.del&&!z._virtual).
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-pastsea]");if(!b||!activeTab)return;activeTab.state.pastSea=!activeTab.state.pastSea;render()});
 })();
 </script>
-<script src="finance.js?v=802"></script><script src="finlive.js?v=802"></script><script src="exams.js?v=764"></script><script src="appdata.js?v=804"></script><script src="appsave.js?v=800"></script><script src="appview.js?v=773"></script><script src="livelesson.js?v=744"></script><script src="liveadmin.js?v=742"></script><script src="livebook.js?v=742"></script><script src="liveschool.js?v=795"></script><script src="liveteacher.js?v=801"></script><script src="live.js?v=797"></script><script src="liverefresh.js?v=767"></script><script src="livereq.js?v=742"></script>
+<script src="finance.js?v=802"></script><script src="finlive.js?v=802"></script><script src="exams.js?v=764"></script><script src="appdata.js?v=805"></script><script src="appsave.js?v=800"></script><script src="appview.js?v=773"></script><script src="livelesson.js?v=744"></script><script src="liveadmin.js?v=742"></script><script src="livebook.js?v=742"></script><script src="liveschool.js?v=795"></script><script src="liveteacher.js?v=801"></script><script src="live.js?v=805"></script><script src="liverefresh.js?v=767"></script><script src="livereq.js?v=742"></script>
 </body>
 </html>
