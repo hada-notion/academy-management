@@ -29,6 +29,9 @@ export const attendanceRecordDeps = {
 		(await queryAllPages(DS_LEARNING_RECORD, { and: [
 			{ property: "출석", relation: { contains: attendanceId } },
 			{ property: "진도교재", relation: { contains: bookId } },
+			// (261126 대표 "과제 평가 이런걸 만들려면 중복 생성이 필요해") 구분이 "학습"인 것만 센다 —
+			// 만든 기록의 구분을 과제·평가로 바꾸면 다시 눌러 새 학습 기록을 만들 수 있다.
+			{ property: "구분", select: { equals: "학습" } },
 		] })).length,
 }
 
