@@ -1318,14 +1318,14 @@ function panelBlock(p,t,all,o,isNew){
   <section class="ptab ${pt==="stu"?"on":""}" data-sec="stu">
   <div class="box"><div class="hfh" id="fModeH"></div></div>
   <div class="box"><h3>학생 ${c?`<span class="hint" style="font-weight:400">${chk.size} / ${eligible.length}명${busyN?` · ${busyN}명 이 시간 다른 수업`:""}</span>`:""}</h3>${c?`
-    <div class="hpm" id="hpTS"></div>`:'<span class="hint">클래스를 먼저 골라 주세요</span>'}</div>
+    <div class="hpm" id="hpTS"></div>${isNew?`<p class="hint" style="margin:6px 0 0">학생은 나중에 넣어도 돼요</p>`:""}`:'<span class="hint">클래스를 먼저 골라 주세요</span>'}</div>
   ${!isNew&&c?`<div class="box"><h3>클래스 전체 표${HELP("이 클래스의 요일별 학생. 칸을 눌러 넣고 빼고, 이름을 끌어 다른 요일 시간표에 놓아요.")}</h3>
 <table class="t"><tr><th>학생</th>${cblocks.map(x=>`<th title="${DAYS[x.day]} ${fmt(x.start)}–${fmt(x.end)}">${DAYS[x.day]}<span class="thsub">${fmt(x.start)}</span></th>`).join("")}</tr>
     ${classEnrolls.map(e=>{const sx=stu(e.studentId);return `<tr><td draggable="true" data-ds="${sx.id}" title="끌어서 이 클래스의 다른 시간표에 놓기">${stuHtml(sx)}${cblocks.some(x=>x.regs.includes(e.id))?"":' <span class="tag w">시간표 없음</span>'}</td>${cblocks.map(x=>`<td data-tg="${x.id}|${e.id}" class="mark ${x.regs.includes(e.id)?"":"off"}">${x.regs.includes(e.id)?IC("check"):IC("minus","s")}</td>`).join("")}</tr>`}).join("")}</table></div>`:""}
   </section>
   ${isNew?"":`<section class="ptab ${pt==="ls"?"on":""}" data-sec="ls">${ttLessonTab(o,lsD)}</section>`}
   ${(()=>{const SI={trash:IC("trash","s"),undo:IC("undo"),save:IC("save","s")};
-    if(isNew)return PANEL.foot({left:'<button class="btn" id="nCancel">취소</button>',extra:`<button class="btn" id="nDraft" ${c&&chk.size?"":"disabled"}>임시저장</button>`,save:"시간표 저장",primary:true,saveOn:!!(c&&chk.size),ids:{save:"nOk"},icons:SI,saveTitle:"Ctrl+Enter"});
+    if(isNew)return PANEL.foot({left:'<button class="btn" id="nCancel">취소</button>',extra:`<button class="btn" id="nDraft" ${c?"":"disabled"}>임시저장</button>`,save:"시간표 저장",primary:true,saveOn:!!c,ids:{save:"nOk"},icons:SI,saveTitle:"Ctrl+Enter"});
     const n=DB.blocks.filter(x=>x.classId===o.classId&&x.seasonId===o.seasonId&&(x.state==="draft"||x.del)).length;
     return PANEL.foot({del:true,delOff:!!(o.lessons&&locked),delLabel:o.lessons?"종료":o.del?"삭제 취소":"삭제",delIcon:o.lessons?IC("stop","s"):o.del?IC("undo","s"):IC("trash","s"),delTitle:o.lessons?(locked?"운영 중이라 잠겨 있어요 — 위 자물쇠를 풀면 종료할 수 있어요":"날짜를 골라 이 시간표를 종료해요"):o.del?"삭제 취소":"아직 수업이 없어 삭제할 수 있어요(저장할 때 삭제해요)",
       undo:!!n,save:"시간표 저장",saveOn:!!n,count:n||"",ids:{del:"pDel",undo:"pRev",save:"pSave"},icons:SI,undoTitle:"저장 상태로 되돌리기 — 이 클래스 시간표에서 고친 것 모두",saveTitle:"Ctrl+Enter — 같은 클래스의 작성 중 시간표를 한 번에"})})()}`;
