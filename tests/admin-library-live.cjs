@@ -1,8 +1,8 @@
 // 관리 앱 라이브러리 실제 연결(261123, 옛 라이브러리 웹 화면에서 옮김) — 가짜 서버로만. 실제 자료 모드(?live=1)에서
-// 책 찾기(search → detail → register, 교보문고 주소 → kyobo-book → register-custom), 단원 편집 [고치기 | 붙여넣기 | 가져오기](units · parse · units-fetch · edit-units),
+// 책 찾기(search → detail → register, 교보문고 주소 → kyobo-book → register-custom), 단원 편집 [고치기 | 단원 목록](units · units-fetch · edit-units 묶음 저장),
 // 시리즈 관리(series · edit-series)가 서버 textbook-api를 같은 값 이름으로 부르는지. PC 1280만.
 // 사용: NODE_PATH=<hada-ui-tests>/node_modules ROOT=<저장소 폴더> node tests/admin-library-live.cjs   (캡처는 SHOTS 폴더)
-const { chromium } = require('playwright'), http = require('http'), fs = require('fs'), path = require('path'), assert = require('node:assert/strict');
+const { chromium } = require('playwright'), http = require('http'), fs = require('fs'), path = require('path'), assert = require('node:assert/strict'), { OLYMPOS } = require('./unit-toc-samples.cjs');
 const root = process.env.ROOT || path.resolve(__dirname, '..'), shots = (process.env.SHOTS || __dirname) + '/';
 const types = { '.js': 'application/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.html': 'text/html' };
 const H = 'https://twczhsxybkcvjkdfdxvs.supabase.co/functions/v1/';
@@ -22,6 +22,7 @@ const FOUND = [
     const page = await b.newPage({ viewport: { width: 1280, height: 900 } });
     const calls = [], errors = [];
     let series = [{ id: 's1', name: '예시 시리즈' }, { id: 's2', name: '빈 시리즈' }];
+    let editN = 0, newId = 0;
     let units = opts.units || [{ id: 'u1', name: '1. 수와 연산', page: 8, uses: 0 }, { id: 'u2', name: '2. 문자와 식', page: 40, uses: 2 }];
     page.on('pageerror', (e) => errors.push(e.message));
     await page.addInitScript(() => { try { sessionStorage.setItem('hada_admin_browser_session_v1', 'sess-1'); } catch (_) {} });
@@ -40,9 +41,21 @@ const FOUND = [
           case 'kyobo-book': return reply(route, 200, { pid: q.pid, title: '예시 교보 영어', isbn13: '9791100000024', price: 16000, publisher: '예시 출판', toc: { units: [{ name: 'Unit 1', page: 6, include: true, big: '' }] } });
           case 'register-custom': return reply(route, 200, { ok: true, bookId: 'new-2' });
           case 'units': return reply(route, 200, { bookId: q.bookId, units });
-          case 'units-fetch': return reply(route, 200, opts.fetch === 'none' ? { found: false, text: '', source: '' } : { found: true, source: 'kyobo', text: FETCHED });
+          case 'units-fetch': return reply(route, 200, opts.fetch === 'none' ? { found: false, text: '', source: '' } : { found: true, source: 'kyobo', text: opts.fetchText || FETCHED });
           case 'parse': return reply(route, 200, { toc: { units: [{ name: '3. 도형', page: 70, include: true, big: '' }, { name: '1. 수와 연산', page: 8, include: true, big: '' }] } });
-          case 'edit-units': { units = units.filter((u) => !(q.remove || []).includes(u.id)).map((u) => { const f = (q.update || []).find((x) => x.id === u.id); return f ? { ...u, name: f.name, page: f.page } : u; }).concat((q.add || []).map((a, i) => ({ id: 'n' + i, name: a.name, page: a.page, uses: 0 }))); return reply(route, 200, { ok: true, updated: (q.update || []).length, removed: (q.remove || []).length, added: (q.add || []).length, blocked: [], skipped: 0 }); }
+          case 'edit-units': {
+            /* 서버(editUnits)처럼 고침 → 삭제 → 추가 차례로. opts.editDelay = 응답 늦추기, opts.editFailAt = 그 번째 호출은 앞 4개만 하고 멈춤(ok:false + error) — 항목 165 */
+            editN++; if (opts.editDelay) await new Promise((r) => setTimeout(r, opts.editDelay));
+            const ops = [...(q.update || []).map((x) => ['u', x]), ...(q.remove || []).map((x) => ['r', x]), ...(q.add || []).map((x) => ['a', x])];
+            const fail = opts.editFailAt === editN, run = fail ? ops.slice(0, 4) : ops, d = { updated: 0, removed: 0, added: 0 };
+            for (const [k, x] of run) {
+              if (k === 'u') { units = units.map((u) => (u.id === x.id ? { ...u, name: x.name, page: x.page } : u)); d.updated++; }
+              if (k === 'r') { units = units.filter((u) => u.id !== x); d.removed++; }
+              if (k === 'a' && !units.some((u) => u.name === x.name)) { units = [...units, { id: 'n' + newId++, name: x.name, page: x.page, uses: 0 }]; d.added++; }
+            }
+            if (fail) return reply(route, 200, { ok: false, ...d, blocked: [], skipped: 0, error: `저장하다 멈췄습니다(수정 ${d.updated} · 삭제 ${d.removed} · 추가 ${d.added}). 다시 열어 확인해 주세요.` });
+            return reply(route, 200, { ok: true, ...d, blocked: [], skipped: 0 });
+          }
           case 'series': return reply(route, 200, { series, duplicates: [] });
           case 'edit-series': {
             if (q.op === 'add') series = [...series, { id: 's' + (series.length + 9), name: q.name }];
@@ -71,6 +84,7 @@ const FOUND = [
     return { page, calls, errors };
   }
   const tb = (calls, a) => calls.filter((c) => c.fn === 'textbook-api' && c.action === a);
+  const pv = (page) => page.evaluate(() => { const r = [...document.querySelectorAll('.dlg #lbuVl .lbupvr')]; return { head: document.querySelector('.dlg #lbuVh').textContent, n: r.length, first: r[0] ? r[0].querySelector('.nm').textContent + '|' + r[0].querySelector('.pg').textContent : '' }; });
   const tabOn = (page) => page.$$eval('.dlg #lbuTabs [data-ut]', (l) => l.filter((x) => x.classList.contains('on')).map((x) => x.dataset.ut).join(','));
   const noOverflow = async (page, name) =>assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), name + ': 가로 넘침');
   // 1) 책 찾기 — 검색: 이미 있는 책은 못 고름, 고른 책 → detail(목차 include만) → register(ISBN · 교보 표지)
@@ -164,13 +178,15 @@ const FOUND = [
     await page.mouse.click(8, 8); await page.keyboard.press('Escape'); await page.waitForTimeout(300);
     assert.equal(await page.inputValue('.dlg #lbuR [data-i="0"] .unn'), '1. 수와 연산(개정)', '배경 클릭 · Esc 뒤에도 창과 고친 값이 그대로');
     assert.equal(await page.locator('.dlg.nudge').count(), 1, '배경을 누르면 창이 살짝 눌렸다 돌아옴');
-    await page.click('.dlg [data-ut="paste"]'); assert.equal(await page.isVisible('.dlg #lbuR'), false, '탭을 옮기면 고치기 줄은 숨김');
+    await page.click('.dlg [data-ut="list"]'); assert.equal(await page.isVisible('.dlg #lbuR'), false, '탭을 옮기면 고치기 줄은 숨김');
+    assert.deepEqual(await page.$$eval('.dlg #lbuTabs [data-ut]', (l) => l.map((x) => x.textContent.trim())), ['고치기', '단원 목록'], '탭 둘(261127 대표)');
+    assert.equal((await page.textContent('.dlg #lbuSplit')).trim(), '단원 목록 입력');
     await page.fill('.dlg #lbuT', '1. 수와 연산 8\n3. 도형 70'); await page.click('.dlg #lbuSplit');
     await page.waitForSelector('.dlg #lbuR [data-i="2"]');
-    assert.equal(await tabOn(page), 'edit', '나누면 고치기 탭으로');
+    assert.equal(await tabOn(page), 'edit', '입력하면 고치기 탭으로');
     assert.equal(await page.inputValue('.dlg #lbuR [data-i="0"] .unn'), '1. 수와 연산(개정)', '탭을 옮겨도 고친 줄 유지');
     assert.equal(await page.locator('.dlg #lbuR [data-i]').count(), 3, '같은 이름은 건너뜀(노션에 있는 원래 이름 포함 — 서버와 같은 규칙)');
-    assert.equal(tb(calls, 'parse').length, 0, '[나누기]는 화면에서 나눔(서버 parse 안 부름, 항목 164)');
+    assert.equal(tb(calls, 'parse').length, 0, '[단원 목록 입력]은 화면에서 나눔(서버 parse 안 부름, 항목 164)');
     assert.equal(await page.inputValue('.dlg #lbuR [data-i="2"] .unp'), '70', '끝 숫자가 커지는 목록 = 시작 쪽');
     await page.screenshot({ path: shots + 'lib-live-units-edit.png' });
     await page.click('.dlg #co'); await page.waitForFunction(() => !document.querySelector('.dlg #lbuR'), null, { timeout: 10000 });
@@ -217,41 +233,136 @@ const FOUND = [
     assert.deepEqual(ed[0].body, { action: 'edit-units', bookId: BK, update: [{ id: 'w3', name: '3. 단원 3', page: 5 }, { id: 'w1', name: '1. 단원 1', page: 300 }, { id: 'w2', name: '2. 단원 2', page: null }], remove: [], add: [{ name: '끼운 단원', page: 75 }] });
     assert.deepEqual(errors, []); done.push('단원 정렬'); await page.close();
   }
-  // 3c) 단원 편집 [가져오기](항목 162): 단원 없고 ISBN13 있으면 처음 탭 = 가져오기 → units-fetch → 큰 단원만 켬/끔 → 고친 뒤 [나누기] → 고치기 탭 · 탭 옮겨도 값 유지 · 저장 꼴 같음
+  // 3c) 단원 편집 [단원 목록] 탭 [가져오기](항목 162 · 165): 단원 없으면 처음 탭 = 단원 목록 → units-fetch(같은 글 칸, 글 있으면 묻기) → 고친 뒤 [단원 목록 입력] → 고치기 탭 · 탭 옮겨도 값 유지 · 저장 꼴 같음
   {
     const { page, calls, errors } = await open({ units: [] });
     await page.evaluate((id) => { activeTab.state.sel = id; panelOpen = true; render(); }, BK);
     await page.click('#lp [data-tab="unit"], #lp button:has-text("단원")');
     await page.waitForFunction(() => /단원 0개/.test(document.querySelector("#lp").textContent), null, { timeout: 10000 });
     await page.click('#lp [data-lbu="edit"]'); await page.waitForSelector('.dlg #lbuTabs');
-    assert.equal(await tabOn(page), 'fetch', '단원 없고 ISBN13 있으면 처음 탭 = 가져오기');
+    assert.equal(await tabOn(page), 'list', '단원 없으면 처음 탭 = 단원 목록');
     assert.equal(await page.isDisabled('.dlg #lbuGet'), false);
     await page.screenshot({ path: shots + 'lib-units-tab-fetch-empty.png' });
     await page.click('.dlg #lbuGet');
-    await page.waitForFunction(() => document.querySelector('.dlg #lbuF').value.length > 0, null, { timeout: 10000 });
+    await page.waitForFunction(() => document.querySelector('.dlg #lbuT').value.length > 0, null, { timeout: 10000 });
     assert.deepEqual(tb(calls, 'units-fetch').map((c) => c.body), [{ action: 'units-fetch', isbn13: '9790000000011' }]);
-    assert.equal(await page.inputValue('.dlg #lbuF'), FETCHED, '받은 글 그대로 채움(항목 164 — 큰 단원만 대신 단원 단계)');
-    const segF = () => page.$$eval('.dlg [data-lv="F"] button', (l) => l.map((x) => (x.classList.contains('on') ? '*' : '') + x.textContent.replace(/\s+/g, ' ').trim()));
+    assert.equal(await page.inputValue('.dlg #lbuT'), FETCHED, '받은 글 그대로 채움(항목 164 — 큰 단원만 대신 단원 단계)');
+    const segF = () => page.$$eval('.dlg [data-lv="T"] button', (l) => l.map((x) => (x.classList.contains('on') ? '*' : '') + x.textContent.replace(/\s+/g, ' ').trim()));
     assert.deepEqual(await segF(), ['*Lesson 2', '하위 3'], '단계 Lesson · 하위, 기본 = Lesson(하위 줄 이름이 되풀이됨)');
-    assert.match(await page.textContent('.dlg #lbuM'), /교보문고에서 단원 목록을 가져왔어요/);
+    assert.match(await page.textContent('.dlg #lbuLM'), /교보문고에서 단원 목록을 가져왔어요 — 고친 뒤 \[단원 목록 입력\]/);
     await page.screenshot({ path: shots + 'lib-units-tab-fetch.png' });
     // 붙여넣기 탭에 적어 둔 글 · 가져오기 글은 탭을 옮겨도 그대로
-    await page.click('.dlg [data-ut="paste"]'); await page.fill('.dlg #lbuT', '메모 줄');
-    await page.click('.dlg [data-ut="fetch"]'); assert.equal(await page.inputValue('.dlg #lbuF'), FETCHED);
-    await page.fill('.dlg #lbuF', 'Lesson 01 Hello 8\nLesson 02 World 20\nLesson 03 Again 30');
-    assert.equal(await page.isVisible('.dlg [data-lv="F"]'), false, '단계가 하나면 단계 고르기 숨김');
-    await page.click('.dlg #lbuSplitF');
+    // 글이 있으면 [가져오기] 전에 묻기 — [취소]면 글 그대로 · 서버 안 부름
+    await page.fill('.dlg #lbuT', '메모 줄');
+    let asked = ''; page.once('dialog', (d) => { asked = d.message(); d.dismiss(); });
+    await page.click('.dlg #lbuGet'); await page.waitForTimeout(200);
+    assert.match(asked, /바꿀까요/); assert.equal(await page.inputValue('.dlg #lbuT'), '메모 줄', '취소하면 글 그대로');
+    assert.equal(tb(calls, 'units-fetch').length, 1, '취소하면 서버 안 부름');
+    page.once('dialog', (d) => d.accept());
+    await page.click('.dlg #lbuGet'); await page.waitForFunction((f) => document.querySelector('.dlg #lbuT').value === f, FETCHED, { timeout: 10000 });
+    assert.equal(tb(calls, 'units-fetch').length, 2);
+    await page.fill('.dlg #lbuT', 'Lesson 01 Hello 8\nLesson 02 World 20\nLesson 03 Again 30'); await page.waitForTimeout(300);
+    assert.equal(await page.isVisible('.dlg [data-lv="T"]'), false, '단계가 하나면 단계 고르기 숨김');
+    await page.click('.dlg #lbuSplit');
     await page.waitForSelector('.dlg #lbuR [data-i="1"]');
-    assert.equal(await tabOn(page), 'edit', '나누면 고치기 탭으로');
+    assert.equal(await tabOn(page), 'edit', '입력하면 고치기 탭으로');
     assert.equal(tb(calls, 'parse').length, 0, '고친 글을 화면에서 나눔(서버 parse 안 부름)');
     assert.deepEqual(await page.$$eval('.dlg #lbuR .unn', (l) => l.map((i) => i.value)), ['Lesson 01 Hello', 'Lesson 02 World', 'Lesson 03 Again'], '이름 그대로 · 번호 지어 붙이지 않음');
     await page.fill('.dlg #lbuR [data-i="0"] .unn', '3. 도형(고침)');
-    await page.click('.dlg [data-ut="paste"]'); assert.equal(await page.inputValue('.dlg #lbuT'), '메모 줄', '붙여넣기 글 유지');
+    await page.click('.dlg [data-ut="list"]'); assert.equal(await page.inputValue('.dlg #lbuT'), '', '입력한 글은 비움');
     await page.click('.dlg [data-ut="edit"]'); assert.equal(await page.inputValue('.dlg #lbuR [data-i="0"] .unn'), '3. 도형(고침)', '고친 줄 유지');
     await page.click('.dlg #co'); await page.waitForFunction(() => !document.querySelector('.dlg #lbuR'), null, { timeout: 10000 });
     const ed = tb(calls, 'edit-units'); assert.equal(ed.length, 1);
     assert.deepEqual(ed[0].body, { action: 'edit-units', bookId: BK, update: [], remove: [], add: [{ name: '3. 도형(고침)', page: 8 }, { name: 'Lesson 02 World', page: 20 }, { name: 'Lesson 03 Again', page: 30 }] });
     assert.deepEqual(errors, []); done.push('단원 가져오기'); await page.close();
+  }
+  // 3f) 단원 묶음 저장(항목 165): 60개(고침 10 · 삭제 5 · 추가 45) → edit-units 10개씩 6번 · 차례 · 본문 합 = 한 번에 보낼 때와 같음 · 진행 숫자 · 저장 중 [취소] 막힘
+  //     3번째 묶음이 4개만 하고 멈춤 → 멈춤 · "24/60까지 저장했어요" · [다시 저장] = 남은 36개만(추가된 줄은 받은 id로)
+  for (const failAt of [0, 3]) {
+    const units20 = Array.from({ length: 20 }, (_, i) => ({ id: 'w' + (i + 1), name: (i + 1) + '. 단원 ' + (i + 1), page: 10 * (i + 1), uses: 0 }));
+    const { page, calls, errors } = await open({ units: units20, editDelay: 400, editFailAt: failAt });
+    await page.evaluate((id) => { activeTab.state.sel = id; panelOpen = true; render(); }, BK);
+    await page.click('#lp [data-tab="unit"], #lp button:has-text("단원")');
+    await page.waitForFunction(() => /단원 1(?!\d)/.test(document.querySelector('#lp').textContent), null, { timeout: 10000 });
+    await page.click('#lp [data-lbu="edit"]'); await page.waitForSelector('.dlg #lbuR .unn');
+    for (let i = 0; i < 10; i++) await page.fill(`.dlg #lbuR [data-i="${i}"] .unn`, `${i + 1}. 단원 ${i + 1}(고침)`);
+    for (let i = 10; i < 15; i++) await page.click(`.dlg #lbuR [data-i="${i}"] [data-del]`);
+    const ADD = Array.from({ length: 45 }, (_, i) => `새 단원 ${i + 1}`);
+    await page.click('.dlg [data-ut="list"]'); await page.fill('.dlg #lbuT', ADD.join('\n')); await page.click('.dlg #lbuSplit');
+    await page.waitForSelector('.dlg #lbuR [data-i="64"]');
+    const EXP = { update: Array.from({ length: 10 }, (_, i) => ({ id: 'w' + (i + 1), name: `${i + 1}. 단원 ${i + 1}(고침)`, page: 10 * (i + 1) })), remove: Array.from({ length: 5 }, (_, i) => 'w' + (i + 11)), add: ADD.map((name) => ({ name, page: null })) };
+    const seen = new Set();
+    const watch = setInterval(() => page.evaluate(() => { const p = document.querySelector('.dlg #lbuP'); return p && !p.hidden ? p.querySelector('.t').textContent + '|' + document.querySelector('.dlg #cc').disabled : ''; }).then((t) => t && seen.add(t), () => {}), 60);
+    await page.click('.dlg #co');
+    await page.waitForFunction(() => /단원 저장 중 20\/60/.test((document.querySelector('.dlg #lbuP .t') || {}).textContent || ''), null, { timeout: 10000 });
+    assert.equal(await page.isDisabled('.dlg #cc'), true, '저장 중 [취소] 막힘');
+    assert.equal(await page.isDisabled('.dlg [data-ut="list"]'), true, '저장 중 탭 · 칸 막힘');
+    assert.equal(await page.$eval('.dlg #lbuP .bar>i', (e) => e.style.width), '33%');
+    if (!failAt) await page.screenshot({ path: shots + 'lib-units-save-progress.png' });
+    const eds = () => tb(calls, 'edit-units').map((c) => c.body);
+    if (!failAt) {
+      await page.waitForFunction(() => !document.querySelector('.dlg #lbuR'), null, { timeout: 15000 }); clearInterval(watch);
+      const ed = eds();
+      assert.equal(ed.length, 6, '60개 = 10개씩 6번');
+      ed.forEach((x) => { assert.equal(x.update.length + x.remove.length + x.add.length, 10); assert.equal(x.bookId, BK); });
+      assert.deepEqual({ update: ed.flatMap((x) => x.update), remove: ed.flatMap((x) => x.remove), add: ed.flatMap((x) => x.add) }, EXP, '본문 합 = 한 번에 보낼 때와 같음(고침 → 삭제 → 추가 차례)');
+      assert.deepEqual(ed[1], { action: 'edit-units', bookId: BK, update: [], remove: EXP.remove, add: EXP.add.slice(0, 5) }, '둘째 묶음 = 삭제 5 + 추가 5');
+      const nums = [...seen].map((t) => +t.split('|')[0].match(/(\d+)\/60/)[1]);
+      for (const n of [0, 10, 20, 30, 40, 50]) assert(nums.includes(n), '진행 숫자 ' + n + '/60 보임: ' + [...seen].join(', '));
+      assert([...seen].every((t) => t.endsWith('|true')), '저장 내내 [취소] 막힘');
+      await page.waitForFunction(() => /단원을 저장했어요 — 고침 10 · 삭제 5 · 추가 45/.test(document.body.textContent), null, { timeout: 5000 });
+      assert.deepEqual(errors, []); done.push('단원 묶음 저장'); await page.close(); continue;
+    }
+    await page.waitForFunction(() => /까지 저장했어요/.test(document.querySelector('.dlg #lbuM').textContent), null, { timeout: 15000 }); clearInterval(watch);
+    assert.equal(eds().length, 3, '실패한 묶음에서 멈춤');
+    assert.match(await page.textContent('.dlg #lbuM'), /24\/60까지 저장했어요 — 나머지 36개는 \[다시 저장\]을 눌러요/);
+    assert.equal((await page.textContent('.dlg #co')).trim(), '다시 저장');
+    assert.equal(await page.isDisabled('.dlg #cc'), false, '멈추면 [취소] 다시 됨');
+    assert.equal(await page.isHidden('.dlg #lbuP'), true, '멈추면 진행 줄 숨김');
+    assert.equal(await page.locator('.dlg #lbuR [data-i]').count(), 60, '삭제된 5줄은 빠짐(20 - 5 + 45)');
+    await page.screenshot({ path: shots + 'lib-units-save-stopped.png' });
+    await page.click('.dlg #co');
+    await page.waitForFunction(() => !document.querySelector('.dlg #lbuR'), null, { timeout: 15000 });
+    const again = eds().slice(3);
+    assert.equal(again.length, 4, '남은 36개 = 4번');
+    assert.deepEqual({ update: again.flatMap((x) => x.update), remove: again.flatMap((x) => x.remove), add: again.flatMap((x) => x.add) }, { update: [], remove: [], add: EXP.add.slice(9) }, '다시 저장 = 남은 것만(저장된 고침 · 삭제 · 추가는 안 보냄)');
+    assert.deepEqual(errors, []); done.push('단원 묶음 저장 실패 · 다시 저장'); await page.close();
+  }
+  // 3g) 실제 서점 글(항목 165, units-fetch 받은 그대로 — CHAPTER 6 · 번호 단원 18 · 서술형 Practice · 부록): 단계 · 미리보기 · 부록 줄도 넣기 · 아래 3줄 배치 · 넓은 창
+  {
+    const { page, errors } = await open({ units: [], fetchText: OLYMPOS });
+    await page.evaluate((id) => { activeTab.state.sel = id; panelOpen = true; render(); }, BK);
+    await page.click('#lp [data-tab="unit"], #lp button:has-text("단원")');
+    await page.waitForFunction(() => /단원 0개/.test(document.querySelector("#lp").textContent), null, { timeout: 10000 });
+    await page.click('#lp [data-lbu="edit"]'); await page.waitForSelector('.dlg #lbuTabs');
+    await page.click('.dlg #lbuGet'); await page.waitForFunction(() => document.querySelector('.dlg #lbuT').value.length > 0, null, { timeout: 10000 });
+    const segT = () => page.$$eval('.dlg [data-lv="T"] button', (l) => l.map((x) => (x.classList.contains('on') ? '*' : '') + x.textContent.replace(/\s+/g, ' ').trim()));
+    assert.deepEqual(await segT(), ['CHAPTER 6', '*01 18', '그 밖 12'], '번호 단원 18 한 단계 · 기본');
+    const P = await pv(page); assert.deepEqual([P.head, P.n, P.first], ['단원 18개', 18, '01 글의 목적|—']);
+    assert.equal(await page.isVisible('.dlg [data-lvap="T"]'), true, '부록 줄이 있으면 [부록 줄도 넣기]');
+    const box = (sel) => page.$eval(sel, (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
+    const d = await box('.dlg'), ta = await box('.dlg #lbuT'), v = await box('.dlg #lbuV');
+    assert(d.w >= 900 && d.x >= 0 && d.x + d.w <= 1280, '넓은 창 · 1280 안: ' + JSON.stringify(d));
+    assert.equal(Math.round(ta.h), Math.round(v.h), '글 칸 · 미리보기 같은 높이'); assert(v.x > ta.x + ta.w - 1, '미리보기는 오른쪽');
+    assert.equal(await page.$eval('.dlg #lbuV', (e) => e.scrollHeight > e.clientHeight && getComputedStyle(e).overflowY === 'auto'), true, '미리보기 따로 스크롤');
+    const r1 = await box('.dlg [data-lv="T"]'), r2 = await box('.dlg #lbuLM'), r3 = await box('.dlg #lbuSplit'), c3 = await box('.dlg [data-lvup="T"]');
+    assert(r1.y < r2.y && r2.y < r3.y, '아래 3줄: 단계 → 안내 → 체크 · 단추');
+    assert.equal(Math.abs((c3.y + c3.h / 2) - (r3.y + r3.h / 2)) < 12, true, '3줄 = 왼쪽 체크 · 오른쪽 단추 한 줄'); assert(c3.x < r3.x);
+    assert.match(await page.textContent('.dlg #lbuLM'), /교보문고에서 단원 목록을 가져왔어요 — 고친 뒤 \[단원 목록 입력\]을 눌러요/);
+    await noOverflow(page, '실제 서점 글'); await page.screenshot({ path: shots + 'lib-units-real-units.png' });
+    await page.check('.dlg [data-lvap="T"]');
+    assert.deepEqual(await segT(), ['CHAPTER 6', '*01 20', '그 밖 13'], '부록 줄도 넣기 = 20');
+    assert.equal((await pv(page)).head, '단원 20개');
+    await page.uncheck('.dlg [data-lvap="T"]');
+    await page.click('.dlg [data-lv="T"] button:has-text("CHAPTER")');
+    const C = await pv(page); assert.deepEqual([C.head, C.n, C.first], ['단원 6개', 6, 'CHAPTER 01 대의 파악(핵심 내용·맥락)|—']);
+    await page.screenshot({ path: shots + 'lib-units-real-chapter.png' });
+    await page.click('.dlg [data-lv="T"] button:has-text("01")');
+    await page.click('.dlg #lbuSplit'); await page.waitForSelector('.dlg #lbuR [data-i="17"]');
+    const nm = await page.$$eval('.dlg #lbuR .unn', (l) => l.map((i) => i.value));
+    assert.equal(nm.length, 18); assert.equal(nm[9], '10 단어 빈칸 추론'); assert.equal(nm[17], '18 장문2 (1지문 3문항)');
+    assert.equal(await page.$eval('.dlg', (e) => e.classList.contains('lbuwide')), false, '고치기 탭은 보통 폭');
+    assert.deepEqual(errors, []); done.push('실제 서점 글 단계 · 미리보기'); await page.close();
   }
   // 3e) 단원 단계(항목 164): 블록구문 꼴 3단계(STAGE 3 · Chapter 13 · Unit 60) — 붙여넣기 탭, 기본 Unit · Chapter 고르면 13줄 · STAGE 고르면 3줄(이름 그대로, 번호 · 쪽 없음) · 윗 단계 이름 붙이기
   {
@@ -265,11 +376,24 @@ const FOUND = [
     await page.click('#lp [data-tab="unit"], #lp button:has-text("단원")');
     await page.waitForFunction(() => /단원 0개/.test(document.querySelector("#lp").textContent), null, { timeout: 10000 });
     await page.click('#lp [data-lbu="edit"]'); await page.waitForSelector('.dlg #lbuTabs');
-    await page.click('.dlg [data-ut="paste"]');
+    await page.click('.dlg [data-ut="list"]');
     const segT = () => page.$$eval('.dlg [data-lv="T"] button', (l) => l.map((x) => (x.classList.contains('on') ? '*' : '') + x.textContent.replace(/\s+/g, ' ').trim()));
     assert.equal(await page.isVisible('.dlg [data-lv="T"]'), false, '빈 글 = 단계 고르기 숨김');
-    await page.fill('.dlg #lbuT', BL.join('\n'));
+    assert.match(await page.textContent('.dlg #lbuV'), /붙여 넣거나 \[가져오기\]를 누르면 들어갈 단원이 여기에 보여요/, '빈 글 = 미리보기 안내');
+    await page.fill('.dlg #lbuT', BL.join('\n')); await page.waitForTimeout(300);
     assert.deepEqual(await segT(), ['STAGE 3', 'Chapter 13', '*Unit 60'], '단계 3개 · 기본 Unit');
+    assert.deepEqual(await pv(page), { head: '단원 60개', n: 60, first: 'Unit 01 예시 구문 1|—' }, '미리보기 = Unit 60');
+    await page.click('.dlg [data-lv="T"] button:has-text("Chapter")');
+    assert.deepEqual(await pv(page), { head: '단원 13개', n: 13, first: 'Chapter 01. 예시 장 1|—' }, '단계 바꾸면 미리보기 바로');
+    await page.check('.dlg [data-lvup="T"]');
+    assert.equal((await pv(page)).first, 'STAGE I · Chapter 01. 예시 장 1|—', '윗 단계 이름 붙이기도 미리보기에');
+    await page.screenshot({ path: shots + 'lib-units-preview-chapter.png' });
+    await page.uncheck('.dlg [data-lvup="T"]'); await page.click('.dlg [data-lv="T"] button:has-text("STAGE")');
+    assert.deepEqual(await pv(page), { head: '단원 3개', n: 3, first: '[STAGE I 영어문장 구조와 동사]|—' });
+    await page.click('.dlg [data-lv="T"] button:has-text("Unit")');
+    await page.fill('.dlg #lbuT', BL.join('\n') + '\nUnit 61 덧붙인 구문'); await page.waitForTimeout(300);
+    assert.deepEqual(await pv(page), { head: '단원 61개', n: 61, first: 'Unit 01 예시 구문 1|—' }, '글을 고치면 미리보기 바뀜');
+    await page.fill('.dlg #lbuT', BL.join('\n')); await page.waitForTimeout(300);
     await noOverflow(page, '단원 단계'); await page.screenshot({ path: shots + 'lib-units-levels.png' });
     assert.equal(await page.$eval('.dlg [data-lvup="T"]', (c) => Math.round(c.closest('label').getBoundingClientRect().height) <= 20), true, '윗 단계 이름 붙이기 한 줄');
     const names = () => page.$$eval('.dlg #lbuR .unn', (l) => l.map((i) => i.value));
@@ -279,13 +403,13 @@ const FOUND = [
     assert.deepEqual(await names(), ['[STAGE I 영어문장 구조와 동사]', '[Stage II 주어/보어/목적어구 ·절 & 관계절]', '[STAGE III 모든 문장과 특수 구문]'], 'STAGE 3줄 · STAGE I 포함 · 이름 그대로');
     assert.deepEqual(await pages(), ['', '', ''], '쪽 비움');
     // Chapter 13줄 · 윗 단계 이름 붙이기
-    await page.click('.dlg [data-ut="paste"]'); await page.fill('.dlg #lbuT', BL.join('\n'));
+    await page.click('.dlg [data-ut="list"]'); await page.fill('.dlg #lbuT', BL.join('\n')); await page.waitForTimeout(300);
     await page.click('.dlg [data-lv="T"] button:has-text("Chapter")'); await page.check('.dlg [data-lvup="T"]');
     await page.screenshot({ path: shots + 'lib-units-levels-chapter.png' });
     await page.click('.dlg #lbuSplit'); await page.waitForSelector('.dlg #lbuR [data-i="15"]');
     const nm = await names(); assert.equal(nm.length, 16); assert.equal(nm[3], 'STAGE I · Chapter 01. 예시 장 1');
     // Unit 60줄(기본): 이름 끝 숫자는 쪽 아님
-    await page.click('.dlg [data-ut="paste"]'); await page.fill('.dlg #lbuT', BL.join('\n')); await page.uncheck('.dlg [data-lvup="T"]');
+    await page.click('.dlg [data-ut="list"]'); await page.fill('.dlg #lbuT', BL.join('\n')); await page.waitForTimeout(300); await page.uncheck('.dlg [data-lvup="T"]');
     await page.click('.dlg [data-lv="T"] button:has-text("Unit")');
     await page.click('.dlg #lbuSplit'); await page.waitForSelector('.dlg #lbuR [data-i="75"]');
     const n2 = await names(), p2 = await pages();
@@ -322,7 +446,7 @@ const FOUND = [
     assert.equal(await page.evaluate(() => /link-chip/.test(LISTS.books.infoX({ kind: '프로그램', isbn: '' }))), false);
     assert.deepEqual(errors, []); done.push('관련 링크'); await page.close();
   }
-  // 3d) 가져오기 못 찾음 · ISBN 없음(처음 탭 = 붙여넣기, 가져오기 탭은 안내 + 흐린 단추)
+  // 3d) 가져오기 못 찾음 · ISBN 없음(처음 탭 = 단원 목록, [가져오기]는 안내 + 흐린 단추, 글 칸은 그대로 씀)
   {
     const { page, calls, errors } = await open({ units: [], fetch: 'none' });
     await page.evaluate((id) => { activeTab.state.sel = id; panelOpen = true; render(); }, BK);
@@ -330,8 +454,8 @@ const FOUND = [
     await page.waitForFunction(() => /단원 0개/.test(document.querySelector("#lp").textContent), null, { timeout: 10000 });
     await page.click('#lp [data-lbu="edit"]'); await page.waitForSelector('.dlg #lbuTabs');
     await page.click('.dlg #lbuGet');
-    await page.waitForFunction(() => /이 ISBN으로 단원을 찾지 못했어요/.test(document.querySelector('.dlg #lbuM').textContent), null, { timeout: 10000 });
-    assert.equal(await page.inputValue('.dlg #lbuF'), '');
+    await page.waitForFunction(() => /이 ISBN으로 단원을 찾지 못했어요/.test(document.querySelector('.dlg #lbuLM').textContent), null, { timeout: 10000 });
+    assert.equal(await page.inputValue('.dlg #lbuT'), '');
     assert.equal(tb(calls, 'units-fetch').length, 1);
     assert.deepEqual(errors, []); await page.close();
   }
@@ -342,13 +466,12 @@ const FOUND = [
     await page.click('#lp [data-tab="unit"], #lp button:has-text("단원")');
     await page.waitForFunction(() => /단원 0개/.test(document.querySelector("#lp").textContent), null, { timeout: 10000 });
     await page.click('#lp [data-lbu="edit"]'); await page.waitForSelector('.dlg #lbuTabs');
-    assert.equal(await tabOn(page), 'paste', '단원 · ISBN13 둘 다 없으면 처음 탭 = 붙여넣기');
-    assert.match(await page.getAttribute('.dlg #lbuT', 'placeholder'), /단원 목록을 붙여 넣어 주세요/);
-    await page.screenshot({ path: shots + 'lib-units-tab-paste.png' });
-    await page.click('.dlg [data-ut="fetch"]');
+    assert.equal(await tabOn(page), 'list', '단원 없으면 처음 탭 = 단원 목록');
+    assert.match(await page.getAttribute('.dlg #lbuT', 'placeholder'), /단원 목록을 붙여 넣거나 \[가져오기\]를 눌러요/);
     assert.equal(await page.isDisabled('.dlg #lbuGet'), true, 'ISBN13 없으면 흐린 단추');
-    assert.match(await page.textContent('.dlg [data-up="fetch"]'), /ISBN13을 먼저 넣어 주세요/);
-    await page.screenshot({ path: shots + 'lib-units-tab-fetch-noisbn.png' });
+    assert.equal(await page.isDisabled('.dlg #lbuT'), false, 'ISBN13 없어도 붙여 넣기는 됨');
+    assert.match(await page.textContent('.dlg [data-up="list"]'), /ISBN13이 있어야 해요/);
+    await page.screenshot({ path: shots + 'lib-units-tab-list-noisbn.png' });
     assert.equal(tb(calls, 'units-fetch').length, 0);
     assert.deepEqual(errors, []); done.push('단원 가져오기 못 찾음 · ISBN 없음'); await page.close();
   }
