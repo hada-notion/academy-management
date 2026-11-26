@@ -204,17 +204,79 @@ function lbUnitDialog(b, pasteFirst) {
   if (!c || !c.list) { toast("단원을 불러온 뒤에 고쳐요"); lbUnitsLoad(b.id); return; }
   const rows = c.list.map((u) => ({ id: u.id, name: u.name || "", page: u.page == null ? "" : String(u.page), name0: u.name || "", page0: u.page == null ? "" : String(u.page), uses: u.uses || 0, del: false }));
   const UU = unitParts(b);
-  modal(`<h2>단원 고치기${HELP("이름 · 시작을 고치고, 줄 끝 [x]로 지우거나 [단원 추가]로 더해요. 목차를 붙여 넣고 [나누기]를 누르면 아래에 새 단원으로 붙어요. [저장]을 누르면 한 번에 노션에 들어가요. 같은 이름의 단원은 새로 만들지 않아요.")}</h2><div class="hint">${esc(b.name)}</div>
+  modal(`<h2>단원 고치기${HELP("이름 · 시작을 고치고, 줄 앞 손잡이를 끌어 순서를 바꾸고, 줄 끝 [+]로 그 아래에 더하거나 [x]로 지워요. [단원 추가]는 맨 아래에 더해요. 목차를 붙여 넣고 [나누기]를 누르면 아래에 새 단원으로 붙어요. [저장]을 누르면 한 번에 노션에 들어가요. 같은 이름의 단원은 새로 만들지 않아요.")}</h2><div class="hint">${esc(b.name)}</div>
     <div class="unrows" id="lbuR" style="max-height:46vh;overflow:auto"></div>
     <button type="button" class="pgaddc ln" id="lbuAdd">${IC("plus", "s")}단원 추가</button>
     <details id="lbuP" ${pasteFirst ? "open" : ""}><summary class="hint">목차 붙여넣기</summary><textarea class="inp bfta tall" id="lbuT" placeholder="1. 소인수분해 8&#10;2. 정수와 유리수 28&#10;3. 문자와 식 56"></textarea><div class="row"><span class="sp"></span><button class="btn" id="lbuSplit">나누기</button></div></details>
+    <p class="hint" id="lbuO" hidden>쪽 번호 순으로 저장돼요</p>
     <p class="hint" id="lbuM"></p>
     <div class="actions"><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">저장</button></div>`, (m, close) => {
     const box = m.querySelector("#lbuR"), msg = m.querySelector("#lbuM");
     const draw = () => {
-      box.innerHTML = rows.map((r, i) => `<div class="unrow ed${r.del ? " sdel" : ""}" data-i="${i}"><input class="inp unn" data-f="name" value="${esc(r.name)}" placeholder="단원 이름 (예: 1. 소인수분해)" autocomplete="off" aria-label="단원 이름" ${r.del ? "disabled" : ""}>${UU[0] ? `<span class="unu">${esc(UU[0])}</span>` : ""}<input class="inp unp" data-f="page" value="${esc(r.page)}" placeholder="시작" inputmode="numeric" autocomplete="off" aria-label="시작" ${r.del ? "disabled" : ""}>${UU[1] ? `<span class="unu">${esc(UU[1])}</span>` : ""}${r.uses ? `<span class="hint" title="다른 곳에 연결돼 지울 수 없어요">연결 ${r.uses}</span>` : `<button type="button" class="anb" data-del="${i}" title="${r.del ? "지우지 않기" : "이 단원 삭제"}">${IC(r.del ? "rotc" : "x", "s")}</button>`}</div>`).join("") || '<div class="hint">단원이 없어요</div>';
+      box.innerHTML = rows.map((r, i) => `<div class="unrow ed${r.del ? " sdel" : ""}" data-i="${i}"><button type="button" class="anb ung" data-grip="${i}" title="끌어서 순서 바꾸기 · 위 아래 화살표로 한 칸씩" aria-label="${esc(r.name || "단원")} 순서 바꾸기 — 위 아래 화살표로 한 칸씩 옮겨요">${IC("grip", "s")}</button><input class="inp unn" data-f="name" value="${esc(r.name)}" placeholder="단원 이름 (예: 1. 소인수분해)" autocomplete="off" aria-label="단원 이름" ${r.del ? "disabled" : ""}>${UU[0] ? `<span class="unu">${esc(UU[0])}</span>` : ""}<input class="inp unp" data-f="page" value="${esc(r.page)}" placeholder="시작" inputmode="numeric" autocomplete="off" aria-label="시작" ${r.del ? "disabled" : ""}>${UU[1] ? `<span class="unu">${esc(UU[1])}</span>` : ""}<button type="button" class="anb" data-addb="${i}" title="아래에 추가" aria-label="이 단원 아래에 추가">${IC("plus", "s")}</button>${r.uses ? `<span class="hint" title="다른 곳에 연결돼 지울 수 없어요">연결 ${r.uses}</span>` : `<button type="button" class="anb" data-del="${i}" title="${r.del ? "지우지 않기" : "이 단원 삭제"}">${IC(r.del ? "rotc" : "x", "s")}</button>`}</div>`).join("") || '<div class="hint">단원이 없어요</div>';
       box.querySelectorAll("input").forEach((inp) => { inp.oninput = () => { const r = rows[+inp.closest("[data-i]").dataset.i]; r[inp.dataset.f] = inp.value; }; });
       box.querySelectorAll("[data-del]").forEach((x) => (x.onclick = () => { const i = +x.dataset.del, r = rows[i]; if (!r.id) rows.splice(i, 1); else r.del = !r.del; draw(); }));
+      box.querySelectorAll("[data-addb]").forEach((x) => (x.onclick = () => { const i = +x.dataset.addb; rows.splice(i + 1, 0, { name: "", page: "", del: false }); draw(); const l = box.querySelectorAll(".unn")[i + 1]; if (l) { l.focus(); l.scrollIntoView({ block: "nearest" }); } }));
+      box.querySelectorAll('input[data-f="page"]').forEach((inp) => inp.addEventListener("input", orderNote));
+      box.querySelectorAll("[data-grip]").forEach(gripBind);
+      orderNote();
+    };
+    /* 261126 대표: 모달 안 순서와 시작 쪽 순서가 어긋나면 한 줄 안내 — 저장은 그대로 시작 쪽 순(노션 범위 시작) */
+    const orderNote = () => {
+      const ps = rows.filter((r) => !r.del).map((r) => { const s = String(r.page || "").replace(/[^\d]/g, ""); return s ? +s : null; }).filter((v) => v != null);
+      const o = m.querySelector("#lbuO"); if (o) o.hidden = !ps.some((v, k) => k && v < ps[k - 1]);
+    };
+    /* 끌기 손잡이: 포인터로 끌어 위아래 순서 바꾸기(목록 안 스크롤 · 끝에서 자동 스크롤) · 손잡이에 포커스 + 위 아래 화살표 = 한 칸 이동 · Esc = 취소 */
+    const moveRow = (from, to) => { if (from === to || to < 0 || to >= rows.length) return; const x = rows.splice(from, 1)[0]; rows.splice(to, 0, x); };
+    const gripBind = (g) => {
+      const from = +g.dataset.grip;
+      g.onkeydown = (e) => {
+        if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+        e.preventDefault();
+        const to = from + (e.key === "ArrowUp" ? -1 : 1); if (to < 0 || to >= rows.length) return;
+        moveRow(from, to); draw();
+        const ng = box.querySelector('[data-grip="' + to + '"]'); if (ng) { ng.focus(); ng.scrollIntoView({ block: "nearest" }); }
+      };
+      g.onpointerdown = (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        const els = [...box.children].filter((z) => z.classList.contains("unrow")), src = els[from];
+        let tgt = from, y = e.clientY, raf = 0, live = true;
+        try { g.setPointerCapture(e.pointerId); } catch (_) {}
+        src.classList.add("dragging"); box.classList.add("dragon");
+        const mark = () => {
+          els.forEach((z) => z.classList.remove("dropb", "dropa"));
+          let t = els.length;
+          for (let k = 0; k < els.length; k++) { const r = els[k].getBoundingClientRect(); if (y < r.top + r.height / 2) { t = k; break; } }
+          tgt = t;
+          if (t < els.length) els[t].classList.add("dropb"); else els[els.length - 1].classList.add("dropa");
+        };
+        const tick = () => {
+          if (!live) return;
+          const br = box.getBoundingClientRect(), edge = 36;
+          if (y < br.top + edge) box.scrollTop -= Math.ceil((br.top + edge - y) / 3);
+          else if (y > br.bottom - edge) box.scrollTop += Math.ceil((y - (br.bottom - edge)) / 3);
+          mark(); raf = requestAnimationFrame(tick);
+        };
+        const esc = (ev) => { if (ev.key === "Escape") { ev.stopPropagation(); end(false); } };
+        const end = (apply) => {
+          live = false; cancelAnimationFrame(raf);
+          g.onpointermove = g.onpointerup = g.onpointercancel = null;
+          document.removeEventListener("keydown", esc, true);
+          try { g.releasePointerCapture(e.pointerId); } catch (_) {}
+          src.classList.remove("dragging"); box.classList.remove("dragon"); els.forEach((z) => z.classList.remove("dropb", "dropa"));
+          if (!apply) return;
+          const to = tgt > from ? tgt - 1 : tgt;
+          if (to === from) return;
+          moveRow(from, to); draw();
+          const ng = box.querySelector('[data-grip="' + to + '"]'); if (ng) ng.focus();
+        };
+        document.addEventListener("keydown", esc, true);
+        g.onpointermove = (ev) => { y = ev.clientY; mark(); };
+        g.onpointerup = () => end(true);
+        g.onpointercancel = () => end(false);
+        mark(); raf = requestAnimationFrame(tick);
+      };
     };
     draw();
     m.querySelector("#lbuAdd").onclick = () => { rows.push({ name: "", page: "", del: false }); draw(); const l = box.querySelectorAll(".unn"); if (l.length) l[l.length - 1].focus(); box.scrollTop = box.scrollHeight; };

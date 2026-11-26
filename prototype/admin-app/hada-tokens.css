@@ -67,6 +67,7 @@
  --gap-block:var(--space-3);   /* 구역 안 블록 ↔ 블록(칸 · 칸 줄 · 단추 줄 · 목록 · 카드 묶음) */
  --gap-sub:var(--space-6);     /* 구역 안 작은 제목 위 */
  --gap-in:var(--space-1);      /* 칸 안: 라벨 ↔ 칸 ↔ 딸린 글(설명 · 상태) */
+ --drop-line:var(--brand-deep); /* 끌어 순서 바꿀 때 놓일 자리 선(줄 위 2px) — 끌기 손잡이 `.ung` */
  --setcards-max:var(--page-max); /* 카드형 설정 화면(관리자 설정 · 학원 정보) 본문 최대 폭 1180 — 그 아래는 화면 폭에 맞춤 */
  /* 모서리: 리포트 기준(배지 6, 버튼·칸 10, 카드 14, 알약) */
  --radius-xs:.1875rem;--radius-sm:.375rem;--radius-md:.625rem;--radius-lg:.875rem;--radius-pill:999px;

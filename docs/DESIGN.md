@@ -366,6 +366,7 @@ font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto San
 | 안내 문구 | `.section-hint` | `.page-hint.ph` | 12/400 `#4E5968`, 아래 16 | 일치 |
 | 스켈레톤 | `.skel` | 없음 | 바탕 `#F5EFE7`→`#FBF8F3` 1.4초 흐름, 글줄 높이 14·모서리 6, 칸 높이 88·모서리 10, 0.2초 뒤 보임 | 수업 관리는 다음 차례 |
 | 스피너 | `.spinner` | 없음 | 14×14, 선 2 `#DED1C0`, 도는 부분 `#6B5D4D`, 0.8초 | 수업 관리는 다음 차례 |
+| 끌기 손잡이(관리 앱 `.unrow .ung`) | 없음 | 없음 | Feather `grip` 선 아이콘 단추 28, 줄 맨 앞, 색 `--subtle`(올리면 `--ink`). 끄는 줄 흐리게, 놓일 자리 = 줄 안쪽 위 2px `--drop-line`. 키보드 = 포커스 + 위·아래 화살표. 세부는 `prototype/admin-app/관리앱-기준.md` 5장 "끌기 손잡이" | 관리 앱 전용(PC만) |
 | 목록 줄(가정통신문) | `.letter-row` | 없음 | 높이 44, 14/700, 오른쪽 화살표 16, 줄 사이 선 `#f1f0f6` | 리포트 전용 |
 | 넓은 보조 버튼(가정통신문) | `.letter-action` | 없음 | 높이 44, 모서리 10, 바탕 `#F5EFE7`, 글자 `#3F372F` 14/700 | 리포트 전용 |
 | 루틴 O·X 배지 | `.ox-badge` | 없음 | 지름 30 원, 바탕 `--info-soft`/`--danger-soft`, 선 그림 18·굵기 2.6 `--info-ink`/`--danger-ink`, 줄 오른쪽 끝. 빈 원(체크 전) = 바탕 `--brand-soft`, 그림 없음 | 리포트 전용 |

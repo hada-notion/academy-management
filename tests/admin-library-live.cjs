@@ -16,11 +16,11 @@ const FOUND = [
   const server = http.createServer((req, res) => { const f = path.join(root, decodeURIComponent(req.url.split('?')[0])); if (!fs.existsSync(f) || !fs.statSync(f).isFile()) { res.writeHead(404); res.end(); return; } res.setHeader('Content-Type', (types[path.extname(f)] || 'application/octet-stream') + '; charset=utf-8'); fs.createReadStream(f).pipe(res); });
   await new Promise((r) => server.listen(0, '127.0.0.1', r)); const origin = `http://127.0.0.1:${server.address().port}`;
   const b = await chromium.launch(); const done = [];
-  async function open() {
+  async function open(opts = {}) {
     const page = await b.newPage({ viewport: { width: 1280, height: 900 } });
     const calls = [], errors = [];
     let series = [{ id: 's1', name: '예시 시리즈' }, { id: 's2', name: '빈 시리즈' }];
-    let units = [{ id: 'u1', name: '1. 수와 연산', page: 8, uses: 0 }, { id: 'u2', name: '2. 문자와 식', page: 40, uses: 2 }];
+    let units = opts.units || [{ id: 'u1', name: '1. 수와 연산', page: 8, uses: 0 }, { id: 'u2', name: '2. 문자와 식', page: 40, uses: 2 }];
     page.on('pageerror', (e) => errors.push(e.message));
     await page.addInitScript(() => { try { sessionStorage.setItem('hada_admin_browser_session_v1', 'sess-1'); } catch (_) {} });
     await page.route(/contents\.kyobobook|kakao|nl\.go\.kr/, (route) => route.fulfill({ status: 404, body: '' }));
@@ -162,6 +162,57 @@ const FOUND = [
     assert.deepEqual(ed[0].body, { action: 'edit-units', bookId: BK, update: [{ id: 'u1', name: '1. 수와 연산(개정)', page: 8 }], remove: [], add: [{ name: '3. 도형', page: 70 }] });
     await page.waitForFunction(() => /도형/.test(document.querySelector('#lp').textContent), null, { timeout: 10000 });
     assert.deepEqual(errors, []); done.push('단원'); await page.close();
+  }
+  // 3b) 단원 고치기: 손잡이 끌기 · 아래에 추가 · 쪽 번호 순 안내
+  {
+    const units20 = Array.from({ length: 20 }, (_, i) => ({ id: 'w' + (i + 1), name: (i + 1) + '. 단원 ' + (i + 1), page: 10 * (i + 1), uses: 0 }));
+    const { page, calls, errors } = await open({ units: units20 });
+    await page.evaluate((id) => { activeTab.state.sel = id; panelOpen = true; render(); }, BK);
+    await page.click('#lp [data-tab="unit"], #lp button:has-text("단원")');
+    await page.waitForFunction(() => /단원 1(?!\d)/.test(document.querySelector('#lp').textContent), null, { timeout: 10000 });
+    await page.click('#lp [data-lbu="edit"]'); await page.waitForSelector('.dlg #lbuR .unn');
+    const names = () => page.$$eval('.dlg #lbuR .unn', (l) => l.map((i) => i.value));
+    const hintShown = () => page.$eval('.dlg #lbuO', (e) => getComputedStyle(e).display !== 'none');
+    const mid = async (sel) => { const r = await page.locator(sel).boundingBox(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; };
+    const dragTo = async (from, toSel, dy = 0, hold = 0) => { const a = await mid(from), c = await mid(toSel); await page.mouse.move(a.x, a.y); await page.mouse.down(); await page.mouse.move(c.x, c.y - 2, { steps: 8 }); if (dy) await page.mouse.move(c.x, c.y + dy, { steps: 4 }); if (hold) await page.waitForTimeout(hold); return c; };
+    // 줄 높이 48 · 간격 8 · 손잡이 · [+] 모양(캡처 전)
+    assert.equal(await page.locator('.dlg #lbuR [data-grip]').count(), 20); assert.equal(await page.locator('.dlg #lbuR [data-addb]').count(), 20);
+    assert.equal(await hintShown(), false, '쪽 번호 순서가 맞으면 안내 안 보임');
+    await page.screenshot({ path: shots + 'lib-units-drag-before.png' });
+    // 1) 3번째 줄을 1번째로
+    await dragTo('.dlg #lbuR [data-i="2"] [data-grip]', '.dlg #lbuR [data-i="0"]');
+    assert.equal(await page.locator('.dlg #lbuR .dropb').count(), 1, '끄는 동안 놓일 자리 표시');
+    await page.screenshot({ path: shots + 'lib-units-drag-during.png' });
+    await page.mouse.up();
+    assert.deepEqual((await names()).slice(0, 4), ['3. 단원 3', '1. 단원 1', '2. 단원 2', '4. 단원 4'], '3번째 줄이 맨 위로');
+    assert.equal(await hintShown(), true, '순서가 쪽 번호 순과 어긋나면 안내'); assert.match(await page.textContent('.dlg #lbuO'), /쪽 번호 순으로 저장돼요/);
+    await page.screenshot({ path: shots + 'lib-units-drag-after.png' });
+    // 키보드: 손잡이 + 아래 화살표 두 번 → 원래 자리, 안내 사라짐
+    await page.focus('.dlg #lbuR [data-grip="0"]'); await page.keyboard.press('ArrowDown'); await page.keyboard.press('ArrowDown');
+    assert.deepEqual((await names()).slice(0, 4), ['1. 단원 1', '2. 단원 2', '3. 단원 3', '4. 단원 4']); assert.equal(await hintShown(), false, '다시 쪽 번호 순이면 안내 사라짐');
+    // 2) 아래에 추가: 5번째 줄 아래에 빈 줄
+    await page.click('.dlg #lbuR [data-i="4"] [data-addb]');
+    const nm = await names(); assert.equal(nm.length, 21); assert.equal(nm[5], '', '그 줄 바로 아래 빈 줄'); assert.equal(nm[4], '5. 단원 5');
+    assert.equal(await page.evaluate(() => document.activeElement === document.querySelectorAll('.dlg #lbuR .unn')[5]), true, '새 줄에 커서');
+    await page.fill('.dlg #lbuR [data-i="5"] .unn', '끼운 단원'); await page.fill('.dlg #lbuR [data-i="5"] .unp', '55');
+    assert.equal(await hintShown(), false, '55는 50과 60 사이 — 순서 맞음');
+    // 3) 스크롤 상태 드래그: 목록을 내린 뒤 보이는 줄 끌기(손잡이 위치 그대로) + 아래 끝 자동 스크롤
+    await page.locator('.dlg #lbuR').hover(); await page.mouse.wheel(0, 400); await page.waitForTimeout(200);
+    const before = await page.$eval('.dlg #lbuR', (e) => e.scrollTop);
+    const idx = await page.evaluate(() => { const b = document.querySelector('.dlg #lbuR').getBoundingClientRect(); return [...document.querySelectorAll('.dlg #lbuR .unrow')].findIndex((r) => { const q = r.getBoundingClientRect(); return q.top > b.top + 120 && q.bottom < b.bottom - 120; }); });
+    const n0 = await names(); const src = n0[idx];
+    await dragTo(`.dlg #lbuR [data-i="${idx}"] [data-grip]`, `.dlg #lbuR [data-i="${idx - 2}"]`); await page.mouse.up();
+    const n1 = await names(); assert.equal(n1[idx - 2], src, '스크롤 상태에서도 두 줄 위로'); assert.equal(await page.$eval('.dlg #lbuR', (e) => e.scrollTop) >= before - 4, true, '스크롤 위치 유지');
+    // 아래 끝에서 잡고 있으면 자동 스크롤
+    const g = await mid(`.dlg #lbuR [data-i="${idx}"] [data-grip]`), box = await page.locator('.dlg #lbuR').boundingBox(); const s0 = await page.$eval('.dlg #lbuR', (e) => e.scrollTop);
+    await page.mouse.move(g.x, g.y); await page.mouse.down(); await page.mouse.move(g.x, box.y + box.height - 6, { steps: 6 }); await page.waitForTimeout(400);
+    assert.equal(await page.$eval('.dlg #lbuR', (e) => e.scrollTop) > s0, true, '끌어 아래 끝에 두면 목록이 스크롤'); await page.mouse.up();
+    const n2 = await names(); assert.deepEqual([...n2].sort(), [...n1].sort(), '맨 아래로 끌어 놓아도 줄은 그대로(순서만 바뀜)'); assert.equal(n2[n2.length - 1], n1[idx], '맨 아래 끝에 놓임');
+    // 보내는 값: 끼운 단원만 add
+    await page.click('.dlg #co'); await page.waitForFunction(() => !document.querySelector('.dlg #lbuR'), null, { timeout: 10000 });
+    const ed = tb(calls, 'edit-units'); assert.equal(ed.length, 1);
+    assert.deepEqual(ed[0].body, { action: 'edit-units', bookId: BK, update: [], remove: [], add: [{ name: '끼운 단원', page: 55 }] });
+    assert.deepEqual(errors, []); done.push('단원 끌기'); await page.close();
   }
   // 4) 시리즈 관리: 도구줄 단추 → series, 추가 · 이름 바꾸기(그 시리즈 교재 화면 값도) · 순서 · 교재 있는 시리즈는 삭제 못 함 · 빈 시리즈는 두 번 눌러 삭제
   {
