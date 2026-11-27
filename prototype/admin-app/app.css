@@ -3671,7 +3671,7 @@ html:root .lj .ljh,html:root .lj dl{font-size:12px}
 .lburow .lbulb{flex:none;min-width:56px}
 .lbuap{display:inline-flex;align-items:center;gap:var(--space-1);white-space:nowrap;margin-left:var(--space-5)}
 .lbuap input{margin:0}
-.lbulm{margin:0 0 var(--space-2)}.lbulm:empty{display:none}
+.lbulinks{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);margin:0 0 var(--space-2)}.lbulm{margin:0 0 var(--space-2)}.lbulm:empty{display:none}
 /* 창 안 확인(단원 편집 위 한 겹) */
 .lbuask{position:fixed;inset:0;z-index:55;display:flex;align-items:center;justify-content:center;background:var(--overlay)}
 .lbuaskc{width:min(var(--dialog-sm),90vw);background:var(--surface);border-radius:var(--radius-lg);padding:var(--space-6);box-shadow:var(--shadow-md)}

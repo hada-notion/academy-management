@@ -358,6 +358,7 @@ function lbUnitDialog(b) {
     <div class="row lburow" id="lbuNmR"><span class="hint lbulb" data-nmh>단원 이름</span><span class="vseg subseg" id="lbuNm" data-nmh role="radiogroup" aria-label="단원 이름 붙이는 방식">${NM.map(([k, t]) => `<button type="button" role="radio" data-nm="${k}">${t}</button>`).join("")}</span><label class="hint lbuap" id="lbuApL"><input type="checkbox" id="lbuAp"> 부록 줄도 넣기</label></div>
     <p class="hint lbulm" id="lbuLM" aria-live="polite"></p>
     <p class="hint" id="lbuM"></p>
+    ${isbn ? `<div class="lbulinks" id="lbuLinks"><span class="hint">서점 목차 직접 보기</span>${bookLinkInner(isbn)}</div>` : ""}
     <div class="actions"><span class="lbuprog" id="lbuP" role="progressbar" aria-label="단원 저장" aria-valuemin="0" hidden><span class="spinner" aria-hidden="true"></span><span class="t" aria-live="polite"></span><span class="bar"><i></i></span></span><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">저장</button></div>`, (m, close) => {
     const dlg = m.querySelector(".dlg"); if (dlg) dlg.classList.add("lbuwide");
     const box = m.querySelector("#lbuR"), msg = m.querySelector("#lbuM"), lm = m.querySelector("#lbuLM"), ta = m.querySelector("#lbuT");

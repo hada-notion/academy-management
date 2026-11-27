@@ -246,6 +246,15 @@ const OLYMPOS_NUM = OLYMPOS.replace(/CHAPTER 0(\d) /g, '$1. '); // 대표 261127
     const { page, calls, errors } = await open({ units: units5, fetch: 'none' });
     const sortShown = () => page.$eval('.dlg #lbuSort', (e) => getComputedStyle(e).display !== 'none');
     assert.equal(await sortShown(), false);
+    {
+      const L = await page.$$eval('.dlg #lbuLinks a.link-chip', (as) => as.map((x) => [x.textContent, x.href, x.target, x.rel])), I = '9790000000011';
+      assert.equal(L.length, 3, 'ISBN13 있으면 관련 링크 3개');
+      assert.deepEqual(L.map((x) => x[1]), ['https://search.kyobobook.co.kr/search?keyword=' + I, 'https://www.yes24.com/Product/Search?domain=BOOK&query=' + I, 'https://www.nl.go.kr/NL/contents/search.do?srchTarget=total&kwd=' + I]);
+      assert.ok(L.every((x) => x[2] === '_blank' && /noopener/.test(x[3])));
+      assert.equal(await page.isVisible('.dlg #lbuT'), true, '링크를 눌러도 창은 그대로(새 탭)');
+      assert.equal(await page.$eval('.dlg #lbuLinks', (e) => e.scrollWidth <= e.clientWidth), true, '1280에서 넘치지 않음');
+      await page.screenshot({ path: shots + 'unit-edit-links.png' });
+    }
     await page.click('.dlg #lbuR .lbuer[data-i="0"] .pg'); await page.fill('.dlg #lbuR .lbuer.on [data-f="page"]', '300'); await page.keyboard.press('Escape');
     assert.equal(await sortShown(), true, '순서가 어긋나면 정렬 단추'); await page.click('.dlg #lbuSort');
     assert.deepEqual((await rowsOf(page)).map((x) => x.split('|')[0]), ['2. 단원 2', '3. 단원 3', '4. 단원 4', '5. 단원 5', '1. 단원 1']);
@@ -261,6 +270,7 @@ const OLYMPOS_NUM = OLYMPOS.replace(/CHAPTER 0(\d) /g, '$1. '); // 대표 261127
     const { page, calls, errors } = await open({ units: [], book });
     assert.equal(await page.isDisabled('.dlg #lbuGet'), true, 'ISBN13 없으면 흐린 단추');
     assert.match(await page.textContent('.dlg'), /ISBN13이 있어야 해요/);
+    assert.equal(await page.locator('.dlg #lbuLinks').count(), 0, 'ISBN13 없으면 관련 링크 숨김');
     await page.fill('.dlg #lbuT', '1. 소인수분해 8\n2. 정수와 유리수 28'); await settle(page);
     assert.deepEqual(await rowsOf(page), ['1. 소인수분해|P.8', '2. 정수와 유리수|P.28'], '단원 없는 교재는 묻지 않고 바로');
     assert.equal(await page.isVisible('.dlg #lbuLvR'), false, '단계 하나면 단계 고르기 숨김');
