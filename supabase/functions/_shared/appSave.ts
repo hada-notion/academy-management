@@ -15,7 +15,7 @@
 import { NOTION_API } from "./constants.ts"
 import { archivePage, createPage, fetchWithRetry, notionHeaders, updatePageProperties, getPage, mapWithConcurrency } from "./notionClient.ts"
 import { fetchSupabaseWithRetry } from "./reportCacheShared.ts"
-import { appSources, pageRow, sourceProblem, SKIP_PROPS, type AppDb } from "./appCopy.ts"
+import { appSources, pageRowFull, sourceProblem, SKIP_PROPS, type AppDb } from "./appCopy.ts"
 import { enqueueSync, wakeSyncQueueWorker } from "./syncQueue.ts"
 import { textbookSources } from "./textbookSearch.ts"
 import { syncBookCopy } from "./libraryCopy.ts"
@@ -299,7 +299,7 @@ async function copyDbOf(id: string): Promise<string | null> {
 	return (await res.json())[0]?.db ?? null
 }
 async function upsertCopy(db: WriteDb, page: Record<string, any>): Promise<Record<string, unknown>> {
-	const row = { ...pageRow(db as AppDb, page), synced_at: new Date().toISOString() }
+	const row = { ...await pageRowFull(db as AppDb, page), synced_at: new Date().toISOString() }
 	const res = await fetchSupabaseWithRetry(`${SB_URL()}/rest/v1/app_rows?on_conflict=id`, {
 		method: "POST", headers: sbHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }), body: JSON.stringify([row]),
 	})
