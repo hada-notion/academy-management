@@ -251,6 +251,7 @@ window.liveModeFor = function (search, hostname, protocol) {
            받는 동안 고르기 칸에서 새 값 만들기는 막고(optAdd) 저장은 받기를 기다린다(liveSave). 받으면 다시 그린다. 못 받아도 화면은 그대로(저장 때 서버가 거름) */
         window.LIVE_OPTS_PENDING = true;
         window.LIVE_OPTS_PROMISE = liveApi({ url: cfg.url, anonKey: cfg.anonKey, session }, { action: "options" }).then((res) => { liveOptions(res); }, () => {}).then(() => { window.LIVE_OPTS_PENDING = false; try { if (typeof render === "function") render(); } catch (_) {} });
+        liveOptionColors({ url: cfg.url, anonKey: cfg.anonKey, session }, false); /* 항목 166: 선택지 색 = 노션 옵션 색(뒤에서 받아 다시 그림) */
         /* loaded = 이번에 노션 자료를 끝까지 받았다는 표시. 이 표시가 있을 때만 저장한다 */
         window.LIVE = { url: cfg.url, anonKey: cfg.anonKey, session, at: new Date().toISOString(), loaded: true };
         liveHooks();
@@ -373,6 +374,15 @@ function liveOptions(res) {
   window.LIVE_SEL = {};
   const rel = dbs["학생(학원) DB"] && dbs["학생(학원) DB"]["학생과의 관계"];
   if (Array.isArray(rel) && rel.length) window.LIVE_SEL["학생과의 관계"] = rel.slice();
+}
+/* (v2.8.0 항목 166, 대표 261127) 선택지 칩 색 = 노션 옵션 색. app-api option-colors → hada-admin.html ncNotionSet(색표 한 곳, ncCls가 먼저 읽음).
+   첫 화면 뒤에 받고(10분 서버 기억), [동기화] 때는 fresh로 노션에서 다시. 못 받으면 고정표(NCOL) 그대로 */
+function liveOptionColors(conn, fresh) {
+  return liveApi(conn, { action: "option-colors", fresh: !!fresh }).then((res) => {
+    if (!res || !res.dbs || typeof ncNotionSet !== "function") return;
+    ncNotionSet(res.dbs);
+    try { if (typeof render === "function") render(); } catch (_) {}
+  }, () => {});
 }
 /* 실제 자료 모드에서 앱의 두 곳을 바꿔 끼운다(한 번만):
    - 저장 숫자(dirtyCount): 작성 중 표시가 아니라 "노션에 아직 안 간 줄 수"(새 줄 + 불러온 값과 달라진 줄)도 센다.
@@ -592,6 +602,7 @@ async function liveSyncRun() {
     if (!res.ok || !body || !body.ok) throw new Error((body && body.error) || "동기화하지 못했어요 (" + res.status + ")");
     if (body.syncedAt) window.LIVE_SYNCED_AT = body.syncedAt;
     window._liveSyncing = false;
+    await liveOptionColors(c, true); /* 항목 166: 노션에서 바꾼 선택지 색도 지금 */
     if (typeof window.liveReload === "function") await window.liveReload(); /* 사본을 다시 읽어 화면을 서버 값으로 맞춘다 */
     const probs = Object.entries(body.problems || {}).map(([db, why]) => `${String(db).replace(/\(학원\) DB$/, "")}: ${why}`);
     const nf = (body.notFilled || []).length;
