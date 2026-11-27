@@ -2,7 +2,7 @@
 // 왼쪽 단원 목록 글(붙여 넣기 · 가져오기 units-fetch) → 오른쪽 단원 줄(누른 줄만 밑줄 입력 · Enter 다음 줄 · Esc · [+] · [×]) ·
 // 손으로 고친 뒤 다시 만들 때 묻기 · 기존 단원 교재의 [바꾸기 | 뒤에 붙이기](바꾸기 = 순서대로 짝지어 update) · edit-units 10개씩 묶음 저장 · 저장 중 [저장]도 꺼짐.
 // 사용: NODE_PATH=<hada-ui-tests>/node_modules ROOT=<저장소 폴더> node tests/admin-unit-edit.cjs   (캡처는 SHOTS 폴더)
-const { chromium } = require('playwright'), http = require('http'), fs = require('fs'), path = require('path'), assert = require('node:assert/strict'), { OLYMPOS } = require('./unit-toc-samples.cjs');
+const { chromium } = require('playwright'), http = require('http'), fs = require('fs'), path = require('path'), assert = require('node:assert/strict'), { OLYMPOS, WORDMASTER } = require('./unit-toc-samples.cjs');
 const root = process.env.ROOT || path.resolve(__dirname, '..'), shots = (process.env.SHOTS || __dirname) + '/';
 const types = { '.js': 'application/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.html': 'text/html' };
 const H = 'https://twczhsxybkcvjkdfdxvs.supabase.co/functions/v1/';
@@ -74,6 +74,18 @@ const OLYMPOS_NUM = OLYMPOS.replace(/CHAPTER 0(\d) /g, '$1. '); // 대표 261127
   const box = (page, sel) => page.$eval(sel, (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
   const noOverflow = async (page, name) => assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), name + ': 가로 넘침');
   const settle = (page) => page.waitForTimeout(450); // 글 입력 다시 만들기 지연(300) 뒤
+  const checks = (page) => page.$$eval('.dlg #lbuChR label', (l) => l.filter((x) => x.offsetParent).map((x) => x.textContent.replace(/\s+/g, ' ').trim()));
+  /* 체크 줄(항목 168): 보이는 체크가 한 줄 · 서로 겹치지 않음 · 창 안 · 단계 세그먼트와 왼쪽 맞춤 */
+  const checkRow = async (page, d, lvB) => {
+    const bs = await page.$$eval('.dlg #lbuChR label', (l) => l.filter((x) => x.offsetParent).map((e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; }));
+    assert(bs.length >= 1);
+    bs.forEach((b, k) => {
+      assert(b.h <= 24, '체크 한 줄: ' + JSON.stringify(b)); assert(b.x + b.w <= d.x + d.w - 16, '체크가 창 안: ' + JSON.stringify([b, d]));
+      assert(Math.abs(b.y + b.h / 2 - (bs[0].y + bs[0].h / 2)) < 4, '체크는 같은 줄');
+      if (k) assert(bs[k - 1].x + bs[k - 1].w + 8 <= b.x, '체크끼리 겹치지 않음: ' + JSON.stringify(bs));
+    });
+    assert(Math.abs(bs[0].x - lvB.x) < 2, '체크 줄은 단계 세그먼트와 왼쪽 맞춤: ' + JSON.stringify([bs[0], lvB]));
+  };
 
   // 1) 빈 교재: 탭 없음 · [가져오기] → 오른쪽 18줄 · 단계 바꾸면 6줄 · 이름 방식 · 부록 · 줄 바로 고치기 · 묻기 · 저장 본문
   {
@@ -87,19 +99,23 @@ const OLYMPOS_NUM = OLYMPOS.replace(/CHAPTER 0(\d) /g, '$1. '); // 대표 261127
     assert.equal(await page.inputValue('.dlg #lbuT'), OLYMPOS, '받은 글 그대로 왼쪽 칸에');
     assert.equal(await head(page), '단원 18개');
     const r0 = await rowsOf(page); assert.equal(r0[0], '01 글의 목적|—'); assert.equal(r0[17], '18 장문2 (1지문 3문항)|—');
-    assert.deepEqual(await seg(page, '.dlg #lbuLv'), ['CHAPTER 6', '*01 18', '그 밖 12']);
+    assert.deepEqual(await seg(page, '.dlg #lbuLv'), ['CHAPTER 6', '*01 18']);
     assert.deepEqual(await seg(page, '.dlg #lbuNm'), ['*그대로', '윗 단계 이름 붙이기', '번호 1-1.']);
     assert.match(await page.textContent('.dlg #lbuLM'), /교보문고에서 단원 목록을 가져왔어요/);
-    // 배치: 글 칸 | 단원 줄 같은 높이 · 넓은 창 1280 안 · 아래 단계 → 이름(+부록 체크 한 줄, 겹치지 않음) → 안내
+    // 배치: 글 칸 | 단원 줄 같은 높이 · 넓은 창 1280 안 · 아래 단계 → 이름 → 체크 줄(그 밖 · 부록, 범위 줄 없으면 범위 체크 숨김) → 안내
     const d = await box(page, '.dlg'), ta = await box(page, '.dlg #lbuT'), v = await box(page, '.dlg #lbuV');
     assert(d.w >= 900 && d.x >= 0 && d.x + d.w <= 1280, '넓은 창: ' + JSON.stringify(d));
     assert.equal(Math.round(ta.h), Math.round(v.h), '같은 높이'); assert(v.x > ta.x + ta.w - 1, '단원 줄은 오른쪽');
-    const lvB = await box(page, '.dlg #lbuLv'), nmB = await box(page, '.dlg #lbuNm'), apB = await box(page, '.dlg #lbuApL'), lmB = await box(page, '.dlg #lbuLM');
-    assert(lvB.y < nmB.y && nmB.y < lmB.y, '단계 → 이름 → 안내');
-    assert(nmB.x + nmB.w < apB.x, '이름 방식과 부록 체크가 겹치지 않음: ' + JSON.stringify([nmB, apB]));
-    assert(Math.abs((nmB.y + nmB.h / 2) - (apB.y + apB.h / 2)) < 12, '부록 체크는 같은 줄');
-    assert(apB.h <= 24, '부록 체크 한 줄'); assert(apB.x + apB.w <= d.x + d.w - 16, '부록 체크가 창 안: ' + JSON.stringify([apB, d]));
+    assert.equal(await page.isVisible('.dlg #lbuExL'), false, '범위 줄 없으면 [범위 줄 펼치기] 숨김');
+    assert.deepEqual(await checks(page), ['그 밖 줄도 넣기 (12)', '부록 줄도 넣기 (3)']);
+    const lvB = await box(page, '.dlg #lbuLv'), nmB = await box(page, '.dlg #lbuNm'), chB = await box(page, '.dlg #lbuChR'), lmB = await box(page, '.dlg #lbuLM');
+    assert(lvB.y < nmB.y && nmB.y + nmB.h <= chB.y + 1 && chB.y + chB.h <= lmB.y + 1, '단계 → 이름 → 체크 줄 → 안내: ' + JSON.stringify([lvB, nmB, chB, lmB]));
+    await checkRow(page, d, lvB);
     await noOverflow(page, '빈 교재'); await page.screenshot({ path: shots + 'unit-edit-normal.png' });
+    // 그 밖 줄도 넣기(항목 168): 켜면 Practice 줄이 원래 자리에 · 끄면 18
+    await page.check('.dlg #lbuEt'); assert.equal(await head(page), '단원 30개', '그 밖 줄도 넣기');
+    assert.deepEqual((await rowsOf(page)).slice(4, 8), ['05 주제·제목|—', '서술형 Practice|—', '논술형 Practice|—', '06 도표·실용문 내용 일치/불일치|—']);
+    await page.uncheck('.dlg #lbuEt'); assert.equal(await head(page), '단원 18개');
     // 단계 · 이름 방식 · 부록 → 오른쪽 바로(손으로 고친 것 없으면 묻지 않음)
     await page.click('.dlg #lbuLv button:has-text("CHAPTER")');
     assert.equal(await head(page), '단원 6개'); assert.equal((await rowsOf(page))[0], 'CHAPTER 01 대의 파악(핵심 내용·맥락)|—');
@@ -142,7 +158,7 @@ const OLYMPOS_NUM = OLYMPOS.replace(/CHAPTER 0(\d) /g, '$1. '); // 대표 261127
     assert.equal(await page.evaluate(() => document.activeElement.textContent), '취소', '처음 커서는 [취소]');
     await page.screenshot({ path: shots + 'unit-edit-ask.png' });
     await page.click('.lbuask [data-ak="0"]');
-    assert.deepEqual(await rowsOf(page), handRows, '[취소] = 고친 줄 그대로'); assert.deepEqual(await seg(page, '.dlg #lbuLv'), ['CHAPTER 6', '*01 18', '그 밖 12'], '단계도 되돌림');
+    assert.deepEqual(await rowsOf(page), handRows, '[취소] = 고친 줄 그대로'); assert.deepEqual(await seg(page, '.dlg #lbuLv'), ['CHAPTER 6', '*01 18'], '단계도 되돌림');
     await page.click('.dlg #lbuLv button:has-text("CHAPTER")'); await page.click('.lbuask [data-ak="1"]');
     assert.equal(await head(page), '단원 6개', '[다시 만들기]');
     await page.click('.dlg #lbuLv button:has-text("01")'); assert.equal(await page.locator('.lbuask').count(), 0);
@@ -163,12 +179,42 @@ const OLYMPOS_NUM = OLYMPOS.replace(/CHAPTER 0(\d) /g, '$1. '); // 대표 261127
     const { page, errors } = await open({ units: [], fetchText: OLYMPOS_NUM });
     await page.click('.dlg #lbuGet');
     await page.waitForFunction(() => document.querySelectorAll('.dlg #lbuR .lbuer').length === 18, null, { timeout: 10000 });
-    assert.deepEqual(await seg(page, '.dlg #lbuLv'), ['1. 6', '*01 18', '그 밖 12']);
+    assert.deepEqual(await seg(page, '.dlg #lbuLv'), ['1. 6', '*01 18']);
     const r = await rowsOf(page); assert(!r.some((x) => /대의 파악|Practice/.test(x)), '대단원 · Practice 줄 안 섞임');
     await page.click('.dlg #lbuNm [data-nm="num"]');
     assert.deepEqual((await rowsOf(page)).slice(0, 1).concat((await rowsOf(page)).slice(5, 6)), ['1-1. 글의 목적|—', '2-1. 도표·실용문 내용 일치/불일치|—']);
     await page.screenshot({ path: shots + 'unit-edit-num.png' });
     assert.deepEqual(errors, []); done.push('대단원 "1." 글 · 번호 1-1.'); await page.close();
+  }
+  // 2b) 범위 줄 펼치기 · 그 밖 체크(항목 168, 대표 261127 워드마스터 꼴): 기본 Day 30줄 · 세그먼트 Step 3 · Day 30(그 밖 없음) · 펼치기 끔 15 · 그 밖 켬 33 · 손으로 고친 뒤면 묻기
+  {
+    const { page, errors } = await open({ units: [], fetchText: WORDMASTER });
+    await page.click('.dlg #lbuGet');
+    await page.waitForFunction(() => document.querySelectorAll('.dlg #lbuR .lbuer').length === 30, null, { timeout: 10000 });
+    assert.deepEqual(await seg(page, '.dlg #lbuLv'), ['Step 3', '*Day 30'], '세그먼트에 그 밖 없음');
+    assert.deepEqual(await checks(page), ['범위 줄 펼치기', '그 밖 줄도 넣기 (3)'], '부록 없으면 부록 체크 숨김');
+    assert.equal(await page.isChecked('.dlg #lbuEx'), true, '펼치기 기본 켬'); assert.equal(await page.isChecked('.dlg #lbuEt'), false, '그 밖 기본 끔');
+    let r = await rowsOf(page); assert.equal(r[0], 'Day 01|—'); assert.equal(r[12], 'Day 13 People|—'); assert.equal(r[29], 'Day 30|—');
+    const d = await box(page, '.dlg'), lvB = await box(page, '.dlg #lbuLv');
+    await checkRow(page, d, lvB); await noOverflow(page, '워드마스터');
+    await page.screenshot({ path: shots + 'unit-edit-range.png' });
+    await page.uncheck('.dlg #lbuEx');
+    assert.equal(await head(page), '단원 15개', '펼치기 끔 = 15줄'); assert.equal((await rowsOf(page))[0], 'Day 01 ~ Day 12|—');
+    assert.deepEqual(await seg(page, '.dlg #lbuLv'), ['Step 3', '*Day 15']);
+    assert.equal(await page.isVisible('.dlg #lbuExL'), true, '끈 뒤에도 체크는 보임');
+    await page.check('.dlg #lbuEx'); await page.check('.dlg #lbuEt');
+    r = await rowsOf(page); assert.equal(r.length, 33, '그 밖 줄도 넣기 = 30 + 3');
+    assert.deepEqual(r.slice(11, 14), ['Day 12|—', '누적 테스트 1|—', 'Day 13 People|—'], '원래 자리에 끼움');
+    // 체크 셋 다 보이는 꼴(부록 줄 추가) — 한 줄 · 겹치지 않음
+    await page.fill('.dlg #lbuT', WORDMASTER + '\n부록\n01 예시 부록 하나\n02 예시 부록 둘'); await settle(page);
+    assert.deepEqual(await checks(page), ['범위 줄 펼치기', '그 밖 줄도 넣기 (3)', '부록 줄도 넣기 (2)']);
+    await checkRow(page, d, lvB); await page.screenshot({ path: shots + 'unit-edit-checks.png' });
+    // 손으로 고친 뒤 체크를 바꾸면 묻기 — [취소]면 체크도 되돌림
+    await page.click('.dlg #lbuR .lbuer[data-i="0"] .nm'); await page.fill('.dlg #lbuR .lbuer.on [data-f="name"]', 'Day 01 고침'); await page.keyboard.press('Escape');
+    await page.uncheck('.dlg #lbuEx'); await page.waitForSelector('.lbuask');
+    await page.click('.lbuask [data-ak="0"]');
+    assert.equal(await page.isChecked('.dlg #lbuEx'), true, '[취소] = 체크 되돌림'); assert.equal((await rowsOf(page))[0], 'Day 01 고침|—');
+    assert.deepEqual(errors, []); done.push('범위 줄 펼치기 · 그 밖 체크'); await page.close();
   }
   // 3) 기존 단원 교재: 열면 기존 줄(왼쪽 비어 있음) · 연결된 단원은 [×] 없음 · 글 넣으면 [바꾸기 | 뒤에 붙이기] 묻기 · 뒤에 붙이기 → 저장 본문
   {

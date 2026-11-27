@@ -80,7 +80,8 @@ assert.equal(u, 60);
 // 6) 실제 서점 글(항목 165, 교보문고 units-fetch 그대로): CHAPTER 6 아래 "01 …" ~ "18 …"(0 채움 · 안 채움 섞임) + "서술형 Practice" 번호 없는 줄 + 부록 아래 "01 수행평가"
 {
   const { OLYMPOS: T } = require('./unit-toc-samples.cjs');
-  assert.equal(lv(T), 'CHAPTER 6 · 01 18 · 그 밖 12', '01 · 10 · 9 = 한 단계, 번호 없는 줄은 그 밖(맨 뒤), 부록 줄은 뺌');
+  assert.equal(lv(T), 'CHAPTER 6 · 01 18', '01 · 10 · 9 = 한 단계, 번호 없는 줄은 그 밖(단계 고르기에 없음 — 항목 168), 부록 줄은 뺌');
+  assert.equal(lbUnitLevels(T).etc, 12, '그 밖 12줄');
   const L = lbUnitLevels(T);
   assert.equal(L.def, keyOf(T, '01'), '기본 = 번호 단원 18');
   assert.equal(L.ap, 3, '부록 줄 3개 있음');
@@ -93,7 +94,10 @@ assert.equal(u, 60);
   const wa = JSON.parse(JSON.stringify(lbUnitPick(T, L.def, false, true)));
   assert.equal(wa.length, 20, '부록 줄도 넣기 = 18 + 부록 번호 2');
   assert.deepEqual(wa.slice(-2).map((x) => x.name), ['01 수행평가', '02 VOCA PLUS']);
-  assert.equal(lbUnitLevels(T, true).levels.find((g) => g.label === '그 밖').count, 13);
+  assert.equal(lbUnitLevels(T, true).etc, 13);
+  const et = JSON.parse(JSON.stringify(lbUnitPick(T, L.def, '', false, true))).map((x) => x.name);
+  assert.equal(et.length, 30, '그 밖 줄도 넣기 = 18 + Practice 12');
+  assert.deepEqual(et.slice(4, 8), ['05 주제·제목', '서술형 Practice', '논술형 Practice', '06 도표·실용문 내용 일치/불일치'], '원래 자리에 끼움');
 }
 // 7) 번호 꼴이 같은 자리에 섞여도 한 단계: "1 …" · "02. …" · "3. …"
 {
@@ -105,7 +109,7 @@ assert.equal(u, 60);
 {
   const { OLYMPOS } = require('./unit-toc-samples.cjs');
   const NUM = OLYMPOS.replace(/CHAPTER 0(\d) /g, '$1. ');
-  assert.equal(lv(NUM), '1. 6 · 01 18 · 그 밖 12', '(a) 빈 줄 덩어리 첫 줄 = 대단원 · "서술형 Practice"는 그 밖');
+  assert.equal(lv(NUM), '1. 6 · 01 18', '(a) 빈 줄 덩어리 첫 줄 = 대단원 · "서술형 Practice"는 그 밖');
   const L = lbUnitLevels(NUM), us = pick(NUM, L.def);
   assert.equal(us.length, 18); assert.equal(us[0].name, '01 글의 목적');
   assert.ok(!us.some((x) => /대의 파악|Practice/.test(x.name)), '대단원 · Practice 줄이 단원에 섞이지 않음');
@@ -115,7 +119,7 @@ assert.equal(u, 60);
   assert.equal(lv(FLAT).split(' · ').slice(0, 2).join(' · '), '1. 6 · 01 18', '빈 줄 없어도 대단원 6 · 단원 18');
   // (c) 한 덩어리 안 "1."(한 자리)과 "01"(0 채움) = 단계 구분, 서로 다른 덩어리에 걸친 01 · 10 은 한 단계(원문 그대로 = CHAPTER 6 · 01 18)
   assert.equal(lv('1. 큰 단원\n01 작은 하나\n02 작은 둘\n2. 큰 단원 둘\n03 작은 셋\n04 작은 넷'), '1. 2 · 01 4');
-  assert.equal(lv(OLYMPOS), 'CHAPTER 6 · 01 18 · 그 밖 12', '원문은 그대로');
+  assert.equal(lv(OLYMPOS), 'CHAPTER 6 · 01 18', '원문은 그대로');
   // 이름 방식 [번호 1-1.](항목 167): <대단원 순번>-<그 안 순번>. <앞 번호 뗀 이름>
   for (const T of [OLYMPOS, NUM]) {
     const n = JSON.parse(JSON.stringify(lbUnitPick(T, lbUnitLevels(T).def, 'num'))).map((x) => x.name);
@@ -128,5 +132,47 @@ assert.equal(u, 60);
 {
   assert.equal(lbUnitLevels('1. 가\n2. 나\n\n3. 다\n4. 라\n\n5. 마\n6. 바').levels.length, 1, '빈 줄로 나눠도 번호가 이어지면 한 단계');
   assert.equal(lbUnitLevels('1. 가\n2. 나\n1. 다\n2. 라').levels.length, 1, '윗 단계 줄이 연달아 나오면 나누지 않음');
+}
+// 10) 범위 줄 펼치기 · 그 밖 체크(항목 168, 261127 대표 — 워드마스터 고등 BASIC 꼴): Step 3 · Day(01~12 범위 + 13~25 + 26~30 범위) + 번호 없는 줄 3
+{
+  const { WORDMASTER: T } = require('./unit-toc-samples.cjs');
+  const L = lbUnitLevels(T);
+  assert.equal(lv(T), 'Step 3 · Day 30', '세그먼트엔 진짜 단계만(그 밖 없음) · 범위 펼친 Day 30');
+  assert.equal(L.etc, 3, '그 밖 3줄'); assert.equal(L.rg, 2, '범위 줄 2개'); assert.equal(L.def, keyOf(T, 'Day'));
+  const us = pick(T, L.def);
+  assert.equal(us.length, 30, '기본 = Day 30줄');
+  assert.deepEqual([us[0], us[11], us[12], us[24], us[25], us[29]].map((x) => x.name), ['Day 01', 'Day 12', 'Day 13 People', 'Day 25 Nature', 'Day 26', 'Day 30'], '앞 낱말 · 0 채움 그대로, 순서대로');
+  assert.ok(us.every((x) => x.page === null), '펼친 번호는 쪽 아님');
+  // 펼치기 끔 → 15줄(범위 줄은 한 줄 그대로)
+  const L2 = lbUnitLevels(T, false, false);
+  assert.equal(L2.levels.map((g) => `${g.label} ${g.count}`).join(' · '), 'Step 3 · Day 15'); assert.equal(L2.rg, 2, '끔이어도 범위 줄 수는 셈(체크 보임)');
+  const off = JSON.parse(JSON.stringify(lbUnitPick(T, L2.def, '', false, false, false)));
+  assert.equal(off.length, 15); assert.equal(off[0].name, 'Day 01 ~ Day 12'); assert.equal(off[14].name, 'Day 26 ~ Day 30');
+  // 그 밖 줄도 넣기 → 원래 자리에 끼움(이름 그대로)
+  const et = JSON.parse(JSON.stringify(lbUnitPick(T, L.def, '', false, true))).map((x) => x.name);
+  assert.equal(et.length, 33);
+  assert.deepEqual([et[11], et[12], et[13], et[26], et[27], et[32]], ['Day 12', '누적 테스트 1', 'Day 13 People', '누적 테스트 2', 'Day 26', '누적 테스트 3']);
+  // 단계 Step 고르기 = 3줄, 윗 단계 이름 붙이기 · 번호 1-1. 도 펼친 줄에 그대로
+  assert.equal(pick(T, keyOf(T, 'Step')).length, 3);
+  assert.equal(pick(T, L.def, 'up')[0].name, 'Step1 · Day 01');
+  assert.deepEqual(JSON.parse(JSON.stringify(lbUnitPick(T, L.def, 'num'))).map((x) => x.name).filter((_, k) => [0, 12, 25].includes(k)), ['1-1. Day 01', '2-1. People', '3-1. Day 26']);
+  // 번호 1-1.에서 그 밖 줄은 번호를 받지 않고 순번도 건너뜀
+  const en = JSON.parse(JSON.stringify(lbUnitPick(T, L.def, 'num', false, true))).map((x) => x.name);
+  assert.deepEqual(en.slice(11, 14), ['1-12. Day 12', '누적 테스트 1', '2-1. People']);
+}
+// 11) 범위 꼴 · 펼치지 않음
+{
+  const R = (s) => JSON.parse(JSON.stringify(ctx.lbUnitRange(s)));
+  assert.deepEqual(R('Day 26~30'), ['Day 26', 'Day 27', 'Day 28', 'Day 29', 'Day 30']);
+  assert.deepEqual(R('Unit 1-5'), ['Unit 1', 'Unit 2', 'Unit 3', 'Unit 4', 'Unit 5']);
+  assert.deepEqual(R('1~3강'), ['1강', '2강', '3강']); assert.deepEqual(R('1강 ~ 3강'), ['1강', '2강', '3강']);
+  assert.deepEqual(R('01~04'), ['01', '02', '03', '04']); assert.deepEqual(R('DAY 08 – DAY 10'), ['DAY 08', 'DAY 09', 'DAY 10']);
+  for (const s of ['Day 5~3', 'Day 3~3', 'Day 1~300', '1-5', '1-1', 'Unit 1 ~ Lesson 5', 'Day 01 ~ Day 12 기초', '1강~3차시']) assert.equal(R(s), null, s + ' 는 펼치지 않음');
+  assert.equal(R('Day 1~200').length, 200, '200줄까지');
+  // 범위 줄만 있는 글 · 숫자 범위 + 번호 줄
+  assert.deepEqual(pick('Unit 1-5\nUnit 6 예시 여섯').map((x) => x.name), ['Unit 1', 'Unit 2', 'Unit 3', 'Unit 4', 'Unit 5', 'Unit 6 예시 여섯']);
+  assert.deepEqual(pick('01~04\n05 예시 다섯').map((x) => x.name), ['01', '02', '03', '04', '05 예시 다섯']);
+  assert.deepEqual(pick('1~3강\n4강 예시').map((x) => x.name), ['1강', '2강', '3강', '4강 예시']);
+  assert.equal(lbUnitLevels('1. 소인수분해 8\n2. 정수와 유리수 28').rg, 0, '범위 없으면 체크 숨김');
 }
 console.log('단원 단계 시험 통과');

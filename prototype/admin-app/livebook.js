@@ -207,9 +207,12 @@ function lbUnitBox(b) {
    단계 순서 = 들여쓰기 → 꼴 깊이(Stage · Part · [..] < Chapter · Ⅰ · 단원 < Lesson · Unit · 1. < 1-1 < ① < 앞 기호) → 줄 수 적은 쪽 → 먼저 나온 쪽.
    기본 단계 = 이름이 겹치지 않는 단계 중 가장 깊은 것("Vocabulary 어휘"처럼 되풀이되는 하위 줄 단계는 빼고). 머리말 · 정답 · 차례 같은 번호 없는 줄은 뺀다.
    (항목 165) 번호 꼴 01 · 1 · 1. 은 한 단계(앞자리 0 · 뒤 마침표로 나누지 않음 — 같은 자리면 들여쓰기로만 나뉨). 번호 단계가 있으면 번호 없는 맨 앞 줄("서술형 Practice")은 "그 밖"으로 맨 뒤 · 기본에서 뺌.
-   맨 앞 [부록 · 정답 · 해설 · 찾아보기] 줄 아래(다음 Chapter · Ⅰ · Part 같은 큰 머리 전까지)는 부록 — 기본은 빼고 [부록 줄도 넣기]로 넣음 */
+   맨 앞 [부록 · 정답 · 해설 · 찾아보기] 줄 아래(다음 Chapter · Ⅰ · Part 같은 큰 머리 전까지)는 부록 — 기본은 빼고 [부록 줄도 넣기]로 넣음
+   (항목 168) "그 밖"은 단계 고르기에서 빼고(levels에 없음, etc = 줄 수) [그 밖 줄도 넣기]로 고른 단계 줄 사이 원래 자리에 끼움.
+   범위 줄("Day 01 ~ Day 12")은 하나하나 펼친 줄로 셈(ex === false면 펼치지 않음, rg = 범위 줄 수) */
 const LBU_ROMAN = "ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ";
-const LBU_WORD = new RegExp(`^(stage|part|chapter|lesson|unit|section|day|step|week|theme|module|round|session)\\s*(\\d{1,3}|[IVX]{1,5}|[${LBU_ROMAN}]+)(?=[\\s.:)\\]-]|$)`, "i");
+const LBU_WORDS = "stage|part|chapter|lesson|unit|section|day|step|week|theme|module|round|session";
+const LBU_WORD = new RegExp(`^(${LBU_WORDS})\\s*(\\d{1,3}|[IVX]{1,5}|[${LBU_ROMAN}]+)(?=[\\s.:)\\]-]|$)`, "i");
 const LBU_KO = /^(?:제\s*)?(\d{1,3})\s*(단원|장|편|부|강|차시|과|일차|회)(?=[\s.:)\]]|$)|^(단원|차시)\s*(\d{1,3})(?=[\s.:)\]]|$)/;
 const LBU_SKIP = /(정답|해설|머리말|차례|목차|부록|이\s*책의|구성과\s*특징|찾아보기|학습\s*계획|index)/i;
 const LBU_BACK = /^(부록|appendix|정답|해설|찾아보기|index)/i;
@@ -229,6 +232,22 @@ function lbUnitShape(s) {
   if ((m = s.match(/^[가-하]\s*[.)](?=\s)/))) return { key: "ga", rank: 4, label: "가.", mark: m[0] };
   return { key: "plain", rank: 2, label: "", mark: "" };
 }
+/* 범위 줄 펼치기(항목 168, 261127 대표): 줄 전체가 범위일 때만 — "Day 01 ~ Day 12" · "Day 26~30" · "Unit 1-5"(앞 낱말이 있으면 - 도 범위) · "1~3강" · "01~04"(앞 낱말 없는 숫자는 ~ 만).
+   앞 낱말 · 사이 공백 · 자릿수(0 채움)는 원래 꼴 그대로, 이름은 번호만("Day 01" … "Day 12"). 끝 ≤ 시작이거나 200줄 넘으면 펼치지 않음(null) */
+const LBU_RANGE_MAX = 200, LBU_SEP = "[~～∼〜]", LBU_SEPD = "[~～∼〜\\-–—]", LBU_KSUF = "(강|차시|일차|회|과|단원|장|편)";
+const LBU_RG_W = new RegExp(`^(${LBU_WORDS})(\\s*)(\\d{1,3})\\s*${LBU_SEPD}\\s*(?:(${LBU_WORDS})\\s*)?(\\d{1,3})$`, "i");
+const LBU_RG_K = new RegExp(`^(\\d{1,3})\\s*${LBU_KSUF}?\\s*${LBU_SEPD}\\s*(\\d{1,3})\\s*${LBU_KSUF}$`);
+const LBU_RG_N = new RegExp(`^(\\d{1,3})\\s*${LBU_SEP}\\s*(\\d{1,3})$`);
+function lbUnitRange(s) {
+  let m, a, e, mk;
+  if ((m = s.match(LBU_RG_W)) && (!m[4] || m[4].toLowerCase() === m[1].toLowerCase())) { a = m[3]; e = m[5]; mk = (v) => m[1] + m[2] + v; }
+  else if ((m = s.match(LBU_RG_K)) && (!m[2] || m[2] === m[4])) { a = m[1]; e = m[3]; mk = (v) => v + m[4]; }
+  else if ((m = s.match(LBU_RG_N))) { a = m[1]; e = m[2]; mk = (v) => v; }
+  else return null;
+  const x = +a, y = +e, w = /^0\d/.test(a) ? a.length : 0;
+  if (y <= x || y - x + 1 > LBU_RANGE_MAX) return null;
+  return Array.from({ length: y - x + 1 }, (_, k) => mk(String(x + k).padStart(w, "0")));
+}
 /* 줄 끝 쪽: 확실한 꼴(공백 2칸 이상 · 점선 · / · | · p. · 쪽)은 hard, 한 칸 띄운 숫자는 soft(그 단계 거의 모든 줄일 때만 쪽) */
 function lbUnitPage(s) {
   const ok = (t, p) => /[가-힣a-z]/i.test(t) && p >= 1 && p <= 2000;
@@ -238,19 +257,23 @@ function lbUnitPage(s) {
   if (m && ok(m[1], +m[2])) return { name: s, hard: null, soft: +m[2], softName: m[1] };
   return { name: s, hard: null, soft: null };
 }
-function lbUnitLevels(text, ap) {
-  const lines = []; let inAp = false, apN = 0, blk = 0, gap = true;
+function lbUnitLevels(text, ap, ex) {
+  const lines = []; let inAp = false, apN = 0, rgN = 0, blk = 0, gap = true;
   String(text || "").split(/\r?\n/).forEach((raw) => {
     if (!raw.trim()) { gap = true; return; }
     if (gap) { blk++; gap = false; }
     const lead = raw.match(/^[\s　]*/)[0], ind = lead.replace(/\t/g, "    ").replace(/　/g, "  ").length;
     let s = raw.slice(lead.length).trim(), bul = false;
     const bm = s.match(/^[-–—•·∙◦▪▫‣*ㆍ・○●□■▶▷>]+\s*/); if (bm && s.length > bm[0].length) { bul = true; s = s.slice(bm[0].length).trim(); }
-    const sh = lbUnitShape(s);
+    const rg = lbUnitRange(s), parts = rg && ex !== false ? rg : [s], sh = lbUnitShape(parts[0]);
     if (sh.key === "plain" && LBU_SKIP.test(s)) { if (!ind && !bul && LBU_BACK.test(s)) inAp = true; return; }
     if (inAp && !ind && !bul && sh.rank <= 1 && sh.key !== "plain") inAp = false;
-    if (inAp) { apN++; if (!ap) return; }
-    lines.push({ ind, bul, sh, pg: lbUnitPage(s), key: `${ind > 0 ? 1 : 0}|${bul ? 1 : 0}|${sh.key}`, blk, ap: inAp });
+    if (inAp) { apN += parts.length; if (!ap) return; }
+    if (rg) rgN++;
+    parts.forEach((t, k) => {
+      const h = k ? lbUnitShape(t) : sh;
+      lines.push({ ind, bul, sh: h, pg: parts.length > 1 ? { name: t, hard: null, soft: null } : lbUnitPage(s), key: `${ind > 0 ? 1 : 0}|${bul ? 1 : 0}|${h.key}`, blk, ap: inAp });
+    });
   });
   lbUnitNumSplit(lines);
   /* 번호 없는 줄이 같은 자리의 번호 줄(1. · Lesson 1 …) 단계 하나와 섞여 있고 더 큰 단계가 없으면 그 번호 줄 단계로 */
@@ -274,15 +297,17 @@ function lbUnitLevels(text, ap) {
     g.lines.forEach((l) => { l.depth = d; const sp = soft && l.pg.soft != null; l.name = sp ? l.pg.softName : l.pg.name; l.page = l.pg.hard != null ? l.pg.hard : sp ? l.pg.soft : null; });
   });
   const uniq = levels.filter((g) => !(other && g.key === P0) && new Set(g.lines.map((l) => l.name.toLowerCase())).size === g.lines.length);
-  const def = uniq.length ? uniq[uniq.length - 1] : levels[0];
-  return { lines, levels: levels.map((g) => ({ key: g.key, label: g.label, count: g.count, depth: g.depth })), def: def ? def.key : "", ap: apN };
+  const def = uniq.length ? uniq[uniq.length - 1] : levels[0], etc = other ? by.get(P0) : null;
+  return { lines, levels: levels.filter((g) => g !== etc).map((g) => ({ key: g.key, label: g.label, count: g.count, depth: g.depth })), def: def ? def.key : "", ap: apN, etc: etc ? etc.count : 0, etcKey: etc ? P0 : "", rg: rgN };
 }
-/* 고른 단계 줄 → [{name, page}]. up = 윗 단계 이름 붙이기("Chapter 01 · Unit 01 영어문장 1형"), ap = 부록 줄도 넣기 */
-function lbUnitPick(text, key, up, ap) {
-  const L = lbUnitLevels(text, ap), ls = L.lines, k = L.levels.some((g) => g.key === key) ? key : L.def;
+/* 고른 단계 줄 → [{name, page}]. up = 윗 단계 이름 붙이기("Chapter 01 · Unit 01 영어문장 1형"), ap = 부록 줄도 넣기,
+   et = 그 밖 줄도 넣기(항목 168 — 원래 자리에 이름 그대로, 번호 · 윗 단계 이름은 붙이지 않음), ex = 범위 줄 펼치기(기본 켬) */
+function lbUnitPick(text, key, up, ap, et, ex) {
+  const L = lbUnitLevels(text, ap, ex), ls = L.lines, k = L.levels.some((g) => g.key === key) ? key : L.def;
   const how = up === true ? "up" : up || "";
   const out = []; let par = null, pn = 0, cn = 0;
   ls.forEach((l, i) => {
+    if (et && L.etcKey && l.key === L.etcKey) { out.push({ name: l.name.slice(0, 100), page: l.page }); return; }
     if (l.key !== k) return;
     let page = l.page, name = l.name, p = null;
     for (let j = i + 1; page == null && j < ls.length && ls[j].depth > l.depth; j++) page = ls[j].page;
@@ -327,7 +352,7 @@ function lbUnitNumSplit(lines) {
 }
 const LBU_CHUNK = 10; /* 단원 저장 한 번(edit-units)에 보내는 줄 수 — 항목 165 */
 const lbIsbn = (b) => { const s = String((b && b.isbn) || "").replace(/[-\s]/g, ""); return /^97[89]\d{10}$/.test(s) ? s : ""; };
-/* 단원 편집 창(항목 167, 261127 대표 — 탭 없이 한 화면): 위 ISBN13 [가져오기] · 왼쪽 단원 목록 글 칸 · 오른쪽 단원 줄(저장될 줄 그대로) · 아래 단원 단계 / 단원 이름 · 부록 줄도 넣기 / 안내 · [취소] [저장].
+/* 단원 편집 창(항목 167, 261127 대표 — 탭 없이 한 화면): 위 ISBN13 [가져오기] · 왼쪽 단원 목록 글 칸 · 오른쪽 단원 줄(저장될 줄 그대로) · 아래 단원 단계 / 단원 이름 / 체크 줄(범위 줄 펼치기 · 그 밖 줄도 넣기 · 부록 줄도 넣기, 항목 168) / 안내 · [취소] [저장].
    오른쪽 = 인라인 편집 목록(DESIGN 부품 기준표): 평소 글자 줄, 누른 줄만 밑줄 입력(이름 · 시작) + 줄 끝 [+](아래에 끼우기) · [×](삭제). Enter = 다음 줄, Esc = 그 줄 편집 끝(창은 안 닫힘, 항목 163).
    왼쪽 글(짧게 기다렸다) · 단계 · 이름 방식 · 부록 체크가 바뀌면 오른쪽 줄을 다시 만든다 — 오른쪽에서 손으로 고친 것이 있으면 먼저 묻는다(창 안 확인).
    이미 단원이 있으면 처음 오른쪽 = 기존 단원, 왼쪽 글의 첫 반영 때 [바꾸기 | 뒤에 붙이기]를 묻는다. 바꾸기 = 기존 단원과 새 줄을 순서대로 짝지어 고침(update, 연결 유지) · 남는 새 줄만 추가 · 남는 기존 줄만 삭제.
@@ -341,7 +366,7 @@ function lbUnitDialog(b) {
   const UU = unitParts(b), isbn = lbIsbn(b);
   /* mode: "" = 아직 왼쪽 글을 안 씀(기존 단원 그대로) · new = 단원 없는 교재 · replace · append. hand = 오른쪽에서 손으로 고침, hold = 왼쪽 글을 반영하지 않기로 함, ed = 편집 중인 줄 */
   const T = { mode: rows.length ? "" : "new", hand: false, hold: false, ed: -1, src: "", drawing: false };
-  const LV = { key: "", nm: "", ap: false };
+  const LV = { key: "", nm: "", ap: false, et: false, ex: true };
   const NM = [["", "그대로"], ["up", "윗 단계 이름 붙이기"], ["num", "번호 1-1."]];
   modal(`<h2>단원 편집${HELP(HELPTX.unitEdit)}</h2><div class="hint">${esc(b.name)}</div>
     <div class="row"><span class="hint">ISBN13 ${isbn ? esc(isbn) : "없음"}</span><span class="sp"></span><button type="button" class="btn" id="lbuGet" ${isbn ? 'title="온라인 서점(교보문고, 없으면 예스24)의 단원 목록을 왼쪽 글 칸에 채워요"' : 'disabled title="ISBN13을 먼저 넣어 주세요"'}>${IC("dl", "s")}가져오기</button></div>
@@ -355,7 +380,8 @@ function lbUnitDialog(b) {
       </div>
     </div>
     <div class="row lburow" id="lbuLvR"><span class="hint lbulb">단원 단계</span><span class="vseg subseg" id="lbuLv" role="radiogroup" aria-label="단원으로 쓸 단계"></span></div>
-    <div class="row lburow" id="lbuNmR"><span class="hint lbulb" data-nmh>단원 이름</span><span class="vseg subseg" id="lbuNm" data-nmh role="radiogroup" aria-label="단원 이름 붙이는 방식">${NM.map(([k, t]) => `<button type="button" role="radio" data-nm="${k}">${t}</button>`).join("")}</span><label class="hint lbuap" id="lbuApL"><input type="checkbox" id="lbuAp"> 부록 줄도 넣기</label></div>
+    <div class="row lburow" id="lbuNmR"><span class="hint lbulb">단원 이름</span><span class="vseg subseg" id="lbuNm" role="radiogroup" aria-label="단원 이름 붙이는 방식">${NM.map(([k, t]) => `<button type="button" role="radio" data-nm="${k}">${t}</button>`).join("")}</span></div>
+    <div class="row lburow lbuchk" id="lbuChR"><span class="hint lbulb" aria-hidden="true"></span><label class="hint lbuap" id="lbuExL" title="&quot;Day 01 ~ Day 12&quot; 같은 범위 줄을 Day 01, Day 02 … 하나하나 단원 줄로"><input type="checkbox" id="lbuEx" checked> 범위 줄 펼치기</label><label class="hint lbuap" id="lbuEtL" title="번호 없는 줄(서술형 Practice 등)을 고른 단계 줄 사이 원래 자리에 넣어요"><input type="checkbox" id="lbuEt"> 그 밖 줄도 넣기 <span id="lbuEtN"></span></label><label class="hint lbuap" id="lbuApL"><input type="checkbox" id="lbuAp"> 부록 줄도 넣기 <span id="lbuApN"></span></label></div>
     <p class="hint lbulm" id="lbuLM" aria-live="polite"></p>
     <p class="hint" id="lbuM"></p>
     ${isbn ? `<div class="lbulinks" id="lbuLinks"><span class="hint">서점 목차 직접 보기</span>${bookLinkInner(isbn)}</div>` : ""}
@@ -437,7 +463,7 @@ function lbUnitDialog(b) {
       rows = keyed.map((k) => k.r); T.ed = -1; touch(); draw();
     };
     /* ── 왼쪽 글 → 오른쪽 줄 ── */
-    const pick = () => lbUnitPick(ta.value.slice(0, 20000), LV.key, LV.nm, LV.ap);
+    const pick = () => lbUnitPick(ta.value.slice(0, 20000), LV.key, LV.nm, LV.ap, LV.et, LV.ex);
     const compose = () => {
       const bs = baseRows(), gr = pick().map((u) => ({ name: u.name, page: u.page == null ? "" : String(u.page), del: false }));
       if (T.mode === "append") {
@@ -470,22 +496,26 @@ function lbUnitDialog(b) {
       ask("기존 단원을 바꿀까요?", `이 교재에 단원 <b>${n}개</b>가 있어요. [바꾸기]는 왼쪽 글의 단원으로 바꿔요 — 기존 단원은 순서대로 이름 · 시작만 고쳐 그대로 이어 쓰고(학습 기록 · 시험 범위 연결 유지), 남는 새 줄은 추가 · 남는 기존 단원은 저장할 때 삭제해요. [뒤에 붙이기]는 기존 단원 뒤에 새 단원만 붙여요.${T.hand ? " 오른쪽에서 고친 내용은 없어져요." : ""}`,
         [["취소", undo || hold], ["뒤에 붙이기", () => { T.mode = "append"; apply(); }], ["바꾸기", () => { T.mode = "replace"; apply(); }, 1]]);
     };
-    /* 단원 단계(항목 164) · 단원 이름 방식(항목 167): 단계가 둘 이상일 때만. 부록 체크는 부록 줄이 있을 때만 */
+    /* 단원 단계(항목 164) · 단원 이름 방식(항목 167): 단계가 둘 이상일 때만. 체크 줄(항목 168): [범위 줄 펼치기] [그 밖 줄도 넣기 (n)] [부록 줄도 넣기 (n)] — 그 줄이 있을 때만 */
     const lvDraw = () => {
-      const L = lbUnitLevels(ta.value.slice(0, 20000), LV.ap), seg = m.querySelector("#lbuLv");
+      const L = lbUnitLevels(ta.value.slice(0, 20000), LV.ap, LV.ex), seg = m.querySelector("#lbuLv");
       if (!L.levels.some((g) => g.key === LV.key)) LV.key = L.def;
-      const many = L.levels.length > 1, apOn = !!(L.ap || LV.ap);
+      const many = L.levels.length > 1, apOn = !!(L.ap || LV.ap), etOn = !!(L.etc || LV.et), exOn = !!(L.rg || !LV.ex);
       if (!many) LV.nm = "";
       m.querySelector("#lbuLvR").style.display = many ? "" : "none";
-      m.querySelector("#lbuNmR").style.display = many || apOn ? "" : "none";
-      m.querySelectorAll("[data-nmh]").forEach((x) => (x.style.display = many ? "" : "none"));
+      m.querySelector("#lbuNmR").style.display = many ? "" : "none";
+      m.querySelector("#lbuChR").style.display = apOn || etOn || exOn ? "" : "none";
       m.querySelector("#lbuApL").style.display = apOn ? "" : "none";
+      m.querySelector("#lbuEtL").style.display = etOn ? "" : "none";
+      m.querySelector("#lbuExL").style.display = exOn ? "" : "none";
+      m.querySelector("#lbuApN").textContent = L.ap ? `(${L.ap})` : "";
+      m.querySelector("#lbuEtN").textContent = L.etc ? `(${L.etc})` : "";
       seg.innerHTML = many ? L.levels.map((g) => `<button type="button" role="radio" data-lvk="${esc(g.key)}" class="${g.key === LV.key ? "on" : ""}" aria-checked="${g.key === LV.key}">${esc(g.label)} <span class="n">${g.count}</span></button>`).join("") : "";
       seg.querySelectorAll("[data-lvk]").forEach((x) => (x.onclick = () => { const old = LV.key; if (x.dataset.lvk === old) return; LV.key = x.dataset.lvk; reflect(() => { LV.key = old; lvDraw(); }); }));
       m.querySelectorAll("[data-nm]").forEach((x) => { const on = x.dataset.nm === LV.nm; x.classList.toggle("on", on); x.setAttribute("aria-checked", String(on)); });
     };
     m.querySelectorAll("[data-nm]").forEach((x) => (x.onclick = () => { const old = LV.nm; if (x.dataset.nm === old) return; LV.nm = x.dataset.nm; reflect(() => { LV.nm = old; lvDraw(); }); }));
-    m.querySelector("#lbuAp").onchange = (ev) => { const old = LV.ap; LV.ap = ev.currentTarget.checked; reflect(() => { LV.ap = old; m.querySelector("#lbuAp").checked = old; lvDraw(); }); };
+    [["#lbuAp", "ap"], ["#lbuEt", "et"], ["#lbuEx", "ex"]].forEach(([sel, f]) => (m.querySelector(sel).onchange = (ev) => { const old = LV[f]; LV[f] = ev.currentTarget.checked; reflect(() => { LV[f] = old; m.querySelector(sel).checked = old; lvDraw(); }); }));
     let lvT = 0;
     ta.addEventListener("input", () => { T.src = ""; clearTimeout(lvT); lvT = setTimeout(() => reflect(), 300); });
     /* 가져오기: units-fetch(교보문고 → 예스24) 글을 왼쪽 글 칸에 그대로 — 칸에 글이 있으면 바꾸기 전에 물음 */
