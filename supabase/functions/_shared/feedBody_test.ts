@@ -50,3 +50,26 @@ Deno.test("v2.8.0 본문: 하위 조회가 실패해도 부모 글은 남는다"
 	feedBodyDeps.getBlockChildren = () => Promise.reject(new Error("notion down")) as any
 	eq(shape(await blocksToFeedBody([callout("c1", "첫 줄")]) as any[]), [["callout", "첫 줄"]])
 })
+
+Deno.test("v2.8.0 항목 171 본문: 동기화 블록 복제본은 원본 id의 하위를 읽는다(has_children false여도, 콜아웃 → 하위 문단까지)", async () => {
+	const seen: string[] = []
+	feedBodyDeps.getBlockChildren = (id: string) => {
+		seen.push(id)
+		return Promise.resolve(({ orig: [callout("c1", "안내")], c1: [para("p1", "둘째 줄")] } as Record<string, any[]>)[id] ?? []) as any
+	}
+	const replica = { id: "rep", type: "synced_block", has_children: false, synced_block: { synced_from: { type: "block_id", block_id: "orig" } } }
+	eq(shape(await blocksToFeedBody([replica]) as any[]), [["callout", "안내", [["paragraph", "둘째 줄"]]]])
+	if (seen.includes("rep")) throw new Error("복제 id로 읽음")
+})
+
+Deno.test("v2.8.0 항목 171 본문: 원본 동기화 블록은 자기 id로 읽고, 깊이를 세지 않는다", async () => {
+	children({ s: [callout("c1", "안내")], c1: [para("p1", "하위", true)], p1: [para("p2", "더 아래")] })
+	const orig = { id: "s", type: "synced_block", has_children: true, synced_block: { synced_from: null } }
+	eq(shape(await blocksToFeedBody([orig]) as any[]), [["callout", "안내", [["paragraph", "하위"], ["paragraph", "더 아래"]]]])
+})
+
+Deno.test("v2.8.0 항목 171 본문: 원본 읽기가 실패하면 빈 채로 계속한다", async () => {
+	feedBodyDeps.getBlockChildren = () => Promise.reject(new Error("no access")) as any
+	const replica = { id: "rep", type: "synced_block", has_children: false, synced_block: { synced_from: { block_id: "orig" } } }
+	eq(shape(await blocksToFeedBody([para("a", "앞"), replica, para("b", "뒤")]) as any[]), [["paragraph", "앞"], ["paragraph", "뒤"]])
+})
