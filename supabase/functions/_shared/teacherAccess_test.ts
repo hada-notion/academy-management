@@ -80,7 +80,7 @@ Deno.test("teacher: app-api 동작 거름 — 재무 읽기 · 쓰기 · 결제 
 	eq(teacherAppDeny(t, { action: "end-preview", id: "x" })?.[0], 403)
 	eq(teacherAppDeny(t, { action: "run", name: "generate-classes" }), null) // 수업 메뉴
 	eq(teacherAppDeny(T(["학생"]), { action: "run", name: "generate-classes" })?.[0], 403)
-	for (const b of [{ action: "me" }, { action: "status" }, { action: "options" }, { action: "changes" }, { action: "list", db: "학생(학원) DB" },
+	for (const b of [{ action: "me" }, { action: "status" }, { action: "options" }, { action: "option-colors" }, { action: "changes" }, { action: "list", db: "학생(학원) DB" },
 		{ action: "save", changes: [{ op: "update", db: "학생(학원) DB", id: "x", props: {} }] }, { action: "run", name: "sync-copy" }]) eq(teacherAppDeny(t, b), null, JSON.stringify(b))
 })
 Deno.test("teacher: 강사 DB 줄은 다른 강사의 연락처(= 아이디 · 첫 비밀번호)를 지우고 자기 줄만 그대로", () => {
@@ -283,6 +283,7 @@ function appDeps(log: string[]) {
 		appChanges: async (_s: string | null, dbs: string[]) => { log.push("changes:" + dbs.join(",")); return { ok: true as const, now: "x", rows: [], gone: [], crAt: null } },
 		lastSyncedAt: async () => null, rootTitle: async () => "예시", warmSources: () => {}, healthOf: async () => null,
 		syncCopy: async (dbs?: string[]) => { log.push("sync:" + (dbs ?? ["(전체)"]).join(",")); return { dbs: dbs ?? [] } },
+		optionColors: async (fresh: boolean) => { log.push("colors:" + fresh); return { "학생(학원) DB": { "문의 경로": { "지인": "green" } }, "과목(학원) DB": { "교습과정": { "보습": "blue" } } } },
 	} as any
 }
 const api = async (key: string, body: unknown, log: string[]) => {
@@ -309,6 +310,8 @@ Deno.test("teacher app-api: 권한 없는 메뉴의 DB는 읽기 · 고르기 �
 	eq((await api(g, { action: "list", db: "메뉴(학원) DB" }, log)).status, 200)
 	const opt = await api(g, { action: "options" }, log)
 	eq(Object.keys(opt.body.dbs).sort(), ["과목(학원) DB", "영역(학원) DB"]); eq(opt.body.dbs["과목(학원) DB"]["교습과정"], ["보습"]) // 그 화면 고르기 목록은 그대로
+	const col = await api(g, { action: "option-colors", fresh: true }, log) // (항목 166) 선택지 색도 읽기 DB만
+	eq([col.status, Object.keys(col.body.dbs)], [200, ["과목(학원) DB"]]); eq(log.filter((x) => x.startsWith("colors:")).pop(), "colors:true")
 	eq((await api(g, { action: "save", changes: [{ op: "update", db: "학생(학원) DB", id: STU, props: { "이름": "x" } }] }, log)).status, 403)
 	eq((await api(g, { action: "save", changes: [{ op: "delete", db: "학생(학원) DB", id: STU }] }, log)).status, 403)
 	eq((await api(g, { action: "save", changes: [{ op: "update", db: "과목(학원) DB", id: SUBJ, props: { "이름": "x" } }] }, log)).status, 200)
@@ -329,6 +332,7 @@ Deno.test("teacher app-api: 권한 없는 메뉴의 DB는 읽기 · 고르기 �
 	// 원장: 전부(재무 포함), 고르기 목록 전부
 	eq((await api(OWNER, { action: "list", db: "수강료(학원) DB" }, log)).status, 200)
 	eq(Object.keys((await api(OWNER, { action: "options" }, log)).body.dbs).length, Object.keys(OPTIONS).length)
+	eq(Object.keys((await api(OWNER, { action: "option-colors" }, log)).body.dbs).sort(), ["과목(학원) DB", "학생(학원) DB"]); eq(log.filter((x) => x.startsWith("colors:")).pop(), "colors:false")
 	eq((await api(OWNER, { action: "me" }, log)).body, { ok: true, role: "owner" })
 	// 세션 없음 · 첫 비밀번호 세션은 401
 	eq((await api("", { action: "list", db: "과목(학원) DB" }, log)).status, 401)

@@ -186,7 +186,7 @@ export function teacherAppDeny(t: Extract<Access, { role: "teacher" }>, body: an
 	const fin = "재무 · 결제는 원장만 볼 수 있어요."
 	const read = teacherReadDbs(t.menus), write = teacherWriteDbs(t.editMenus)
 	const noMenu = (db: string) => `${String(db).replace(/\(학원\) DB$/, "")} 메뉴 권한이 없어요 — 원장에게 메뉴 권한을 요청하세요.`
-	if (a === "me" || a === "status" || a === "options" || a === "changes") return null // 응답을 읽기 DB로 거른다(app-api)
+	if (a === "me" || a === "status" || a === "options" || a === "option-colors" || a === "changes") return null // 응답을 읽기 DB로 거른다(app-api)
 	if (a === "list") return TEACHER_BLOCKED_DBS.has(body.db) ? [403, fin] : read.has(body.db) ? null : [403, noMenu(body.db)]
 	if (a === "admin-status") return [403, "관리자 설정은 원장만 볼 수 있어요."]
 	if (a === "record-payment") return [403, fin]

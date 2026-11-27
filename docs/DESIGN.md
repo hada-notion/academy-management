@@ -407,6 +407,7 @@ font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto San
 | 알림 줄·상태 상자 | `.notice` `.status` | 연한 바탕 + 진한 글자(1부 3장 "대비") | 일치 |
 | 기기 화면 모드 입력·버튼 | `html.device .primary` 등 | 글자가 화면에 비례해 작아져도 높이 44 이상(화면 높이 600 이상). 짧은 가로 화면은 2-3 "기기 화면 모드" 예외 | 일치 |
 | 법정 서류 열 메뉴·초기화 버튼 | `.column-action` `.view-summary button` | 누르는 영역 투명 44×44 | 일치 |
+| 선택지 칩 색(관리 앱) | `.nc-*`(`.tchip` `.spill`) | **노션 옵션 색이 원본** — 앱은 app-api `option-colors`로 받아 그대로 그린다(`ncCls` 한 곳). 앱 고정표(`NCOL`)는 예시 모드 · 노션 칸을 못 찾을 때 대비용. 노션 칸이 없는 계산값(학년)만 앱 규칙 | 일치 |
 
 - 투명 여백 방식: `position:relative` + `::after`(또는 `::before`) `{position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}`. 보이는 모양·간격은 바뀌지 않는다. 이웃 버튼의 투명 영역이 겹치지 않게 둔다(겹치면 줄 사이를 넓힌다).
 

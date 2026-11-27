@@ -171,25 +171,33 @@ export const MAX_CHANGES = 60
 
 export class SaveError extends Error { constructor(public status: number, message: string) { super(message) } }
 
-type PropDef = { type: string; options?: string[] }
+// colors = 선택지 이름 → 노션 옵션 색(v2.8.0 항목 166, 앱 칩 색 원본 — _shared/appOptionColors.ts)
+type PropDef = { type: string; options?: string[]; colors?: Record<string, string> }
 export type Schema = Record<string, PropDef>
 const WRITABLE = new Set(["title", "rich_text", "number", "select", "status", "multi_select", "date", "checkbox", "relation", "url", "files", "email", "phone_number"])
 
 // ---------- 칸 형식 ----------
 const schemaCache = new Map<string, { at: number; schema: Schema }>()
-export async function dataSourceSchema(ds: string): Promise<Schema> {
+// fresh = 캐시를 건너뛰고 노션에서 다시(앱 [동기화] 때 선택지 색을 새로 받을 때)
+export async function dataSourceSchema(ds: string, fresh = false): Promise<Schema> {
 	const hit = schemaCache.get(ds)
-	if (hit && Date.now() - hit.at < 10 * 60 * 1000) return hit.schema
+	if (!fresh && hit && Date.now() - hit.at < 10 * 60 * 1000) return hit.schema
 	const res = await fetchWithRetry(`${NOTION_API}/data_sources/${ds}`, { headers: notionHeaders() })
 	if (!res.ok) throw new Error(`Notion 칸 형식 읽기 실패: ${res.status} ${await res.text()}`)
 	const data = await res.json()
 	const schema: Schema = {}
 	for (const [name, p] of Object.entries<any>(data.properties ?? {})) {
 		const opts = p?.[p.type]?.options
-		schema[name] = { type: p.type, ...(Array.isArray(opts) ? { options: opts.map((o: any) => o?.name ?? "") } : {}) }
+		schema[name] = { type: p.type, ...(Array.isArray(opts) ? { options: opts.map((o: any) => o?.name ?? ""), colors: optionColorMap(opts) } : {}) }
 	}
 	schemaCache.set(ds, { at: Date.now(), schema })
 	return schema
+}
+// 노션 옵션 목록 → { 선택지 이름: 색 }(이름 · 색이 글자인 것만, 색이 없으면 "default")
+export function optionColorMap(opts: any[]): Record<string, string> {
+	const out: Record<string, string> = {}
+	for (const o of opts ?? []) { const n = o?.name; if (typeof n === "string" && n) out[n] = typeof o?.color === "string" && o.color ? o.color : "default" }
+	return out
 }
 // 앱이 고르기 칸을 Notion 선택지에서만 고르게 하는 목록: 쓸 수 있는 DB마다 { 칸 이름: [선택지 이름…] }(고르기 · 상태 · 여러 개 고르기).
 // 저장은 선택지에 없는 값을 거절하므로(새 선택지를 만들지 않음) 앱이 미리 이 목록으로 맞춘다. 못 찾은 · 모호한 DB는 빠진다.
