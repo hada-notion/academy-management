@@ -13,6 +13,8 @@
 //       로직은 _shared/appPayment.ts. 실제 결제 · 발송은 없음.
 //   { action: "end-preview", id, endDate? } — (261123 종료 처리) 등록 [종료 처리] 확인 창 숫자: 이 종료일(없으면 등록 종료일 · 오늘)이면
 //       빠질 앞으로 수업의 날짜들. 읽기만. 실제 종료는 등록 `요청` = reg-end-cleanup(save) — 같은 거름(_shared/registrationEnd.ts).
+//   { action: "option-colors", fresh?: true } — (v2.8.0 항목 166) 앱이 읽는 DB의 고르기 · 여러 개 고르기 · 상태 칸 선택지 색
+//       { dbs: { "<DB>": { "<칸>": { "<선택지>": "<노션 색>" } } } }. 10분 기억, fresh = 앱 [동기화] 때 노션에서 다시. 로직은 _shared/appOptionColors.ts.
 // 읽기 로직은 _shared/appCopy.ts.
 import { CORS_HEADERS, getCurrentAdminKey } from "../_shared/adminShared.ts"
 import { securityEnabled } from "../_shared/adminSecurity.ts"
@@ -22,6 +24,7 @@ import { checkChanges, saveChanges, runGenerateClasses, writeOptions, SaveError 
 import { checkPaymentInput, recordPayment } from "../_shared/appPayment.ts"
 import { appChanges, checkChangesInput, ChangesInputError } from "../_shared/appChanges.ts"
 import { freshBookCovers } from "../_shared/appCovers.ts"
+import { optionColors } from "../_shared/appOptionColors.ts"
 import { subscriptionStatus, healthOf } from "../_shared/notionSubscriptionStatus.ts"
 import { getPage } from "../_shared/notionClient.ts"
 import { previewEnd } from "../_shared/registrationEnd.ts"
@@ -32,7 +35,7 @@ const json = (data: unknown, status = 200) =>
 const isIso = (v: unknown) => typeof v === "string" && !Number.isNaN(Date.parse(v)) && v.length <= 40
 
 // (강사계정 261123) 시험이 노션 · 사본 없이 경로째 돌 수 있게 손잡이만 바꿔 끼운다(기본 = 실제 함수).
-const DEFAULT_DEPS = { listApp, writeOptions, saveChanges, statusApp, appChanges, syncCopy, lastSyncedAt, rootTitle, warmSources, healthOf }
+const DEFAULT_DEPS = { listApp, writeOptions, saveChanges, statusApp, appChanges, syncCopy, lastSyncedAt, rootTitle, warmSources, healthOf, optionColors }
 export type AppApiDeps = typeof DEFAULT_DEPS
 export async function handleAppApi(req: Request, deps: Partial<AppApiDeps> = {}): Promise<Response> {
   const D = { ...DEFAULT_DEPS, ...deps }
@@ -117,7 +120,14 @@ export async function handleAppApi(req: Request, deps: Partial<AppApiDeps> = {})
       if (readable) for (const k of Object.keys(dbs)) if (!readable.has(k)) delete (dbs as any)[k]
       return json({ ok: true, dbs })
     }
-    return json({ error: 'action은 "me", "list", "changes", "status", "admin-status", "save", "record-payment", "end-preview", "run", "options" 중 하나여야 합니다.' }, 400)
+    // (항목 166) 선택지 색 = 노션 옵션 색. 강사는 읽을 수 있는 DB만. 실패해도 빈 표(앱은 고정표로 그림).
+    if (body?.action === "option-colors") {
+      const dbs = await D.optionColors(body.fresh === true).catch(() => ({}))
+      const out: Record<string, unknown> = {}
+      for (const [k, v] of Object.entries(dbs)) if (!readable || readable.has(k)) out[k] = v
+      return json({ ok: true, dbs: out })
+    }
+    return json({ error: 'action은 "me", "list", "changes", "status", "admin-status", "save", "record-payment", "end-preview", "run", "options", "option-colors" 중 하나여야 합니다.' }, 400)
   } catch (err) {
     if (err instanceof SaveError) return json({ error: err.message }, err.status)
     if (err instanceof ChangesInputError) return json({ error: err.message }, 400)
