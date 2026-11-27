@@ -101,4 +101,32 @@ assert.equal(u, 60);
   assert.equal(lbUnitLevels(T).levels.length, 1);
   assert.deepEqual(pick(T).map((x) => x.name), ['1 예시 하나', '02. 예시 둘', '3. 예시 셋']);
 }
+// 8) 대단원 인식 보강(항목 167, 261127 대표): CHAPTER를 "1." "2."로 바꾼 글 — "1."(대단원)과 "01"(단원)이 같은 숫자 꼴이어도 번호가 따로 매겨지면 두 단계
+{
+  const { OLYMPOS } = require('./unit-toc-samples.cjs');
+  const NUM = OLYMPOS.replace(/CHAPTER 0(\d) /g, '$1. ');
+  assert.equal(lv(NUM), '1. 6 · 01 18 · 그 밖 12', '(a) 빈 줄 덩어리 첫 줄 = 대단원 · "서술형 Practice"는 그 밖');
+  const L = lbUnitLevels(NUM), us = pick(NUM, L.def);
+  assert.equal(us.length, 18); assert.equal(us[0].name, '01 글의 목적');
+  assert.ok(!us.some((x) => /대의 파악|Practice/.test(x.name)), '대단원 · Practice 줄이 단원에 섞이지 않음');
+  assert.deepEqual(pick(NUM, keyOf(NUM, '1.')).map((x) => x.name), ['1. 대의 파악(핵심 내용·맥락)', '2. 세부 정보', '3. 어법·어휘', '4. 논리적 관계', '5. 간접 쓰기', '6. 복합적 이해']);
+  // (b) 빈 줄이 없어도 번호 줄기가 둘(1 · 2 · 3 과 01 … 06 · 07 …)이면 짧게 되풀이되는 쪽이 윗 단계
+  const FLAT = NUM.replace(/\n\n/g, '\n');
+  assert.equal(lv(FLAT).split(' · ').slice(0, 2).join(' · '), '1. 6 · 01 18', '빈 줄 없어도 대단원 6 · 단원 18');
+  // (c) 한 덩어리 안 "1."(한 자리)과 "01"(0 채움) = 단계 구분, 서로 다른 덩어리에 걸친 01 · 10 은 한 단계(원문 그대로 = CHAPTER 6 · 01 18)
+  assert.equal(lv('1. 큰 단원\n01 작은 하나\n02 작은 둘\n2. 큰 단원 둘\n03 작은 셋\n04 작은 넷'), '1. 2 · 01 4');
+  assert.equal(lv(OLYMPOS), 'CHAPTER 6 · 01 18 · 그 밖 12', '원문은 그대로');
+  // 이름 방식 [번호 1-1.](항목 167): <대단원 순번>-<그 안 순번>. <앞 번호 뗀 이름>
+  for (const T of [OLYMPOS, NUM]) {
+    const n = JSON.parse(JSON.stringify(lbUnitPick(T, lbUnitLevels(T).def, 'num'))).map((x) => x.name);
+    assert.deepEqual([n[0], n[4], n[5], n[17]], ['1-1. 글의 목적', '1-5. 주제·제목', '2-1. 도표·실용문 내용 일치/불일치', '6-2. 장문2 (1지문 3문항)']);
+  }
+  assert.equal(JSON.parse(JSON.stringify(lbUnitPick(NUM, lbUnitLevels(NUM).def, 'up')))[0].name, '1. 대의 파악(핵심 내용·맥락) · 01 글의 목적');
+  assert.deepEqual(JSON.parse(JSON.stringify(lbUnitPick('1. 소인수분해 8\n2. 정수와 유리수 28', '', 'num'))).map((x) => x.name), ['1. 소인수분해', '2. 정수와 유리수'], '윗 단계 없으면 순번.');
+}
+// 9) 나누지 않음: 하나로 이어지는 번호 · 빈 줄로 나눈 이어지는 목록 · 다시 1부터 시작하는 같은 단계 묶음
+{
+  assert.equal(lbUnitLevels('1. 가\n2. 나\n\n3. 다\n4. 라\n\n5. 마\n6. 바').levels.length, 1, '빈 줄로 나눠도 번호가 이어지면 한 단계');
+  assert.equal(lbUnitLevels('1. 가\n2. 나\n1. 다\n2. 라').levels.length, 1, '윗 단계 줄이 연달아 나오면 나누지 않음');
+}
 console.log('단원 단계 시험 통과');
