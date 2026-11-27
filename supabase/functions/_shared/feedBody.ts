@@ -48,14 +48,24 @@ const CONTAINER_TYPES = new Set(["column_list", "column", "synced_block"])
 const CHILD_READS = 5
 // 노션 콜아웃 색 이름(배경·글자 색 모두 같은 이름). 리포트가 tone-<이름>으로 그린다.
 const CALLOUT_TONES = new Set(["gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red"])
-export async function blocksToFeedBody(blocks: any[], depth = 0): Promise<unknown[]> {
+// (v2.8.0 항목 171) 동기화 블록 복제본은 자기 id로 하위를 못 읽거나 has_children이 false로 온다 — 원본 블록 id로 읽는다.
+function syncedSourceId(b: any): string | undefined {
+  return b?.type === "synced_block" ? b.synced_block?.synced_from?.block_id || undefined : undefined
+}
+// 단·동기화 블록은 글 깊이를 늘리지 않는다(동기화 → 콜아웃 → 하위 문단이 잘리지 않게). 무한 반복 방지용으로 컨테이너 겹침만 따로 센다.
+const MAX_CONTAINER_HOPS = 6
+export async function blocksToFeedBody(blocks: any[], depth = 0, hops = 0): Promise<unknown[]> {
   const items: unknown[] = []
   // 하위 블록은 한 번에 몇 개씩 동시에 읽고(본문이 길면 하나씩 읽을 때 여는 데 오래 걸린다), 아래에서는 순서대로 붙인다.
   const nested = new Map<string, unknown[]>()
-  const parents = depth < MAX_BODY_DEPTH ? (blocks ?? []).filter((b: any) => b?.has_children && b.type !== "table") : []
+  const parents = depth < MAX_BODY_DEPTH
+    ? (blocks ?? []).filter((b: any) => (b?.has_children || syncedSourceId(b)) && b.type !== "table" && !(CONTAINER_TYPES.has(b.type) && hops >= MAX_CONTAINER_HOPS))
+    : []
   await mapWithConcurrency(parents, CHILD_READS, async (b: any) => {
+    const container = CONTAINER_TYPES.has(b.type)
     try {
-      nested.set(b.id, await blocksToFeedBody(await feedBodyDeps.getBlockChildren(b.id), depth + 1))
+      const readId = syncedSourceId(b) ?? b.id
+      nested.set(b.id, await blocksToFeedBody(await feedBodyDeps.getBlockChildren(readId), container ? depth : depth + 1, container ? hops + 1 : hops))
     } catch (err) {
       console.warn(`하위 블록 조회 실패 - 건너뜀(${b.id}):`, (err as Error)?.message ?? err)
     }
