@@ -1,6 +1,7 @@
 // appCopy 단위 시험(v2.8.0 항목 74): 속성 평평하게 · DB 고르기(옛 이름) · 앱 DB 목록.
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts"
-import { APP_DBS, flattenProps, isAppDb, pageRow, pickSources, resolveSources } from "./appCopy.ts"
+import { APP_DBS, flattenProps, isAppDb, pageRow, pageRowFull, pickSources, resolveSources } from "./appCopy.ts"
+import { withFullRelations } from "./notionClient.ts"
 import { CLEAR_DBS, KEEP_DBS } from "./exampleClear.ts"
 import "./dbNames_test.ts" // 관 꼬리표 이름(항목 102) 시험도 이 파일이 도는 CI에서 같이 돈다
 import "./syncCopy_test.ts" // 앱 [동기화] 버튼(항목 105) 시험
@@ -83,4 +84,36 @@ Deno.test("같은 이름 DB가 여럿: Secrets id → 기준 DB와 같은 최상
 Deno.test("앱 DB는 모두 예시 비우기 목록(비울 것·남길 것)에 있는 실제 DB 이름", () => {
   for (const db of APP_DBS) assertEquals(CLEAR_DBS.includes(db) || KEEP_DBS.includes(db), true, db)
   assertEquals(isAppDb("수업(학원) DB"), false) // 수업·출석·학습기록·학습활동은 cr_* 복사본
+})
+
+// (항목 170) 라이브러리 단원목록이 25개를 넘으면 끝까지 읽어 id 40개 · #more 없음. 실패하면 [] + #more. 다른 관계 칸은 추가 호출 없음.
+const libPage = (n: number) => ({
+  id: "bk", properties: {
+    이름: { type: "title", title: rt("교재") },
+    단원목록: { id: "p-unit", type: "relation", relation: Array.from({ length: 25 }, (_, i) => ({ id: `u${i}` })).slice(0, n > 25 ? 0 : n), has_more: n > 25 },
+    과목: { id: "p-sub", type: "relation", relation: [], has_more: true },
+  },
+})
+Deno.test("단원목록 25개 초과: 끝까지 읽어 40개, #more 없음, 다른 큰 관계는 호출 없음", async () => {
+  const calls: string[] = []
+  const fill: typeof withFullRelations = async (page, names) => {
+    calls.push(names.join(","))
+    return { ...page, properties: { ...page.properties, 단원목록: { ...page.properties.단원목록, relation: Array.from({ length: 40 }, (_, i) => ({ id: `u${i}` })), has_more: false } } }
+  }
+  const row = await pageRowFull("라이브러리(학원) DB", libPage(40) as any, fill)
+  assertEquals((row.props["단원목록"] as string[]).length, 40)
+  assertEquals("단원목록#more" in row.props, false)
+  assertEquals(row.props["과목#more"], true)
+  assertEquals(calls, ["단원목록"])
+})
+Deno.test("단원목록 끝까지 읽기 실패: [] + #more 유지 / 다른 DB·25개 이하는 호출 없음", async () => {
+  const fail: typeof withFullRelations = async () => { throw new Error("boom") }
+  const row = await pageRowFull("라이브러리(학원) DB", libPage(40) as any, fail)
+  assertEquals(row.props["단원목록"], [])
+  assertEquals(row.props["단원목록#more"], true)
+  let n = 0
+  const spy: typeof withFullRelations = async (p) => { n++; return p }
+  await pageRowFull("라이브러리(학원) DB", libPage(10) as any, spy)
+  await pageRowFull("학생(학원) DB" as any, libPage(40) as any, spy)
+  assertEquals(n, 0)
 })

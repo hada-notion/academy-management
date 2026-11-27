@@ -15,7 +15,7 @@
 import { NOTION_API } from "./constants.ts"
 import { fetchWithRetry, notionHeaders, normalizeProps, notionCalls } from "./notionClient.ts"
 import { fetchSupabaseWithRetry } from "./reportCacheShared.ts"
-import { appSources, pageRow, upsertRows, deleteIds, type AppDb } from "./appCopy.ts"
+import { appSources, pageRowFull, upsertRows, deleteIds, type AppDb } from "./appCopy.ts"
 import { COPY_TABLES, DS, toRows, upsertCopyRows, deleteCopyRows, type CopyTable } from "./classRoomCopy.ts"
 import { handleRequest, hasRequestProp, liveRequestDeps, requestOf, requestsEnabled } from "./notionRequests.ts"
 import { handleLogRequest, isLogSource, logTrashEnabled } from "./notionLogRequests.ts"
@@ -324,7 +324,7 @@ export const liveDeps: Deps = {
 		return (await res.json())[0] ?? null
 	},
 	async rowsOf(target, page) {
-		return target.kind === "app" ? [pageRow(target.db, page)] : await toRows(target.table, [page])
+		return target.kind === "app" ? [await pageRowFull(target.db, page)] : await toRows(target.table, [page])
 	},
 	async upsert(target, rows) {
 		if (target.kind === "app") await upsertRows(rows as any)

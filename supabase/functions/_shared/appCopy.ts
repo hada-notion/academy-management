@@ -16,7 +16,7 @@
 //   관계 칸은 Notion 페이지 응답이 25개까지만 주므로(has_more) 많은 쪽은 반대편(예: 등록의 클래스)으로 이어 본다.
 
 import { NOTION_API } from "./constants.ts"
-import { fetchWithRetry, notionHeaders, queryAllPages, mapWithConcurrency } from "./notionClient.ts"
+import { fetchWithRetry, notionHeaders, queryAllPages, mapWithConcurrency, withFullRelations } from "./notionClient.ts"
 import { fetchSupabaseWithRetry } from "./reportCacheShared.ts"
 import { runInBackground } from "./backgroundTask.ts"
 import { normalizeDbName } from "./dbNames.ts"
@@ -111,6 +111,17 @@ export function pageRow(db: AppDb, p: Page): Row {
 		url: p.url ?? "", icon: iconText(p.icon),
 	}
 }
+
+// (v2.8.0 항목 170) 관계가 25개를 넘어도 끝까지 읽어 id를 다 채울 칸. 호출이 늘지 않게 이 칸만(다른 큰 관계는 `#more` 그대로).
+export const FULL_RELATION_PROPS: Partial<Record<AppDb, string[]>> = { "라이브러리(학원) DB": ["단원목록"] }
+// 잘렸으면(has_more) 속성 항목 API로 끝까지 읽어 채운 쪽 페이지를 돌려준다(notionClient withFullRelations 재사용). 읽기 실패 시 원래 페이지 그대로 → [] + #more 유지.
+export async function fullPage(db: AppDb, p: Page, fill: typeof withFullRelations = withFullRelations): Promise<Page> {
+	const props = FULL_RELATION_PROPS[db]
+	if (!props || !props.some((n) => p?.properties?.[n]?.has_more)) return p
+	try { return await fill(p, props) } catch (e) { console.warn(`[appCopy] ${db} ${props.join("·")} 끝까지 읽기 실패(#more 유지): ${(e as Error).message}`); return p }
+}
+export async function pageRowFull(db: AppDb, p: Page, fill?: typeof withFullRelations): Promise<Row> { return pageRow(db, await fullPage(db, p, fill)) }
+export const pageRowsFull = (db: AppDb, pages: Page[]): Promise<Row[]> => mapWithConcurrency(pages, 4, (p) => pageRowFull(db, p))
 
 // ---------- DB 찾기(제목) ----------
 export function pickSources(found: Map<string, string[]>): Map<AppDb, string[]> {
@@ -363,7 +374,7 @@ export async function reconcileApp(db: AppDb): Promise<AppSyncResult> {
 	const startedAt = new Date().toISOString()
 	const pages: Page[] = []
 	for (const ds of sources) pages.push(...await queryAllPages(ds))
-	const rows = pages.map((p) => pageRow(db, p))
+	const rows = await pageRowsFull(db, pages)
 	await upsertRows(rows)
 	const fresh = new Set(rows.map((r) => r.id))
 	const stale = (await selectIds(db)).filter((id) => !fresh.has(id))
@@ -384,7 +395,7 @@ export async function incrementalApp(db: AppDb, before?: (db: AppDb, rows: Row[]
 	const startedAt = new Date().toISOString()
 	const pages: Page[] = []
 	for (const ds of sources) pages.push(...await queryAllPages(ds, { timestamp: "last_edited_time", last_edited_time: { on_or_after: since } }))
-	const rows = pages.map((p) => pageRow(db, p))
+	const rows = await pageRowsFull(db, pages)
 	if (before && rows.length) { try { await before(db, rows, pages) } catch (e) { console.error(`[appCopy] ${db} 대조 건너뜀: ${(e as Error).message}`) } }
 	await upsertRows(rows)
 	await setCursor(db, startedAt)
