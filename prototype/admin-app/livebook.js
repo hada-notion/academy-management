@@ -2,7 +2,7 @@
    - 책 찾기(오른쪽 창): [검색] search(국립중앙도서관, ISBN이면 그 책) → 고르면 detail(목차 → 단원 후보) → register(ISBN · 교보문고 표지)
                          [교보문고] 책 주소의 상품번호 → kyobo-book(교재명 · ISBN · 정가 · 출판사 · 목차) → register-custom. ISBN만 붙이면 search(ISBN)
                          [직접 등록] 지금 등록 창(live.js liveBookRegisterOpen)
-   - 단원(교재 창 [단원] 탭): units로 받아 보이고, [단원 편집] 창 [고치기 | 단원 목록] 탭 — 이름 · 시작 고치기 · 삭제 · 추가 · 단원 목록(붙여 넣기 · 가져오기 units-fetch, 교보문고 → 예스24) — [단원 목록 입력]은 화면에서(단원 단계 lbUnitPick, 항목 164) → edit-units 10개씩 묶어 여러 번(바로 노션, 진행 n/전체 · 중간 실패면 남은 것만 [다시 저장], 항목 165)
+   - 단원(교재 창 [단원] 탭): units로 받아 보이고, [단원 편집] 창 한 화면(항목 167) — 왼쪽 단원 목록 글(붙여 넣기 · 가져오기 units-fetch, 교보문고 → 예스24) → 오른쪽 단원 줄(화면에서 단원 단계 lbUnitPick, 누른 줄만 밑줄 입력으로 고치기 · 끼우기 · 삭제) → edit-units 10개씩 묶어 여러 번(바로 노션, 진행 n/전체 · 중간 실패면 남은 것만 [다시 저장], 항목 165)
    - 시리즈(라이브러리 [교재] 탭, 줄을 고르지 않았을 때 오른쪽 창 아래 [시리즈 관리]): series · edit-series(추가 · 이름 · 순서 · 삭제 — 교재가 0권인 시리즈만 삭제)
    실제 자료 모드가 아니면 아무것도 바꾸지 않는다(시제품 예시 목록 그대로). */
 const LBK = { units: {}, series: null };
@@ -239,9 +239,10 @@ function lbUnitPage(s) {
   return { name: s, hard: null, soft: null };
 }
 function lbUnitLevels(text, ap) {
-  const lines = []; let inAp = false, apN = 0;
+  const lines = []; let inAp = false, apN = 0, blk = 0, gap = true;
   String(text || "").split(/\r?\n/).forEach((raw) => {
-    if (!raw.trim()) return;
+    if (!raw.trim()) { gap = true; return; }
+    if (gap) { blk++; gap = false; }
     const lead = raw.match(/^[\s　]*/)[0], ind = lead.replace(/\t/g, "    ").replace(/　/g, "  ").length;
     let s = raw.slice(lead.length).trim(), bul = false;
     const bm = s.match(/^[-–—•·∙◦▪▫‣*ㆍ・○●□■▶▷>]+\s*/); if (bm && s.length > bm[0].length) { bul = true; s = s.slice(bm[0].length).trim(); }
@@ -249,8 +250,9 @@ function lbUnitLevels(text, ap) {
     if (sh.key === "plain" && LBU_SKIP.test(s)) { if (!ind && !bul && LBU_BACK.test(s)) inAp = true; return; }
     if (inAp && !ind && !bul && sh.rank <= 1 && sh.key !== "plain") inAp = false;
     if (inAp) { apN++; if (!ap) return; }
-    lines.push({ ind, bul, sh, pg: lbUnitPage(s), key: `${ind > 0 ? 1 : 0}|${bul ? 1 : 0}|${sh.key}` });
+    lines.push({ ind, bul, sh, pg: lbUnitPage(s), key: `${ind > 0 ? 1 : 0}|${bul ? 1 : 0}|${sh.key}`, blk, ap: inAp });
   });
+  lbUnitNumSplit(lines);
   /* 번호 없는 줄이 같은 자리의 번호 줄(1. · Lesson 1 …) 단계 하나와 섞여 있고 더 큰 단계가 없으면 그 번호 줄 단계로 */
   const top = [...new Set(lines.filter((l) => l.key.startsWith("0|0|")).map((l) => l.key))], P0 = "0|0|plain";
   const peers = top.filter((k) => k !== P0);
@@ -278,149 +280,251 @@ function lbUnitLevels(text, ap) {
 /* 고른 단계 줄 → [{name, page}]. up = 윗 단계 이름 붙이기("Chapter 01 · Unit 01 영어문장 1형"), ap = 부록 줄도 넣기 */
 function lbUnitPick(text, key, up, ap) {
   const L = lbUnitLevels(text, ap), ls = L.lines, k = L.levels.some((g) => g.key === key) ? key : L.def;
-  const out = [];
+  const how = up === true ? "up" : up || "";
+  const out = []; let par = null, pn = 0, cn = 0;
   ls.forEach((l, i) => {
     if (l.key !== k) return;
-    let page = l.page, name = l.name;
+    let page = l.page, name = l.name, p = null;
     for (let j = i + 1; page == null && j < ls.length && ls[j].depth > l.depth; j++) page = ls[j].page;
-    if (up) for (let j = i - 1; j >= 0; j--) if (ls[j].depth < l.depth) { const p = ls[j]; name = (p.sh.word && p.sh.mark ? p.sh.mark : p.name).replace(/[\s.:]+$/, "") + " · " + name; break; }
+    for (let j = i - 1; j >= 0; j--) if (ls[j].depth < l.depth) { p = ls[j]; break; }
+    if (how === "up" && p) name = (p.sh.word && p.sh.mark ? p.sh.mark : p.name).replace(/[\s.:]+$/, "") + " · " + name;
+    if (how === "num") {
+      /* 번호 1-1.(261127 대표): <윗 단계 순번>-<그 안 순번>. <앞 번호 뗀 이름> — 윗 단계가 없으면 "<순번>. 이름" */
+      if (p !== par) { par = p; pn += p ? 1 : 0; cn = 0; }
+      cn++;
+      const mk = l.sh.mark && l.sh.key !== "plain" && name.startsWith(l.sh.mark) ? l.sh.mark : "";
+      const bare = name.slice(mk.length).replace(/^[\s.:)\]-]+/, "") || name;
+      name = (p ? `${pn}-${cn}. ` : `${cn}. `) + bare;
+    }
     out.push({ name: name.slice(0, 100), page });
   });
   return out;
 }
+/* 같은 숫자 꼴(1 · 01 · 1.) 줄 안에서 번호가 따로 매겨지는 두 줄기(대단원 1 · 2 · 3 과 단원 01 … 06 · 07 …)가 섞이면 짧게 되풀이되는 쪽을 윗 단계로(항목 167, 261127 대표).
+   번호가 처음부터 끝까지 하나로 이어지면(1 · 2 · 3 …) 나누지 않는다. 같은 값이 두 줄기에 다 맞으면 신호로 고름: 빈 줄로 나뉜 덩어리의 첫 줄 = 윗 단계,
+   0 채움(01) = 단원, 0 채움이 있는 덩어리의 한 자리 번호(1.) = 윗 단계. 윗 단계 줄은 맨 앞에서 시작하고 줄마다 아래에 단원 줄이 하나 이상 있어야 함 */
+function lbUnitNumSplit(lines) {
+  const groups = new Map();
+  lines.forEach((l) => { if (l.sh.key === "n" && !l.ap) { if (!groups.has(l.key)) groups.set(l.key, []); groups.get(l.key).push(l); } });
+  const first = new Set(), seen = new Set(), bn = {};
+  lines.forEach((l) => { bn[l.blk] = (bn[l.blk] || 0) + 1; if (!seen.has(l.blk)) { seen.add(l.blk); first.add(l); } });
+  groups.forEach((ls) => {
+    if (ls.length < 4) return;
+    const val = (l) => parseInt(l.sh.mark, 10), pad = (l) => /^0\d/.test(l.sh.mark);
+    if (ls.every((l, k) => !k || val(l) === val(ls[k - 1]) + 1)) return;
+    const bpad = {}; ls.forEach((l) => { if (pad(l)) bpad[l.blk] = 1; });
+    let up = 0, lo = 0; const U = new Set();
+    for (const l of ls) {
+      const v = val(l), cu = v === up + 1, cl = v === lo + 1;
+      if (!cu && !cl) return;
+      let toUp = cu;
+      if (cu && cl) { const head = first.has(l) && bn[l.blk] > 1; toUp = pad(l) && !head ? false : head || (!pad(l) && v < 10 && !!bpad[l.blk]) || (!up && !lo); }
+      if (toUp) { up = v; U.add(l); } else lo = v;
+    }
+    if (U.size < 2 || ls.length - U.size < U.size || !U.has(ls[0]) || U.has(ls[ls.length - 1]) || ls.some((l, k) => k && U.has(l) && U.has(ls[k - 1]))) return;
+    U.forEach((l) => { l.key += "^"; l.sh = Object.assign({}, l.sh, { rank: 1 }); });
+  });
+}
 const LBU_CHUNK = 10; /* 단원 저장 한 번(edit-units)에 보내는 줄 수 — 항목 165 */
 const lbIsbn = (b) => { const s = String((b && b.isbn) || "").replace(/[-\s]/g, ""); return /^97[89]\d{10}$/.test(s) ? s : ""; };
-/* 단원 편집 창(261126 대표 B안 → 261127 대표 탭 둘): [고치기 | 단원 목록] 탭 하나 창. 고친 줄(rows)은 탭을 옮겨도 그대로, [저장]은 창 아래 하나(edit-units 10개씩 묶음, 항목 165).
-   처음 탭: 단원 있으면 고치기 · 없으면 단원 목록. [단원 목록] = 위 ISBN13 [가져오기](글 칸에 채움) + 글 칸(붙여 넣기) + 단원 단계 + [단원 목록 입력] → 고치기 탭 아래에 붙는다(같은 이름 건너뜀) */
-function lbUnitDialog(b, tab0) {
+/* 단원 편집 창(항목 167, 261127 대표 — 탭 없이 한 화면): 위 ISBN13 [가져오기] · 왼쪽 단원 목록 글 칸 · 오른쪽 단원 줄(저장될 줄 그대로) · 아래 단원 단계 / 단원 이름 · 부록 줄도 넣기 / 안내 · [취소] [저장].
+   오른쪽 = 인라인 편집 목록(DESIGN 부품 기준표): 평소 글자 줄, 누른 줄만 밑줄 입력(이름 · 시작) + 줄 끝 [+](아래에 끼우기) · [×](삭제). Enter = 다음 줄, Esc = 그 줄 편집 끝(창은 안 닫힘, 항목 163).
+   왼쪽 글(짧게 기다렸다) · 단계 · 이름 방식 · 부록 체크가 바뀌면 오른쪽 줄을 다시 만든다 — 오른쪽에서 손으로 고친 것이 있으면 먼저 묻는다(창 안 확인).
+   이미 단원이 있으면 처음 오른쪽 = 기존 단원, 왼쪽 글의 첫 반영 때 [바꾸기 | 뒤에 붙이기]를 묻는다. 바꾸기 = 기존 단원과 새 줄을 순서대로 짝지어 고침(update, 연결 유지) · 남는 새 줄만 추가 · 남는 기존 줄만 삭제.
+   저장 = edit-units 10개씩 묶음(항목 165) 그대로 */
+function lbUnitDialog(b) {
   const c = LBK.units[b.id];
   if (!c || !c.list) { toast("단원을 불러온 뒤에 편집해요"); lbUnitsLoad(b.id); return; }
-  const rows = c.list.map((u) => ({ id: u.id, name: u.name || "", page: u.page == null ? "" : String(u.page), name0: u.name || "", page0: u.page == null ? "" : String(u.page), uses: u.uses || 0, del: false }));
+  const mk = (u) => ({ id: u.id, name: u.name || "", page: u.page == null ? "" : String(u.page), name0: u.name || "", page0: u.page == null ? "" : String(u.page), uses: u.uses || 0, del: false });
+  const baseRows = () => ((LBK.units[b.id] || c).list || []).map(mk);
+  let rows = baseRows();
   const UU = unitParts(b), isbn = lbIsbn(b);
-  const T = { tab: tab0 || (rows.length ? "edit" : "list"), src: "" };
-  const TABS = [["edit", "고치기"], ["list", "단원 목록"]];
+  /* mode: "" = 아직 왼쪽 글을 안 씀(기존 단원 그대로) · new = 단원 없는 교재 · replace · append. hand = 오른쪽에서 손으로 고침, hold = 왼쪽 글을 반영하지 않기로 함, ed = 편집 중인 줄 */
+  const T = { mode: rows.length ? "" : "new", hand: false, hold: false, ed: -1, src: "", drawing: false };
+  const LV = { key: "", nm: "", ap: false };
+  const NM = [["", "그대로"], ["up", "윗 단계 이름 붙이기"], ["num", "번호 1-1."]];
   modal(`<h2>단원 편집${HELP(HELPTX.unitEdit)}</h2><div class="hint">${esc(b.name)}</div>
-    <div class="row"><span class="vseg subseg" id="lbuTabs" role="tablist" aria-label="단원 편집 방법">${TABS.map(([k, t]) => `<button type="button" role="tab" data-ut="${k}">${t}</button>`).join("")}</span></div>
-    <div data-up="edit">
-      <div class="unrows" id="lbuR" style="max-height:46vh;overflow:auto"></div>
-      <button type="button" class="pgaddc ln" id="lbuAdd">${IC("plus", "s")}단원 추가</button>
-      <div class="row" id="lbuO" style="display:none"><button type="button" class="btn sm" id="lbuSort" title="시작 쪽이 작은 단원부터 위로 — 쪽을 안 적은 줄은 맨 아래">${IC("aup", "s")}쪽 순서로 정렬</button></div>
-    </div>
-    <div data-up="list" hidden>
-      <div class="row"><span class="hint">ISBN13 ${isbn ? esc(isbn) : "없음"}</span><span class="sp"></span><button type="button" class="btn" id="lbuGet" ${isbn ? 'title="온라인 서점(교보문고, 없으면 예스24)의 단원 목록을 아래 글 칸에 채워요"' : 'disabled title="ISBN13을 먼저 넣어 주세요"'}>${IC("dl", "s")}가져오기</button></div>
-      ${isbn ? "" : '<div class="hint warn" id="lbuNoIsbn">[가져오기]는 ISBN13이 있어야 해요 — 교재 창 [정보] 탭의 ISBN13 칸</div>'}
-      <div class="lbugrid">
-        <textarea class="inp bfta" id="lbuT" aria-label="단원 목록" placeholder="단원 목록을 붙여 넣거나 [가져오기]를 눌러요 — 한 줄에 하나, 끝 숫자는 시작 쪽&#10;1. 소인수분해 8&#10;2. 정수와 유리수 28&#10;3. 문자와 식 56"></textarea>
-        <div class="lbupv" id="lbuV" role="region" aria-label="단원 미리보기"><div class="lbupvh" id="lbuVh">미리보기</div><div id="lbuVl"></div></div>
+    <div class="row"><span class="hint">ISBN13 ${isbn ? esc(isbn) : "없음"}</span><span class="sp"></span><button type="button" class="btn" id="lbuGet" ${isbn ? 'title="온라인 서점(교보문고, 없으면 예스24)의 단원 목록을 왼쪽 글 칸에 채워요"' : 'disabled title="ISBN13을 먼저 넣어 주세요"'}>${IC("dl", "s")}가져오기</button></div>
+    ${isbn ? "" : '<div class="hint warn" id="lbuNoIsbn">[가져오기]는 ISBN13이 있어야 해요 — 교재 창 [정보] 탭의 ISBN13 칸</div>'}
+    <div class="lbugrid">
+      <textarea class="inp bfta" id="lbuT" aria-label="단원 목록 글" placeholder="단원 목록을 붙여 넣거나 [가져오기]를 눌러요 — 한 줄에 하나, 끝 숫자는 시작 쪽&#10;1. 소인수분해 8&#10;2. 정수와 유리수 28&#10;3. 문자와 식 56"></textarea>
+      <div class="lbupv" id="lbuV" role="region" aria-label="단원 줄">
+        <div class="lbupvh"><span id="lbuVh">단원</span><span class="sp"></span><button type="button" class="btn sm" id="lbuSort" style="display:none" title="시작 쪽이 작은 단원부터 위로 — 쪽을 안 적은 줄은 맨 아래">${IC("aup", "s")}쪽 순서로 정렬</button></div>
+        <div id="lbuR" role="list" aria-label="단원 줄 — 누르면 고쳐요"></div>
+        <button type="button" class="lbuadd" id="lbuAdd">${IC("plus", "s")}단원 추가</button>
       </div>
-      <div class="row lburow" data-lvh="T"><span class="hint">단원 단계</span><span class="vseg subseg" data-lv="T" role="radiogroup" aria-label="단원으로 쓸 단계"></span></div>
-      <p class="hint lbulm" id="lbuLM" aria-live="polite"></p>
-      <div class="row lburow"><label class="hint" style="white-space:nowrap" data-lvh="T"><input type="checkbox" data-lvup="T"> 윗 단계 이름 붙이기</label><label class="hint" style="white-space:nowrap" data-lvaph="T"><input type="checkbox" data-lvap="T"> 부록 줄도 넣기</label><span class="sp"></span><button type="button" class="btn" id="lbuSplit">단원 목록 입력</button></div>
     </div>
+    <div class="row lburow" id="lbuLvR"><span class="hint lbulb">단원 단계</span><span class="vseg subseg" id="lbuLv" role="radiogroup" aria-label="단원으로 쓸 단계"></span></div>
+    <div class="row lburow" id="lbuNmR"><span class="hint lbulb" data-nmh>단원 이름</span><span class="vseg subseg" id="lbuNm" data-nmh role="radiogroup" aria-label="단원 이름 붙이는 방식">${NM.map(([k, t]) => `<button type="button" role="radio" data-nm="${k}">${t}</button>`).join("")}</span><label class="hint lbuap" id="lbuApL"><input type="checkbox" id="lbuAp"> 부록 줄도 넣기</label></div>
+    <p class="hint lbulm" id="lbuLM" aria-live="polite"></p>
     <p class="hint" id="lbuM"></p>
     <div class="actions"><span class="lbuprog" id="lbuP" role="progressbar" aria-label="단원 저장" aria-valuemin="0" hidden><span class="spinner" aria-hidden="true"></span><span class="t" aria-live="polite"></span><span class="bar"><i></i></span></span><span class="sp"></span><button class="btn" id="cc">취소</button><button class="btn pri" id="co">저장</button></div>`, (m, close) => {
-    const box = m.querySelector("#lbuR"), msg = m.querySelector("#lbuM");
-    const show = (k) => {
-      T.tab = k;
-      m.querySelectorAll("[data-ut]").forEach((x) => { const on = x.dataset.ut === k; x.classList.toggle("on", on); x.setAttribute("aria-selected", on ? "true" : "false"); });
-      m.querySelectorAll("[data-up]").forEach((x) => { x.hidden = x.dataset.up !== k; });
-      const d = m.querySelector(".dlg"); if (d) d.classList.toggle("lbuwide", k === "list"); /* 단원 목록 탭 = 글 칸 | 미리보기 둘이라 넓게(--dialog-lg) */
+    const dlg = m.querySelector(".dlg"); if (dlg) dlg.classList.add("lbuwide");
+    const box = m.querySelector("#lbuR"), msg = m.querySelector("#lbuM"), lm = m.querySelector("#lbuLM"), ta = m.querySelector("#lbuT");
+    const num = (v) => { const s = String(v || "").replace(/[^\d]/g, ""); return s ? +s : null; };
+    const lmSet = (t) => { lm.textContent = [T.src, t].filter(Boolean).join(" · "); };
+    const touch = () => { T.hand = true; };
+    /* 창 안 확인(창 위에 한 겹 — 앱 팝업은 창을 하나만 띄우므로 단원 편집 창을 닫지 않게). 처음 커서는 [취소] */
+    const ask = (title, body, btns) => {
+      const a = document.createElement("div"); a.className = "lbuask";
+      a.innerHTML = `<div class="lbuaskc" role="alertdialog" aria-modal="true" aria-labelledby="lbuAskT"><h3 id="lbuAskT">${title}</h3><p class="hint">${body}</p><div class="actions"><span class="sp"></span>${btns.map(([t, , p], k) => `<button type="button" class="btn${p ? " pri" : ""}" data-ak="${k}">${t}</button>`).join("")}</div></div>`;
+      m.appendChild(a);
+      a.querySelectorAll("[data-ak]").forEach((x) => (x.onclick = () => { a.remove(); btns[+x.dataset.ak][1](); }));
+      setTimeout(() => { const f = a.querySelector('[data-ak="0"]'); if (f) f.focus(); }, 0);
     };
-    m.querySelectorAll("[data-ut]").forEach((x) => (x.onclick = () => { msg.textContent = ""; show(x.dataset.ut); }));
+    /* ── 오른쪽 단원 줄 ── */
+    const pgTxt = (r) => { const n = num(r.page); return n == null ? "" : esc(unitFmt(b, n)); };
+    const edRow = (r, i) => `<div class="lbuer on${r.del ? " del" : ""}" role="listitem" data-i="${i}"><input class="lbuin nm" data-f="name" value="${esc(r.name)}" placeholder="단원 이름" autocomplete="off" aria-label="단원 이름" ${r.del ? "disabled" : ""}>${UU[0] ? `<span class="unu">${esc(UU[0])}</span>` : ""}<input class="lbuin pg" data-f="page" value="${esc(r.page)}" placeholder="시작" inputmode="numeric" autocomplete="off" aria-label="시작" ${r.del ? "disabled" : ""}>${UU[1] ? `<span class="unu">${esc(UU[1])}</span>` : ""}<button type="button" class="anb" data-addb="${i}" title="아래에 단원 추가" aria-label="이 단원 아래에 추가">${IC("plus", "s")}</button>${r.uses ? `<span class="hint lbuuse" title="시험 범위 등 다른 곳에 연결돼 삭제할 수 없어요">연결 ${r.uses}</span>` : `<button type="button" class="anb" data-del="${i}" title="${r.del ? "삭제 취소" : "이 단원 삭제"}" aria-label="${r.del ? "삭제 취소" : "이 단원 삭제"}">${IC(r.del ? "rotc" : "x", "s")}</button>`}</div>`;
     const draw = () => {
-      box.innerHTML = rows.map((r, i) => `<div class="unrow ed${r.del ? " sdel" : ""}" data-i="${i}"><input class="inp unn" data-f="name" value="${esc(r.name)}" placeholder="단원 이름 (예: 1. 소인수분해)" autocomplete="off" aria-label="단원 이름" ${r.del ? "disabled" : ""}>${UU[0] ? `<span class="unu">${esc(UU[0])}</span>` : ""}<input class="inp unp" data-f="page" value="${esc(r.page)}" placeholder="시작" inputmode="numeric" autocomplete="off" aria-label="시작" ${r.del ? "disabled" : ""}>${UU[1] ? `<span class="unu">${esc(UU[1])}</span>` : ""}<button type="button" class="anb" data-addb="${i}" title="아래에 추가" aria-label="이 단원 아래에 추가">${IC("plus", "s")}</button>${r.uses ? `<span class="hint" title="다른 곳에 연결돼 삭제할 수 없어요">연결 ${r.uses}</span>` : `<button type="button" class="anb" data-del="${i}" title="${r.del ? "삭제 취소" : "이 단원 삭제"}">${IC(r.del ? "rotc" : "x", "s")}</button>`}</div>`).join("") || '<div class="hint">단원이 없어요</div>';
-      box.querySelectorAll("input").forEach((inp) => { inp.oninput = () => { const r = rows[+inp.closest("[data-i]").dataset.i]; r[inp.dataset.f] = inp.value; }; });
-      box.querySelectorAll("[data-del]").forEach((x) => (x.onclick = () => { const i = +x.dataset.del, r = rows[i]; if (!r.id) rows.splice(i, 1); else r.del = !r.del; draw(); }));
-      box.querySelectorAll("[data-addb]").forEach((x) => (x.onclick = () => { const i = +x.dataset.addb; rows.splice(i + 1, 0, { name: "", page: "", del: false }); draw(); const l = box.querySelectorAll(".unn")[i + 1]; if (l) { l.focus(); l.scrollIntoView({ block: "nearest" }); } }));
-      box.querySelectorAll('input[data-f="page"]').forEach((inp) => inp.addEventListener("input", orderNote));
+      T.drawing = true;
+      const vis = rows.map((r, i) => [r, i]).filter(([r]) => !r.gone);
+      box.innerHTML = vis.map(([r, i]) => (i === T.ed ? edRow(r, i) : `<div class="lbuer${r.del ? " del" : ""}" role="listitem" tabindex="0" data-i="${i}" title="${esc(r.name)}"><span class="nm${r.name.trim() ? "" : " none"}">${esc(r.name.trim() || "이름 없음")}</span><span class="pg${pgTxt(r) ? "" : " none"}" data-pgc>${pgTxt(r) || "—"}</span></div>`)).join("") || '<div class="hint lbuempty">왼쪽에 단원 목록을 붙여 넣거나 [가져오기]를 누르면 여기에 단원 줄이 생겨요</div>';
+      T.drawing = false;
+      const n = vis.filter(([r]) => !r.del).length, dn = rows.filter((r) => r.id && (r.del || r.gone)).length;
+      m.querySelector("#lbuVh").textContent = `단원 ${n}개${dn ? ` · 저장하면 삭제 ${dn}개` : ""}`;
       orderNote();
+      const e = box.querySelector(".lbuer.on"); if (e) bindEd(e);
     };
-    /* 261126 대표: 줄 순서가 시작 쪽 순과 어긋날 때만 [쪽 순서로 정렬] 단추 — 누르면 시작 쪽 오름차순(쪽 빈 줄은 맨 아래, 같은 쪽은 원래 순서). 저장 값 · 서버 호출은 그대로 */
+    /* 261126 대표: 줄 순서가 시작 쪽 순과 어긋날 때만 [쪽 순서로 정렬] — 쪽 빈 줄은 맨 아래, 같은 쪽은 원래 순서. 저장 값 · 서버 호출은 순서와 무관 */
     const orderNote = () => {
-      const ps = rows.filter((r) => !r.del).map((r) => { const s = String(r.page || "").replace(/[^\d]/g, ""); return s ? +s : null; }).filter((v) => v != null);
-      const o = m.querySelector("#lbuO"); if (o) o.style.display = ps.some((v, k) => k && v < ps[k - 1]) ? "" : "none";
+      const ps = rows.filter((r) => !r.del && !r.gone).map((r) => num(r.page)).filter((v) => v != null);
+      m.querySelector("#lbuSort").style.display = ps.some((v, k) => k && v < ps[k - 1]) ? "" : "none";
     };
+    const empty = (r) => r && !r.id && !r.name.trim() && !String(r.page).trim();
+    const nextVis = (i) => { for (let k = i + 1; k < rows.length; k++) if (!rows[k].gone) return k; return -1; };
+    /* 줄 하나만 편집: 떠나는 줄이 비어 있는 새 줄이면 뺀다 */
+    const startEdit = (i, f) => {
+      if (T.ed >= 0 && T.ed !== i && empty(rows[T.ed])) { rows.splice(T.ed, 1); if (T.ed < i) i--; }
+      T.ed = i; draw();
+      const e = box.querySelector(`.lbuer.on [data-f="${f || "name"}"]:not([disabled])`) || box.querySelector(".lbuer.on .anb");
+      if (e) { e.focus(); if (e.setSelectionRange && e.value) e.setSelectionRange(e.value.length, e.value.length); }
+      const on = box.querySelector(".lbuer.on"); if (on && on.scrollIntoView) on.scrollIntoView({ block: "nearest" });
+    };
+    const endEdit = (keep) => {
+      if (T.ed < 0) return;
+      const i = T.ed; if (empty(rows[i])) rows.splice(i, 1);
+      T.ed = -1; draw();
+      if (keep) { const r = box.querySelector(`.lbuer[data-i="${i}"]`); if (r) r.focus(); }
+    };
+    const addAt = (i) => { const cur = T.ed; rows.splice(i, 0, { name: "", page: "", del: false }); touch(); T.ed = cur >= i ? cur + 1 : cur; startEdit(i); };
+    const bindEd = (e) => {
+      e.querySelectorAll("input").forEach((inp) => {
+        inp.oninput = () => { rows[T.ed][inp.dataset.f] = inp.value; touch(); if (inp.dataset.f === "page") orderNote(); };
+        inp.onkeydown = (ev) => {
+          if (ev.isComposing || ev.keyCode === 229) return;
+          if (ev.key === "Enter") { ev.preventDefault(); const nx = nextVis(T.ed); if (nx >= 0) startEdit(nx, inp.dataset.f); else if (rows[T.ed].name.trim()) addAt(T.ed + 1); else endEdit(true); }
+          else if (ev.key === "Escape") { ev.preventDefault(); ev.stopPropagation(); endEdit(true); }
+        };
+      });
+      const ad = e.querySelector("[data-addb]"); if (ad) ad.onclick = () => addAt(T.ed + 1);
+      const dl = e.querySelector("[data-del]");
+      if (dl) dl.onclick = () => { const r = rows[T.ed]; touch(); if (!r.id) { rows.splice(T.ed, 1); T.ed = -1; draw(); } else { r.del = !r.del; draw(); const x = box.querySelector(".lbuer.on [data-del]"); if (x) x.focus(); } };
+    };
+    box.addEventListener("pointerdown", (ev) => {
+      const r = ev.target.closest(".lbuer"); if (!r) return;
+      const i = +r.dataset.i; if (i === T.ed) return;
+      ev.preventDefault(); startEdit(i, ev.target.closest("[data-pgc]") ? "page" : "name");
+    });
+    box.addEventListener("keydown", (ev) => { const r = ev.target.closest && ev.target.closest(".lbuer:not(.on)"); if (r && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); startEdit(+r.dataset.i); } });
+    box.addEventListener("focusout", (ev) => { if (T.drawing || T.ed < 0) return; const to = ev.relatedTarget; if (to && !box.contains(to) && !to.closest(".lbuask")) endEdit(); });
+    m.addEventListener("pointerdown", (ev) => { if (T.ed < 0 || !ev.target.isConnected || ev.target.closest("#lbuR") || ev.target.closest(".lbuask")) return; endEdit(); });
+    m.querySelector("#lbuAdd").onclick = () => { const nx = rows.length; addAt(nx); };
     m.querySelector("#lbuSort").onclick = () => {
-      const pn = (r) => { const s = String(r.page || "").replace(/[^\d]/g, ""); return s ? +s : Infinity; };
+      const pn = (r) => { const v = num(r.page); return v == null ? Infinity : v; };
       const keyed = rows.map((r, i) => ({ r, i, p: pn(r) }));
-      keyed.sort((a, b) => (a.p === b.p ? a.i - b.i : a.p < b.p ? -1 : 1));
-      rows.splice(0, rows.length, ...keyed.map((k) => k.r)); draw();
+      keyed.sort((x, y) => (x.p === y.p ? x.i - y.i : x.p < y.p ? -1 : 1));
+      rows = keyed.map((k) => k.r); T.ed = -1; touch(); draw();
     };
-    draw(); show(T.tab);
-    m.querySelector("#lbuAdd").onclick = () => { rows.push({ name: "", page: "", del: false }); draw(); const l = box.querySelectorAll(".unn"); if (l.length) l[l.length - 1].focus(); box.scrollTop = box.scrollHeight; };
-    /* 단원 단계(항목 164): 단계 나눔 단추(이름 + 줄 수) — 단계가 둘 이상일 때만. 고른 단계는 글을 고쳐도 그 꼴이 남아 있으면 그대로.
-       미리보기(항목 165): 지금 단계 · 윗 단계 이름 · 부록 줄로 [단원 목록 입력]을 누르면 들어갈 줄(이름 + 시작, 이미 있는 이름은 "있음"으로 흐리게) — 글 입력은 짧게 기다렸다 다시 그림 */
-    const LV = { T: { key: "", up: false, ap: false } };
-    const lm = m.querySelector("#lbuLM"), ta = m.querySelector("#lbuT");
-    const haveNames = () => new Set(rows.filter((z) => !z.del).flatMap((z) => [z.name.trim(), z.name0 || ""])); /* 서버와 같이: 지금 이름 + 노션에 있는 원래 이름은 새로 만들지 않음 */
-    const preview = () => {
-      const t = ta.value, head = m.querySelector("#lbuVh"), list = m.querySelector("#lbuVl");
-      if (!t.trim()) { head.textContent = "미리보기"; list.innerHTML = '<div class="hint">단원 목록을 붙여 넣거나 [가져오기]를 누르면 들어갈 단원이 여기에 보여요</div>'; return; }
-      const got = lbUnitPick(t.slice(0, 20000), LV.T.key, LV.T.up, LV.T.ap), have = haveNames();
-      const dup = got.filter((u) => have.has(u.name)).length;
-      head.textContent = `단원 ${got.length - dup}개${dup ? ` · 같은 이름 ${dup}개 건너뜀` : ""}`;
-      list.innerHTML = got.map((u) => `<div class="lbupvr${have.has(u.name) ? " dup" : ""}"><span class="nm">${esc(u.name)}</span><span class="pg${u.page == null ? " none" : ""}">${have.has(u.name) ? "있음" : u.page == null ? "—" : esc(unitFmt(b, u.page))}</span></div>`).join("") || '<div class="hint">이 단계에 들어갈 단원이 없어요</div>';
+    /* ── 왼쪽 글 → 오른쪽 줄 ── */
+    const pick = () => lbUnitPick(ta.value.slice(0, 20000), LV.key, LV.nm, LV.ap);
+    const compose = () => {
+      const bs = baseRows(), gr = pick().map((u) => ({ name: u.name, page: u.page == null ? "" : String(u.page), del: false }));
+      if (T.mode === "append") {
+        const have = new Set(bs.map((r) => r.name0)), add = gr.filter((r) => !have.has(r.name));
+        return { rows: [...bs, ...add], note: gr.length > add.length ? `이미 있는 이름 ${gr.length - add.length}개는 넣지 않았어요` : "" };
+      }
+      /* 바꾸기(261127 대표): 기존 단원과 새 줄을 순서대로 짝지어 같은 단원을 고침(update — 학습 기록 · 시험 범위 연결 유지), 남는 새 줄만 추가, 남는 기존 줄만 삭제(연결된 단원은 서버가 거절 → 저장 뒤 안내) */
+      const out = gr.map((r, k) => { const x = bs[k]; if (!x) return r; x.name = r.name; x.page = r.page; return x; });
+      const rest = bs.slice(gr.length); rest.forEach((x) => { x.gone = true; out.push(x); });
+      const kept = rest.filter((x) => x.uses).length;
+      return { rows: out, note: [bs.length && gr.length ? `기존 단원 ${Math.min(bs.length, gr.length)}개는 순서대로 이름 · 시작을 고쳐요(연결 유지)` : "", rest.length ? `남는 기존 단원 ${rest.length}개는 저장할 때 삭제해요${kept ? `(다른 곳에 연결된 ${kept}개는 삭제되지 않아요)` : ""}` : ""].filter(Boolean).join(" · ") };
     };
-    const lvDraw = (w) => {
-      const L = lbUnitLevels(ta.value, LV[w].ap), seg = m.querySelector(`[data-lv="${w}"]`);
-      if (!L.levels.some((g) => g.key === LV[w].key)) LV[w].key = L.def;
-      const many = L.levels.length > 1;
-      m.querySelectorAll(`[data-lvh="${w}"]`).forEach((x) => (x.style.display = many ? "" : "none"));
-      m.querySelectorAll(`[data-lvaph="${w}"]`).forEach((x) => (x.style.display = L.ap ? "" : "none"));
-      seg.innerHTML = many ? L.levels.map((g) => `<button type="button" role="radio" data-lvk="${esc(g.key)}" class="${g.key === LV[w].key ? "on" : ""}" aria-checked="${g.key === LV[w].key}">${esc(g.label)} <span class="n">${g.count}</span></button>`).join("") : "";
-      seg.querySelectorAll("[data-lvk]").forEach((x) => (x.onclick = () => { LV[w].key = x.dataset.lvk; lvDraw(w); }));
-      preview();
+    const apply = () => { const o = compose(); rows = o.rows; T.hand = false; T.hold = false; T.ed = -1; draw(); lmSet(o.note); };
+    const hold = () => {
+      T.hold = true;
+      lm.innerHTML = `${T.src ? esc(T.src) + " · " : ""}왼쪽 글은 오른쪽에 반영하지 않았어요 <button type="button" class="lnk" id="lbuRe">오른쪽에 반영</button>`;
+      m.querySelector("#lbuRe").onclick = () => { T.hold = false; reflect(); };
     };
+    const reset = () => { rows = T.mode === "new" ? [] : baseRows(); if (T.mode !== "new") T.mode = ""; T.hand = false; T.hold = false; T.ed = -1; draw(); lmSet(""); };
+    const guard = (fn, undo) => {
+      if (!T.hand) return fn();
+      ask("오른쪽에서 고친 내용이 바뀌어요", "왼쪽 글로 단원 줄을 다시 만들면 오른쪽에서 고친 이름 · 시작 · 추가 · 삭제가 없어져요. 다시 만들까요?", [["취소", undo || hold], ["다시 만들기", fn, 1]]);
+    };
+    const reflect = (undo) => {
+      lvDraw();
+      if (T.hold) return;
+      if (!ta.value.trim()) { if (T.mode) guard(reset, undo); return; }
+      if (T.mode) return guard(apply, undo);
+      const n = baseRows().length;
+      ask("기존 단원을 바꿀까요?", `이 교재에 단원 <b>${n}개</b>가 있어요. [바꾸기]는 왼쪽 글의 단원으로 바꿔요 — 기존 단원은 순서대로 이름 · 시작만 고쳐 그대로 이어 쓰고(학습 기록 · 시험 범위 연결 유지), 남는 새 줄은 추가 · 남는 기존 단원은 저장할 때 삭제해요. [뒤에 붙이기]는 기존 단원 뒤에 새 단원만 붙여요.${T.hand ? " 오른쪽에서 고친 내용은 없어져요." : ""}`,
+        [["취소", undo || hold], ["뒤에 붙이기", () => { T.mode = "append"; apply(); }], ["바꾸기", () => { T.mode = "replace"; apply(); }, 1]]);
+    };
+    /* 단원 단계(항목 164) · 단원 이름 방식(항목 167): 단계가 둘 이상일 때만. 부록 체크는 부록 줄이 있을 때만 */
+    const lvDraw = () => {
+      const L = lbUnitLevels(ta.value.slice(0, 20000), LV.ap), seg = m.querySelector("#lbuLv");
+      if (!L.levels.some((g) => g.key === LV.key)) LV.key = L.def;
+      const many = L.levels.length > 1, apOn = !!(L.ap || LV.ap);
+      if (!many) LV.nm = "";
+      m.querySelector("#lbuLvR").style.display = many ? "" : "none";
+      m.querySelector("#lbuNmR").style.display = many || apOn ? "" : "none";
+      m.querySelectorAll("[data-nmh]").forEach((x) => (x.style.display = many ? "" : "none"));
+      m.querySelector("#lbuApL").style.display = apOn ? "" : "none";
+      seg.innerHTML = many ? L.levels.map((g) => `<button type="button" role="radio" data-lvk="${esc(g.key)}" class="${g.key === LV.key ? "on" : ""}" aria-checked="${g.key === LV.key}">${esc(g.label)} <span class="n">${g.count}</span></button>`).join("") : "";
+      seg.querySelectorAll("[data-lvk]").forEach((x) => (x.onclick = () => { const old = LV.key; if (x.dataset.lvk === old) return; LV.key = x.dataset.lvk; reflect(() => { LV.key = old; lvDraw(); }); }));
+      m.querySelectorAll("[data-nm]").forEach((x) => { const on = x.dataset.nm === LV.nm; x.classList.toggle("on", on); x.setAttribute("aria-checked", String(on)); });
+    };
+    m.querySelectorAll("[data-nm]").forEach((x) => (x.onclick = () => { const old = LV.nm; if (x.dataset.nm === old) return; LV.nm = x.dataset.nm; reflect(() => { LV.nm = old; lvDraw(); }); }));
+    m.querySelector("#lbuAp").onchange = (ev) => { const old = LV.ap; LV.ap = ev.currentTarget.checked; reflect(() => { LV.ap = old; m.querySelector("#lbuAp").checked = old; lvDraw(); }); };
     let lvT = 0;
-    ta.addEventListener("input", () => { clearTimeout(lvT); lvT = setTimeout(() => lvDraw("T"), 150); });
-    m.querySelector('[data-lvup="T"]').onchange = (ev) => { LV.T.up = ev.currentTarget.checked; preview(); };
-    m.querySelector('[data-lvap="T"]').onchange = (ev) => { LV.T.ap = ev.currentTarget.checked; lvDraw("T"); };
-    lvDraw("T");
-    /* 단원 목록 입력: 미리보기 그대로(lbUnitPick, 서버 parse 안 부름) → 지금 줄 뒤에 붙이고(같은 이름 건너뜀) [고치기] 탭으로 */
-    m.querySelector("#lbuSplit").onclick = (ev) => {
-      clearTimeout(lvT); lvDraw("T");
-      const t = ta.value; if (!t.trim()) { lm.textContent = "단원 목록이 없어요 — 붙여 넣거나 [가져오기]를 눌러요"; return; }
-      const btn = ev.currentTarget; btn.disabled = true; lm.textContent = ""; msg.textContent = "";
-      try {
-        const got = lbUnitPick(t.slice(0, 20000), LV.T.key, LV.T.up, LV.T.ap), have = haveNames();
-        const add = got.filter((u) => !have.has(u.name));
-        add.forEach((u) => rows.push({ name: u.name, page: u.page == null ? "" : String(u.page), del: false }));
-        if (add.length) { ta.value = ""; lvDraw("T"); }
-        draw(); show("edit"); box.scrollTop = box.scrollHeight;
-        msg.textContent = add.length ? `단원 ${add.length}개를 입력했어요 — 확인하고 [저장]을 눌러요` : "새로 추가할 단원이 없어요(같은 이름은 건너뜀)";
-      } catch (e) { lm.textContent = lbErr(e); } finally { btn.disabled = false; }
-    };
-    /* 가져오기: units-fetch(교보문고 → 예스24) 글을 같은 글 칸에 그대로 채움 — 칸에 글이 있으면 바꾸기 전에 물음. 단원으로 쓸 단계는 아래 단계 나눔 단추로 */
-    m.querySelector("#lbuGet").onclick = async (ev) => {
+    ta.addEventListener("input", () => { T.src = ""; clearTimeout(lvT); lvT = setTimeout(() => reflect(), 300); });
+    /* 가져오기: units-fetch(교보문고 → 예스24) 글을 왼쪽 글 칸에 그대로 — 칸에 글이 있으면 바꾸기 전에 물음 */
+    m.querySelector("#lbuGet").onclick = (ev) => {
       if (!isbn) return;
-      if (ta.value.trim() && !confirm("글 칸의 단원 목록을 가져온 목록으로 바꿀까요?")) return;
-      const btn = ev.currentTarget; btn.disabled = true; lm.textContent = "온라인 서점에서 단원 목록을 받는 중…";
-      try {
-        const r = await liveBookApi({ action: "units-fetch", isbn13: isbn });
-        if (r && r.found && String(r.text || "").trim()) {
-          T.src = r.source === "yes24" ? "예스24" : "교보문고"; ta.value = String(r.text); LV.T.key = ""; lvDraw("T");
-          lm.textContent = `${T.src}에서 단원 목록을 가져왔어요 — 고친 뒤 [단원 목록 입력]을 눌러요`;
-        } else lm.textContent = "이 ISBN으로 단원을 찾지 못했어요";
-      } catch (e) { lm.textContent = lbErr(e); } finally { btn.disabled = false; }
+      const btn = ev.currentTarget;
+      const run = async () => {
+        btn.disabled = true; lm.textContent = "온라인 서점에서 단원 목록을 받는 중…";
+        try {
+          const r = await liveBookApi({ action: "units-fetch", isbn13: isbn });
+          if (r && r.found && String(r.text || "").trim()) {
+            clearTimeout(lvT); ta.value = String(r.text); LV.key = ""; T.hold = false;
+            T.src = `${r.source === "yes24" ? "예스24" : "교보문고"}에서 단원 목록을 가져왔어요 — 오른쪽 줄을 확인하고 [저장]을 눌러요`; lmSet("");
+            reflect();
+          } else lm.textContent = "이 ISBN으로 단원을 찾지 못했어요";
+        } catch (e) { lm.textContent = lbErr(e); } finally { btn.disabled = false; }
+      };
+      if (ta.value.trim()) ask("글 칸을 바꿀까요?", "왼쪽 글 칸의 단원 목록을 온라인 서점에서 가져온 목록으로 바꿔요.", [["취소", () => {}], ["바꾸기", run, 1]]);
+      else run();
     };
+    lvDraw(); draw();
     m.querySelector("#cc").onclick = close;
     const ok = m.querySelector("#co");
     ok.onclick = async () => {
-      const num = (v) => { const s = String(v || "").replace(/[^\d]/g, ""); return s ? +s : null; };
-      const update = rows.filter((r) => r.id && !r.del && (r.name.trim() !== r.name0 || String(num(r.page) ?? "") !== r.page0)).map((r) => ({ id: r.id, name: r.name.trim(), page: num(r.page) }));
-      const remove = rows.filter((r) => r.id && r.del).map((r) => r.id);
-      const add = rows.filter((r) => !r.id && r.name.trim() && r.sent !== r.name.trim()).map((r) => ({ name: r.name.trim(), page: num(r.page) }));
-      if (update.some((u) => !u.name)) { show("edit"); msg.textContent = "이름이 빈 단원이 있어요 — 이름을 넣거나 [x]로 삭제해요"; return; }
+      if (T.ed >= 0) endEdit();
+      const live = (r) => !r.del && !r.gone;
+      const update = rows.filter((r) => r.id && live(r) && (r.name.trim() !== r.name0 || String(num(r.page) ?? "") !== r.page0)).map((r) => ({ id: r.id, name: r.name.trim(), page: num(r.page) }));
+      const remove = rows.filter((r) => r.id && !live(r)).map((r) => r.id);
+      const add = rows.filter((r) => !r.id && !r.del && r.name.trim() && r.sent !== r.name.trim()).map((r) => ({ name: r.name.trim(), page: num(r.page) }));
+      if (update.some((u) => !u.name)) { msg.textContent = "이름이 빈 단원이 있어요 — 이름을 넣거나 [×]로 삭제해요"; startEdit(rows.findIndex((r) => r.id && live(r) && !r.name.trim())); return; }
       if (!update.length && !remove.length && !add.length) { close(); return; }
       /* 묶음 저장(항목 165): update → remove → add 순서 그대로 LBU_CHUNK개씩 edit-units 여러 번 — 묶음마다 "단원 저장 중 n/전체" + 막대.
          저장 중에는 창 안 단추 · 칸을 막음(취소 포함 — 창은 단추로만 닫히니 닫히지 않음). 성공한 묶음은 바로 rows에 반영(고침 = 원래 값 갱신 · 삭제 = 줄 뺌 · 추가 = 보낸 이름 기록).
-         중간 실패 = 멈추고 노션 단원을 다시 읽어 맞춤(추가된 줄은 받은 id로 → 다음 저장 땐 고치기 목록) → "n/전체까지 저장했어요" + [다시 저장] = 남은 것만 */
+         중간 실패 = 멈추고 노션 단원을 다시 읽어 맞춤(추가된 줄은 받은 id로 → 다음 저장 땐 고침 목록) → "n/전체까지 저장했어요" + [다시 저장] = 남은 것만 */
       const ops = [...update.map((u) => ["u", u]), ...remove.map((id) => ["r", id]), ...add.map((a) => ["a", a])];
       const total = ops.length, sum = { updated: 0, removed: 0, added: 0, blocked: 0 };
       const prog = m.querySelector("#lbuP"), ptx = prog.querySelector(".t"), pbar = prog.querySelector(".bar>i");
       const step = (n) => { ptx.textContent = `단원 저장 중 ${n}/${total}`; pbar.style.width = Math.round((n / total) * 100) + "%"; prog.setAttribute("aria-valuenow", String(n)); };
       const locked = [...m.querySelectorAll("button, input, textarea")].filter((x) => !x.disabled);
-      locked.forEach((x) => (x.disabled = true));
+      locked.forEach((x) => (x.disabled = true)); box.classList.add("busy");
       ok.setAttribute("aria-busy", "true"); msg.textContent = ""; prog.setAttribute("aria-valuemax", String(total)); prog.hidden = false; step(0);
       const rowOf = (id) => rows.find((r) => r.id === id);
       let done = 0;
@@ -431,7 +535,7 @@ function lbUnitDialog(b, tab0) {
           const r = await liveBookApi(body);
           sum.updated += r.updated || 0; sum.removed += r.removed || 0; sum.added += r.added || 0; sum.blocked += (r.blocked || []).length;
           body.update.forEach((u) => { const x = rowOf(u.id); if (x) { x.name0 = u.name; x.page0 = u.page == null ? "" : String(u.page); } });
-          body.remove.forEach((id) => { const k = rows.findIndex((x) => x.id === id && x.del); if (k >= 0 && !(r.blocked || []).length) rows.splice(k, 1); });
+          body.remove.forEach((id) => { const k = rows.findIndex((x) => x.id === id && !live(x)); if (k >= 0 && !(r.blocked || []).length) rows.splice(k, 1); });
           body.add.forEach((a) => { const x = rows.find((z) => !z.id && z.sent !== a.name && z.name.trim() === a.name); if (x) x.sent = a.name; });
           done += part.length; step(done);
         }
@@ -455,16 +559,16 @@ function lbUnitDialog(b, tab0) {
           });
           fresh = true;
         } catch (_) { /* 다시 읽기 실패 — 성공한 묶음만 반영 */ }
-        locked.forEach((x) => (x.disabled = false));
+        locked.forEach((x) => (x.disabled = false)); box.classList.remove("busy");
         ok.removeAttribute("aria-busy"); ok.textContent = "다시 저장"; prog.hidden = true;
         draw();
-        const left = rows.filter((x) => (x.id && x.del) || (x.id && !x.del && (x.name.trim() !== x.name0 || String(num(x.page) ?? "") !== x.page0)) || (!x.id && x.name.trim() && x.sent !== x.name.trim())).length;
+        const left = rows.filter((x) => (x.id && !live(x)) || (x.id && live(x) && (x.name.trim() !== x.name0 || String(num(x.page) ?? "") !== x.page0)) || (!x.id && !x.del && x.name.trim() && x.sent !== x.name.trim())).length;
         const saved = Math.max(0, total - left);
         msg.textContent = `${saved}/${total}까지 저장했어요 — 나머지 ${left}개는 [다시 저장]을 눌러요 · ${lbErr(e)}`;
         if (fresh) { try { render(); } catch (_) {} } else lbUnitsLoad(b.id, true);
       }
     };
-    setTimeout(() => { const t = T.tab === "list" ? m.querySelector(isbn ? "#lbuGet" : "#lbuT") : m.querySelector(".unn"); if (t) t.focus(); }, 0);
+    setTimeout(() => { const t = m.querySelector(isbn && !rows.length ? "#lbuGet" : "#lbuT"); if (t) t.focus(); }, 0);
   });
 }
 document.addEventListener("click", (e) => {
